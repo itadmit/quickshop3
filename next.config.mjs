@@ -11,6 +11,13 @@ const nextConfig = {
       },
     ],
   },
+  // Fix for Vercel deployment with Next.js 15
+  outputFileTracingRoot: undefined,
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/**/*': ['./node_modules/**/*.wasm', './node_modules/**/*.node'],
+    },
+  },
 };
 
 export default nextConfig;
