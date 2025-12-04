@@ -1,6 +1,10 @@
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 
+// Prevent prerendering to avoid clientReferenceManifest error
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function DashboardLayout({
   children,
 }: {

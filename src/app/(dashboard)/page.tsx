@@ -3,6 +3,8 @@
 // Prevent prerendering to avoid clientReferenceManifest error
 // This is a known issue with Next.js 15.5.7 and route groups
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const revalidate = 0;
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
