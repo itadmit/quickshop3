@@ -16,6 +16,26 @@
 
 ---
 
+## ⚠️ הנחיות קריטיות כדי למנוע שבירת Build
+
+כדי למנוע חזרה על תקלות deployment (במיוחד ב-Vercel + Next.js 15) הקפידו על הכללים הבאים:
+
+1. **מפעילים `npm run build` לוקאלית לפני כל push**
+   - הפקודה מריצה גם את `postbuild` שמוודא יצירת קבצי manifest ש-Vercel צריך.
+2. **חבילות שנדרשות בזמן build תמיד ב-`dependencies`**
+   - Tailwind CSS, PostCSS, Autoprefixer, Sharp, וכד' – לא לשים ב-`devDependencies`.
+3. **עובדים רק מול Vercel + Neon**
+   - `DATABASE_URL` צריך להיות ממקור Neon (SSL חובה).
+   - `NEXT_PUBLIC_APP_URL` מתעדכן ל-URL של Vercel בכל deploy.
+4. **לא דוחפים `.env*` / `.next` / `node_modules`**
+   - הקונפיגורציה והסודות מוגדרים ב-Vercel Dashboard בלבד.
+5. **שומרים על מבנה הסקריפטים**
+   - אם מוסיפים סקריפטים חדשים (ב-`scripts/`), לרשום אותם ב-README/DEPLOYMENT כדי שכולם ידעו להריץ.
+
+👆️ כללי זהב אלו הוכנסו למדריך הרשמי ב-`DEPLOYMENT.md` – חובה לעבור עליו לפני שינויים משמעותיים.
+
+---
+
 ## ✨ תכונות עיקריות
 
 ### 🏪 ניהול חנויות מרובות
