@@ -1,5 +1,9 @@
 'use client';
 
+// Prevent prerendering to avoid clientReferenceManifest error
+// This is a known issue with Next.js 15.5.7 and route groups
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { 
