@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { HiMail, HiLockClosed, HiUser, HiOfficeBuilding, HiPhone, HiArrowLeft } from 'react-icons/hi';
+import { HiMail, HiLockClosed, HiUser, HiOfficeBuilding, HiPhone, HiArrowLeft, HiLink } from 'react-icons/hi';
 import Image from 'next/image';
 
 function RegisterForm() {
@@ -19,8 +19,11 @@ function RegisterForm() {
     email: '',
     password: '',
     companyName: '',
+    storeSlug: '',
     phone: '',
   });
+  
+  const [slugError, setSlugError] = useState<string | null>(null);
 
   useEffect(() => {
     const emailFromUrl = searchParams.get('email');
@@ -29,17 +32,42 @@ function RegisterForm() {
     }
   }, [searchParams]);
 
+  // Validate slug format
+  const handleSlugChange = (value: string) => {
+    // Only allow English letters and numbers
+    const sanitized = value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    setFormData((prev) => ({ ...prev, storeSlug: sanitized }));
+    
+    if (sanitized.length > 0 && !/^[a-zA-Z0-9]+$/.test(sanitized)) {
+      setSlugError('כתובת החנות יכולה להכיל רק אותיות באנגלית ומספרים');
+    } else {
+      setSlugError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
+      if (!formData.storeSlug || formData.storeSlug.length < 2) {
+        setError('כתובת החנות חייבת להכיל לפחות 2 תווים');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          storeName: formData.companyName,
+          storeSlug: formData.storeSlug,
+        }),
       });
 
       const data = await response.json();
@@ -155,6 +183,37 @@ function RegisterForm() {
                   className="h-12 text-base border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-10"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="storeSlug" className="text-sm font-medium text-gray-700">
+                כתובת החנות
+              </Label>
+              <div className="relative">
+                <HiLink className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <div className="flex items-center">
+                  <span className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                    quickshop.com/
+                  </span>
+                  <Input
+                    id="storeSlug"
+                    type="text"
+                    placeholder="nike"
+                    value={formData.storeSlug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    required
+                    disabled={loading}
+                    minLength={2}
+                    maxLength={50}
+                    className="h-12 text-base border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-32"
+                  />
+                </div>
+              </div>
+              {slugError && (
+                <p className="text-sm text-red-600 mt-1">{slugError}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                רק אותיות באנגלית ומספרים, ללא רווחים או סימנים מיוחדים
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone" className="text-sm font-medium text-gray-700">

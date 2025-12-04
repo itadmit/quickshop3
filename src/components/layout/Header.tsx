@@ -1,8 +1,9 @@
 'use client';
 
-import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuilding, HiMenu, HiCog, HiLogout } from 'react-icons/hi';
+import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuilding, HiMenu, HiCog, HiLogout, HiShoppingBag } from 'react-icons/hi';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { NotificationsDrawer } from './NotificationsDrawer';
 
 export function Header() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export function Header() {
   const switcherRef = useRef<HTMLDivElement>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Close switcher when clicking outside
   useEffect(() => {
@@ -125,13 +127,34 @@ export function Header() {
 
       {/* Actions & Profile */}
       <div className="flex items-center gap-2 md:gap-4">
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:block">
-          <HiShoppingCart className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
+        {/* Marketplace (Coming Soon) */}
+        <button 
+          className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:flex md:items-center md:gap-2 relative"
+          title="מרקט פלייס - בקרוב"
+        >
+          <HiShoppingBag className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
+          <span className="text-xs text-gray-500 hidden lg:block">בקרוב</span>
         </button>
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:block">
+        
+        {/* View Store */}
+        <button 
+          onClick={() => {
+            // TODO: Get store slug from context/API
+            const storeSlug = 'nike'; // This should come from user context
+            window.open(`/${storeSlug}`, '_blank');
+          }}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:block"
+          title="צפייה בחנות"
+        >
           <HiEye className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
         </button>
-        <button className="p-2 hover:bg-gray-100 rounded-lg relative transition-all group">
+        
+        {/* Notifications */}
+        <button 
+          onClick={() => setShowNotifications(true)}
+          className="p-2 hover:bg-gray-100 rounded-lg relative transition-all group"
+          title="עדכונים"
+        >
           <HiBell className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
           <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full"></span>
         </button>
@@ -203,6 +226,12 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {/* Notifications Drawer */}
+      <NotificationsDrawer 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+      />
     </header>
   );
 }

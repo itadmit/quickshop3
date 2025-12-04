@@ -62,10 +62,16 @@ export async function POST(request: NextRequest) {
 
     const discount = await queryOne<DiscountCode>(
       `INSERT INTO discount_codes (
-        store_id, code, discount_type, value, minimum_order_amount,
-        usage_limit, applies_to, starts_at, ends_at, is_active,
-        created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+        store_id, code, discount_type, value,
+        minimum_order_amount, maximum_order_amount,
+        minimum_quantity, maximum_quantity,
+        applies_to, usage_limit,
+        priority, can_combine_with_automatic, can_combine_with_other_codes,
+        max_combined_discounts,
+        customer_segment, minimum_orders_count, minimum_lifetime_value,
+        starts_at, ends_at, day_of_week, hour_start, hour_end,
+        is_active, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now(), now())
       RETURNING *`,
       [
         storeId,
@@ -73,16 +79,61 @@ export async function POST(request: NextRequest) {
         body.discount_type,
         body.value || null,
         body.minimum_order_amount || null,
-        body.usage_limit || null,
+        body.maximum_order_amount || null,
+        body.minimum_quantity || null,
+        body.maximum_quantity || null,
         body.applies_to || 'all',
+        body.usage_limit || null,
+        body.priority || 0,
+        body.can_combine_with_automatic !== undefined ? body.can_combine_with_automatic : true,
+        body.can_combine_with_other_codes !== undefined ? body.can_combine_with_other_codes : false,
+        body.max_combined_discounts || 1,
+        body.customer_segment || null,
+        body.minimum_orders_count || null,
+        body.minimum_lifetime_value || null,
         body.starts_at || null,
         body.ends_at || null,
+        body.day_of_week || null,
+        body.hour_start || null,
+        body.hour_end || null,
         body.is_active !== undefined ? body.is_active : true,
       ]
     );
 
     if (!discount) {
       throw new Error('Failed to create discount code');
+    }
+
+    const discountId = discount.id;
+
+    // Add product mappings
+    if (body.product_ids && body.product_ids.length > 0) {
+      for (const productId of body.product_ids) {
+        await query(
+          'INSERT INTO discount_code_products (discount_code_id, product_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [discountId, productId]
+        );
+      }
+    }
+
+    // Add collection mappings
+    if (body.collection_ids && body.collection_ids.length > 0) {
+      for (const collectionId of body.collection_ids) {
+        await query(
+          'INSERT INTO discount_code_collections (discount_code_id, collection_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [discountId, collectionId]
+        );
+      }
+    }
+
+    // Add tag mappings
+    if (body.tag_names && body.tag_names.length > 0) {
+      for (const tagName of body.tag_names) {
+        await query(
+          'INSERT INTO discount_code_tags (discount_code_id, tag_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [discountId, tagName]
+        );
+      }
     }
 
     // Emit event

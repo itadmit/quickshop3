@@ -124,13 +124,13 @@ export default function ProductsPage() {
       
       primaryAction={{
         label: 'מוצר חדש',
-        onClick: () => router.push('/products/new/edit'),
+        onClick: () => router.push('/products/edit/new'),
         icon: <HiPlus className="w-4 h-4" />,
       }}
       
       onRowClick={(product) => {
         const slug = product.handle || product.id.toString();
-        router.push(`/products/${slug}/edit`);
+        router.push(`/products/edit/${slug}`);
       }}
       
       secondaryActions={[
@@ -191,7 +191,7 @@ export default function ProductsPage() {
         const handleEdit = (e?: React.MouseEvent) => {
           e?.stopPropagation();
           const slug = product.handle || product.id.toString();
-          router.push(`/products/${slug}/edit`);
+          router.push(`/products/edit/${slug}`);
         };
 
         const handleDuplicate = async (e?: React.MouseEvent) => {
@@ -210,7 +210,7 @@ export default function ProductsPage() {
             // Redirect to edit the duplicated product
             if (data.product?.handle) {
               setTimeout(() => {
-                router.push(`/products/${data.product.handle}/edit`);
+                router.push(`/products/edit/${data.product.handle}`);
               }, 1000);
             }
           } catch (error: any) {

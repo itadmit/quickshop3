@@ -23,11 +23,27 @@ export interface CreateDiscountCodeRequest {
   discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
   value?: string;
   minimum_order_amount?: string;
+  maximum_order_amount?: string;
+  minimum_quantity?: number;
+  maximum_quantity?: number;
   usage_limit?: number;
-  applies_to?: 'all' | 'specific_products' | 'specific_collections';
+  applies_to?: 'all' | 'specific_products' | 'specific_collections' | 'specific_tags';
+  priority?: number;
+  can_combine_with_automatic?: boolean;
+  can_combine_with_other_codes?: boolean;
+  max_combined_discounts?: number;
+  customer_segment?: 'all' | 'vip' | 'new_customer' | 'returning_customer' | null;
+  minimum_orders_count?: number;
+  minimum_lifetime_value?: string;
   starts_at?: string;
   ends_at?: string;
+  day_of_week?: number[] | null;
+  hour_start?: number;
+  hour_end?: number;
   is_active?: boolean;
+  product_ids?: number[];
+  collection_ids?: number[];
+  tag_names?: string[];
 }
 
 export interface UpdateDiscountCodeRequest {
@@ -35,10 +51,26 @@ export interface UpdateDiscountCodeRequest {
   discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping';
   value?: string;
   minimum_order_amount?: string;
+  maximum_order_amount?: string;
+  minimum_quantity?: number;
+  maximum_quantity?: number;
   usage_limit?: number;
-  applies_to?: 'all' | 'specific_products' | 'specific_collections';
+  applies_to?: 'all' | 'specific_products' | 'specific_collections' | 'specific_tags';
+  priority?: number;
+  can_combine_with_automatic?: boolean;
+  can_combine_with_other_codes?: boolean;
+  max_combined_discounts?: number;
+  customer_segment?: 'all' | 'vip' | 'new_customer' | 'returning_customer' | null;
+  minimum_orders_count?: number;
+  minimum_lifetime_value?: string;
   starts_at?: string;
   ends_at?: string;
+  day_of_week?: number[] | null;
+  hour_start?: number;
+  hour_end?: number;
   is_active?: boolean;
+  product_ids?: number[];
+  collection_ids?: number[];
+  tag_names?: string[];
 }
 

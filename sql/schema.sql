@@ -26,6 +26,7 @@ CREATE TABLE stores (
   id SERIAL PRIMARY KEY,
   owner_id INT REFERENCES store_owners(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
+  slug VARCHAR(100) UNIQUE NOT NULL, -- Unique slug for URL (e.g., 'nike', 'adidas')
   domain VARCHAR(255),
   myshopify_domain VARCHAR(255), -- Shopify-like domain format
   currency VARCHAR(10) DEFAULT 'ILS',
@@ -39,6 +40,7 @@ CREATE TABLE stores (
 
 CREATE INDEX idx_stores_owner_id ON stores(owner_id);
 CREATE INDEX idx_stores_domain ON stores(domain);
+CREATE INDEX idx_stores_slug ON stores(slug);
 
 -- ============================================
 -- 2. PRODUCTS (Shopify-like: Products API)
@@ -562,7 +564,7 @@ CREATE INDEX idx_shipping_rates_zone_id ON shipping_rates(shipping_zone_id);
 -- 8. DISCOUNTS (Shopify-like: Discounts API)
 -- ============================================
 
--- Discount Codes
+-- Discount Codes (with all conditions support)
 CREATE TABLE discount_codes (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
@@ -570,11 +572,24 @@ CREATE TABLE discount_codes (
   discount_type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping
   value NUMERIC(12,2),
   minimum_order_amount NUMERIC(12,2),
+  maximum_order_amount NUMERIC(12,2),
+  minimum_quantity INT,
+  maximum_quantity INT,
   usage_limit INT,
   usage_count INT DEFAULT 0,
-  applies_to VARCHAR(50) DEFAULT 'all', -- all, specific_products, specific_collections
+  applies_to VARCHAR(50) DEFAULT 'all', -- all, specific_products, specific_collections, specific_tags
+  priority INT DEFAULT 0,
+  can_combine_with_automatic BOOLEAN DEFAULT true,
+  can_combine_with_other_codes BOOLEAN DEFAULT false,
+  max_combined_discounts INT DEFAULT 1,
+  customer_segment VARCHAR(50), -- all, vip, new_customer, returning_customer
+  minimum_orders_count INT,
+  minimum_lifetime_value NUMERIC(12,2),
   starts_at TIMESTAMP WITHOUT TIME ZONE,
   ends_at TIMESTAMP WITHOUT TIME ZONE,
+  day_of_week INT[], -- 0=Sunday, 1=Monday, etc. NULL = כל יום
+  hour_start INT, -- שעה התחלה (0-23)
+  hour_end INT, -- שעה סיום (0-23)
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -584,6 +599,103 @@ CREATE TABLE discount_codes (
 CREATE INDEX idx_discount_codes_store_id ON discount_codes(store_id);
 CREATE INDEX idx_discount_codes_code ON discount_codes(code);
 CREATE INDEX idx_discount_codes_active ON discount_codes(is_active, starts_at, ends_at);
+CREATE INDEX idx_discount_codes_priority ON discount_codes(priority DESC);
+
+-- Automatic Discounts (הנחות אוטומטיות)
+CREATE TABLE automatic_discounts (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  name VARCHAR(200) NOT NULL,
+  description TEXT,
+  discount_type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping
+  value NUMERIC(12,2),
+  minimum_order_amount NUMERIC(12,2),
+  maximum_order_amount NUMERIC(12,2),
+  minimum_quantity INT,
+  maximum_quantity INT,
+  applies_to VARCHAR(50) DEFAULT 'all', -- all, specific_products, specific_collections, specific_tags
+  priority INT DEFAULT 0,
+  can_combine_with_codes BOOLEAN DEFAULT true,
+  can_combine_with_other_automatic BOOLEAN DEFAULT false,
+  max_combined_discounts INT DEFAULT 1,
+  customer_segment VARCHAR(50), -- all, vip, new_customer, returning_customer
+  minimum_orders_count INT,
+  minimum_lifetime_value NUMERIC(12,2),
+  starts_at TIMESTAMP WITHOUT TIME ZONE,
+  ends_at TIMESTAMP WITHOUT TIME ZONE,
+  day_of_week INT[], -- 0=Sunday, 1=Monday, etc. NULL = כל יום
+  hour_start INT, -- שעה התחלה (0-23)
+  hour_end INT, -- שעה סיום (0-23)
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_automatic_discounts_store_id ON automatic_discounts(store_id);
+CREATE INDEX idx_automatic_discounts_active ON automatic_discounts(is_active, starts_at, ends_at);
+CREATE INDEX idx_automatic_discounts_priority ON automatic_discounts(priority DESC);
+
+-- Mapping Tables for Discount Codes
+
+-- Products that discount code applies to
+CREATE TABLE discount_code_products (
+  discount_code_id INT REFERENCES discount_codes(id) ON DELETE CASCADE,
+  product_id INT REFERENCES products(id) ON DELETE CASCADE,
+  PRIMARY KEY (discount_code_id, product_id)
+);
+
+CREATE INDEX idx_discount_code_products_code_id ON discount_code_products(discount_code_id);
+CREATE INDEX idx_discount_code_products_product_id ON discount_code_products(product_id);
+
+-- Collections that discount code applies to
+CREATE TABLE discount_code_collections (
+  discount_code_id INT REFERENCES discount_codes(id) ON DELETE CASCADE,
+  collection_id INT REFERENCES product_collections(id) ON DELETE CASCADE,
+  PRIMARY KEY (discount_code_id, collection_id)
+);
+
+CREATE INDEX idx_discount_code_collections_code_id ON discount_code_collections(discount_code_id);
+CREATE INDEX idx_discount_code_collections_collection_id ON discount_code_collections(collection_id);
+
+-- Tags that discount code applies to
+CREATE TABLE discount_code_tags (
+  discount_code_id INT REFERENCES discount_codes(id) ON DELETE CASCADE,
+  tag_name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (discount_code_id, tag_name)
+);
+
+CREATE INDEX idx_discount_code_tags_code_id ON discount_code_tags(discount_code_id);
+
+-- Mapping Tables for Automatic Discounts
+
+-- Products that automatic discount applies to
+CREATE TABLE automatic_discount_products (
+  automatic_discount_id INT REFERENCES automatic_discounts(id) ON DELETE CASCADE,
+  product_id INT REFERENCES products(id) ON DELETE CASCADE,
+  PRIMARY KEY (automatic_discount_id, product_id)
+);
+
+CREATE INDEX idx_automatic_discount_products_discount_id ON automatic_discount_products(automatic_discount_id);
+CREATE INDEX idx_automatic_discount_products_product_id ON automatic_discount_products(product_id);
+
+-- Collections that automatic discount applies to
+CREATE TABLE automatic_discount_collections (
+  automatic_discount_id INT REFERENCES automatic_discounts(id) ON DELETE CASCADE,
+  collection_id INT REFERENCES product_collections(id) ON DELETE CASCADE,
+  PRIMARY KEY (automatic_discount_id, collection_id)
+);
+
+CREATE INDEX idx_automatic_discount_collections_discount_id ON automatic_discount_collections(automatic_discount_id);
+CREATE INDEX idx_automatic_discount_collections_collection_id ON automatic_discount_collections(collection_id);
+
+-- Tags that automatic discount applies to
+CREATE TABLE automatic_discount_tags (
+  automatic_discount_id INT REFERENCES automatic_discounts(id) ON DELETE CASCADE,
+  tag_name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (automatic_discount_id, tag_name)
+);
+
+CREATE INDEX idx_automatic_discount_tags_discount_id ON automatic_discount_tags(automatic_discount_id);
 
 -- ============================================
 -- 9. ANALYTICS

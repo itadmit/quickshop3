@@ -312,7 +312,7 @@ export default function EditProductPage() {
       });
 
       // Redirect to the new slug URL
-      router.push(`/products/${finalSlug}/edit`);
+      router.push(`/products/edit/${finalSlug}`);
     } catch (error: any) {
       console.error('Error saving product:', error);
       toast({

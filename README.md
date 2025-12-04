@@ -83,6 +83,7 @@
 
 ### 🎯 שיווק וקופונים
 - ניהול קופונים והנחות
+- **מנוע חישוב הנחות מרכזי וחכם** - Single Source of Truth לכל החישובים
 - מועדון לקוחות ורמות VIP
 - אוטומציות שיווק
 - Cashback ונאמנות
@@ -3116,6 +3117,60 @@ import { DataTable } from '@/components/ui/DataTable';
 **כל טבלה חדשה במערכת חייבת להשתמש ב-DataTable** כדי לשמור על עקביות ומקצועיות.
 
 **לדוגמאות מלאות ו-API Reference:** [DATATABLE_GUIDE.md](./DATATABLE_GUIDE.md)
+
+---
+
+## 🧮 מנוע חישוב הנחות וקופונים - המנוע המרכזי
+
+**מנוע החישוב המרכזי** הוא הלב של מערכת ההנחות והקופונים. זהו **Single Source of Truth** לכל החישובים במערכת.
+
+### ✨ תכונות עיקריות
+
+- ✅ **מקום אחד שמחשב הכל** - כל חישוב עובר דרך המנוע הזה
+- ✅ **עקביות מוחלטת** - אותו חישוב בכל מקום (עגלה, צ'ק אאוט, עגלת צד)
+- ✅ **סדר פעולות נכון** - הנחות מחושבות בסדר הנכון
+- ✅ **תמיכה בכל סוגי ההנחות** - קופונים (percentage, fixed_amount, free_shipping)
+- ✅ **בדיקות תקינות מלאות** - תוקף, שימוש, סכום מינימום
+
+### 📊 סדר פעולות החישוב
+
+1. **Subtotal בסיסי** - סכום כל הפריטים לפני הנחות
+2. **הנחות על פריטים** - קופונים שפועלים על פריטים
+3. **Subtotal אחרי הנחות** - Subtotal - הנחות
+4. **משלוח** - מחיר משלוח (אם יש)
+5. **הנחה על משלוח** - משלוח חינם (אם יש קופון או סף)
+6. **סה"כ סופי** - Subtotal אחרי הנחות + משלוח אחרי הנחה
+
+### 🎯 שימוש
+
+```tsx
+import { useCartCalculator } from '@/hooks/useCartCalculator';
+import { CartSummary } from '@/components/storefront/CartSummary';
+
+// Hook
+const { getTotal, getDiscount, applyDiscountCode } = useCartCalculator({
+  storeId: 1,
+  shippingRate: { id: 1, name: 'משלוח', price: 30, free_shipping_threshold: 200 },
+  autoCalculate: true,
+});
+
+// Component מוכן
+<CartSummary storeId={1} onCheckout={handleCheckout} />
+```
+
+### 📚 תיעוד מלא
+
+📖 **[תיעוד מפורט של מנוע החישוב →](./src/lib/services/CART_CALCULATOR.md)**  
+📋 **[רשימת כל סוגי ההנחות →](./src/lib/services/DISCOUNT_TYPES.md)**  
+✅ **[Checklist סוגי הנחות →](./src/lib/services/DISCOUNT_CHECKLIST.md)**
+
+### ⚠️ כללי זהב
+
+- ✅ **תמיד השתמש במנוע החישוב** - אף פעם אל תחשב ידנית
+- ✅ **השתמש ב-Hook** - `useCartCalculator` במקום שימוש ישיר
+- ✅ **השתמש ב-CartSummary** - קומפוננטה מוכנה במקום לבנות בעצמך
+- ❌ **אל תחשב ידנית** - לא `subtotal - discount` בקומפוננטה
+- ❌ **אל תכפיל מחירים** - לא `price * quantity` ישירות
 
 ---
 

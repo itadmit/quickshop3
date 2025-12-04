@@ -15,13 +15,18 @@ function generateShopifyDomain(storeName: string): string {
   return `${sanitized}-${randomSuffix}`;
 }
 
+// Validate slug: only English letters and numbers, no spaces or special characters
+function validateSlug(slug: string): boolean {
+  return /^[a-zA-Z0-9]+$/.test(slug);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password, storeName } = body;
+    const { name, email, password, storeName, storeSlug } = body;
 
     // Validation
-    if (!name || !email || !password || !storeName) {
+    if (!name || !email || !password || !storeName || !storeSlug) {
       return NextResponse.json(
         { error: 'כל השדות נדרשים' },
         { status: 400 }
@@ -31,6 +36,27 @@ export async function POST(req: NextRequest) {
     if (password.length < 6) {
       return NextResponse.json(
         { error: 'הסיסמה חייבת להכיל לפחות 6 תווים' },
+        { status: 400 }
+      );
+    }
+
+    // Validate slug format
+    if (!validateSlug(storeSlug)) {
+      return NextResponse.json(
+        { error: 'כתובת החנות יכולה להכיל רק אותיות באנגלית ומספרים, ללא רווחים או סימנים מיוחדים' },
+        { status: 400 }
+      );
+    }
+
+    // Check if slug already exists
+    const existingStore = await queryOne(
+      'SELECT id FROM stores WHERE slug = $1',
+      [storeSlug.toLowerCase()]
+    );
+
+    if (existingStore) {
+      return NextResponse.json(
+        { error: 'כתובת החנות כבר תפוסה. נסה כתובת אחרת' },
         { status: 400 }
       );
     }
@@ -69,13 +95,14 @@ export async function POST(req: NextRequest) {
 
       // Generate Shopify-like domain
       const myshopifyDomain = generateShopifyDomain(storeName);
+      const normalizedSlug = storeSlug.toLowerCase();
 
       // Create store
       const storeResult = await client.query(
-        `INSERT INTO stores (owner_id, name, myshopify_domain, currency, locale, timezone, plan)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, name, myshopify_domain, currency, locale, timezone, plan, created_at`,
-        [owner.id, storeName, myshopifyDomain, 'ILS', 'he-IL', 'Asia/Jerusalem', 'free']
+        `INSERT INTO stores (owner_id, name, slug, myshopify_domain, currency, locale, timezone, plan)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, name, slug, myshopify_domain, currency, locale, timezone, plan, created_at`,
+        [owner.id, storeName, normalizedSlug, myshopifyDomain, 'ILS', 'he-IL', 'Asia/Jerusalem', 'free']
       );
       const store = storeResult.rows[0];
 
@@ -128,6 +155,7 @@ export async function POST(req: NextRequest) {
         store: {
           id: store.id,
           name: store.name,
+          slug: store.slug,
           myshopify_domain: store.myshopify_domain,
         },
       });

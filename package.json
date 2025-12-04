@@ -15,7 +15,9 @@
     "check:all": "npm run check:docs && npm run check:events && npm run check:event-docs",
     "pre-commit": "npm run check:all",
     "db:reset": "node scripts/reset-db.js",
-    "db:setup": "node scripts/setup-db.js"
+    "db:setup": "node scripts/setup-db.js",
+    "db:migrate": "node scripts/run-migration.js",
+    "db:reset": "node scripts/reset-db.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",
