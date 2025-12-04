@@ -43,6 +43,8 @@ import { LandingFooter } from "@/components/landing/LandingFooter"
 import { HeroProductShowcase } from "@/components/landing/HeroProductShowcase"
 import type { Metadata } from 'next'
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "קוויק שופ - לבנות חנות אונליין בקלות | תמיכה מלאה בעברית",
   description: "הפלטפורמה הישראלית המתקדמת לבניית חנות אינטרנטית. ללא צורך במתכנת, תמיכה ישירה בוואטסאפ, ומערכת שמותאמת לקהל הישראלי. נסו בחינם!",
