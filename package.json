@@ -10,7 +10,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "check:docs": "ts-node scripts/check-docs.ts",
-    "check:events": "ts-node scripts/check-events.ts",
+    "check:events": "ts-node scripts/check-event-docs.ts",
     "check:event-docs": "ts-node scripts/check-event-docs.ts",
     "check:all": "npm run check:docs && npm run check:events && npm run check:event-docs",
     "pre-commit": "npm run check:all",
