@@ -5,6 +5,55 @@ import { eventBus } from '@/lib/events/eventBus';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
+// GET /api/products/:id/collections - Get collections for a product
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const productId = parseInt(id);
+    const storeId = user.store_id;
+
+    if (isNaN(productId)) {
+      return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
+    }
+
+    // Verify product belongs to store
+    const product = await queryOne<{ id: number; store_id: number }>(
+      'SELECT id, store_id FROM products WHERE id = $1',
+      [productId]
+    );
+
+    if (!product || product.store_id !== storeId) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Get collections for this product
+    const collections = await query(
+      `SELECT pc.*, pcm.position
+       FROM product_collections pc
+       INNER JOIN product_collection_map pcm ON pc.id = pcm.collection_id
+       WHERE pcm.product_id = $1
+       ORDER BY pcm.position ASC, pc.title ASC`,
+      [productId]
+    );
+
+    return NextResponse.json({ collections });
+  } catch (error: any) {
+    console.error('Error fetching product collections:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch product collections' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/products/:id/collections - Add product to collection
 export async function POST(
   request: NextRequest,
@@ -116,10 +165,21 @@ export async function DELETE(
     
     // Get collection ID from query string or body
     const url = new URL(request.url);
-    const collectionIdParam = url.searchParams.get('collection_id') || (await request.json()).collection_id;
-    const collectionId = collectionIdParam ? parseInt(collectionIdParam) : NaN;
+    let collectionId: number | null = null;
+    
+    const collectionIdParam = url.searchParams.get('collection_id');
+    if (collectionIdParam) {
+      collectionId = parseInt(collectionIdParam);
+    } else {
+      try {
+        const body = await request.json();
+        collectionId = body.collection_id ? parseInt(body.collection_id) : null;
+      } catch {
+        // Body might be empty
+      }
+    }
 
-    if (isNaN(productId) || isNaN(collectionId)) {
+    if (isNaN(productId) || !collectionId || isNaN(collectionId)) {
       return NextResponse.json({ error: 'Invalid product or collection ID' }, { status: 400 });
     }
 
@@ -163,4 +223,3 @@ export async function DELETE(
     );
   }
 }
-

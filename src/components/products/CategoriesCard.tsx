@@ -37,10 +37,23 @@ export function CategoriesCard({ selectedCategories, onChange, shopId, productId
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/categories?shopId=${shopId}`);
+      // Use the new collections API
+      const response = await fetch(`/api/collections`);
       if (response.ok) {
         const data = await response.json();
-        setCategories(data.categories || []);
+        // Map collections to categories format
+        const mappedCategories = (data.collections || []).map((c: any) => ({
+          id: c.id.toString(),
+          name: c.title,
+        }));
+        setCategories(mappedCategories);
+      } else {
+        // Fallback to old API
+        const fallbackResponse = await fetch(`/api/categories?shopId=${shopId}`);
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          setCategories(fallbackData.categories || []);
+        }
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -61,36 +74,63 @@ export function CategoriesCard({ selectedCategories, onChange, shopId, productId
 
     setCreating(true);
     try {
-      const response = await fetch('/api/categories', {
+      // Use the new collections API
+      const response = await fetch('/api/collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newCategoryName.trim(),
-          shopId,
+          title: newCategoryName.trim(),
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const newCategory = data.category;
+        const newCollection = data.collection;
+        const newCategory = {
+          id: newCollection.id.toString(),
+          name: newCollection.title,
+        };
         
         setCategories(prev => [...prev, newCategory]);
         onChange([...selectedCategories, newCategory.id]);
         
         toast({
           title: 'הצלחה',
-          description: 'הקטגוריה נוצרה בהצלחה',
+          description: 'הקולקציה נוצרה בהצלחה',
         });
         
         setNewCategoryName('');
         setCreateDialogOpen(false);
       } else {
-        const errorData = await response.json();
-        toast({
-          title: 'שגיאה',
-          description: errorData.error || 'אירעה שגיאה ביצירת הקטגוריה',
-          variant: 'destructive',
+        // Fallback to old API
+        const fallbackResponse = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newCategoryName.trim(),
+            shopId,
+          }),
         });
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const newCategory = fallbackData.category;
+          setCategories(prev => [...prev, newCategory]);
+          onChange([...selectedCategories, newCategory.id]);
+          toast({
+            title: 'הצלחה',
+            description: 'הקטגוריה נוצרה בהצלחה',
+          });
+          setNewCategoryName('');
+          setCreateDialogOpen(false);
+        } else {
+          const errorData = await fallbackResponse.json();
+          toast({
+            title: 'שגיאה',
+            description: errorData.error || 'אירעה שגיאה ביצירת הקטגוריה',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       console.error('Error creating category:', error);
@@ -119,7 +159,7 @@ export function CategoriesCard({ selectedCategories, onChange, shopId, productId
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <HiFolder className="w-5 h-5" />
-              <span>קטגוריות</span>
+              <span>קולקציות (Collections)</span>
             </h2>
             <Button
               type="button"
@@ -134,11 +174,11 @@ export function CategoriesCard({ selectedCategories, onChange, shopId, productId
           </div>
           
           {loading ? (
-            <div className="text-center text-gray-500 py-4">טוען קטגוריות...</div>
+            <div className="text-center text-gray-500 py-4">טוען קולקציות...</div>
           ) : categories.length === 0 ? (
             <div className="text-center py-6">
               <HiFolder className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-3">אין קטגוריות עדיין</p>
+              <p className="text-gray-500 mb-3">אין קולקציות עדיין</p>
               <Button
                 type="button"
                 variant="secondary"
@@ -177,12 +217,12 @@ export function CategoriesCard({ selectedCategories, onChange, shopId, productId
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>יצירת קטגוריה חדשה</DialogTitle>
+            <DialogTitle>יצירת קולקציה חדשה</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="category-name">שם הקטגוריה</Label>
+              <Label htmlFor="category-name">שם הקולקציה</Label>
               <Input
                 id="category-name"
                 value={newCategoryName}
@@ -227,7 +267,7 @@ export function CategoriesCard({ selectedCategories, onChange, shopId, productId
                 ) : (
                   <>
                     <HiPlus className="w-4 h-4" />
-                    צור קטגוריה
+                    צור קולקציה
                   </>
                 )}
               </Button>

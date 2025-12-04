@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable, TableColumn } from '@/components/ui/DataTable';
-import { HiPlus, HiPhotograph, HiPencil, HiDuplicate, HiTrash, HiCube } from 'react-icons/hi';
+import { DropdownMenu } from '@/components/ui/DropdownMenu';
+import { HiPlus, HiPhotograph, HiPencil, HiDuplicate, HiTrash, HiCube, HiDotsVertical } from 'react-icons/hi';
 import { ProductWithDetails, ProductOption, ProductVariant } from '@/types/product';
+import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 export default function ProductsPage() {
   const router = useRouter();
+  const { toast } = useOptimisticToast();
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
@@ -121,11 +124,14 @@ export default function ProductsPage() {
       
       primaryAction={{
         label: 'מוצר חדש',
-        onClick: () => router.push('/products/new'),
+        onClick: () => router.push('/products/new/edit'),
         icon: <HiPlus className="w-4 h-4" />,
       }}
       
-      onRowClick={(product) => router.push(`/products/${product.id}`)}
+      onRowClick={(product) => {
+        const slug = product.handle || product.id.toString();
+        router.push(`/products/${slug}/edit`);
+      }}
       
       secondaryActions={[
         { label: 'ייבוא', onClick: () => console.log('Import') },
@@ -181,32 +187,126 @@ export default function ProductsPage() {
       selectedItems={selectedProducts as Set<string | number>}
       onSelectionChange={(selected) => setSelectedProducts(selected as Set<number>)}
       
-      rowActions={(product) => (
-        <>
-          {/* Desktop: Dots menu */}
-          <button className="hidden md:block p-2 hover:bg-gray-100 rounded">
-            <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
-          </button>
+      rowActions={(product) => {
+        const handleEdit = (e?: React.MouseEvent) => {
+          e?.stopPropagation();
+          const slug = product.handle || product.id.toString();
+          router.push(`/products/${slug}/edit`);
+        };
+
+        const handleDuplicate = async (e?: React.MouseEvent) => {
+          e?.stopPropagation();
+          try {
+            const response = await fetch(`/api/products/${product.id}/duplicate`, {
+              method: 'POST',
+            });
+            if (!response.ok) throw new Error('Failed to duplicate product');
+            const data = await response.json();
+            toast({
+              title: 'הצלחה',
+              description: `המוצר "${data.product?.title || product.title}" שוכפל בהצלחה`,
+            });
+            loadProducts();
+            // Redirect to edit the duplicated product
+            if (data.product?.handle) {
+              setTimeout(() => {
+                router.push(`/products/${data.product.handle}/edit`);
+              }, 1000);
+            }
+          } catch (error: any) {
+            toast({
+              title: 'שגיאה',
+              description: error.message || 'אירעה שגיאה בשכפול המוצר',
+              variant: 'destructive',
+            });
+          }
+        };
+
+        const handleDelete = async (e?: React.MouseEvent) => {
+          e?.stopPropagation();
+          if (!confirm('האם אתה בטוח שברצונך למחוק את המוצר?')) return;
           
-          {/* Mobile: Action buttons in a single row */}
-          <div className="md:hidden flex w-full gap-2">
-            <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors">
-              <HiPencil className="w-4 h-4 flex-shrink-0" />
-              <span>ערוך</span>
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors">
-              <HiDuplicate className="w-4 h-4 flex-shrink-0" />
-              <span>שכפל</span>
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg transition-colors">
-              <HiTrash className="w-4 h-4 flex-shrink-0" />
-              <span>מחק</span>
-            </button>
-          </div>
-        </>
-      )}
+          try {
+            const response = await fetch(`/api/products/${product.id}`, {
+              method: 'DELETE',
+            });
+            if (!response.ok) throw new Error('Failed to delete product');
+            toast({
+              title: 'הצלחה',
+              description: 'המוצר נמחק בהצלחה',
+            });
+            loadProducts();
+          } catch (error: any) {
+            toast({
+              title: 'שגיאה',
+              description: error.message || 'אירעה שגיאה במחיקת המוצר',
+              variant: 'destructive',
+            });
+          }
+        };
+
+        return (
+          <>
+            {/* Desktop: Dropdown Menu */}
+            <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu
+                trigger={
+                  <button 
+                    type="button"
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    <HiDotsVertical className="w-5 h-5 text-gray-600" />
+                  </button>
+                }
+                items={[
+                  {
+                    label: 'ערוך',
+                    icon: <HiPencil className="w-4 h-4" />,
+                    onClick: handleEdit,
+                  },
+                  {
+                    label: 'שכפל',
+                    icon: <HiDuplicate className="w-4 h-4" />,
+                    onClick: handleDuplicate,
+                  },
+                  {
+                    label: 'מחק',
+                    icon: <HiTrash className="w-4 h-4" />,
+                    onClick: handleDelete,
+                    variant: 'destructive',
+                  },
+                ]}
+                align="end"
+              />
+            </div>
+            
+            {/* Mobile: Action buttons in a single row */}
+            <div className="md:hidden flex w-full gap-2" onClick={(e) => e.stopPropagation()}>
+              <button 
+                onClick={handleEdit}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <HiPencil className="w-4 h-4 flex-shrink-0" />
+                <span>ערוך</span>
+              </button>
+              <button 
+                onClick={handleDuplicate}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <HiDuplicate className="w-4 h-4 flex-shrink-0" />
+                <span>שכפל</span>
+              </button>
+              <button 
+                onClick={handleDelete}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <HiTrash className="w-4 h-4 flex-shrink-0" />
+                <span>מחק</span>
+              </button>
+            </div>
+          </>
+        );
+      }}
     />
   );
 }

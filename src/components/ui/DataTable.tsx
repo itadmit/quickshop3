@@ -137,9 +137,10 @@ export function DataTable<T>({
               <button
                 onClick={primaryAction.onClick}
                 className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-semibold text-white bg-gradient-primary rounded-lg shadow-sm hover:shadow-md transition-all"
+                dir="rtl"
               >
-                <span>{primaryAction.label}</span>
                 {primaryAction.icon && <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center">{primaryAction.icon}</span>}
+                <span>{primaryAction.label}</span>
               </button>
             )}
           </div>
@@ -265,10 +266,22 @@ export function DataTable<T>({
                   return (
                     <tr
                       key={key}
-                      className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
+                      className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                      onClick={(e) => {
+                        // Don't trigger if clicking on checkbox, button, or dropdown
+                        if (
+                          (e.target as HTMLElement).closest('input[type="checkbox"]') ||
+                          (e.target as HTMLElement).closest('button') ||
+                          (e.target as HTMLElement).closest('[role="menu"]') ||
+                          (e.target as HTMLElement).closest('[role="menuitem"]')
+                        ) {
+                          return;
+                        }
+                        onRowClick?.(item);
+                      }}
                     >
                       {selectable && (
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -285,7 +298,7 @@ export function DataTable<T>({
                         </td>
                       ))}
                       {rowActions && (
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                           {rowActions(item)}
                         </td>
                       )}

@@ -85,9 +85,9 @@ export function DialogTitle({ children }: DialogTitleProps) {
 
 export function DialogDescription({ children }: DialogDescriptionProps) {
   return (
-    <p className="text-sm text-gray-600 mt-1">
+    <div className="text-sm text-gray-600 mt-1">
       {children}
-    </p>
+    </div>
   );
 }
 

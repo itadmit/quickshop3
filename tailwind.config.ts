@@ -24,6 +24,7 @@ const config: Config = {
       },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #15b981 0%, #10b981 100%)',
+        'prodify-gradient': 'linear-gradient(135deg, #15b981 0%, #10b981 100%)',
       },
       fontFamily: {
         sans: ['Noto Sans Hebrew', 'sans-serif'],

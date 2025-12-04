@@ -3,17 +3,24 @@
 ## ✅ מה נוצר עד כה
 
 ### מבנה בסיסי:
-- ✅ **Next.js 14** עם App Router
-- ✅ **TypeScript** מוגדר
-- ✅ **Tailwind CSS** עם תמיכה ב-RTL
+- ✅ **Next.js 15** (App Router) + **React 19**
+- ✅ **TypeScript** עם Strict Mode
+- ✅ **Tailwind CSS** עם תמיכה מלאה ב-RTL
 - ✅ **Event Bus** - ארכיטקטורת אירועים
 - ✅ **Layout** - Header + Sidebar
 - ✅ **קומפוננטות UI** - Button, Card, Input, Skeleton, StatusBadge
+- ✅ **Database Access** - שימוש ב-`pg` מול Neon PostgreSQL (ללא Prisma)
 
 ### דפים שנוצרו:
-- ✅ **Dashboard Home** - דף בית עם מטריקות והתראות
-- ✅ **Products Page** - דף מוצרים בסיסי
-- ✅ **Orders Page** - דף הזמנות בסיסי
+- ✅ **Dashboard Home** - מטריקות והתראות
+- ✅ **Products** - ניהול מוצרים מלא
+- ✅ **Orders** - הזמנות + פרטי הזמנה
+- ✅ **Customers** - כרטיסי לקוח, הערות והיסטוריה
+- ✅ **Analytics** - מכירות ומוצרים מובילים
+- ✅ **Inventory** - מעקב מלאי
+- ✅ **Discounts / Coupons / Loyalty** - שיווק ומועדון לקוחות
+- ✅ **Content** - Pages, Blog, Navigation, Popups, Media
+- ✅ **Shipping / Payments / Webhooks / Settings** - הגדרות מערכת
 
 ### תיעוד:
 - ✅ **README.md** - תיעוד מלא
@@ -38,11 +45,17 @@ pnpm install
 צור קובץ `.env`:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME"
-NEXT_PUBLIC_APP_URL=http://localhost:3099
-NODE_ENV=development
+# Database (Neon PostgreSQL)
+DATABASE_URL="postgresql://neondb_owner:npg_XXXXX@ep-XXXXX-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# JWT Secret (צור עם: openssl rand -hex 32)
 JWT_SECRET=your-secret-key-here
-SESSION_SECRET=your-session-secret-here
+
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3099
+
+# Environment
+NODE_ENV=development
 
 # SendGrid Email Configuration
 SENDGRID_API_KEY=your_sendgrid_api_key_here
@@ -82,7 +95,9 @@ psql -U your_user -d your_database -f sql/schema.sql
 npm run dev
 ```
 
-האפליקציה תרוץ על `http://localhost:3000`
+האפליקציה תרוץ על `http://localhost:3099`
+
+> ❗ **חשוב:** לפני כל push / אחרי כל פיצ'ר מריצים `npm run build` (שכולל גם את `postbuild`) כדי לוודא שה-build עובר כמו ב-Vercel.
 
 ---
 
@@ -157,17 +172,37 @@ quickshop3/
 
 ## 📝 הערות חשובות
 
-### Event-Driven Architecture
-כל פעולה משמעותית חייבת לפלוט אירוע דרך `eventBus.emit()`.
+### ⚠️ כללי זהב לפיתוח:
 
-### Client-Side Dashboard
-כל הקומפוננטות בדשבורד הן `'use client'` - אין Server Components.
+1. **Build לפני Push:**
+   ```bash
+   npm run build  # חובה לפני כל push!
+   ```
 
-### RTL Support
-הכל מיושר ימינה - עברית היא שפת ברירת המחדל.
+2. **Dependencies נכונות:**
+   - ספריות build (tailwindcss, postcss, autoprefixer) ב-`dependencies`
+   - כלי פיתוח (@types/*, ts-node) ב-`devDependencies`
 
-### Tailwind CSS Only
-אין ספריות קומפוננטות גדולות - הכל נבנה עם Tailwind.
+3. **Event-Driven Architecture:**
+   - כל פעולה משמעותית חייבת לפלוט אירוע דרך `eventBus.emit()`
+
+4. **Client-Side Dashboard:**
+   - כל הקומפוננטות בדשבורד הן `'use client'` - אין Server Components
+
+5. **RTL Support:**
+   - הכל מיושר ימינה - עברית היא שפת ברירת המחדל
+
+6. **Tailwind CSS Only:**
+   - אין ספריות קומפוננטות גדולות - הכל נבנה עם Tailwind
+
+7. **Vercel + Neon:**
+   - הפרויקט מוגדר לעבוד עם Vercel (deployment) ו-Neon (מסד נתונים)
+   - כל push ל-GitHub = deploy אוטומטי ב-Vercel
+
+### Build Safety
+- אחרי כל פיצ'ר: `npm run build`
+- וידוא שהסקריפט `postbuild` רץ ומייצר את הקבצים ש-Vercel צריך
+- ספריות ל-build (Tailwind, PostCSS, Autoprefixer וכו') נמצאות ב-`dependencies`
 
 ---
 
@@ -192,9 +227,36 @@ npm run check:docs
 
 ## 📚 משאבים
 
-- [README.md](./README.md) - תיעוד מלא
-- [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) - אפיון ויזואלי
-- [sql/schema.sql](./sql/schema.sql) - סכמת DB
+- [README.md](./README.md) - תיעוד מלא של הפרויקט
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - מדריך deployment ל-Vercel + Neon
+- [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) - אפיון ויזואלי מלא
+- [DATABASE_SETUP.md](./DATABASE_SETUP.md) - הגדרת מסד נתונים ב-Neon
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - פתרון בעיות נפוצות
+- [STATUS.md](./STATUS.md) - סטטוס עדכני של הפרויקט
+- [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) - תוכנית פיתוח מפורטת
+- [sql/schema.sql](./sql/schema.sql) - סכמת DB מלאה
+
+---
+
+## 🚀 Deployment
+
+לאחר שסיימת לפתח:
+
+1. **ודא ש-build עובר:**
+   ```bash
+   npm run build
+   ```
+
+2. **Push ל-GitHub:**
+   ```bash
+   git add .
+   git commit -m "Your changes"
+   git push origin main
+   ```
+
+3. **Vercel יעשה deploy אוטומטי!**
+
+📖 **[מדריך Deployment מפורט →](./DEPLOYMENT.md)**
 
 ---
 

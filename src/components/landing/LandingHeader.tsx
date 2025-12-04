@@ -21,7 +21,10 @@ export function LandingHeader() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium hidden sm:block">
+            <Link
+              href="/login"
+              className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+            >
               התחברות
             </Link>
             <Link href="/register">

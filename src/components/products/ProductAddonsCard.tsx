@@ -29,12 +29,24 @@ export function ProductAddonsCard({
   const loadAddons = async () => {
     try {
       setLoading(true);
-      // TODO: Implement API endpoint for product addons
-      // const response = await fetch(`/api/product-addons?shopId=${shopId}`);
-      // if (response.ok) {
-      //   const allAddons = await response.json();
-      //   setAvailableAddons(allAddons);
-      // }
+      const response = await fetch(`/api/product-addons`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableAddons(data.addons || []);
+      }
+      
+      // Load selected addons for this product
+      if (productId) {
+        const productResponse = await fetch(`/api/products/${productId}/addons`);
+        if (productResponse.ok) {
+          const productData = await productResponse.json();
+          const selectedIds = (productData.addons || []).map((a: any) => a.id.toString());
+          setSelectedAddonIds(selectedIds);
+          if (onChange) {
+            onChange(selectedIds);
+          }
+        }
+      }
       setLoading(false);
     } catch (error) {
       console.error('Error loading addons:', error);
@@ -42,13 +54,45 @@ export function ProductAddonsCard({
     }
   };
 
-  const handleToggleAddon = (addonId: string, checked: boolean) => {
-    const newSelectedIds = checked
-      ? [...selectedAddonIds, addonId]
-      : selectedAddonIds.filter((id: any) => id !== addonId);
+  const handleToggleAddon = async (addonId: string, checked: boolean) => {
+    if (!productId) {
+      // Just update local state if no product ID yet
+      const newSelectedIds = checked
+        ? [...selectedAddonIds, addonId]
+        : selectedAddonIds.filter((id: any) => id !== addonId);
+      setSelectedAddonIds(newSelectedIds);
+      onChange?.(newSelectedIds);
+      return;
+    }
 
-    setSelectedAddonIds(newSelectedIds);
-    onChange?.(newSelectedIds);
+    try {
+      setLoading(true);
+      const method = checked ? 'POST' : 'DELETE';
+      const url = checked
+        ? `/api/products/${productId}/addons`
+        : `/api/products/${productId}/addons?addon_id=${addonId}`;
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: checked ? JSON.stringify({ addon_id: parseInt(addonId) }) : undefined,
+      });
+
+      if (response.ok) {
+        const newSelectedIds = checked
+          ? [...selectedAddonIds, addonId]
+          : selectedAddonIds.filter((id: any) => id !== addonId);
+        setSelectedAddonIds(newSelectedIds);
+        onChange?.(newSelectedIds);
+      } else {
+        const error = await response.json();
+        console.error('Error toggling addon:', error);
+      }
+    } catch (error) {
+      console.error('Error toggling addon:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading || availableAddons.length === 0) {

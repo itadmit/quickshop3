@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { 
   HiOfficeBuilding, 
@@ -16,40 +17,155 @@ import {
   HiCheckCircle
 } from 'react-icons/hi';
 
+interface DashboardStats {
+  userName: string;
+  metrics: {
+    activeProducts: number;
+    totalProducts: number;
+    pendingOrders: number;
+    totalOrders: number;
+    revenue: string;
+    revenueCount: number;
+    averageOrderValue: string;
+  };
+  recentOrders: Array<{
+    id: number;
+    order_number: string;
+    order_name: string;
+    total_price: string;
+    financial_status: string;
+    fulfillment_status: string | null;
+    created_at: string;
+    customer_id: number | null;
+  }>;
+  notifications: Array<{
+    id: number;
+    notification_type: string;
+    title: string;
+    message: string;
+    link_url: string | null;
+    is_read: boolean;
+    created_at: string;
+  }>;
+  lowStockProducts: Array<{
+    id: number;
+    title: string;
+    available: number;
+  }>;
+}
+
 export default function DashboardPage() {
-  const metrics = [
-    { label: 'מוצרים פעילים', value: '6', total: 'סה"כ 6', icon: HiCube },
-    { label: 'הזמנות ממתינות', value: '0', total: 'סה"כ 3', icon: HiClock },
-    { label: 'הכנסות', value: '₪2K', total: '2K סה"כ', icon: HiCurrencyDollar },
-    { label: 'הזמנות', value: '₪0', total: '0 הזמנות | ממוצע סעו', icon: HiShoppingCart },
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/dashboard/stats', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: string | number) => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (num >= 1000) {
+      return `₪${(num / 1000).toFixed(1)}K`;
+    }
+    return `₪${num.toLocaleString('he-IL')}`;
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'לפני רגע';
+    if (diffInSeconds < 3600) return `לפני ${Math.floor(diffInSeconds / 60)} דקות`;
+    if (diffInSeconds < 86400) return `לפני ${Math.floor(diffInSeconds / 3600)} שעות`;
+    return `לפני ${Math.floor(diffInSeconds / 86400)} ימים`;
+  };
+
+  const getNotificationIcon = (type: string) => {
+    if (type.includes('review')) return HiStar;
+    if (type.includes('order')) return HiCheckCircle;
+    if (type.includes('inventory')) return HiExclamationCircle;
+    return HiBell;
+  };
+
+  const getNotificationColor = (type: string) => {
+    if (type.includes('review')) return 'green';
+    if (type.includes('order')) return 'blue';
+    if (type.includes('inventory')) return 'orange';
+    return 'green';
+  };
+
+  const metrics = stats ? [
+    { 
+      label: 'מוצרים פעילים', 
+      value: stats.metrics.activeProducts.toString(), 
+      total: `סה"כ ${stats.metrics.totalProducts}`, 
+      icon: HiCube 
+    },
+    { 
+      label: 'הזמנות ממתינות', 
+      value: stats.metrics.pendingOrders.toString(), 
+      total: `סה"כ ${stats.metrics.totalOrders}`, 
+      icon: HiClock 
+    },
+    { 
+      label: 'הכנסות', 
+      value: formatCurrency(stats.metrics.revenue), 
+      total: `${stats.metrics.revenueCount} הזמנות משולמות`, 
+      icon: HiCurrencyDollar 
+    },
+    { 
+      label: 'הזמנות', 
+      value: stats.metrics.totalOrders.toString(), 
+      total: `ממוצע ${formatCurrency(stats.metrics.averageOrderValue)}`, 
+      icon: HiShoppingCart 
+    },
+  ] : [
+    { label: 'מוצרים פעילים', value: '0', total: 'סה"כ 0', icon: HiCube },
+    { label: 'הזמנות ממתינות', value: '0', total: 'סה"כ 0', icon: HiClock },
+    { label: 'הכנסות', value: '₪0', total: '0 הזמנות', icon: HiCurrencyDollar },
+    { label: 'הזמנות', value: '0', total: 'ממוצע ₪0', icon: HiShoppingCart },
   ];
 
-  const notifications = [
-    {
-      type: 'review',
-      title: 'ביקורת חדשה',
-      message: 'ביקורת חדשה על נעליים נייק Air Max',
-      time: 'לפני 5 דקות',
-      icon: HiStar,
-      color: 'green',
-    },
-    {
-      type: 'order',
-      title: 'הזמנה חדשה התקבלה',
-      message: 'הזמנה 000001-ORD בסכום של ₪731.48',
-      time: 'לפני 10 דקות',
-      icon: HiCheckCircle,
-      color: 'blue',
-    },
-    {
-      type: 'inventory',
-      title: 'מלאי נמוך',
-      message: 'מוצר כובע אדידס - נותרו רק 20 יחידות',
-      time: 'לפני 15 דקות',
-      icon: HiExclamationCircle,
-      color: 'orange',
-    },
-  ];
+  const notifications = stats?.notifications.map(n => ({
+    type: n.notification_type,
+    title: n.title,
+    message: n.message,
+    time: formatTimeAgo(n.created_at),
+    icon: getNotificationIcon(n.notification_type),
+    color: getNotificationColor(n.notification_type),
+  })) || [];
+
+  // Add low stock notifications
+  if (stats?.lowStockProducts && stats.lowStockProducts.length > 0) {
+    stats.lowStockProducts.forEach(product => {
+      notifications.push({
+        type: 'inventory.low',
+        title: 'מלאי נמוך',
+        message: `${product.title} - נותרו רק ${product.available} יחידות`,
+        time: 'עכשיו',
+        icon: HiExclamationCircle,
+        color: 'orange',
+      });
+    });
+  }
 
   const quickActions = [
     {
@@ -79,7 +195,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          שלום, יוגב אביטן
+          שלום, {stats?.userName || 'משתמש'}
         </h1>
         <p className="text-base text-gray-600">
           איך אני יכול לעזור לך היום?
@@ -116,9 +232,48 @@ export default function DashboardPage() {
               <h2 className="text-xl font-semibold text-gray-900">מכירות אחרונות</h2>
               <HiChartBar className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </div>
-            <div className="text-center py-12 text-gray-500">
-              אין נתוני מכירות להצגה
-            </div>
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">טוען...</div>
+            ) : stats && stats.recentOrders.length > 0 ? (
+              <div className="space-y-3">
+                {stats.recentOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold text-gray-900">
+                        {order.order_name || order.order_number || `#${order.id}`}
+                      </div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {formatCurrency(order.total_price)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span>{formatTimeAgo(order.created_at)}</span>
+                      <span>•</span>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        order.financial_status === 'paid' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {order.financial_status === 'paid' ? 'שולם' : 'ממתין לתשלום'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <a 
+                  href="/orders" 
+                  className="block text-sm text-green-600 hover:text-green-700 mt-4 font-medium transition-colors text-center py-2 hover:bg-green-50 border border-gray-200 rounded-lg"
+                >
+                  ראה כל ההזמנות →
+                </a>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                אין נתוני מכירות להצגה
+              </div>
+            )}
           </div>
         </Card>
 

@@ -16,7 +16,7 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { label: 'בית', href: '/', icon: MenuIcons.home },
+  { label: 'בית', href: '/dashboard', icon: MenuIcons.home },
   { label: 'אנליטיקס', href: '/analytics', icon: MenuIcons.analytics },
   { label: 'התראות', href: '/notifications', icon: MenuIcons.notifications, badge: 3 },
   {

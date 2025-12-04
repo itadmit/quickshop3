@@ -8,6 +8,7 @@ import { PaymentsSettings } from '@/components/settings/PaymentsSettings';
 import { ShippingSettings } from '@/components/settings/ShippingSettings';
 import { WebhooksSettings } from '@/components/settings/WebhooksSettings';
 import { EmailSettings } from '@/components/settings/EmailSettings';
+import { AdvancedSettings } from '@/components/settings/AdvancedSettings';
 
 interface Store {
   id: number;
@@ -19,7 +20,7 @@ interface Store {
   plan: string;
 }
 
-type SettingsTab = 'general' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api';
+type SettingsTab = 'general' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,7 @@ export default function SettingsPage() {
     { id: 'integrations', label: 'אינטגרציות' },
     { id: 'users', label: 'משתמשים' },
     { id: 'api', label: 'API' },
+    { id: 'advanced', label: 'מתקדם' },
   ];
 
   if (loading) {
@@ -251,6 +253,10 @@ export default function SettingsPage() {
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">מפתחות API</h2>
                   <p className="text-gray-500">ניהול מפתחות API - בפיתוח</p>
                 </div>
+              )}
+
+              {activeTab === 'advanced' && (
+                <AdvancedSettings />
               )}
             </div>
           </Card>

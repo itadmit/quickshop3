@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/Input';
 import { HiArrowRight, HiPlus, HiPencil, HiTrash } from 'react-icons/hi';
 import { CustomerWithDetails } from '@/types/customer';
 import { OrderWithDetails } from '@/types/order';
+import { CustomerTagsCard } from '@/components/customers/CustomerTagsCard';
+import { CustomerSegmentsCard } from '@/components/customers/CustomerSegmentsCard';
 
 export default function CustomerDetailsPage() {
   const params = useParams();
@@ -296,6 +298,16 @@ export default function CustomerDetailsPage() {
               </div>
             </Card>
           )}
+
+          {/* Tags */}
+          <CustomerTagsCard
+            customerId={parseInt(customerId)}
+            initialTags={customer.tags ? customer.tags.split(',').map(t => t.trim()).filter(Boolean) : []}
+            onTagsChange={() => loadCustomer()}
+          />
+
+          {/* Segments */}
+          <CustomerSegmentsCard customerId={parseInt(customerId)} />
         </div>
       </div>
     </div>

@@ -5,6 +5,81 @@ import { eventBus } from '@/lib/events/eventBus';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
+// GET /api/products/:id/addons - Get addons for a product
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const productId = parseInt(id);
+    const storeId = user.store_id;
+
+    if (isNaN(productId)) {
+      return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
+    }
+
+    // Verify product belongs to store
+    const product = await queryOne<{ id: number; store_id: number }>(
+      'SELECT id, store_id FROM products WHERE id = $1',
+      [productId]
+    );
+
+    if (!product || product.store_id !== storeId) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Get addons for this product
+    const addons = await query(
+      `SELECT pa.*, pao.id as option_id, pao.label, pao.value, pao.price_modifier as option_price_modifier
+       FROM product_addons pa
+       INNER JOIN product_addon_map pam ON pa.id = pam.addon_id
+       LEFT JOIN product_addon_options pao ON pa.id = pao.addon_id
+       WHERE pam.product_id = $1
+       ORDER BY pa.id, pao.position`,
+      [productId]
+    );
+
+    // Group by addon
+    const groupedAddons: Record<number, any> = {};
+    addons.forEach((row: any) => {
+      if (!groupedAddons[row.id]) {
+        groupedAddons[row.id] = {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          addon_type: row.addon_type,
+          is_required: row.is_required,
+          price_modifier: row.price_modifier,
+          settings: row.settings,
+          options: [],
+        };
+      }
+      if (row.option_id) {
+        groupedAddons[row.id].options.push({
+          id: row.option_id,
+          label: row.label,
+          value: row.value,
+          price_modifier: row.option_price_modifier,
+        });
+      }
+    });
+
+    return NextResponse.json({ addons: Object.values(groupedAddons) });
+  } catch (error: any) {
+    console.error('Error fetching product addons:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch product addons' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/products/:id/addons - Link product to addon
 export async function POST(
   request: NextRequest,
@@ -109,10 +184,21 @@ export async function DELETE(
     
     // Get addon ID from query string or body
     const url = new URL(request.url);
-    const addonIdParam = url.searchParams.get('addon_id') || (await request.json()).addon_id;
-    const addonId = addonIdParam ? parseInt(addonIdParam) : NaN;
+    let addonId: number | null = null;
+    
+    const addonIdParam = url.searchParams.get('addon_id');
+    if (addonIdParam) {
+      addonId = parseInt(addonIdParam);
+    } else {
+      try {
+        const body = await request.json();
+        addonId = body.addon_id ? parseInt(body.addon_id) : null;
+      } catch {
+        // Body might be empty
+      }
+    }
 
-    if (isNaN(productId) || isNaN(addonId)) {
+    if (isNaN(productId) || !addonId || isNaN(addonId)) {
       return NextResponse.json({ error: 'Invalid product or addon ID' }, { status: 400 });
     }
 
@@ -156,4 +242,3 @@ export async function DELETE(
     );
   }
 }
-

@@ -26,14 +26,18 @@ import { CategoriesCard } from '@/components/products/CategoriesCard';
 import { TagsCard } from '@/components/products/TagsCard';
 import { SEOCard } from '@/components/products/SEOCard';
 import { CustomFieldsCard } from '@/components/products/CustomFieldsCard';
+import { MetaFieldsCard } from '@/components/products/MetaFieldsCard';
 import { ProductAddonsCard } from '@/components/products/ProductAddonsCard';
 import { BadgesCard } from '@/components/products/BadgesCard';
 import { PremiumClubCard } from '@/components/products/PremiumClubCard';
+import { SizeChartsCard } from '@/components/products/SizeChartsCard';
+import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 export default function EditProductPage() {
   const params = useParams();
   const router = useRouter();
-  const productId = params.id as string;
+  const { toast } = useOptimisticToast();
+  const productSlug = params.slug as string;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,10 +83,11 @@ export default function EditProductPage() {
 
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
   const [productAddonIds, setProductAddonIds] = useState<string[]>([]);
+  const [selectedSizeChartId, setSelectedSizeChartId] = useState<number | null>(null);
 
   // Load product data
   useEffect(() => {
-    if (productId && productId !== 'new') {
+    if (productSlug && productSlug !== 'new') {
       loadProduct();
     } else {
       // New product
@@ -134,13 +139,30 @@ export default function EditProductPage() {
       });
       setLoading(false);
     }
-  }, [productId]);
+  }, [productSlug]);
 
   const loadProduct = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products/${productId}`);
-      if (!response.ok) throw new Error('Failed to load product');
+      // Next.js already decodes the slug from params automatically
+      // So productSlug is already decoded (e.g., "מוצר-בדיקה")
+      // We need to encode it for the fetch URL
+      // The API route will decode it via Next.js params
+      const response = await fetch(`/api/products/slug/${encodeURIComponent(productSlug)}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast({
+            title: 'שגיאה',
+            description: 'המוצר לא נמצא',
+            variant: 'destructive',
+          });
+          router.push('/products');
+          return;
+        }
+        throw new Error('Failed to load product');
+      }
       const data = await response.json();
       setProduct(data.product);
       setHasVariants((data.product.options?.length || 0) > 0 || (data.product.variants?.length || 0) > 1);
@@ -155,40 +177,45 @@ export default function EditProductPage() {
       setFormData({
         name: data.product.title || '',
         description: data.product.body_html || '',
-        price: data.product.price?.toString() || '',
-        comparePrice: data.product.compare_at_price?.toString() || '',
-        cost: data.product.cost_per_item?.toString() || '',
-        taxEnabled: data.product.taxable ?? true,
-        inventoryEnabled: data.product.track_inventory ?? true,
-        inventoryQty: data.product.inventory_quantity?.toString() || '',
-        lowStockAlert: data.product.low_stock_alert?.toString() || '',
-        availability: data.product.availability || 'IN_STOCK',
+        price: data.product.variants?.[0]?.price?.toString() || '',
+        comparePrice: data.product.variants?.[0]?.compare_at_price?.toString() || '',
+        cost: '',
+        taxEnabled: data.product.variants?.[0]?.taxable ?? true,
+        inventoryEnabled: true,
+        inventoryQty: data.product.variants?.[0]?.inventory_quantity?.toString() || '',
+        lowStockAlert: '',
+        availability: 'IN_STOCK',
         availableDate: availableDateFormatted,
-        sellWhenSoldOut: data.product.sellWhenSoldOut ?? false,
-        priceByWeight: data.product.priceByWeight ?? false,
-        showPricePer100ml: data.product.showPricePer100ml ?? false,
-        pricePer100ml: data.product.pricePer100ml?.toString() || '',
-        weight: data.product.weight?.toString() || '',
+        sellWhenSoldOut: (data.product as any).sell_when_sold_out || false,
+        priceByWeight: (data.product as any).sold_by_weight || false,
+        showPricePer100ml: (data.product as any).show_price_per_100ml || false,
+        pricePer100ml: (data.product as any).price_per_100ml?.toString() || '',
+        weight: data.product.variants?.[0]?.weight?.toString() || '',
         dimensions: {
-          length: data.product.length?.toString() || '',
-          width: data.product.width?.toString() || '',
-          height: data.product.height?.toString() || '',
+          length: '',
+          width: '',
+          height: '',
         },
         status: data.product.status || 'draft',
-        scheduledPublishDate: data.product.scheduledPublishDate ? new Date(data.product.scheduledPublishDate).toISOString().slice(0, 16) : '',
-        notifyOnPublish: data.product.notifyOnPublish || false,
-        sku: data.product.sku || '',
-        video: data.product.video_url || '',
-        seoTitle: data.product.seo_title || '',
-        seoDescription: data.product.seo_description || '',
+        scheduledPublishDate: data.product.published_at ? new Date(data.product.published_at).toISOString().slice(0, 16) : '',
+        notifyOnPublish: false,
+        sku: data.product.variants?.[0]?.sku || '',
+        video: '',
+        seoTitle: '',
+        seoDescription: '',
         slug: data.product.handle || '',
         tags: Array.isArray(data.product.tags) ? data.product.tags.map((t: any) => (typeof t === 'string' ? t : t.name)) : [],
-        categories: data.product.collections?.map((c: any) => c.collection_id?.toString()) || [],
-        badges: Array.isArray(data.product.badges) ? data.product.badges : [],
-        exclusiveToTier: Array.isArray(data.product.exclusiveToTier) ? data.product.exclusiveToTier : [],
+        categories: Array.isArray(data.product.collections) ? data.product.collections.map((c: any) => c.id?.toString()) : [],
+        badges: [],
+        exclusiveToTier: [],
       });
     } catch (error) {
       console.error('Error loading product:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה בטעינת המוצר',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -196,14 +223,19 @@ export default function EditProductPage() {
 
   const handleSave = async () => {
     if (!product || !formData.name.trim()) {
-      alert('שם המוצר הוא שדה חובה');
+      toast({
+        title: 'שגיאה',
+        description: 'שם המוצר הוא שדה חובה',
+        variant: 'destructive',
+      });
       return;
     }
 
     try {
       setSaving(true);
-      const url = productId === 'new' ? '/api/products' : `/api/products/${productId}`;
-      const method = productId === 'new' ? 'POST' : 'PUT';
+      const isNew = productSlug === 'new' || !product.id;
+      const url = isNew ? '/api/products' : `/api/products/${product.id}`;
+      const method = isNew ? 'POST' : 'PUT';
 
       const payload: any = {
         title: formData.name,
@@ -228,6 +260,10 @@ export default function EditProductPage() {
         video_url: formData.video || null,
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
+        sell_when_sold_out: formData.sellWhenSoldOut,
+        sold_by_weight: formData.priceByWeight,
+        show_price_per_100ml: formData.showPricePer100ml,
+        price_per_100ml: formData.pricePer100ml ? parseFloat(formData.pricePer100ml) : null,
         images: product.images || [],
         tags: formData.tags,
         collections: formData.categories.map(id => parseInt(id)),
@@ -249,7 +285,9 @@ export default function EditProductPage() {
       }
 
       const savedProduct = await response.json();
-      const finalProductId = savedProduct.product?.id || parseInt(productId);
+      const finalProduct = savedProduct.product;
+      const finalProductId = finalProduct.id;
+      const finalSlug = finalProduct.handle;
 
       // Sync options and variants if they exist
       if (hasVariants && product.options && product.options.length > 0) {
@@ -268,10 +306,20 @@ export default function EditProductPage() {
         });
       }
 
-      router.push('/products');
+      toast({
+        title: 'הצלחה',
+        description: 'המוצר נשמר בהצלחה',
+      });
+
+      // Redirect to the new slug URL
+      router.push(`/products/${finalSlug}/edit`);
     } catch (error: any) {
       console.error('Error saving product:', error);
-      alert(error.message || 'שגיאה בשמירת המוצר');
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בשמירת המוצר',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -295,18 +343,18 @@ export default function EditProductPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            {productId === 'new' ? 'מוצר חדש' : 'עריכת מוצר'}
+            {productSlug === 'new' ? 'מוצר חדש' : 'עריכת מוצר'}
           </h1>
           <p className="text-sm md:text-base text-gray-600">
-            {productId === 'new' ? 'צרו מוצר חדש' : `ערכו את פרטי המוצר ${product.title}`}
+            {productSlug === 'new' ? 'צרו מוצר חדש' : `ערכו את פרטי המוצר ${product.title}`}
           </p>
         </div>
         
         <div className="flex items-center gap-3 mt-4">
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={handleCancel}
-            className="px-3 py-2 text-sm"
+            className="px-4 py-2 text-sm border-gray-300"
           >
             ביטול
           </Button>
@@ -314,7 +362,7 @@ export default function EditProductPage() {
             variant="default"
             onClick={handleSave}
             disabled={saving}
-            className="px-3 py-2 text-sm"
+            className="px-4 py-2 text-sm"
           >
             {saving ? 'שומר...' : 'שמור'}
           </Button>
@@ -416,6 +464,22 @@ export default function EditProductPage() {
             values={customFieldValues}
             onChange={setCustomFieldValues}
           />
+
+          {/* Meta Fields */}
+          <MetaFieldsCard
+            productId={product.id || undefined}
+            shopId={product.store_id}
+            values={customFieldValues}
+            onChange={setCustomFieldValues}
+          />
+
+          {/* Size Charts */}
+          <SizeChartsCard
+            productId={product.id || undefined}
+            shopId={product.store_id}
+            selectedChartId={selectedSizeChartId}
+            onChange={setSelectedSizeChartId}
+          />
         </div>
 
         {/* Sidebar - 1/3 */}
@@ -475,6 +539,7 @@ export default function EditProductPage() {
             tags={formData.tags}
             onAdd={(tag) => setFormData(prev => ({ ...prev, tags: [...prev.tags, tag] }))}
             onRemove={(tag) => setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }))}
+            productId={product?.id}
           />
 
           {/* Badges */}

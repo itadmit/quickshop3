@@ -12,7 +12,9 @@
 - **Neon PostgreSQL** - מסד נתונים serverless בענן
 - **Cloudinary** - CDN ואחסון תמונות
 
-📖 **[מדריך Deployment מפורט →](./DEPLOYMENT.md)**
+📖 **[מדריך Deployment מפורט →](./DEPLOYMENT.md)**  
+🛠️ **[מדריך Troubleshooting →](./TROUBLESHOOTING.md)**  
+🗺️ **[תוכנית פיתוח מפורטת →](./DEVELOPMENT_ROADMAP.md)**
 
 ---
 
@@ -45,10 +47,11 @@
 
 ### 🛍️ ניהול מוצרים מתקדם
 - ניהול מוצרים מלא עם גלריית תמונות
+- **כל מוצר חייב להיות עם לפחות variant אחד** (גם מוצרים בלי אפשרויות)
 - וריאציות בלתי מוגבלות (מידות, צבעים, SKU)
-- ניהול מלאי לפי מיקומי מחסן
+- ניהול מלאי לפי מיקומי מחסן (ב-`variant_inventory`)
 - Collections, Tags ו-Meta Fields מותאמים אישית
-- מחירים דינמיים וחוקי תמחור
+- מחירים דינמיים וחוקי תמחור (נשמרים ב-`product_variants`)
 
 ### 📦 ניהול הזמנות
 - מעקב מלא אחר הזמנות
@@ -99,8 +102,8 @@
 - **Icons**: react-icons (Heroicons) - אין אימוג'ים!
 - **Font**: Open Sans Hebrew (חובה)
 - **Backend**: Next.js API Routes
-- **Database**: PostgreSQL
-- **ORM**: Prisma (אופציונלי)
+- **Database**: PostgreSQL (Neon)
+- **DB Access**: `pg` (node-postgres) ללא ORM
 - **Authentication**: JWT / Session (using `jose` library for Edge Runtime compatibility)
 
 ---
@@ -633,21 +636,25 @@ npm run build
 ```json
 {
   "dependencies": {
-    "next": "^14.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "typescript": "^5.0.0",
     "tailwindcss": "^3.0.0",
-    "postgres": "^3.0.0" // או Prisma
+    "postcss": "^8.0.0",
+    "autoprefixer": "^10.0.0",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@types/react": "^18.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/node": "^20.0.0",
-    "autoprefixer": "^10.0.0",
-    "postcss": "^8.0.0"
+    "@types/pg": "^8.15.6"
   }
 }
 ```
+
+**הערה חשובה:** הפרויקט משתמש ב-`pg` (node-postgres) ישירות, **לא ב-Prisma**. כל הספריות שנדרשות ל-build (tailwindcss, postcss, autoprefixer) חייבות להיות ב-`dependencies`.
 
 **זה הכל!** אין צורך בעוד ספריות.
 
@@ -714,14 +721,9 @@ API_BASE_URL=http://localhost:3000/api
 
 ### 4. הגדרת מסד הנתונים
 
-אם אתה משתמש ב-Prisma:
+הפרויקט משתמש ב-**Neon PostgreSQL** עם `pg` (node-postgres) ישירות.
 
-```bash
-npx prisma migrate dev --name init
-npx prisma generate
-```
-
-או הרץ את קובץ ה-SQL ישירות:
+הרץ את קובץ ה-SQL ישירות:
 
 ```bash
 psql -U your_user -d your_database -f sql/schema.sql
@@ -733,7 +735,7 @@ psql -U your_user -d your_database -f sql/schema.sql
 npm run dev
 ```
 
-האפליקציה תרוץ על `http://localhost:3000`
+האפליקציה תרוץ על `http://localhost:3099` (פורט קבוע)
 
 ---
 
@@ -741,10 +743,8 @@ npm run dev
 
 ```
 quickshop3/
-├── prisma/
-│   └── schema.prisma          # הגדרת Prisma (אופציונלי)
 ├── sql/
-│   └── schema.sql             # סכמת PostgreSQL המלאה
+│   └── schema.sql             # סכמת PostgreSQL המלאה (Neon)
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── (dashboard)/       # דשבורד מוגן
@@ -797,6 +797,25 @@ quickshop3/
 
 #### 2. **Products (תואם ל-Shopify Products API)**
 
+> ⚠️ **חשוב מאוד - מבנה המוצרים:**
+> 
+> **כל מוצר חייב להיות עם לפחות variant אחד (Default Variant), גם אם אין לו אפשרויות!**
+> 
+> זהו עקרון יסוד במערכת, בדיוק כמו ב-Shopify:
+> - מוצר **בלי אפשרויות** (כמו ספר או מוצר פשוט) = מוצר עם **variant אחד** בשם "Default Title"
+> - מוצר **עם אפשרויות** (כמו מידות/צבעים) = מוצר עם **מספר variants** בהתאם לשילובי האפשרויות
+> 
+> **למה זה חשוב?**
+> - המחיר, SKU, ומלאי נשמרים ב-`product_variants` ולא ב-`products`
+> - המלאי (`inventory_quantity`) נשמר ב-`variant_inventory` ולא ב-`product_variants`
+> - כל פעולה על מוצר (יצירה, עדכון, עגלה, הזמנה) עובדת דרך variants
+> - זה מבטיח עקביות במערכת וקלות תחזוקה
+> 
+> **בקוד:**
+> - בעת יצירת מוצר בלי variants, המערכת יוצרת אוטומטית variant ברירת מחדל
+> - כל API endpoint שמטפל במוצרים צריך לקחת בחשבון את המבנה הזה
+> - בעת בניית עגלת קניות, יש לעבוד עם `variant_id` ולא רק `product_id`
+
 - **products** - מוצרים (תואם ל-Product object)
   - `handle` - URL-friendly identifier
   - `status` - draft, active, archived
@@ -820,16 +839,20 @@ quickshop3/
 - **product_option_values** - ערכי אפשרויות
 
 - **product_variants** - וריאציות מוצר (תואם ל-Variant object)
-  - `price`, `compare_at_price` - מחירים
+  - **חובה:** כל מוצר חייב להיות עם לפחות variant אחד
+  - `price`, `compare_at_price` - מחירים (נשמרים כאן, לא ב-products!)
   - `sku`, `barcode` - זיהוי
   - `option1`, `option2`, `option3` - ערכי אפשרויות
   - `inventory_policy` - deny, continue
   - `requires_shipping`, `taxable` - הגדרות
+  - **לא כולל `inventory_quantity`** - המלאי נשמר ב-`variant_inventory`!
   
 - **variant_inventory** - מלאי וריאציות (תואם ל-Inventory Level)
-  - `available` - כמות זמינה
+  - `variant_id` - קישור ל-variant (חובה!)
+  - `available` - כמות זמינה (כאן נשמר המלאי!)
   - `committed` - שמורה להזמנות
   - `location_id` - תמיכה במיקומי מחסן מרובים
+  - **אין UNIQUE constraint על `variant_id`** - צריך לבדוק קיום לפני INSERT/UPDATE
   
 - **product_meta_fields** - שדות מטא מותאמים (תואם ל-Metafield)
   - `namespace`, `key`, `value` - מבנה גמיש
@@ -864,11 +887,12 @@ quickshop3/
   - `note_attributes` - תכונות מותאמות (JSONB)
   
 - **order_line_items** - פריטי הזמנה (תואם ל-Line Item)
-  - `product_id`, `variant_id` - קישור למוצר/וריאציה
+  - `product_id`, `variant_id` - קישור למוצר/וריאציה (**חובה!** כל פריט חייב `variant_id`)
   - `title`, `variant_title` - שמות תצוגה
-  - `quantity`, `price` - כמות ומחיר
+  - `quantity`, `price` - כמות ומחיר (המחיר נשמר כאן, לא ב-products)
   - `properties` - תכונות מותאמות (JSONB)
   - `tax_lines`, `discount_allocations` - מסים והנחות (JSONB)
+  - **חשוב:** גם מוצר בלי אפשרויות חייב להיות עם `variant_id` (ה-default variant)
   
 - **order_fulfillments** - ביצועי הזמנות (תואם ל-Fulfillment)
   - `status` - pending, success, cancelled
@@ -2755,8 +2779,9 @@ npm run type-check
 
 - [Shopify API Documentation](https://shopify.dev/docs/api)
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Prisma Documentation](https://www.prisma.io/docs)
+- [Neon PostgreSQL Documentation](https://neon.tech/docs)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [node-postgres (pg) Documentation](https://node-postgres.com/)
 
 ---
 

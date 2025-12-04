@@ -26,7 +26,7 @@ export async function GET(
     }
 
     // Get related data
-    const [images, variants, options] = await Promise.all([
+    const [images, variantsRaw, options] = await Promise.all([
       query<ProductImage>(
         'SELECT * FROM product_images WHERE product_id = $1 ORDER BY position',
         [productId]
@@ -43,6 +43,20 @@ export async function GET(
         [productId]
       ),
     ]);
+
+    // Get inventory for each variant
+    const variants = await Promise.all(
+      variantsRaw.map(async (variant) => {
+        const inventory = await queryOne<{ available: number; committed: number }>(
+          'SELECT available, committed FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+          [variant.id]
+        );
+        return {
+          ...variant,
+          inventory_quantity: inventory?.available || 0,
+        };
+      })
+    );
 
     // Get collections
     const collections = await query(
@@ -117,8 +131,12 @@ export async function PUT(
         product_type = $5,
         status = $6,
         published_at = $7,
+        sell_when_sold_out = $8,
+        sold_by_weight = $9,
+        show_price_per_100ml = $10,
+        price_per_100ml = $11,
         updated_at = now()
-      WHERE id = $8
+      WHERE id = $12
       RETURNING *
     `;
 
@@ -130,6 +148,10 @@ export async function PUT(
       body.product_type !== undefined ? body.product_type : oldProduct.product_type,
       body.status || oldProduct.status,
       body.published_at !== undefined ? body.published_at : oldProduct.published_at,
+      body.sell_when_sold_out !== undefined ? body.sell_when_sold_out : (oldProduct as any).sell_when_sold_out || false,
+      body.sold_by_weight !== undefined ? body.sold_by_weight : (oldProduct as any).sold_by_weight || false,
+      body.show_price_per_100ml !== undefined ? body.show_price_per_100ml : (oldProduct as any).show_price_per_100ml || false,
+      body.price_per_100ml !== undefined ? body.price_per_100ml : (oldProduct as any).price_per_100ml || null,
       productId,
     ]);
 
@@ -161,6 +183,213 @@ export async function PUT(
         store_id: product.store_id,
         source: 'api',
       });
+    }
+
+    // Handle images if provided
+    if (body.images && Array.isArray(body.images)) {
+      // Delete existing images
+      await query('DELETE FROM product_images WHERE product_id = $1', [productId]);
+      
+      // Insert new images
+      for (let i = 0; i < body.images.length; i++) {
+        const image = body.images[i];
+        await query(
+          `INSERT INTO product_images (product_id, position, src, alt, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, now(), now())`,
+          [productId, i + 1, image.src || image, image.alt || null]
+        );
+      }
+    }
+
+    // Handle default variant if no variants exist (for SKU, price, etc.)
+    const hasVariants = body.variants && Array.isArray(body.variants) && body.variants.length > 0;
+    if (!hasVariants) {
+      // Check if default variant exists
+      const existingVariant = await queryOne<{ id: number }>(
+        'SELECT id FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
+        [productId]
+      );
+
+      if (existingVariant) {
+        // Update existing default variant
+        await query(
+          `UPDATE product_variants SET
+            price = $1,
+            compare_at_price = $2,
+            sku = $3,
+            taxable = $4,
+            updated_at = now()
+           WHERE id = $5`,
+          [
+            body.price || '0.00',
+            body.compare_at_price || null,
+            body.sku || null,
+            body.taxable !== false,
+            existingVariant.id,
+          ]
+        );
+
+        // Update inventory
+        if (body.track_inventory !== false && body.inventory_quantity !== undefined) {
+          const existingInventory = await queryOne<{ id: number }>(
+            'SELECT id FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+            [existingVariant.id]
+          );
+          
+          if (existingInventory) {
+            await query(
+              `UPDATE variant_inventory SET available = $1, updated_at = now() WHERE variant_id = $2`,
+              [body.inventory_quantity || 0, existingVariant.id]
+            );
+          } else {
+            await query(
+              `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
+               VALUES ($1, $2, $3, now(), now())`,
+              [existingVariant.id, body.inventory_quantity || 0, 0]
+            );
+          }
+        }
+      } else {
+        // Create new default variant
+        await query(
+          `INSERT INTO product_variants (
+            product_id, title, price, compare_at_price, sku, taxable,
+            position, inventory_policy, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())`,
+          [
+            productId,
+            'Default Title',
+            body.price || '0.00',
+            body.compare_at_price || null,
+            body.sku || null,
+            body.taxable !== false,
+            1,
+            'deny',
+          ]
+        );
+
+        // Handle inventory if enabled
+        if (body.track_inventory !== false && body.inventory_quantity !== undefined) {
+          const variant = await queryOne<{ id: number }>(
+            'SELECT id FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
+            [productId]
+          );
+          if (variant) {
+            const existingInventory = await queryOne<{ id: number }>(
+              'SELECT id FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+              [variant.id]
+            );
+            
+            if (existingInventory) {
+              await query(
+                `UPDATE variant_inventory SET available = $1, updated_at = now() WHERE variant_id = $2`,
+                [body.inventory_quantity || 0, variant.id]
+              );
+            } else {
+              await query(
+                `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
+                 VALUES ($1, $2, $3, now(), now())`,
+                [variant.id, body.inventory_quantity || 0, 0]
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Handle collections if provided
+    if (body.collections && Array.isArray(body.collections)) {
+      // Get current collections
+      const currentCollections = await query<{ collection_id: number }>(
+        'SELECT collection_id FROM product_collection_map WHERE product_id = $1',
+        [productId]
+      );
+      const currentIds = currentCollections.map(c => c.collection_id);
+      const newIds = body.collections.filter((id: any) => typeof id === 'number');
+
+      // Remove collections that are no longer selected
+      const toRemove = currentIds.filter(id => !newIds.includes(id));
+      for (const collectionId of toRemove) {
+        await query(
+          'DELETE FROM product_collection_map WHERE product_id = $1 AND collection_id = $2',
+          [productId, collectionId]
+        );
+      }
+
+      // Add new collections
+      const toAdd = newIds.filter((id: number) => !currentIds.includes(id));
+      for (const collectionId of toAdd) {
+        // Check if mapping already exists
+        const existing = await queryOne<{ product_id: number }>(
+          'SELECT product_id FROM product_collection_map WHERE product_id = $1 AND collection_id = $2',
+          [productId, collectionId]
+        );
+
+        if (!existing) {
+          // Get max position for this collection
+          const maxPosition = await queryOne<{ max_position: number }>(
+            'SELECT COALESCE(MAX(position), 0) as max_position FROM product_collection_map WHERE collection_id = $1',
+            [collectionId]
+          );
+
+          await query(
+            `INSERT INTO product_collection_map (product_id, collection_id, position)
+             VALUES ($1, $2, $3)`,
+            [productId, collectionId, (maxPosition?.max_position || 0) + 1]
+          );
+        }
+      }
+    }
+
+    // Handle tags if provided
+    if (body.tags && Array.isArray(body.tags)) {
+      // Get current tags
+      const currentTags = await query<{ tag_id: number; name: string }>(
+        `SELECT ptm.tag_id, pt.name
+         FROM product_tag_map ptm
+         INNER JOIN product_tags pt ON ptm.tag_id = pt.id
+         WHERE ptm.product_id = $1`,
+        [productId]
+      );
+      const currentTagNames = currentTags.map(t => t.name.toLowerCase());
+      const newTagNames = body.tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+
+      // Remove tags that are no longer selected
+      const toRemove = currentTags.filter(t => !newTagNames.includes(t.name.toLowerCase()));
+      for (const tag of toRemove) {
+        await query(
+          'DELETE FROM product_tag_map WHERE product_id = $1 AND tag_id = $2',
+          [productId, tag.tag_id]
+        );
+      }
+
+      // Add new tags
+      const toAdd = newTagNames.filter((name: string) => !currentTagNames.includes(name));
+      for (const tagName of toAdd) {
+        // Find or create tag
+        let tag = await queryOne<{ id: number }>(
+          'SELECT id FROM product_tags WHERE store_id = $1 AND LOWER(name) = $2',
+          [product.store_id, tagName]
+        );
+
+        if (!tag) {
+          // Create new tag
+          const newTag = await queryOne<{ id: number }>(
+            `INSERT INTO product_tags (store_id, name, created_at)
+             VALUES ($1, $2, now())
+             RETURNING id`,
+            [product.store_id, tagName]
+          );
+          tag = newTag;
+        }
+
+        if (tag) {
+          await query(
+            'INSERT INTO product_tag_map (product_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [productId, tag.id]
+          );
+        }
+      }
     }
 
     return NextResponse.json({ product });

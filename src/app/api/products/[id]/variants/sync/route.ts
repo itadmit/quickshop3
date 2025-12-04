@@ -44,10 +44,10 @@ export async function POST(
       const sql = `
         INSERT INTO product_variants (
           product_id, title, price, compare_at_price, sku, barcode,
-          position, inventory_quantity, inventory_policy, inventory_management,
+          position, inventory_policy, inventory_management,
           weight, weight_unit, requires_shipping, taxable,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
         RETURNING *
       `;
 
@@ -59,7 +59,6 @@ export async function POST(
         variant.sku || null,
         variant.barcode || null,
         i + 1,
-        variant.inventory_quantity || 0,
         variant.inventory_policy || 'deny',
         variant.inventory_management || null,
         variant.weight || null,
@@ -71,6 +70,27 @@ export async function POST(
       if (insertedVariant) {
         insertedVariants.push(insertedVariant);
 
+        // Handle inventory
+        if (variant.inventory_quantity !== undefined) {
+          const existingInventory = await queryOne<{ id: number }>(
+            'SELECT id FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+            [insertedVariant.id]
+          );
+          
+          if (existingInventory) {
+            await query(
+              `UPDATE variant_inventory SET available = $1, updated_at = now() WHERE variant_id = $2`,
+              [variant.inventory_quantity || 0, insertedVariant.id]
+            );
+          } else {
+            await query(
+              `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
+               VALUES ($1, $2, $3, now(), now())`,
+              [insertedVariant.id, variant.inventory_quantity || 0, 0]
+            );
+          }
+        }
+
         // Emit variant.created event for new variants
         await eventBus.emitEvent('variant.created', { variant: insertedVariant }, {
           store_id: product.store_id,
@@ -79,15 +99,25 @@ export async function POST(
 
         // Emit inventory.updated event if quantity changed
         const oldVariant = existingVariants.find(v => v.id === variant.id);
-        if (oldVariant && oldVariant.inventory_quantity !== insertedVariant.inventory_quantity) {
-          await eventBus.emitEvent('inventory.updated', {
-            variant_id: insertedVariant.id,
-            quantity: insertedVariant.inventory_quantity,
-            reason: 'sync',
-          }, {
-            store_id: product.store_id,
-            source: 'api',
-          });
+        if (oldVariant) {
+          const oldInventory = await queryOne<{ available: number }>(
+            'SELECT available FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+            [oldVariant.id]
+          );
+          const newInventory = await queryOne<{ available: number }>(
+            'SELECT available FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+            [insertedVariant.id]
+          );
+          if (oldInventory && newInventory && oldInventory.available !== newInventory.available) {
+            await eventBus.emitEvent('inventory.updated', {
+              variant_id: insertedVariant.id,
+              quantity: newInventory.available,
+              reason: 'sync',
+            }, {
+              store_id: product.store_id,
+              source: 'api',
+            });
+          }
         }
       }
     }

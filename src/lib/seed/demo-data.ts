@@ -1,0 +1,442 @@
+/**
+ * Demo Data Seed
+ * יוצר נתוני דמו מלאים למערכת
+ * כל הנתונים נוצרים כאילו הוזנו ידנית מהדשבורד
+ */
+
+export const demoData = {
+  // Products Collections
+  collections: [
+    {
+      title: 'בגדים',
+      handle: 'clothing',
+      description: 'אוסף בגדים אופנתיים',
+      published_scope: 'web',
+      sort_order: 'manual',
+    },
+    {
+      title: 'נעליים',
+      handle: 'shoes',
+      description: 'נעליים לכל העונות',
+      published_scope: 'web',
+      sort_order: 'manual',
+    },
+    {
+      title: 'אקססוריז',
+      handle: 'accessories',
+      description: 'תכשיטים ואקססוריז',
+      published_scope: 'web',
+      sort_order: 'manual',
+    },
+  ],
+
+  // Product Tags
+  tags: [
+    'חדש',
+    'פופולרי',
+    'מבצע',
+    'VIP',
+    'חורף',
+    'קיץ',
+    'אופנה',
+    'קלאסי',
+  ],
+
+  // Products
+  products: [
+    {
+      title: 'חולצת טי שירט כותנה',
+      handle: 'cotton-t-shirt',
+      body_html: '<p>חולצת טי שירט נוחה מבד כותנה איכותי. מתאימה לכל יום.</p>',
+      vendor: 'אופנה ישראל',
+      product_type: 'בגדים',
+      status: 'active',
+      published_scope: 'web',
+      price: 89.90,
+      compare_at_price: 129.90,
+      cost_per_item: 45.00,
+      taxable: true,
+      track_inventory: true,
+      inventory_quantity: 50,
+      low_stock_alert: 10,
+      weight: 0.2,
+      length: 30,
+      width: 25,
+      height: 5,
+      sku: 'TSHIRT-001',
+      seo_title: 'חולצת טי שירט כותנה - אופנה ישראל',
+      seo_description: 'חולצת טי שירט נוחה מבד כותנה איכותי. זמין בגדלים שונים.',
+      tags: ['חדש', 'פופולרי', 'קיץ'],
+      collections: ['clothing'],
+      images: [
+        {
+          src: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800',
+          alt: 'חולצת טי שירט',
+          position: 1,
+        },
+      ],
+      options: [
+        {
+          name: 'מידה',
+          position: 1,
+          values: [
+            { value: 'S', position: 1 },
+            { value: 'M', position: 2 },
+            { value: 'L', position: 3 },
+            { value: 'XL', position: 4 },
+          ],
+        },
+        {
+          name: 'צבע',
+          position: 2,
+          values: [
+            { value: 'לבן', position: 1 },
+            { value: 'שחור', position: 2 },
+            { value: 'כחול', position: 3 },
+          ],
+        },
+      ],
+      variants: [
+        { option1: 'S', option2: 'לבן', price: 89.90, inventory_quantity: 15, sku: 'TSHIRT-001-S-WHITE' },
+        { option1: 'M', option2: 'לבן', price: 89.90, inventory_quantity: 20, sku: 'TSHIRT-001-M-WHITE' },
+        { option1: 'L', option2: 'לבן', price: 89.90, inventory_quantity: 10, sku: 'TSHIRT-001-L-WHITE' },
+        { option1: 'S', option2: 'שחור', price: 89.90, inventory_quantity: 12, sku: 'TSHIRT-001-S-BLACK' },
+        { option1: 'M', option2: 'שחור', price: 89.90, inventory_quantity: 18, sku: 'TSHIRT-001-M-BLACK' },
+      ],
+    },
+    {
+      title: 'נעלי ספורט נוחות',
+      handle: 'sports-shoes',
+      body_html: '<p>נעלי ספורט איכותיות לפעילות גופנית יומיומית.</p>',
+      vendor: 'ספורט בע"מ',
+      product_type: 'נעליים',
+      status: 'active',
+      published_scope: 'web',
+      price: 299.90,
+      compare_at_price: 399.90,
+      cost_per_item: 150.00,
+      taxable: true,
+      track_inventory: true,
+      inventory_quantity: 30,
+      low_stock_alert: 5,
+      weight: 0.8,
+      length: 32,
+      width: 12,
+      height: 12,
+      sku: 'SHOES-001',
+      seo_title: 'נעלי ספורט נוחות - ספורט בע"מ',
+      seo_description: 'נעלי ספורט איכותיות לפעילות גופנית. זמין בגדלים 38-45.',
+      tags: ['פופולרי', 'חורף'],
+      collections: ['shoes'],
+      images: [
+        {
+          src: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
+          alt: 'נעלי ספורט',
+          position: 1,
+        },
+      ],
+      options: [
+        {
+          name: 'מידה',
+          position: 1,
+          values: [
+            { value: '38', position: 1 },
+            { value: '40', position: 2 },
+            { value: '42', position: 3 },
+            { value: '44', position: 4 },
+            { value: '45', position: 5 },
+          ],
+        },
+      ],
+      variants: [
+        { option1: '38', price: 299.90, inventory_quantity: 5, sku: 'SHOES-001-38' },
+        { option1: '40', price: 299.90, inventory_quantity: 8, sku: 'SHOES-001-40' },
+        { option1: '42', price: 299.90, inventory_quantity: 10, sku: 'SHOES-001-42' },
+        { option1: '44', price: 299.90, inventory_quantity: 5, sku: 'SHOES-001-44' },
+        { option1: '45', price: 299.90, inventory_quantity: 2, sku: 'SHOES-001-45' },
+      ],
+    },
+    {
+      title: 'תיק גב איכותי',
+      handle: 'backpack-quality',
+      body_html: '<p>תיק גב מרווח ואיכותי לטיולים ולעבודה.</p>',
+      vendor: 'אקססוריז פלוס',
+      product_type: 'אקססוריז',
+      status: 'active',
+      published_scope: 'web',
+      price: 199.90,
+      compare_at_price: 249.90,
+      cost_per_item: 100.00,
+      taxable: true,
+      track_inventory: true,
+      inventory_quantity: 25,
+      low_stock_alert: 5,
+      weight: 0.5,
+      length: 40,
+      width: 30,
+      height: 15,
+      sku: 'BAG-001',
+      seo_title: 'תיק גב איכותי - אקססוריז פלוס',
+      seo_description: 'תיק גב מרווח ואיכותי. מתאים לטיולים ולעבודה.',
+      tags: ['חדש', 'אופנה'],
+      collections: ['accessories'],
+      images: [
+        {
+          src: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800',
+          alt: 'תיק גב',
+          position: 1,
+        },
+      ],
+    },
+  ],
+
+  // Customers
+  customers: [
+    {
+      email: 'david.cohen@example.com',
+      first_name: 'דוד',
+      last_name: 'כהן',
+      phone: '050-1234567',
+      accepts_marketing: true,
+      state: 'enabled',
+      verified_email: true,
+      tags: ['VIP', 'חדש'],
+      addresses: [
+        {
+          first_name: 'דוד',
+          last_name: 'כהן',
+          address1: 'רחוב הרצל 15',
+          city: 'תל אביב',
+          zip: '61000',
+          country: 'ישראל',
+          country_code: 'IL',
+          phone: '050-1234567',
+          default_address: true,
+        },
+      ],
+    },
+    {
+      email: 'sarah.levi@example.com',
+      first_name: 'שרה',
+      last_name: 'לוי',
+      phone: '052-9876543',
+      accepts_marketing: true,
+      state: 'enabled',
+      verified_email: true,
+      tags: ['פופולרי'],
+      addresses: [
+        {
+          first_name: 'שרה',
+          last_name: 'לוי',
+          address1: 'שדרות רוטשילד 20',
+          city: 'תל אביב',
+          zip: '61001',
+          country: 'ישראל',
+          country_code: 'IL',
+          phone: '052-9876543',
+          default_address: true,
+        },
+      ],
+    },
+    {
+      email: 'moshe.david@example.com',
+      first_name: 'משה',
+      last_name: 'דוד',
+      phone: '054-5555555',
+      accepts_marketing: false,
+      state: 'enabled',
+      verified_email: false,
+      tags: [],
+      addresses: [
+        {
+          first_name: 'משה',
+          last_name: 'דוד',
+          address1: 'רחוב יפו 100',
+          city: 'ירושלים',
+          zip: '91000',
+          country: 'ישראל',
+          country_code: 'IL',
+          phone: '054-5555555',
+          default_address: true,
+        },
+      ],
+    },
+  ],
+
+  // Orders
+  orders: [
+    {
+      order_name: '#1001',
+      order_number: 1001,
+      financial_status: 'paid',
+      fulfillment_status: 'fulfilled',
+      total_price: 389.80,
+      subtotal_price: 329.80,
+      total_tax: 60.00,
+      currency: 'ILS',
+      customer_email: 'david.cohen@example.com',
+      line_items: [
+        {
+          title: 'חולצת טי שירט כותנה',
+          quantity: 2,
+          price: 89.90,
+          sku: 'TSHIRT-001-M-WHITE',
+        },
+        {
+          title: 'נעלי ספורט נוחות',
+          quantity: 1,
+          price: 299.90,
+          sku: 'SHOES-001-42',
+        },
+      ],
+      shipping_address: {
+        first_name: 'דוד',
+        last_name: 'כהן',
+        address1: 'רחוב הרצל 15',
+        city: 'תל אביב',
+        zip: '61000',
+        country: 'ישראל',
+      },
+      billing_address: {
+        first_name: 'דוד',
+        last_name: 'כהן',
+        address1: 'רחוב הרצל 15',
+        city: 'תל אביב',
+        zip: '61000',
+        country: 'ישראל',
+      },
+    },
+    {
+      order_name: '#1002',
+      order_number: 1002,
+      financial_status: 'paid',
+      fulfillment_status: 'pending',
+      total_price: 199.90,
+      subtotal_price: 199.90,
+      total_tax: 0,
+      currency: 'ILS',
+      customer_email: 'sarah.levi@example.com',
+      line_items: [
+        {
+          title: 'תיק גב איכותי',
+          quantity: 1,
+          price: 199.90,
+          sku: 'BAG-001',
+        },
+      ],
+      shipping_address: {
+        first_name: 'שרה',
+        last_name: 'לוי',
+        address1: 'שדרות רוטשילד 20',
+        city: 'תל אביב',
+        zip: '61001',
+        country: 'ישראל',
+      },
+      billing_address: {
+        first_name: 'שרה',
+        last_name: 'לוי',
+        address1: 'שדרות רוטשילד 20',
+        city: 'תל אביב',
+        zip: '61001',
+        country: 'ישראל',
+      },
+    },
+  ],
+
+  // Discounts
+  discounts: [
+    {
+      code: 'WELCOME10',
+      type: 'percentage',
+      value: 10,
+      min_purchase_amount: 100,
+      max_discount_amount: 50,
+      usage_limit: 100,
+      usage_count: 0,
+      starts_at: new Date().toISOString(),
+      ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      is_active: true,
+    },
+    {
+      code: 'SUMMER20',
+      type: 'percentage',
+      value: 20,
+      min_purchase_amount: 200,
+      max_discount_amount: 100,
+      usage_limit: 50,
+      usage_count: 0,
+      starts_at: new Date().toISOString(),
+      ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+      is_active: true,
+    },
+  ],
+
+  // Shipping Zones
+  shippingZones: [
+    {
+      name: 'ישראל - משלוח רגיל',
+      countries: ['IL'],
+      rates: [
+        {
+          name: 'משלוח רגיל',
+          price: 25.00,
+          min_order_price: 0,
+          max_order_price: null,
+          estimated_days: 3,
+        },
+        {
+          name: 'משלוח מהיר',
+          price: 45.00,
+          min_order_price: 0,
+          max_order_price: null,
+          estimated_days: 1,
+        },
+      ],
+    },
+  ],
+
+  // Blog Posts
+  blogPosts: [
+    {
+      title: 'איך לבחור נעלי ספורט',
+      handle: 'how-to-choose-sports-shoes',
+      body_html: '<p>מדריך מקיף לבחירת נעלי ספורט המתאימות לך.</p>',
+      published_at: new Date().toISOString(),
+      status: 'published',
+      seo_title: 'איך לבחור נעלי ספורט - מדריך מקיף',
+      seo_description: 'מדריך מקיף לבחירת נעלי ספורט המתאימות לך.',
+    },
+    {
+      title: 'טרנדים אופנתיים לקיץ 2025',
+      handle: 'summer-fashion-trends-2025',
+      body_html: '<p>הטרנדים החמים ביותר לקיץ הקרוב.</p>',
+      published_at: new Date().toISOString(),
+      status: 'published',
+      seo_title: 'טרנדים אופנתיים לקיץ 2025',
+      seo_description: 'הטרנדים החמים ביותר לקיץ הקרוב.',
+    },
+  ],
+
+  // Pages
+  pages: [
+    {
+      title: 'אודותינו',
+      handle: 'about-us',
+      body_html: '<p>ברוכים הבאים לחנות שלנו.</p>',
+      published_at: new Date().toISOString(),
+      status: 'published',
+      seo_title: 'אודותינו',
+      seo_description: 'למדו עוד עלינו.',
+    },
+    {
+      title: 'מדיניות החזרות',
+      handle: 'return-policy',
+      body_html: '<p>מדיניות החזרות והחלפות שלנו.</p>',
+      published_at: new Date().toISOString(),
+      status: 'published',
+      seo_title: 'מדיניות החזרות',
+      seo_description: 'מדיניות החזרות והחלפות שלנו.',
+    },
+  ],
+};
+

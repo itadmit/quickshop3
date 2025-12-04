@@ -76,6 +76,10 @@ CREATE TABLE products (
   published_at TIMESTAMP WITHOUT TIME ZONE,
   published_scope VARCHAR(50) DEFAULT 'web',
   template_suffix VARCHAR(100),
+  sell_when_sold_out BOOLEAN DEFAULT false, -- המשך מכירה כשאין במלאי
+  sold_by_weight BOOLEAN DEFAULT false, -- מוצר נמכר לפי משקל
+  show_price_per_100ml BOOLEAN DEFAULT false, -- האם לרשום מחיר ל-100 מ"ל
+  price_per_100ml NUMERIC(12,2), -- מחיר ל-100 מ"ל
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   UNIQUE(store_id, handle)

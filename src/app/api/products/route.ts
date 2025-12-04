@@ -77,8 +77,9 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO products (
         store_id, title, handle, body_html, vendor, product_type,
-        status, published_scope, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+        status, published_scope, sell_when_sold_out, sold_by_weight,
+        show_price_per_100ml, price_per_100ml, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
       RETURNING *
     `;
 
@@ -94,6 +95,10 @@ export async function POST(request: NextRequest) {
       body.product_type || null,
       body.status || 'draft',
       body.published_scope || 'web',
+      body.sell_when_sold_out || false,
+      body.sold_by_weight || false,
+      body.show_price_per_100ml || false,
+      body.price_per_100ml || null,
     ]);
 
     if (!product) {
@@ -112,6 +117,117 @@ export async function POST(request: NextRequest) {
         store_id: storeId,
         source: 'api',
       });
+    }
+
+    // Handle images if provided
+    if (body.images && Array.isArray(body.images)) {
+      for (let i = 0; i < body.images.length; i++) {
+        const image = body.images[i];
+        await query(
+          `INSERT INTO product_images (product_id, position, src, alt, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, now(), now())`,
+          [product.id, i + 1, image.src || image, image.alt || null]
+        );
+      }
+    }
+
+    // Handle default variant if no variants exist (for SKU, price, etc.)
+    const hasVariants = body.variants && Array.isArray(body.variants) && body.variants.length > 0;
+    if (!hasVariants) {
+      // Create default variant with SKU, price, etc.
+      await query(
+        `INSERT INTO product_variants (
+          product_id, title, price, compare_at_price, sku, taxable,
+          position, inventory_policy, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())`,
+        [
+          product.id,
+          'Default Title',
+          body.price || '0.00',
+          body.compare_at_price || null,
+          body.sku || null,
+          body.taxable !== false,
+          1,
+          'deny',
+        ]
+      );
+
+      // Handle inventory if enabled
+      if (body.track_inventory !== false && body.inventory_quantity !== undefined) {
+        const variant = await queryOne<{ id: number }>(
+          'SELECT id FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
+          [product.id]
+        );
+        if (variant) {
+          const existingInventory = await queryOne<{ id: number }>(
+            'SELECT id FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
+            [variant.id]
+          );
+          
+          if (existingInventory) {
+            await query(
+              `UPDATE variant_inventory SET available = $1, updated_at = now() WHERE variant_id = $2`,
+              [body.inventory_quantity || 0, variant.id]
+            );
+          } else {
+            await query(
+              `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
+               VALUES ($1, $2, $3, now(), now())`,
+              [variant.id, body.inventory_quantity || 0, 0]
+            );
+          }
+        }
+      }
+    }
+
+    // Handle collections if provided
+    if (body.collections && Array.isArray(body.collections)) {
+      for (const collectionId of body.collections) {
+        if (typeof collectionId === 'number') {
+          // Get max position for this collection
+          const maxPosition = await queryOne<{ max_position: number }>(
+            'SELECT COALESCE(MAX(position), 0) as max_position FROM product_collection_map WHERE collection_id = $1',
+            [collectionId]
+          );
+
+          await query(
+            `INSERT INTO product_collection_map (product_id, collection_id, position)
+             VALUES ($1, $2, $3)`,
+            [product.id, collectionId, (maxPosition?.max_position || 0) + 1]
+          );
+        }
+      }
+    }
+
+    // Handle tags if provided
+    if (body.tags && Array.isArray(body.tags)) {
+      for (const tagName of body.tags) {
+        if (typeof tagName === 'string' && tagName.trim()) {
+          // Find or create tag
+          let tag = await queryOne<{ id: number }>(
+            'SELECT id FROM product_tags WHERE store_id = $1 AND name = $2',
+            [storeId, tagName.trim()]
+          );
+
+          if (!tag) {
+            // Create new tag
+            const newTag = await queryOne<{ id: number }>(
+              `INSERT INTO product_tags (store_id, name, created_at)
+               VALUES ($1, $2, now())
+               RETURNING id`,
+              [storeId, tagName.trim()]
+            );
+            tag = newTag;
+          }
+
+          if (tag) {
+            await query(
+              'INSERT INTO product_tag_map (product_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [product.id, tag.id]
+            );
+          }
+        }
+      }
     }
 
     return NextResponse.json({ product }, { status: 201 });
