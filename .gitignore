@@ -38,6 +38,5 @@ next-env.d.ts
 /uploads/
 
 # Scripts (temporary)
-/scripts/*.js
-/scripts/*.ts
+# (keep this section empty unless you have generated scripts to ignore)
 

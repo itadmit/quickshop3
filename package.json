@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3099",
     "build": "next build",
+    "postbuild": "node scripts/postbuild-fix.js",
     "start": "next start -p 3099",
     "lint": "next lint",
     "type-check": "tsc --noEmit",

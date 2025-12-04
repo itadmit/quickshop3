@@ -1,3 +1,9 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -11,9 +17,8 @@ const nextConfig = {
       },
     ],
   },
-  // Disable output file tracing for Vercel deployment
-  // This is a workaround for Next.js 15 deployment issues
-  output: 'standalone',
+  // Explicitly set the tracing root so Vercel doesn't try to walk up the tree
+  outputFileTracingRoot: path.join(__dirname),
 };
 
 export default nextConfig;
