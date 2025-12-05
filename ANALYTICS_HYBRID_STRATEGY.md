@@ -69,42 +69,90 @@
 
 ## ⚙️ Batch Sync Process
 
-### תדירות: כל 5 דקות
+### תדירות: כל 5 דקות (מומלץ)
 **למה 5 דקות?**
 - Redis TTL = 10 דקות
 - Sync כל 5 דקות = נתונים נשמרים לפני שהם נמחקים
 - איזון בין עדכניות לעומס על DB
+
+**⚠️ הערה**: אם אין CRON שעתי זמין, אפשר להריץ פעם ביום (פחות אידיאלי).
 
 ### תהליך:
 1. **קריאת כל המבקרים מ-Redis**
 2. **העברה ל-PostgreSQL** (visitor_sessions)
 3. **עדכון analytics_daily** (פעם ביום בשעה 00:00)
 
+### 📋 הטבלאות נוספו ל-`sql/schema.sql`
+הטבלאות `visitor_sessions` ו-`visitor_page_views` כבר חלק מהסכמה הראשית.
+**אין צורך במיגרציה נפרדת** - פשוט הרץ `npm run db:reset` כדי ליצור את הסכמה המלאה.
+
 ---
 
 ## 🔧 הגדרת CRON Job
 
-### Vercel Cron Jobs
+### ⚠️ מגבלות Vercel
+- **Vercel Free Plan**: CRON רק יומי (לא שעתי)
+- **Vercel Pro Plan**: CRON שעתי זמין
 
+### 🎯 פתרונות מומלצים
+
+#### 1. **Upstash QStash** (מומלץ - חינמי!)
+Upstash מציעים **QStash** - שירות CRON חינמי עם:
+- ✅ CRON שעתי בחינם
+- ✅ עד 10,000 requests/day חינם
+- ✅ אמין ומהיר
+- ✅ אינטגרציה קלה עם Upstash Redis
+
+**הגדרה:**
+```bash
+npm install @upstash/qstash
+```
+
+```typescript
+import { Client } from '@upstash/qstash';
+
+const qstash = new Client({
+  token: process.env.QSTASH_TOKEN,
+});
+
+// הגדרת CRON כל 5 דקות
+await qstash.publishJSON({
+  url: 'https://your-domain.com/api/cron/sync-visitors',
+  schedule: '*/5 * * * *', // כל 5 דקות
+});
+```
+
+**קבלת Token**: היכנס ל-[Upstash Console](https://console.upstash.com/) → QStash → Create Token
+
+#### 2. **Vercel Cron Jobs** (יומי בלבד)
 הוסף ל-`vercel.json`:
 ```json
 {
   "crons": [{
     "path": "/api/cron/sync-visitors",
-    "schedule": "*/5 * * * *"
+    "schedule": "0 0 * * *"  // פעם ביום בשעה 00:00
   }]
 }
 ```
 
-### או External Cron Service
+**⚠️ הערה**: זה רק יומי, לא שעתי. נתונים עלולים להיאבד.
 
-השתמש בשירות חיצוני כמו:
-- **cron-job.org**
-- **EasyCron**
-- **GitHub Actions** (scheduled workflows)
+#### 3. **שירותים חיצוניים חינמיים**
+- **cron-job.org** - חינמי, CRON שעתי
+- **EasyCron** - חינמי עם מגבלות
+- **GitHub Actions** - scheduled workflows (חינמי)
 
 **URL**: `https://your-domain.com/api/cron/sync-visitors`
 **Schedule**: `*/5 * * * *` (כל 5 דקות)
+
+#### 4. **פתרון חלופי: On-Demand Sync**
+במקום CRON, אפשר לסנכרן:
+- כאשר יש פעילות גבוהה
+- כאשר מבקרים בדשבורד אנליטיקס
+- לפני סגירת session
+
+**יתרון**: לא צריך CRON חיצוני
+**חסרון**: נתונים עלולים להיאבד אם אין פעילות
 
 ---
 
