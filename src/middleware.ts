@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { updateUserActivity, updateVisitorActivity } from '@/lib/session-tracker';
+import { getGeoLocation } from '@/lib/analytics/geoip';
+import { parseUserAgent } from '@/lib/analytics/device-parser';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const SESSION_COOKIE_NAME = 'quickshop3_session';
+const VISITOR_SESSION_COOKIE_NAME = 'quickshop3_visitor_session';
 
 // Verify JWT token in Edge Runtime (using jose instead of jsonwebtoken)
 async function verifyTokenEdge(token: string) {
@@ -86,10 +90,129 @@ export async function middleware(request: NextRequest) {
   }
 
   // Public routes that don't require authentication
+  // Storefront routes: /shops/[storeSlug] - פתוח לכולם
   const publicRoutes = ['/', '/quickshop-payments'];
-  const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/quickshop-payments');
+  const isStorefrontRoute = pathname.startsWith('/shops/');
+  const isPublicRoute = publicRoutes.includes(pathname) || 
+                       pathname.startsWith('/quickshop-payments') ||
+                       isStorefrontRoute;
   
-  // Protect dashboard routes (all routes except public routes)
+  // מעקב מבקרים בפרונט (לא חוסם את הבקשה)
+  if (isStorefrontRoute) {
+    try {
+      // חילוץ storeSlug מה-URL
+      const storeSlugMatch = pathname.match(/^\/shops\/([^\/]+)/);
+      console.log('[Middleware] Storefront route detected:', pathname);
+      console.log('[Middleware] StoreSlug match:', storeSlugMatch);
+      
+      if (storeSlugMatch) {
+        const storeSlug = storeSlugMatch[1];
+        console.log('[Middleware] Extracted storeSlug:', storeSlug);
+        
+        // קבלת או יצירת visitor session ID (ייחודי לכל טאב/דפדפן)
+        let visitorSessionId = request.cookies.get(VISITOR_SESSION_COOKIE_NAME)?.value;
+        let response = NextResponse.next();
+        
+        if (!visitorSessionId) {
+          // יצירת session ID חדש (UUID)
+          visitorSessionId = crypto.randomUUID();
+          response.cookies.set(VISITOR_SESSION_COOKIE_NAME, visitorSessionId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+            path: '/',
+          });
+          console.log('[Middleware] Created new visitor session ID:', visitorSessionId);
+        } else {
+          console.log('[Middleware] Using existing visitor session ID:', visitorSessionId);
+        }
+        
+        // יצירת visitor ID ייחודי (storeSlug + session ID)
+        // כל טאב/דפדפן יקבל session ID שונה, כך שכל אחד יספר כמבקר נפרד
+        const visitorId = `${storeSlug}_${visitorSessionId}`;
+        
+        const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown';
+        const userAgent = request.headers.get('user-agent') || 'unknown';
+        const referrer = request.headers.get('referer') || undefined;
+        const currentPage = pathname;
+        
+        // חילוץ UTM parameters מה-URL
+        const url = request.nextUrl;
+        const utmSource = url.searchParams.get('utm_source') || undefined;
+        const utmMedium = url.searchParams.get('utm_medium') || undefined;
+        const utmCampaign = url.searchParams.get('utm_campaign') || undefined;
+        const utmTerm = url.searchParams.get('utm_term') || undefined;
+        const utmContent = url.searchParams.get('utm_content') || undefined;
+        
+        // Parse device info
+        const deviceInfo = parseUserAgent(userAgent);
+        
+        // Get GeoIP (async, לא חוסם את הבקשה)
+        getGeoLocation(ip).then((geo) => {
+          // עדכון פעילות מבקר עם כל הנתונים
+          updateVisitorActivity(visitorId, 0, {
+            ip_address: ip,
+            user_agent: userAgent,
+            store_slug: storeSlug,
+            current_page: currentPage,
+            referrer: referrer,
+            // GeoIP
+            country: geo?.country,
+            country_code: geo?.countryCode,
+            city: geo?.city,
+            region: geo?.region,
+            lat: geo?.lat,
+            lon: geo?.lon,
+            timezone: geo?.timezone,
+            // Device
+            device_type: deviceInfo.device_type,
+            browser: deviceInfo.browser,
+            os: deviceInfo.os,
+            // UTM
+            utm_source: utmSource,
+            utm_medium: utmMedium,
+            utm_campaign: utmCampaign,
+            utm_term: utmTerm,
+            utm_content: utmContent,
+          }).catch((error) => {
+            console.error('[Middleware] ❌ Failed to update visitor activity:', error);
+          });
+        }).catch(() => {
+          // אם GeoIP נכשל, עדכן בלי GeoIP
+          updateVisitorActivity(visitorId, 0, {
+            ip_address: ip,
+            user_agent: userAgent,
+            store_slug: storeSlug,
+            current_page: currentPage,
+            referrer: referrer,
+            device_type: deviceInfo.device_type,
+            browser: deviceInfo.browser,
+            os: deviceInfo.os,
+            // UTM
+            utm_source: utmSource,
+            utm_medium: utmMedium,
+            utm_campaign: utmCampaign,
+            utm_term: utmTerm,
+            utm_content: utmContent,
+          }).catch((error) => {
+            console.error('[Middleware] ❌ Failed to update visitor activity:', error);
+          });
+        });
+        
+        return response;
+      } else {
+        console.log('[Middleware] ⚠️ No storeSlug match found for pathname:', pathname);
+      }
+    } catch (error) {
+      // לא נכשל את הבקשה אם יש שגיאה במעקב
+      console.error('[Middleware] ❌ Error tracking visitor:', error);
+    }
+  }
+  
+  // Protect dashboard routes (all routes except public routes and storefront)
   const isDashboardRoute = !isPublicRoute && 
                           !pathname.startsWith('/api') &&
                           !pathname.startsWith('/_next');
@@ -101,6 +224,16 @@ export async function middleware(request: NextRequest) {
       return clearCookieAndRedirect(loginUrl);
     }
     // Token is valid, allow access
+    // עדכון פעילות משתמש ב-Redis (לא חוסם את הבקשה)
+    if (user) {
+      updateUserActivity(user.id, user.store_id, {
+        email: user.email,
+        name: user.name,
+      }).catch((error) => {
+        // לא נכשל את הבקשה אם Redis לא עובד
+        console.error('Failed to update user activity:', error);
+      });
+    }
   }
 
   return NextResponse.next();
