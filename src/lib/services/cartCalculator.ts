@@ -27,6 +27,11 @@ export interface CartItem {
   price: number;
   quantity: number;
   image?: string;
+  // אפשרויות המוצר (מידה, צבע וכו')
+  properties?: Array<{
+    name: string;
+    value: string;
+  }>;
   // Optional: for discounts that apply to specific products
   collection_ids?: number[];
   tag_names?: string[];
@@ -532,13 +537,8 @@ export class CartCalculator {
         itemsDiscount += discountResult.amount;
         remainingSubtotal -= discountResult.amount;
 
-        // עדכון פריטים
-        discountResult.items.forEach((itemDiscount, index) => {
-          itemsWithTotals[index].lineDiscount += itemDiscount;
-          itemsWithTotals[index].lineTotalAfterDiscount -= itemDiscount;
-        });
-
-        allAppliedDiscounts.push({
+        // יצירת AppliedDiscount object
+        const appliedDiscount: AppliedDiscount = {
           id: autoDiscount.id,
           name: autoDiscount.name,
           type: autoDiscount.discount_type,
@@ -546,7 +546,22 @@ export class CartCalculator {
           description: discountResult.description,
           source: 'automatic',
           priority: autoDiscount.priority,
+        };
+
+        // עדכון פריטים + עדכון appliedDiscounts על כל פריט שההנחה חלה עליו
+        discountResult.items.forEach((itemDiscount, index) => {
+          if (itemDiscount > 0) {
+            itemsWithTotals[index].lineDiscount += itemDiscount;
+            itemsWithTotals[index].lineTotalAfterDiscount -= itemDiscount;
+            // עדכון appliedDiscounts על הפריט
+            itemsWithTotals[index].appliedDiscounts.push({
+              ...appliedDiscount,
+              amount: itemDiscount, // סכום ההנחה על הפריט הספציפי
+            });
+          }
         });
+
+        allAppliedDiscounts.push(appliedDiscount);
 
         appliedAutomaticCount++;
       }
@@ -616,13 +631,8 @@ export class CartCalculator {
           itemsDiscount += discountResult.amount;
           remainingSubtotal -= discountResult.amount;
 
-          // עדכון פריטים
-          discountResult.items.forEach((itemDiscount, index) => {
-            itemsWithTotals[index].lineDiscount += itemDiscount;
-            itemsWithTotals[index].lineTotalAfterDiscount -= itemDiscount;
-          });
-
-          allAppliedDiscounts.push({
+          // יצירת AppliedDiscount object
+          const appliedDiscount: AppliedDiscount = {
             id: this.discountCode.id,
             name: this.discountCode.code,
             code: this.discountCode.code,
@@ -631,7 +641,22 @@ export class CartCalculator {
             description: discountResult.description,
             source: 'code',
             priority: this.discountCode.priority,
+          };
+
+          // עדכון פריטים + עדכון appliedDiscounts על כל פריט שההנחה חלה עליו
+          discountResult.items.forEach((itemDiscount, index) => {
+            if (itemDiscount > 0) {
+              itemsWithTotals[index].lineDiscount += itemDiscount;
+              itemsWithTotals[index].lineTotalAfterDiscount -= itemDiscount;
+              // עדכון appliedDiscounts על הפריט
+              itemsWithTotals[index].appliedDiscounts.push({
+                ...appliedDiscount,
+                amount: itemDiscount, // סכום ההנחה על הפריט הספציפי
+              });
+            }
           });
+
+          allAppliedDiscounts.push(appliedDiscount);
         }
       } else {
         // הוספת אזהרות/שגיאות

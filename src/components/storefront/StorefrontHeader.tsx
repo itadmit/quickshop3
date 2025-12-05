@@ -3,18 +3,34 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { HiMenu, HiX, HiSearch } from 'react-icons/hi';
+import { HiMenu, HiX } from 'react-icons/hi';
 import { SideCart } from '@/components/storefront/SideCart';
+import { SearchBar } from '@/components/storefront/SearchBar';
+import { CountrySelector } from '@/components/storefront/CountrySelector';
+import { MegaMenu } from '@/components/storefront/MegaMenu';
+import { useTranslation } from '@/hooks/useTranslation';
+import { TextSkeleton } from '@/components/ui/Skeleton';
+
+interface Collection {
+  id: number;
+  name: string;
+  handle: string;
+  children?: Collection[];
+}
 
 interface StorefrontHeaderProps {
   storeName?: string;
   storeLogo?: string;
+  collections?: Collection[];
 }
 
-export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }: StorefrontHeaderProps) {
+export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo, collections = [] }: StorefrontHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+  
+  // Translations
+  const { t, loading: translationsLoading } = useTranslation('storefront');
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -29,28 +45,48 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
             )}
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation with Mega Menu */}
           <nav className="hidden md:flex items-center gap-6">
             <Link href={`/shops/${storeSlug}`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-              בית
+              {translationsLoading ? (
+                <TextSkeleton width="w-12" height="h-4" />
+              ) : (
+                t('navigation.home')
+              )}
             </Link>
+            {collections.length > 0 && (
+              <MegaMenu categories={collections} />
+            )}
             <Link href={`/shops/${storeSlug}/collections`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-              קטגוריות
+              {translationsLoading ? (
+                <TextSkeleton width="w-16" height="h-4" />
+              ) : (
+                t('navigation.collections')
+              )}
             </Link>
             <Link href={`/shops/${storeSlug}/products`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-              כל המוצרים
+              {translationsLoading ? (
+                <TextSkeleton width="w-16" height="h-4" />
+              ) : (
+                t('navigation.products')
+              )}
             </Link>
             <Link href={`/shops/${storeSlug}/blog`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-              בלוג
+              {translationsLoading ? (
+                <TextSkeleton width="w-12" height="h-4" />
+              ) : (
+                t('navigation.blog')
+              )}
             </Link>
           </nav>
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-4">
-            {/* Search */}
-            <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors">
-              <HiSearch className="w-5 h-5 text-gray-600" />
-            </button>
+            {/* Search Bar */}
+            <SearchBar />
+            
+            {/* Country Selector */}
+            <CountrySelector />
 
             {/* Side Cart */}
             <SideCart storeId={1} /> {/* TODO: Get from props/context */}
@@ -59,6 +95,7 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="תפריט"
             >
               {isMobileMenuOpen ? (
                 <HiX className="w-5 h-5 text-gray-600" />
@@ -78,28 +115,44 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                בית
+                {translationsLoading ? (
+                  <TextSkeleton width="w-12" height="h-4" />
+                ) : (
+                  t('navigation.home')
+                )}
               </Link>
               <Link
                 href={`/shops/${storeSlug}/collections`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                קטגוריות
+                {translationsLoading ? (
+                  <TextSkeleton width="w-16" height="h-4" />
+                ) : (
+                  t('navigation.collections')
+                )}
               </Link>
               <Link
                 href={`/shops/${storeSlug}/products`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                כל המוצרים
+                {translationsLoading ? (
+                  <TextSkeleton width="w-16" height="h-4" />
+                ) : (
+                  t('navigation.products')
+                )}
               </Link>
               <Link
                 href={`/shops/${storeSlug}/blog`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                בלוג
+                {translationsLoading ? (
+                  <TextSkeleton width="w-12" height="h-4" />
+                ) : (
+                  t('navigation.blog')
+                )}
               </Link>
             </nav>
           </div>
@@ -108,4 +161,3 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
     </header>
   );
 }
-

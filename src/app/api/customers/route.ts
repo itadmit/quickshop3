@@ -256,6 +256,16 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
     });
 
+    // Send welcome email to new customer (async, don't block API response)
+    const { sendWelcomeEmail } = await import('@/lib/customer-email');
+    sendWelcomeEmail(storeId, {
+      email: customerResult.email,
+      firstName: customerResult.first_name || '',
+      lastName: customerResult.last_name || '',
+    }).catch((error) => {
+      console.warn('Failed to send welcome email:', error);
+    });
+
     return NextResponse.json({ customer: customerResult }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating customer:', error);

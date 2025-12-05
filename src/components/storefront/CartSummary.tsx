@@ -1,6 +1,7 @@
 'use client';
 
 import { useCartCalculator } from '@/hooks/useCartCalculator';
+import { useCart } from '@/hooks/useCart';
 import { ShippingRate } from '@/lib/services/cartCalculator';
 import { HiTag, HiX } from 'react-icons/hi';
 import { useState } from 'react';
@@ -8,6 +9,7 @@ import { useState } from 'react';
 interface CartSummaryProps {
   storeId: number;
   shippingRate?: ShippingRate;
+  isNavigatingToCheckout?: boolean;
   onCheckout?: () => void;
 }
 
@@ -22,11 +24,15 @@ interface CartSummaryProps {
  * - סה"כ סופי
  * - קופון
  */
-export function CartSummary({ storeId, shippingRate, onCheckout }: CartSummaryProps) {
+export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = false, onCheckout }: CartSummaryProps) {
+  const { cartItems, isLoading: cartLoading } = useCart();
+  
+  // SINGLE SOURCE OF TRUTH: מעביר את cartItems ל-useCartCalculator
   const {
     calculation,
     discountCode,
     validatingCode,
+    loading: calcLoading,
     applyDiscountCode,
     removeDiscountCode,
     getSubtotal,
@@ -40,9 +46,12 @@ export function CartSummary({ storeId, shippingRate, onCheckout }: CartSummaryPr
     getWarnings,
   } = useCartCalculator({
     storeId,
+    cartItems, // ✅ מעביר את cartItems
     shippingRate,
     autoCalculate: true,
   });
+
+  const isLoading = cartLoading || calcLoading;
 
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
@@ -60,7 +69,8 @@ export function CartSummary({ storeId, shippingRate, onCheckout }: CartSummaryPr
     }
   };
 
-  if (!calculation) {
+  // Show loading state while cart is loading or calculating
+  if (isLoading || !calculation) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="animate-pulse space-y-4">
@@ -68,6 +78,15 @@ export function CartSummary({ storeId, shippingRate, onCheckout }: CartSummaryPr
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           <div className="h-10 bg-gray-200 rounded"></div>
         </div>
+      </div>
+    );
+  }
+
+  // If cart is empty, show empty state
+  if (cartItems.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <p className="text-gray-500 text-center">העגלה ריקה</p>
       </div>
     );
   }
@@ -168,15 +187,71 @@ export function CartSummary({ storeId, shippingRate, onCheckout }: CartSummaryPr
 
       {/* Summary */}
       <div className="border-t border-gray-200 pt-4 space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">סה"כ פריטים:</span>
-          <span className="text-gray-900">₪{getSubtotal().toFixed(2)}</span>
-        </div>
-
+        {/* סה"כ פריטים - מוצג רק אם יש הנחה */}
         {getDiscount() > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">הנחה:</span>
-            <span className="font-semibold text-green-600">-₪{getDiscount().toFixed(2)}</span>
+            <span className="text-gray-600">סה"כ פריטים:</span>
+            <span className="text-gray-900">₪{getSubtotal().toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* הנחות אוטומטיות */}
+        {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">הנחה אוטומטית:</span>
+              <span className="font-semibold text-green-600">
+                -₪{getDiscounts()
+                  .filter(d => d.source === 'automatic')
+                  .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
+                  .toFixed(2)}
+              </span>
+            </div>
+            {/* רשימת הנחות אוטומטיות */}
+            {getDiscounts()
+              .filter(d => d.source === 'automatic')
+              .map((discount, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs text-gray-500 pr-4">
+                  <span>{discount.name || discount.description}</span>
+                  <span>
+                    {discount.type === 'free_shipping' ? (
+                      <span className="text-green-600">משלוח חינם</span>
+                    ) : (
+                      `-₪${discount.amount.toFixed(2)}`
+                    )}
+                  </span>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* הנחת קופון */}
+        {getDiscounts().filter(d => d.source === 'code').length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">הנחת קופון:</span>
+              <span className="font-semibold text-green-600">
+                -₪{getDiscounts()
+                  .filter(d => d.source === 'code')
+                  .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
+                  .toFixed(2)}
+              </span>
+            </div>
+            {/* רשימת הנחות קופון */}
+            {getDiscounts()
+              .filter(d => d.source === 'code')
+              .map((discount, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs text-gray-500 pr-4">
+                  <span>{discount.code || discount.name || discount.description}</span>
+                  <span>
+                    {discount.type === 'free_shipping' ? (
+                      <span className="text-green-600">משלוח חינם</span>
+                    ) : (
+                      `-₪${discount.amount.toFixed(2)}`
+                    )}
+                  </span>
+                </div>
+              ))}
           </div>
         )}
 
@@ -203,10 +278,20 @@ export function CartSummary({ storeId, shippingRate, onCheckout }: CartSummaryPr
       {onCheckout && (
         <button
           onClick={onCheckout}
-          disabled={!calculation.isValid || calculation.total === 0}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors disabled:cursor-not-allowed"
+          disabled={!calculation.isValid || calculation.total === 0 || isNavigatingToCheckout}
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          המשך לצ'ק אאוט
+          {isNavigatingToCheckout ? (
+            <>
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              עובר לצ'ק אאוט...
+            </>
+          ) : (
+            'המשך לצ\'ק אאוט'
+          )}
         </button>
       )}
     </div>

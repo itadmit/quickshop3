@@ -20,7 +20,7 @@ interface Store {
   plan: string;
 }
 
-type SettingsTab = 'general' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced';
+type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -99,6 +99,7 @@ export default function SettingsPage() {
 
   const tabs: { id: SettingsTab; label: string }[] = [
     { id: 'general', label: 'כללי' },
+    { id: 'domain', label: 'דומיין' },
     { id: 'payments', label: 'תשלומים' },
     { id: 'shipping', label: 'משלוחים' },
     { id: 'email', label: 'מייל' },
@@ -123,7 +124,7 @@ export default function SettingsPage() {
     <div className="p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">הגדרות</h1>
-        {activeTab === 'general' && (
+        {(activeTab === 'general' || activeTab === 'domain') && (
           <Button onClick={saveSettings} disabled={saving}>
             שמור שינויים
           </Button>
@@ -228,6 +229,74 @@ export default function SettingsPage() {
                         <option value="Asia/Jerusalem">ירושלים (GMT+2)</option>
                         <option value="UTC">UTC</option>
                       </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'domain' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">דומיין מותאם אישית</h2>
+                    <p className="text-sm text-gray-600 mb-6">
+                      חבר את הדומיין שלך לחנות כדי ליצור חוויית קנייה מקצועית יותר
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        דומיין מותאם אישית
+                      </label>
+                      <Input
+                        value={formData.domain || ''}
+                        onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                        placeholder="example.com"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        הזן את הדומיין שלך ללא http:// או https:// (לדוגמה: myshop.com)
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-blue-900 mb-2">איך לחבר דומיין מותאם אישית?</h3>
+                      <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                        <li>היכנס לפאנל הניהול של ספק הדומיין שלך (GoDaddy, Namecheap, Cloudflare וכו')</li>
+                        <li>מצא את ההגדרות של DNS Records</li>
+                        <li>הוסף A Record חדש עם הערכים הבאים:
+                          <ul className="list-disc list-inside mr-4 mt-1 space-y-1">
+                            <li><strong>Type:</strong> A</li>
+                            <li><strong>Name:</strong> @ (או השאר ריק)</li>
+                            <li><strong>Value:</strong> 76.76.21.21 (כתובת IP שלנו)</li>
+                            <li><strong>TTL:</strong> 3600 (או ברירת מחדל)</li>
+                          </ul>
+                        </li>
+                        <li>שמור את השינויים</li>
+                        <li>הזן את הדומיין למעלה ולחץ על "שמור שינויים"</li>
+                      </ol>
+                      <div className="mt-4 p-3 bg-white rounded border border-blue-200">
+                        <p className="text-xs text-gray-700">
+                          <strong>הערה חשובה:</strong> שינויי DNS יכולים לקחת עד 48 שעות להיכנס לתוקף. 
+                          לאחר שהדומיין מחובר, החנות שלך תהיה זמינה בכתובת החדשה שלך.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">כתובת החנות הנוכחית</h3>
+                      <p className="text-sm text-gray-700">
+                        {formData.domain ? (
+                          <>
+                            <span className="font-mono">https://{formData.domain}</span>
+                            <span className="text-gray-500 mr-2"> (לאחר חיבור הדומיין)</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-mono">quickshop3.vercel.app/shops/{store?.slug || 'your-slug'}</span>
+                            <span className="text-gray-500 mr-2"> (כתובת ברירת מחדל)</span>
+                          </>
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { emitTrackingEvent } from '@/lib/tracking/events';
 
 interface ProductCardProps {
   product: {
@@ -10,18 +11,53 @@ interface ProductCardProps {
     title: string;
     handle: string;
     image: string | null;
-    price: number;
+    price: number | null;
   };
 }
 
 export function ProductCard({ product }: ProductCardProps) {
   const params = useParams();
+  const pathname = usePathname();
   const storeSlug = params?.storeSlug as string || '';
   
+  // Track ViewContent when product card is viewed
+  useEffect(() => {
+    // רק אם זה בדף מוצר או בדף קטגוריה (לא בדף בית)
+    if (pathname?.includes('/products/') || pathname?.includes('/collections/')) {
+      emitTrackingEvent({
+        event: 'ViewContent',
+        content_type: 'product',
+        content_ids: [String(product.id)],
+        contents: [{
+          id: String(product.id),
+          quantity: 1,
+          item_price: Number(product.price || 0),
+        }],
+        currency: 'ILS',
+        value: Number(product.price || 0),
+      });
+    }
+  }, [product.id, product.price, pathname]);
+
   return (
     <Link
       href={`/shops/${storeSlug}/products/${product.handle}`}
       className="group bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden"
+      onClick={() => {
+        // Track click on product
+        emitTrackingEvent({
+          event: 'ViewContent',
+          content_type: 'product',
+          content_ids: [String(product.id)],
+          contents: [{
+            id: String(product.id),
+            quantity: 1,
+            item_price: Number(product.price || 0),
+          }],
+          currency: 'ILS',
+          value: Number(product.price || 0),
+        });
+      }}
     >
       {/* Product Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -30,6 +66,7 @@ export function ProductCard({ product }: ProductCardProps) {
             src={product.image}
             alt={product.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -52,14 +89,13 @@ export function ProductCard({ product }: ProductCardProps) {
 
       {/* Product Info */}
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
+        <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-green-600 transition-colors line-clamp-2">
           {product.title}
         </h3>
         <p className="text-lg font-bold text-gray-900">
-          ₪{product.price.toFixed(2)}
+          ₪{Number(product.price || 0).toFixed(2)}
         </p>
       </div>
     </Link>
   );
 }
-

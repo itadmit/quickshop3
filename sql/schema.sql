@@ -143,17 +143,20 @@ CREATE TABLE product_options (
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
+  type VARCHAR(50) DEFAULT 'button' CHECK (type IN ('button', 'color', 'pattern', 'image')),
   position INT DEFAULT 1,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
 
 CREATE INDEX idx_product_options_product_id ON product_options(product_id);
+CREATE INDEX idx_product_options_type ON product_options(type);
 
 -- Product Option Values
 CREATE TABLE product_option_values (
   id SERIAL PRIMARY KEY,
   option_id INT REFERENCES product_options(id) ON DELETE CASCADE,
   value VARCHAR(200) NOT NULL,
+  metadata JSONB DEFAULT NULL,
   position INT DEFAULT 1,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
@@ -335,8 +338,9 @@ CREATE TABLE orders (
   email VARCHAR(255),
   phone VARCHAR(50),
   name VARCHAR(255), -- Customer full name
-  order_number INT, -- Sequential order number per store
+  order_number INT, -- Sequential order number per store (starts from 1000)
   order_name VARCHAR(50), -- Display name like #1001
+  order_handle VARCHAR(255) UNIQUE, -- Secure handle for order URL (encrypted/random)
   financial_status VARCHAR(50) DEFAULT 'pending', -- pending, authorized, partially_paid, paid, partially_refunded, refunded, voided
   fulfillment_status VARCHAR(50), -- fulfilled, partial, restocked, null
   total_price NUMERIC(12,2) NOT NULL,
@@ -387,6 +391,7 @@ CREATE TABLE orders (
 
 CREATE INDEX idx_orders_store_id ON orders(store_id);
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
+CREATE INDEX idx_orders_handle ON orders(order_handle);
 CREATE INDEX idx_orders_email ON orders(email);
 CREATE INDEX idx_orders_financial_status ON orders(financial_status);
 CREATE INDEX idx_orders_fulfillment_status ON orders(fulfillment_status);
@@ -1445,7 +1450,28 @@ CREATE INDEX idx_integrations_type ON integrations(integration_type);
 CREATE INDEX idx_integrations_active ON integrations(is_active);
 
 -- ============================================
--- 25. TRAFFIC SOURCES (מקורות תנועה)
+-- 25. EMAIL TEMPLATES (טמפלייטי מיילים)
+-- ============================================
+
+-- Email Templates - מאפשר לכל חנות לערוך את טמפלייטי המיילים
+CREATE TABLE email_templates (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  template_type VARCHAR(50) NOT NULL, -- ORDER_CONFIRMATION, WELCOME, ORDER_SHIPPED, ORDER_CANCELLED
+  subject TEXT NOT NULL, -- נושא המייל (עם משתנים {{variable}})
+  body_html TEXT NOT NULL, -- תוכן המייל ב-HTML (עם משתנים {{variable}})
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id, template_type)
+);
+
+CREATE INDEX idx_email_templates_store_id ON email_templates(store_id);
+CREATE INDEX idx_email_templates_type ON email_templates(template_type);
+CREATE INDEX idx_email_templates_active ON email_templates(is_active, store_id);
+
+-- ============================================
+-- 26. TRAFFIC SOURCES (מקורות תנועה)
 -- ============================================
 
 -- Traffic Sources
@@ -1614,6 +1640,20 @@ CREATE INDEX idx_visitor_page_views_store ON visitor_page_views(store_id);
 CREATE INDEX idx_visitor_page_views_path ON visitor_page_views(page_path);
 CREATE INDEX idx_visitor_page_views_viewed_at ON visitor_page_views(viewed_at DESC);
 
+-- Visitor Carts (עגלות מבקרים - שמירה בשרת)
+CREATE TABLE visitor_carts (
+  visitor_session_id VARCHAR(255) NOT NULL,
+  store_id INT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  items JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  PRIMARY KEY (visitor_session_id, store_id)
+);
+
+CREATE INDEX idx_visitor_carts_session ON visitor_carts(visitor_session_id);
+CREATE INDEX idx_visitor_carts_store ON visitor_carts(store_id);
+CREATE INDEX idx_visitor_carts_updated_at ON visitor_carts(updated_at DESC);
+
 -- Function to update analytics_daily from visitor_sessions
 CREATE OR REPLACE FUNCTION update_analytics_daily_from_visitors(target_date DATE DEFAULT CURRENT_DATE)
 RETURNS void AS $$
@@ -1636,6 +1676,74 @@ BEGIN
     updated_at = now();
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================
+-- 23. TRANSLATIONS SYSTEM (מערכת תרגומים)
+-- ============================================
+
+-- Translation Keys (מפתחות תרגום - System Translations)
+CREATE TABLE translation_keys (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  namespace VARCHAR(100) NOT NULL, -- 'storefront', 'products', 'common'
+  key_path VARCHAR(255) NOT NULL, -- 'home.title', 'product.add_to_cart'
+  default_value TEXT, -- ערך ברירת מחדל (עברית)
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id, namespace, key_path)
+);
+
+CREATE INDEX idx_translation_keys_store ON translation_keys(store_id);
+CREATE INDEX idx_translation_keys_namespace ON translation_keys(namespace);
+CREATE INDEX idx_translation_keys_key_path ON translation_keys(key_path);
+
+-- Translations (תרגומים - System Translations)
+CREATE TABLE translations (
+  id SERIAL PRIMARY KEY,
+  translation_key_id INT REFERENCES translation_keys(id) ON DELETE CASCADE,
+  locale VARCHAR(10) NOT NULL, -- 'he-IL', 'en-US', 'ar-SA'
+  value TEXT NOT NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(translation_key_id, locale)
+);
+
+CREATE INDEX idx_translations_key ON translations(translation_key_id);
+CREATE INDEX idx_translations_locale ON translations(locale);
+
+-- Templates (תבניות - Template/Content Translations)
+CREATE TABLE templates (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  name VARCHAR(200) NOT NULL, -- 'home-hero', 'home-featured-products'
+  type VARCHAR(100) NOT NULL, -- 'hero', 'section', 'banner'
+  page_type VARCHAR(100), -- 'home', 'product', 'collection'
+  settings JSONB, -- הגדרות התבנית
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id, name)
+);
+
+CREATE INDEX idx_templates_store ON templates(store_id);
+CREATE INDEX idx_templates_page_type ON templates(page_type);
+CREATE INDEX idx_templates_type ON templates(type);
+
+-- Template Translations (תרגומי תבניות - Template/Content Translations)
+CREATE TABLE template_translations (
+  id SERIAL PRIMARY KEY,
+  template_id INT REFERENCES templates(id) ON DELETE CASCADE,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  key VARCHAR(255) NOT NULL, -- 'title', 'subtitle', 'cta_text'
+  locale VARCHAR(10) NOT NULL, -- 'he-IL', 'en-US'
+  value TEXT NOT NULL, -- התרגום
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(template_id, key, locale)
+);
+
+CREATE INDEX idx_template_translations_template ON template_translations(template_id);
+CREATE INDEX idx_template_translations_store ON template_translations(store_id);
+CREATE INDEX idx_template_translations_locale ON template_translations(locale);
 
 -- ============================================
 -- END OF SCHEMA

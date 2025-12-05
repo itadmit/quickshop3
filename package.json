@@ -17,8 +17,10 @@
     "db:reset": "node scripts/reset-db.js",
     "db:setup": "node scripts/setup-db.js",
     "db:migrate": "node scripts/run-migration.js",
+    "db:add-options-columns": "node scripts/add-options-columns.js",
     "test:redis": "node scripts/test-redis.js",
-    "setup:qstash": "node scripts/setup-qstash.js"
+    "setup:qstash": "node scripts/setup-qstash.js",
+    "test:email": "npx tsx scripts/test-email.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",

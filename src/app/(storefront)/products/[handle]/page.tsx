@@ -64,15 +64,10 @@ async function getProduct(handle: string, storeId: number) {
 export default async function ProductPage({
   params,
 }: {
-  params: Promise<{ storeSlug: string; handle: string }>;
+  params: Promise<{ handle: string }>;
 }) {
-  const { storeSlug, handle } = await params;
-  const { getStoreIdBySlug } = await import('@/lib/utils/store');
-  const storeId = await getStoreIdBySlug(storeSlug);
-  
-  if (!storeId) {
-    return <div>חנות לא נמצאה</div>;
-  }
+  const { handle } = await params;
+  const storeId = 1; // TODO: Get from domain/subdomain
 
   const product = await getProduct(handle, storeId);
 

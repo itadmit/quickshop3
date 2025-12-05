@@ -9,6 +9,7 @@ export interface Order {
   name: string | null;
   order_number: number | null;
   order_name: string | null;
+  order_handle: string | null; // Secure handle for order URL
   financial_status: 'pending' | 'authorized' | 'partially_paid' | 'paid' | 'partially_refunded' | 'refunded' | 'voided';
   fulfillment_status: 'fulfilled' | 'partial' | 'restocked' | null;
   total_price: string;

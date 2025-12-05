@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { useCart } from '@/hooks/useCart';
+import { useCartOpen } from '@/hooks/useCartOpen';
 import { HiShoppingCart, HiCheck } from 'react-icons/hi';
+import { useTranslation } from '@/hooks/useTranslation';
+import { emitTrackingEvent } from '@/lib/tracking/events';
+import { TextSkeleton } from '@/components/ui/Skeleton';
 
 interface AddToCartButtonProps {
   productId: number;
@@ -12,6 +16,12 @@ interface AddToCartButtonProps {
   price: number;
   image?: string | null;
   available: boolean;
+  onAddToCart?: () => void; // Callback לפתיחת העגלה
+  // אפשרויות המוצר (מידה, צבע וכו')
+  properties?: Array<{
+    name: string;
+    value: string;
+  }>;
 }
 
 export function AddToCartButton({
@@ -22,26 +32,52 @@ export function AddToCartButton({
   price,
   image,
   available,
+  properties,
 }: AddToCartButtonProps) {
-  const { addToCart } = useCart();
+  const { addToCart, isAddingToCart } = useCart();
+  const { openCart } = useCartOpen();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const { t, loading: translationsLoading } = useTranslation('storefront');
 
-  const handleAddToCart = () => {
-    if (!available) return;
+  const handleAddToCart = async () => {
+    if (!available || isAddingToCart) return;
 
-    addToCart({
-      variant_id: variantId,
-      product_id: productId,
-      product_title: productTitle,
-      variant_title: variantTitle,
-      price,
-      quantity,
-      image: image || undefined,
-    });
+    try {
+      await addToCart({
+        variant_id: variantId,
+        product_id: productId,
+        product_title: productTitle,
+        variant_title: variantTitle,
+        price,
+        quantity,
+        image: image || undefined,
+        properties,
+      });
 
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+      // Track AddToCart event
+      emitTrackingEvent({
+        event: 'AddToCart',
+        content_ids: [String(productId)],
+        contents: [{
+          id: String(productId),
+          quantity,
+          item_price: price,
+        }],
+        currency: 'ILS',
+        value: price * quantity,
+      });
+
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+
+      // פתיחת העגלה אוטומטית אחרי הוספה (Shopify-style)
+      setTimeout(() => {
+        openCart();
+      }, 300);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   };
 
   if (!available) {
@@ -50,7 +86,11 @@ export function AddToCartButton({
         disabled
         className="w-full bg-gray-300 text-gray-500 font-semibold py-4 px-6 rounded-lg cursor-not-allowed"
       >
-        אזל מהמלאי
+        {translationsLoading ? (
+          <TextSkeleton width="w-20" height="h-5" className="mx-auto" />
+        ) : (
+          t('product.out_of_stock')
+        )}
       </button>
     );
   }
@@ -59,11 +99,18 @@ export function AddToCartButton({
     <div className="space-y-4">
       {/* Quantity Selector */}
       <div className="flex items-center gap-4">
-        <label className="text-sm font-medium text-gray-700">כמות:</label>
+        <label className="text-sm font-medium text-gray-700">
+          {translationsLoading ? (
+            <TextSkeleton width="w-16" height="h-4" />
+          ) : (
+            `${t('product.quantity')}:`
+          )}
+        </label>
         <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
           <button
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
             className="px-3 py-2 hover:bg-gray-100 transition-colors"
+            aria-label="הפחת כמות"
           >
             -
           </button>
@@ -71,6 +118,7 @@ export function AddToCartButton({
           <button
             onClick={() => setQuantity(quantity + 1)}
             className="px-3 py-2 hover:bg-gray-100 transition-colors"
+            aria-label="הוסף כמות"
           >
             +
           </button>
@@ -80,25 +128,43 @@ export function AddToCartButton({
       {/* Add to Cart Button */}
       <button
         onClick={handleAddToCart}
+        disabled={isAddingToCart}
         className={`w-full font-semibold py-4 px-6 rounded-lg transition-all flex items-center justify-center gap-2 ${
           added
             ? 'bg-green-500 text-white'
+            : isAddingToCart
+            ? 'bg-green-400 text-white cursor-wait'
             : 'bg-green-600 hover:bg-green-700 text-white'
-        }`}
+        } disabled:opacity-75 disabled:cursor-not-allowed`}
       >
-        {added ? (
+        {isAddingToCart ? (
+          <>
+            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            מוסיף לעגלה...
+          </>
+        ) : added ? (
           <>
             <HiCheck className="w-5 h-5" />
-            נוסף לעגלה!
+            {translationsLoading ? (
+              <TextSkeleton width="w-24" height="h-5" />
+            ) : (
+              `${t('product.add_to_cart')} ✓`
+            )}
           </>
         ) : (
           <>
             <HiShoppingCart className="w-5 h-5" />
-            הוסף לעגלה
+            {translationsLoading ? (
+              <TextSkeleton width="w-24" height="h-5" />
+            ) : (
+              t('product.add_to_cart')
+            )}
           </>
         )}
       </button>
     </div>
   );
 }
-

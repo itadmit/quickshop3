@@ -33,6 +33,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Helper function להוספת header לצ'ק אאוט
+  const addCheckoutHeader = (response: NextResponse) => {
+    if (pathname.includes('/checkout')) {
+      response.headers.set('x-is-checkout', 'true');
+    }
+    return response;
+  };
+
   // Helper function to verify token and return user or null
   let user: { id: number; email: string; name: string; store_id: number } | null = null;
   let tokenValid = false;
@@ -80,13 +88,13 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/login' || pathname === '/register') {
     if (tokenValid && user) {
       // User is logged in, redirect to dashboard (not home page)
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return addCheckoutHeader(NextResponse.redirect(new URL('/dashboard', request.url)));
     } else if (token && !tokenValid) {
       // Token exists but is invalid, clear it and allow access to login page
-      return clearCookieAndContinue();
+      return addCheckoutHeader(clearCookieAndContinue());
     }
     // Allow access to login/register pages if no token or token cleared
-    return NextResponse.next();
+    return addCheckoutHeader(NextResponse.next());
   }
 
   // Public routes that don't require authentication
@@ -198,7 +206,7 @@ export async function middleware(request: NextRequest) {
           });
         });
         
-        return response;
+        return addCheckoutHeader(response);
       }
     } catch (error) {
       // לא נכשל את הבקשה אם יש שגיאה במעקב
@@ -215,7 +223,7 @@ export async function middleware(request: NextRequest) {
     if (!token || !tokenValid || !user) {
       // No token or invalid token, clear it and redirect to login
       const loginUrl = '/login';
-      return clearCookieAndRedirect(loginUrl);
+      return addCheckoutHeader(clearCookieAndRedirect(loginUrl));
     }
     // Token is valid, allow access
     // עדכון פעילות משתמש ב-Redis (לא חוסם את הבקשה)
@@ -230,7 +238,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return addCheckoutHeader(NextResponse.next());
 }
 
 export const config = {

@@ -1,55 +1,59 @@
-'use client';
+import React, { Suspense } from 'react';
+import { CheckoutSuccess } from '@/components/storefront/CheckoutSuccess';
+import { getStoreBySlug } from '@/lib/utils/store';
 
-import { useSearchParams, useParams } from 'next/navigation';
-import Link from 'next/link';
-import { HiCheckCircle } from 'react-icons/hi';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default function CheckoutSuccessPage() {
-  const searchParams = useSearchParams();
-  const params = useParams();
-  const orderId = searchParams.get('orderId');
-  const storeSlug = params.storeSlug as string;
-
-  return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-            <HiCheckCircle className="w-12 h-12 text-green-600" />
-          </div>
-        </div>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">ההזמנה בוצעה בהצלחה!</h1>
-        <p className="text-gray-600 mb-2">
-          תודה על הקנייה שלך. ההזמנה שלך התקבלה ואנו מעבדים אותה.
-        </p>
-        {orderId && (
-          <p className="text-sm text-gray-500 mb-8">
-            מספר הזמנה: {orderId}
-          </p>
-        )}
-
-        <div className="space-y-4">
-          <p className="text-gray-700">
-            נשלח אליך אימייל אישור עם פרטי ההזמנה.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href={`/shops/${storeSlug}/products`}
-              className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
-            >
-              המשך לקניות
-            </Link>
-            <Link
-              href={`/shops/${storeSlug}`}
-              className="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-colors"
-            >
-              חזרה לדף הבית
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function CheckoutSuccessContent({
+  orderId,
+  storeSlug,
+}: {
+  orderId: string;
+  storeSlug: string;
+}) {
+  return <CheckoutSuccess orderId={parseInt(orderId, 10)} storeSlug={storeSlug} storeName="" />;
 }
 
+export default async function CheckoutSuccessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ storeSlug: string }>;
+  searchParams: Promise<{ handle?: string; orderId?: string }>;
+}) {
+  const { storeSlug } = await params;
+  const { handle, orderId } = await searchParams;
+
+  // תמיכה ב-handle (מומלץ) או orderId (legacy)
+  const orderIdentifier = handle || orderId;
+
+  if (!orderIdentifier) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">שגיאה</h1>
+          <p>מספר הזמנה לא נמצא</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Load store name and logo
+  const store = await getStoreBySlug(storeSlug);
+  const storeName = store?.name || 'Quick Shop';
+  const storeLogo = store?.logo || null;
+
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">טוען פרטי הזמנה...</p>
+        </div>
+      </div>
+    }>
+      <CheckoutSuccess orderHandle={handle || undefined} orderId={orderId ? parseInt(orderId, 10) : undefined} storeSlug={storeSlug} storeName={storeName} storeLogo={storeLogo} />
+    </Suspense>
+  );
+}

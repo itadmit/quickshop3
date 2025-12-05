@@ -2,13 +2,19 @@
 
 import { queryOne } from '@/lib/db';
 import { eventBus } from '@/lib/events/eventBus';
+import { sendWelcomeEmail } from '@/lib/customer-email';
+import { sendOrderReceiptEmail } from '@/lib/order-email';
+import crypto from 'crypto';
 
 interface CreateOrderInput {
+  storeId: number; // חייב להיות מועבר מהקומפוננטה
   lineItems: Array<{
     variant_id: number;
     product_id: number;
     quantity: number;
     price: number;
+    image?: string;
+    properties?: Array<{ name: string; value: string }>;
   }>;
   customer: {
     firstName: string;
@@ -19,12 +25,21 @@ interface CreateOrderInput {
     city: string;
     postalCode: string;
     country: string;
+    notes?: string;
   };
   total: number;
+  deliveryMethod?: 'shipping' | 'pickup';
+  paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash';
+  customFields?: Record<string, any>;
 }
 
 export async function createOrder(input: CreateOrderInput) {
-  const storeId = 1; // TODO: Get from domain/subdomain
+  const { storeId } = input;
+  
+  // בדיקת תקינות storeId
+  if (!storeId || typeof storeId !== 'number' || storeId <= 0) {
+    throw new Error('Invalid storeId');
+  }
 
   // Create customer or get existing
   let customer = await queryOne<{ id: number }>(
@@ -32,6 +47,7 @@ export async function createOrder(input: CreateOrderInput) {
     [storeId, input.customer.email]
   );
 
+  let isNewCustomer = false;
   if (!customer) {
     const newCustomer = await queryOne<{ id: number }>(
       `INSERT INTO customers (store_id, first_name, last_name, email, phone, accepts_marketing, state)
@@ -46,50 +62,85 @@ export async function createOrder(input: CreateOrderInput) {
       ]
     );
     customer = newCustomer;
+    isNewCustomer = true;
+    
+    // Send welcome email to new customer (async, don't block order creation)
+    sendWelcomeEmail(storeId, {
+      email: input.customer.email,
+      firstName: input.customer.firstName,
+      lastName: input.customer.lastName,
+    }).catch((error) => {
+      console.warn('Failed to send welcome email:', error);
+    });
   }
 
   if (!customer) {
     throw new Error('Failed to create customer');
   }
 
-  // Get next order number
+  // Get next order number - מתחיל מ-1000
   const lastOrder = await queryOne<{ order_number: number }>(
     'SELECT order_number FROM orders WHERE store_id = $1 ORDER BY order_number DESC LIMIT 1',
     [storeId]
   );
-  const orderNumber = (lastOrder?.order_number || 0) + 1;
+  // אם אין הזמנות קודמות, מתחיל מ-1000
+  const orderNumber = lastOrder?.order_number 
+    ? lastOrder.order_number + 1 
+    : 1000;
   const orderName = `#${orderNumber.toString().padStart(4, '0')}`;
 
-  // Create order
-  const order = await queryOne<{ id: number; order_number: number }>(
+  // Generate secure handle for order (מוצפן)
+  const orderHandle = crypto.randomBytes(16).toString('hex');
+
+  // Create order with customer name
+  const customerName = `${input.customer.firstName} ${input.customer.lastName}`;
+  
+  // Prepare address object
+  const addressObject = {
+    first_name: input.customer.firstName,
+    last_name: input.customer.lastName,
+    address1: input.customer.address,
+    city: input.customer.city,
+    zip: input.customer.postalCode,
+    country: input.customer.country,
+    phone: input.customer.phone,
+  };
+  
+  // Prepare note_attributes with delivery and payment methods
+  const noteAttributes: Record<string, any> = {
+    ...(input.customFields || {}),
+    delivery_method: input.deliveryMethod || 'shipping',
+    payment_method: input.paymentMethod || 'credit_card',
+  };
+  
+  const order = await queryOne<{ id: number; order_number: number; order_handle: string }>(
     `INSERT INTO orders (
-      store_id, customer_id, order_number, order_name,
+      store_id, customer_id, order_number, order_name, order_handle,
       financial_status, fulfillment_status,
       total_price, subtotal_price, currency,
-      billing_address, shipping_address, email
+      billing_address, shipping_address, email, phone, name, note, note_attributes, gateway
     )
     VALUES (
-      $1, $2, $6, $7,
+      $1, $2, $7, $8, $12,
       'pending', 'unfulfilled',
       $3, $3, 'ILS',
-      $4, $4, $5
+      $4, $4, $5, $9, $10, $6, $11, $13
     )
-    RETURNING id, order_number`,
+    RETURNING id, order_number, order_handle`,
     [
       storeId,
       customer.id,
       input.total,
-      JSON.stringify({
-        first_name: input.customer.firstName,
-        last_name: input.customer.lastName,
-        address1: input.customer.address,
-        city: input.customer.city,
-        zip: input.customer.postalCode,
-        country: input.customer.country,
-      }),
+      JSON.stringify(addressObject),
       input.customer.email,
+      input.customer.notes || null,
       orderNumber,
       orderName,
+      input.customer.phone,
+      customerName,
+      JSON.stringify(noteAttributes),
+      orderHandle,
+      input.paymentMethod || 'credit_card',
     ]
   );
 
@@ -97,19 +148,38 @@ export async function createOrder(input: CreateOrderInput) {
     throw new Error('Failed to create order');
   }
 
-  // Create line items
+  // Create line items with properties and image
   for (const lineItem of input.lineItems) {
+    // Combine properties with image if exists
+    let propertiesToSave = lineItem.properties || [];
+    if (lineItem.image) {
+      // Add image to properties if not already there
+      const hasImageProperty = propertiesToSave.some(p => p.name === '_image');
+      if (!hasImageProperty) {
+        propertiesToSave = [...propertiesToSave, { name: '_image', value: lineItem.image }];
+      }
+    }
+    
     await queryOne(
       `INSERT INTO order_line_items (
         order_id, product_id, variant_id, title, variant_title,
-        quantity, price
+        quantity, price, properties
       )
       VALUES ($1, $2, $3, 
         (SELECT title FROM products WHERE id = $2),
         (SELECT title FROM product_variants WHERE id = $3),
-        $4, $5
+        $4, $5, $6
       )`,
-      [order.id, lineItem.product_id, lineItem.variant_id, lineItem.quantity, lineItem.price]
+      [
+        order.id, 
+        lineItem.product_id, 
+        lineItem.variant_id, 
+        lineItem.quantity, 
+        lineItem.price,
+        propertiesToSave.length > 0 
+          ? JSON.stringify(propertiesToSave) 
+          : null
+      ]
     );
   }
 
@@ -131,6 +201,14 @@ export async function createOrder(input: CreateOrderInput) {
     }
   );
 
-  return order;
+  // Send order confirmation email (async, don't block order creation)
+  sendOrderReceiptEmail(order.id, storeId).catch((error) => {
+    console.warn('Failed to send order receipt email:', error);
+  });
+
+  return {
+    ...order,
+    handle: order.order_handle, // Return handle for URL
+  };
 }
 

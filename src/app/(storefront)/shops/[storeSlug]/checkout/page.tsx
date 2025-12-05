@@ -1,175 +1,108 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+import { getStoreBySlug } from '@/lib/utils/store';
+import { CheckoutForm } from '@/components/storefront/CheckoutForm';
+import { CheckoutHeader } from '@/components/storefront/CheckoutHeader';
 
-import { useState } from 'react';
-import { useCart } from '@/hooks/useCart';
-import { CartSummary } from '@/components/storefront/CartSummary';
-import { useRouter, useParams } from 'next/navigation';
-import { createOrder } from '@/app/(storefront)/actions/checkout';
-import { useCartCalculator } from '@/hooks/useCartCalculator';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default function CheckoutPage() {
-  const { cartItems, clearCart } = useCart();
-  const router = useRouter();
-  const params = useParams();
-  const storeSlug = params.storeSlug as string;
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    postalCode: '',
-    country: 'ישראל',
-  });
-
-  // Use cart calculator for totals
-  const { getTotal, calculation } = useCartCalculator({
-    storeId: 1, // TODO: Get from domain/subdomain
-    autoCalculate: true,
-  });
-
-  const total = getTotal();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const order = await createOrder({
-        lineItems: cartItems.map((item) => ({
-          variant_id: item.variant_id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        customer: formData,
-        total: total,
-      });
-
-      clearCart();
-      router.push(`/shops/${storeSlug}/checkout/success?orderId=${order.id}`);
-    } catch (error) {
-      console.error('Checkout error:', error);
-      alert('שגיאה ביצירת ההזמנה. נסה שוב.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (cartItems.length === 0) {
-    router.push(`/shops/${storeSlug}/cart`);
-    return null;
-  }
-
+// Skeleton component למניעת hydration mismatch
+function CheckoutSkeleton({ storeName, storeLogo, storeSlug }: { storeName: string; storeLogo?: string | null; storeSlug: string }) {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">צ'ק אאוט</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Order Form */}
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">פרטי משלוח</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">שם פרטי</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+    <div 
+      className="min-h-screen" 
+      dir="rtl"
+      style={{ 
+        backgroundColor: '#ffffff',
+      }}
+    >
+      {/* CheckoutHeader */}
+      <div className="max-w-7xl mx-auto">
+        <CheckoutHeader shopName={storeName} shopLogo={storeLogo} shopSlug={storeSlug} />
+      </div>
+      
+      {/* Skeleton שמשקף את המבנה האמיתי */}
+      <div className="w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
+          {/* Left Side - Form Skeleton */}
+          <div 
+            className="lg:col-span-3 min-h-screen flex justify-end"
+            style={{
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <div className="w-full max-w-3xl pl-8 pr-4 py-8 space-y-6">
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">שם משפחה</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">אימייל</label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">טלפון</label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">כתובת</label>
-              <input
-                type="text"
-                required
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">עיר</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">מיקוד</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.postalCode}
-                  onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+              <div className="pb-6 border-b border-gray-200">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors"
-            >
-              {loading ? 'מעבד...' : 'השלם הזמנה'}
-            </button>
-          </form>
-        </div>
-
-        {/* Order Summary with Calculator */}
-        <div className="lg:col-span-1">
-          <CartSummary
-            storeId={1} // TODO: Get from domain/subdomain
-          />
+          </div>
+          
+          {/* Right Side - Order Summary Skeleton */}
+          <div 
+            className="lg:col-span-2 min-h-screen flex justify-start"
+            style={{
+              backgroundColor: '#fafafa',
+            }}
+          >
+            <div className="w-full max-w-md px-8 py-8">
+              <div className="p-6 sticky top-24 bg-gray-50 rounded-lg">
+                <div className="animate-pulse space-y-6">
+                  <div className="h-6 bg-gray-200 rounded w-32 mb-6"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="space-y-2 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between">
+                      <div className="h-4 bg-gray-200 rounded w-24"></div>
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+export default async function CheckoutPage({
+  params,
+}: {
+  params: Promise<{ storeSlug: string }>;
+}) {
+  const { storeSlug } = await params;
+  
+  // טעינת פרטי החנות
+  const store = await getStoreBySlug(storeSlug);
+
+  if (!store) {
+    redirect('/');
+  }
+
+  // טעינת checkoutSettings מה-settings
+  // אם settings הוא null, נשתמש בערך ברירת מחדל
+  const settings = store.settings ? (store.settings as any) : {};
+  const checkoutSettings = settings.checkoutPage || {};
+  const customFields = checkoutSettings.customFields || [];
+
+  // לא נשתמש ב-Suspense כאן כי זה גורם ל-hydration mismatch
+  // במקום זה, ה-CheckoutForm עצמו יטפל ב-skeleton
+  return (
+    <CheckoutForm
+      storeId={store.id}
+      storeName={store.name}
+      storeLogo={store.logo}
+      storeSlug={storeSlug}
+      customFields={customFields}
+    />
+  );
+}

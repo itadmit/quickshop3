@@ -1,0 +1,33 @@
+{
+  "buttons": {
+    "save": "שמור",
+    "cancel": "ביטול",
+    "delete": "מחק",
+    "edit": "ערוך",
+    "add": "הוסף",
+    "close": "סגור",
+    "back": "חזור",
+    "next": "הבא",
+    "previous": "הקודם",
+    "submit": "שלח",
+    "loading": "טוען...",
+    "search": "חפש"
+  },
+  "messages": {
+    "success": "הפעולה בוצעה בהצלחה",
+    "error": "אירעה שגיאה",
+    "loading": "טוען...",
+    "no_results": "לא נמצאו תוצאות",
+    "try_again": "נסה שוב"
+  },
+  "labels": {
+    "name": "שם",
+    "email": "אימייל",
+    "phone": "טלפון",
+    "address": "כתובת",
+    "price": "מחיר",
+    "quantity": "כמות",
+    "total": "סה\"כ"
+  }
+}
+

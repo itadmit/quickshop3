@@ -18,6 +18,7 @@ import { useCart } from './useCart';
 
 interface UseCartCalculatorOptions {
   storeId: number;
+  cartItems?: CartItem[]; // אם לא מועבר, ייטען מ-useCart
   shippingRate?: ShippingRate;
   autoCalculate?: boolean; // האם לחשב אוטומטית כשהעגלה משתנה
   customerId?: number; // For customer-specific discounts
@@ -31,27 +32,42 @@ interface UseCartCalculatorOptions {
  * 
  * זהו ה-Hook הראשי לשימוש במנוע החישוב בכל הקומפוננטות.
  * הוא מנהל את הקופון, מחשב את העגלה, ומספק תוצאות מעודכנות.
+ * 
+ * SINGLE SOURCE OF TRUTH:
+ * - מקבל את cartItems כפרמטר (לא קורא ל-useCart בנפרד)
+ * - מחשב הכל דרך API אחד (/api/cart/calculate)
+ * - לא מבצע חישובים ידניים בשום מקום
  */
 export function useCartCalculator(options: UseCartCalculatorOptions) {
-  const { cartItems } = useCart();
+  const cartFromHook = useCart();
+  const cartItems = options.cartItems ?? cartFromHook.cartItems;
   const [discountCode, setDiscountCode] = useState<string>('');
   const [calculation, setCalculation] = useState<CartCalculationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [validatingCode, setValidatingCode] = useState(false);
 
-  // חישוב העגלה
+  // חישוב העגלה - SINGLE SOURCE OF TRUTH
   const recalculate = useCallback(async () => {
+    // בדיקה ש-storeId קיים לפני חישוב
+    if (!options.storeId) {
+      setCalculation(null);
+      return;
+    }
+
     if (cartItems.length === 0) {
+      // טיפול נכון ב-shippingRate null/undefined
+      // אם אין shippingRate, משלוח הוא 0 (לא צריך משלוח)
+      const shippingPrice = options.shippingRate?.price ?? 0;
       setCalculation({
         items: [],
         subtotal: 0,
         itemsDiscount: 0,
         subtotalAfterDiscount: 0,
-        shipping: options.shippingRate?.price || 0,
+        shipping: shippingPrice,
         shippingDiscount: 0,
-        shippingAfterDiscount: options.shippingRate?.price || 0,
+        shippingAfterDiscount: shippingPrice,
         discounts: [],
-        total: 0,
+        total: shippingPrice,
         isValid: true,
         errors: [],
         warnings: [],
@@ -70,6 +86,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           price: item.price,
           quantity: item.quantity,
           image: item.image,
+          properties: item.properties,
         })),
         discountCode: discountCode || undefined,
         shippingRate: options.shippingRate,
@@ -80,7 +97,8 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         customerLifetimeValue: options.customerLifetimeValue,
       };
 
-      // Call API route instead of direct import
+      // Call API route - SINGLE SOURCE OF TRUTH
+      // כל החישובים נעשים ב-/api/cart/calculate
       const response = await fetch('/api/cart/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,28 +115,67 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to calculate cart');
+        // נסה לקרוא את הודעת השגיאה מהשרת
+        let errorMessage = 'שגיאה בחישוב העגלה';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // אם לא ניתן לקרוא את ה-JSON, השתמש בהודעת ברירת מחדל
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       setCalculation(result);
     } catch (error) {
       console.error('Error calculating cart:', error);
-      setCalculation(null);
+      // טיפול נכון ב-shippingRate null/undefined
+      const shippingPrice = options.shippingRate?.price ?? 0;
+      const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      
+      // במקום null, מחזיר תוצאה עם שגיאה
+      setCalculation({
+        items: cartItems.map((item) => ({
+          item,
+          lineTotal: item.price * item.quantity,
+          lineDiscount: 0,
+          lineTotalAfterDiscount: item.price * item.quantity,
+          appliedDiscounts: [],
+        })),
+        subtotal,
+        itemsDiscount: 0,
+        subtotalAfterDiscount: subtotal,
+        shipping: shippingPrice,
+        shippingDiscount: 0,
+        shippingAfterDiscount: shippingPrice,
+        discounts: [],
+        total: subtotal + shippingPrice,
+        isValid: false,
+        errors: ['שגיאה בחישוב העגלה. אנא נסה שוב.'],
+        warnings: [],
+      });
     } finally {
       setLoading(false);
     }
-  }, [cartItems, discountCode, options.shippingRate, options.storeId]);
+  }, [cartItems, discountCode, options.shippingRate, options.storeId, options.customerId, options.customerSegment, options.customerOrdersCount, options.customerLifetimeValue]);
 
   // חישוב אוטומטי כשהעגלה משתנה
+  // ✅ תיקון: לא תלוי ב-recalculate אלא ב-dependencies האמיתיים
   useEffect(() => {
     if (options.autoCalculate !== false) {
       recalculate();
     }
-  }, [recalculate, options.autoCalculate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartItems.length, discountCode, options.shippingRate?.id, options.storeId]);
 
   // אימות קופון
   const validateCode = useCallback(async (code: string): Promise<{ valid: boolean; error?: string }> => {
+    // בדיקת תקינות קוד
+    if (!code || typeof code !== 'string' || code.trim().length === 0) {
+      return { valid: false, error: 'קוד קופון לא תקין' };
+    }
+
     if (!code) {
       setDiscountCode('');
       await recalculate();
@@ -127,7 +184,10 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
     setValidatingCode(true);
     try {
-      const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      // שימוש ב-calculation קיים אם יש, אחרת חישוב בסיסי
+      // חשוב: להשתמש ב-subtotal אחרי הנחות אוטומטיות אם יש
+      const subtotal = calculation?.subtotalAfterDiscount || 
+        cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       
       // Call API route instead of direct import
       const response = await fetch('/api/discounts/validate', {

@@ -15,6 +15,19 @@ try {
   console.error('Error loading .env.local:', e.message);
 }
 
+// Try loading .env as fallback
+try {
+  const envFile = readFileSync(join(process.cwd(), '.env'), 'utf-8');
+  envFile.split('\n').forEach(line => {
+    const match = line.match(/^([^=]+)=(.*)$/);
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2].trim();
+    }
+  });
+} catch (e) {
+  // .env might not exist, that's ok
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
@@ -61,17 +74,42 @@ async function resetDatabase() {
     const ownerId = ownerResult.rows[0].id;
     
     // Create store with slug "nike"
-    await client.query(`
+    const storeResult = await client.query(`
       INSERT INTO stores (owner_id, name, slug, currency, locale, timezone, plan, is_active)
       VALUES ($1, 'Nike', 'nike', 'ILS', 'he-IL', 'Asia/Jerusalem', 'free', true)
-      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name;
+      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+      RETURNING id;
     `, [ownerId]);
+    const storeId = storeResult.rows[0].id;
     
     console.log('\n✅ Database reset complete!');
     console.log('📊 Initial store created:');
     console.log('   - Slug: nike');
     console.log('   - Name: Nike');
     console.log('   - Owner: admin@nike.com');
+    console.log('   - Store ID: ' + storeId);
+    
+    // Import demo data using SeedService via tsx
+    console.log('\n🌱 Importing demo data...');
+    try {
+      const { execSync } = require('child_process');
+      const seedScriptPath = join(__dirname, 'seed-demo-data-ts.ts');
+      
+      // Set store ID as environment variable
+      process.env.SEED_STORE_ID = storeId.toString();
+      
+      execSync(`npx tsx ${seedScriptPath}`, {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+        env: { ...process.env, SEED_STORE_ID: storeId.toString() },
+      });
+      
+      console.log('\n✅ Demo data imported successfully!');
+    } catch (seedError) {
+      console.error('⚠️  Warning: Failed to import demo data:', seedError.message);
+      console.log('   You can import demo data later from the admin dashboard.');
+      console.log('   Or run: npx tsx scripts/seed-demo-data-ts.ts');
+    }
     
   } catch (error) {
     console.error('❌ Error resetting database:', error);

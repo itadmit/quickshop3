@@ -6,9 +6,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { code, storeId, subtotal } = body;
 
-    if (!code || !storeId) {
+    // בדיקת תקינות פרמטרים
+    if (!code || typeof code !== 'string' || code.trim().length === 0) {
       return NextResponse.json(
-        { error: 'code and storeId are required' },
+        { error: 'code is required and must be a non-empty string' },
+        { status: 400 }
+      );
+    }
+
+    if (!storeId || typeof storeId !== 'number') {
+      return NextResponse.json(
+        { error: 'storeId is required and must be a number' },
+        { status: 400 }
+      );
+    }
+
+    if (subtotal !== undefined && (typeof subtotal !== 'number' || subtotal < 0)) {
+      return NextResponse.json(
+        { error: 'subtotal must be a non-negative number' },
         { status: 400 }
       );
     }

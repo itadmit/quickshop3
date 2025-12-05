@@ -15,3 +15,29 @@ export function Skeleton({ className = '' }: SkeletonProps) {
   );
 }
 
+interface TextSkeletonProps {
+  width?: string;
+  height?: string;
+  className?: string;
+}
+
+/**
+ * TextSkeleton - סקלטון לטקסטים
+ * משמש להצגת סקלטון במקום מפתחות תרגום בזמן טעינה
+ */
+export function TextSkeleton({ 
+  width = 'w-24', 
+  height = 'h-4',
+  className = '' 
+}: TextSkeletonProps) {
+  return (
+    <div
+      className={`
+        animate-pulse bg-gray-200 rounded
+        ${width} ${height}
+        ${className}
+      `}
+    />
+  );
+}
+

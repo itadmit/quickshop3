@@ -1,23 +1,14 @@
-import { query } from '@/lib/db';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { getStoreIdBySlug, getStoreBySlug } from '@/lib/utils/store';
+import { getCollections } from '@/lib/storefront/queries';
+import { getTranslations } from '@/lib/i18n/server';
 
-async function getAllCollections(storeId: number) {
-  const collections = await query<{
-    id: number;
-    title: string;
-    handle: string;
-    description: string | null;
-    image_url: string | null;
-  }>(
-    `SELECT id, title, handle, description, image_url
-     FROM product_collections
-     WHERE store_id = $1 AND published_scope = 'web'
-     ORDER BY created_at DESC`,
-    [storeId]
-  );
+// ============================================
+// Collections Page - Optimized with Cache & Translations
+// ============================================
 
-  return collections;
-}
+export const revalidate = 300; // ISR - revalidate כל 5 דקות
 
 export default async function CollectionsPage({
   params,
@@ -25,18 +16,26 @@ export default async function CollectionsPage({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const { getStoreIdBySlug } = await import('@/lib/utils/store');
   const storeId = await getStoreIdBySlug(storeSlug);
   
   if (!storeId) {
-    return <div>חנות לא נמצאה</div>;
+    notFound();
   }
-  
-  const collections = await getAllCollections(storeId);
+
+  const store = await getStoreBySlug(storeSlug);
+  if (!store) {
+    notFound();
+  }
+
+  // System Translations
+  const t = await getTranslations(store.locale || 'he-IL', 'storefront', storeId);
+
+  // טעינת קטגוריות עם Cache
+  const collections = await getCollections(storeId, 50);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">קטגוריות</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" dir="rtl">
+      <h1 className="text-4xl font-bold text-gray-900 mb-8">{t('home.collections')}</h1>
 
       {collections.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -52,6 +51,7 @@ export default async function CollectionsPage({
                     src={collection.image_url}
                     alt={collection.title}
                     className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
                   />
                 </div>
               ) : (
@@ -62,7 +62,12 @@ export default async function CollectionsPage({
               <div className="p-6 bg-white">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{collection.title}</h3>
                 {collection.description && (
-                  <p className="text-gray-600 text-sm">{collection.description}</p>
+                  <p className="text-gray-600 text-sm mb-2">{collection.description}</p>
+                )}
+                {collection.product_count !== undefined && (
+                  <p className="text-sm text-gray-500">
+                    {collection.product_count} {t('product.items')}
+                  </p>
                 )}
               </div>
             </Link>
@@ -70,10 +75,9 @@ export default async function CollectionsPage({
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">אין קטגוריות להצגה כרגע</p>
+          <p className="text-gray-500 text-lg">{t('home.empty_state')}</p>
         </div>
       )}
     </div>
   );
 }
-
