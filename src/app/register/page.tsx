@@ -94,7 +94,7 @@ function RegisterForm() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="mb-8 overflow-visible pt-2 pb-1">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 whitespace-nowrap overflow-visible" style={{ letterSpacing: '2px', lineHeight: '1.5', paddingTop: '0.5rem', paddingBottom: '0.5rem' }}>
+            <h1 className="text-4xl font-logo text-gray-900 mb-2 whitespace-nowrap overflow-visible" style={{ lineHeight: '1.5', paddingTop: '0.5rem', paddingBottom: '0.5rem' }}>
               Quick Shop
             </h1>
             <p className="text-sm text-gray-500 whitespace-nowrap">מערכת ניהול חנויות אונליין</p>

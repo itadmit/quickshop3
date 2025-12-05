@@ -7,7 +7,7 @@ export function LandingHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           <Link href="/" className="flex flex-col overflow-visible">
-            <h1 className="text-2xl font-pacifico text-gray-900 whitespace-nowrap overflow-visible" style={{ letterSpacing: '2px', lineHeight: '1.5' }}>
+            <h1 className="text-2xl font-logo text-gray-900 whitespace-nowrap overflow-visible" style={{ lineHeight: '1.5' }}>
               Quick Shop
             </h1>
             <p className="text-xs text-gray-500 whitespace-nowrap">מערכת ניהול חנויות אונליין</p>
