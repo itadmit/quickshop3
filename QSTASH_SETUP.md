@@ -20,9 +20,15 @@ Upstash QStash מאפשר להריץ CRON jobs שעתיים בחינם (עד 10,
 ```bash
 QSTASH_TOKEN=your_token_here
 QSTASH_URL=https://qstash.upstash.io
+APP_URL=https://your-domain.com
 ```
 
-**הערה**: `QSTASH_URL` הוא אופציונלי (ברירת מחדל: `https://qstash.upstash.io`)
+**הערות**:
+- `QSTASH_TOKEN` - קבל מ-https://console.upstash.com/qstash → "Create Token" או העתק את ה-Token הקיים
+- `QSTASH_URL` הוא אופציונלי (ברירת מחדל: `https://qstash.upstash.io`)
+- `APP_URL` הוא חובה לפרודקשן - הוסף את ה-URL המלא של האתר שלך (לדוגמה: `https://your-app.vercel.app`)
+
+**⚠️ חשוב**: ודא שה-Token נכון ולא מכיל רווחים או תווים מיוחדים. אם יש שגיאת אימות, נסה ליצור Token חדש מה-Console.
 
 ### שלב 3: הגדרת CRON Job
 

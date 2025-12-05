@@ -29,22 +29,40 @@ try {
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
 const QSTASH_URL = process.env.QSTASH_URL || 'https://qstash.upstash.io';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:3099';
+const VERCEL_URL = process.env.VERCEL_URL;
+const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+// קביעת APP_URL לפי סדר עדיפות
+let APP_URL = process.env.APP_URL || NEXT_PUBLIC_APP_URL;
+if (!APP_URL && VERCEL_URL) {
+  APP_URL = `https://${VERCEL_URL}`;
+}
+if (!APP_URL) {
+  APP_URL = 'http://localhost:3099';
+  console.warn('⚠️  APP_URL לא מוגדר, משתמש ב-localhost:3099');
+  console.warn('   הוסף ל-.env.local: APP_URL=https://your-domain.com');
+}
 
 if (!QSTASH_TOKEN) {
   console.error('❌ שגיאה: QSTASH_TOKEN לא נמצא ב-.env.local');
   console.log('\n💡 הוראות:');
   console.log('1. היכנס ל-https://console.upstash.com/qstash');
-  console.log('2. לחץ על "Create Token"');
-  console.log('3. העתק את ה-Token');
-  console.log('4. הוסף ל-.env.local: QSTASH_TOKEN=your_token_here');
-  console.log('   (אופציונלי: QSTASH_URL=https://qstash.upstash.io)');
+  console.log('2. לחץ על "Create Token" או העתק את ה-Token הקיים');
+  console.log('3. הוסף ל-.env.local:');
+  console.log('   QSTASH_TOKEN=your_token_here');
+  console.log('   QSTASH_URL=https://qstash.upstash.io (אופציונלי)');
+  console.log('   APP_URL=https://your-domain.com (חובה לפרודקשן)');
   process.exit(1);
 }
 
 async function setupQStashCron() {
+  // בדיקה שהטוקן תקין
+  if (!QSTASH_TOKEN || QSTASH_TOKEN.length < 20) {
+    console.error('❌ שגיאה: QSTASH_TOKEN לא תקין');
+    console.error('   הטוקן צריך להיות ארוך יותר (לפחות 20 תווים)');
+    process.exit(1);
+  }
+
   const qstash = new Client({
     token: QSTASH_TOKEN,
     baseUrl: QSTASH_URL,
@@ -55,21 +73,27 @@ async function setupQStashCron() {
 
   try {
     console.log('🚀 מגדיר QStash CRON Job...\n');
-    console.log(`📍 URL: ${cronUrl}`);
+    console.log(`🔑 Token: ${QSTASH_TOKEN.substring(0, 30)}...`);
+    console.log(`🌐 QStash URL: ${QSTASH_URL}`);
+    console.log(`📍 Destination URL: ${cronUrl}`);
     console.log(`⏰ Schedule: ${schedule} (כל 5 דקות)\n`);
 
-    // מחיקת CRON קיים (אם קיים)
-    console.log('🗑️  בודק CRON jobs קיימים...');
+    // בדיקת חיבור - נסיון לקבל רשימת schedules
+    console.log('🔍 בודק חיבור ל-QStash...');
     try {
       const schedules = await qstash.schedules.list();
+      console.log(`   ✓ חיבור הצליח, נמצאו ${schedules.length} CRON jobs קיימים\n`);
+      
+      // מחיקת CRON קיים (אם קיים)
       const existing = schedules.find(s => s.destination === cronUrl);
       if (existing) {
-        console.log(`   נמצא CRON קיים (ID: ${existing.scheduleId}), מוחק...`);
+        console.log(`🗑️  נמצא CRON קיים (ID: ${existing.scheduleId}), מוחק...`);
         await qstash.schedules.delete(existing.scheduleId);
         console.log('   ✓ נמחק\n');
       }
     } catch (e) {
-      // אין CRON קיים, ממשיכים
+      console.log(`   ⚠️  לא ניתן לקבל רשימת CRON jobs: ${e.message}`);
+      console.log('   ממשיך ליצירת CRON חדש...\n');
     }
 
     // יצירת CRON חדש
@@ -93,7 +117,13 @@ async function setupQStashCron() {
   } catch (error) {
     console.error('❌ שגיאה בהגדרת QStash CRON:', error.message);
     if (error.response) {
-      console.error('   Response:', error.response.data);
+      console.error('   Response:', JSON.stringify(error.response.data || error.response, null, 2));
+    }
+    if (error.message.includes('unable to authenticate')) {
+      console.error('\n💡 פתרון אפשרי:');
+      console.error('   1. ודא שה-QSTASH_TOKEN נכון מה-Console: https://console.upstash.com/qstash');
+      console.error('   2. ודא שהטוקן לא מכיל רווחים או תווים מיוחדים');
+      console.error('   3. נסה ליצור Token חדש מה-Console');
     }
     process.exit(1);
   }
