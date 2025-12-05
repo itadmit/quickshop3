@@ -30,7 +30,10 @@ export function ConditionalLayout({ children, storeName, collections }: Conditio
   // בשאר הדפים - Header + Content + Footer
   return (
     <>
-      <StorefrontHeader storeName={storeName} collections={collections} />
+      <StorefrontHeader 
+        storeName={storeName} 
+        collections={collections.map(c => ({ id: c.id, name: c.title, handle: c.handle }))} 
+      />
       <main className="flex-1">{children}</main>
       <StorefrontFooter />
     </>

@@ -2,6 +2,7 @@
 
 import { useCart } from '@/hooks/useCart';
 import { useCartCalculator } from '@/hooks/useCartCalculator';
+import { useStoreId } from '@/hooks/useStoreId';
 import { CartSummary } from '@/components/storefront/CartSummary';
 import { FreeShippingProgress } from '@/components/storefront/FreeShippingProgress';
 import Link from 'next/link';
@@ -18,11 +19,12 @@ export default function CartPage() {
   const params = useParams();
   const storeSlug = params.storeSlug as string;
   const { t, loading: translationsLoading } = useTranslation('storefront');
+  const storeId = useStoreId();
 
   // Use cart calculator for accurate totals (including discounts)
   // SINGLE SOURCE OF TRUTH: מעביר את cartItems
   const { getTotal, calculation } = useCartCalculator({
-    storeId: 1, // TODO: Get from storeSlug
+    storeId: storeId || 1, // Fallback to 1 if storeId not loaded yet
     cartItems, // ✅ מעביר את cartItems
     autoCalculate: true,
   });
@@ -106,7 +108,7 @@ export default function CartPage() {
         {/* Cart Items */}
         <div className="lg:col-span-2">
           {/* Free Shipping Progress */}
-          <FreeShippingProgress threshold={125} />
+          {storeId && <FreeShippingProgress threshold={125} storeId={storeId} />}
           
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="divide-y divide-gray-200">
@@ -212,10 +214,12 @@ export default function CartPage() {
 
         {/* Cart Summary with Calculator */}
         <div className="lg:col-span-1">
-          <CartSummary
-            storeId={1} // TODO: Get from storeSlug
-            onCheckout={() => router.push(`/shops/${storeSlug}/checkout`)}
-          />
+          {storeId && (
+            <CartSummary
+              storeId={storeId}
+              onCheckout={() => router.push(`/shops/${storeSlug}/checkout`)}
+            />
+          )}
           <Link
             href={`/shops/${storeSlug}/products`}
             className="block text-center mt-4 text-gray-600 hover:text-gray-900 transition-colors"

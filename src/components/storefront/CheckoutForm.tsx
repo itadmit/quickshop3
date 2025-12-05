@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Textarea } from '@/components/ui/Textarea';
 import { Autocomplete } from '@/components/ui/Autocomplete';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { useCitySearch, useStreetSearch } from '@/hooks/useIsraelAddress';
 import { useCart } from '@/hooks/useCart';
 import { useCartCalculator } from '@/hooks/useCartCalculator';
@@ -1066,7 +1066,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   
                   {/* Cart Items */}
                   <div className="space-y-4 mb-6">
-                    {calculation.items.map((calculatedItem) => {
+                    {calculation?.items?.map((calculatedItem) => {
                       const item = calculatedItem.item;
                       const hasDiscount = calculatedItem.lineDiscount > 0;
                       

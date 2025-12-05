@@ -13,6 +13,7 @@ import { AdvancedSettings } from '@/components/settings/AdvancedSettings';
 interface Store {
   id: number;
   name: string;
+  slug?: string;
   domain: string | null;
   currency: string;
   locale: string;

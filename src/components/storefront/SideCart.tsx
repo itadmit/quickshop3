@@ -15,7 +15,7 @@ interface SideCartProps {
     id: number;
     name: string;
     price: number;
-    free_shipping_threshold?: number | null;
+    free_shipping_threshold: number | null;
   };
 }
 

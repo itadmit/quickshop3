@@ -118,7 +118,7 @@ export class EmailEngine {
     // הערה: זה מנוע פשוט מאוד, לא Handlebars מלא
     // אם המשתנה קיים ואמת -> תשאיר את התוכן. אחרת -> תמחק.
     result = result.replace(/{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g, (match, variableName, content) => {
-      return allVariables[variableName] ? content : '';
+      return (allVariables as Record<string, any>)[variableName] ? content : '';
     });
 
     return result;

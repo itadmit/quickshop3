@@ -1,21 +1,29 @@
 'use client';
 
 import { useCart } from '@/hooks/useCart';
+import { useCartCalculator } from '@/hooks/useCartCalculator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextSkeleton } from '@/components/ui/Skeleton';
 
 interface FreeShippingProgressProps {
   threshold?: number;
   currency?: string;
+  storeId: number;
 }
 
 export function FreeShippingProgress({ 
   threshold = 125, 
-  currency = 'ILS' 
+  currency = 'ILS',
+  storeId
 }: FreeShippingProgressProps) {
-  const { calculateTotals } = useCart();
+  const { cartItems } = useCart();
+  const { getSubtotal } = useCartCalculator({
+    storeId,
+    cartItems,
+    autoCalculate: true,
+  });
   const { t, loading: translationsLoading } = useTranslation('storefront');
-  const { subtotal } = calculateTotals();
+  const subtotal = getSubtotal();
   
   const remaining = Math.max(0, threshold - subtotal);
   const progress = Math.min(100, (subtotal / threshold) * 100);

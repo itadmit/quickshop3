@@ -146,7 +146,10 @@ export default async function StoreSlugLayout({
       {/* Layout Structure: Header -> Content -> Footer (מותנה) */}
       <div className="min-h-screen flex flex-col" dir="rtl">
         <PageViewTracker />
-        <ConditionalLayout storeName={store.name} collections={navigationCollections}>
+        <ConditionalLayout 
+          storeName={store.name} 
+          collections={navigationCollections.map(c => ({ id: c.id, title: c.name, handle: c.handle }))}
+        >
           {children}
         </ConditionalLayout>
       </div>
