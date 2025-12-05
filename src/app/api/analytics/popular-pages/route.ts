@@ -32,18 +32,19 @@ export async function GET(request: NextRequest) {
 
     const pageKey = `store:${storeSlug}:popular_pages`;
     
-    // קבלת Top 20 עמודים פופולריים
-    const pages = await redisClient.zrevrange(pageKey, 0, 19, { withScores: true });
+    // קבלת Top 20 עמודים פופולריים (Upstash Redis משתמש ב-zrange עם rev: true)
+    const pages = await redisClient.zrange<string>(pageKey, 0, 19, { rev: true, withScores: true });
 
     const popularPages = [];
     if (Array.isArray(pages)) {
+      // Upstash מחזיר מערך של [value, score, value, score, ...]
       for (let i = 0; i < pages.length; i += 2) {
         const page = pages[i] as string;
-        const views = pages[i + 1] as number;
-        if (page && views !== undefined) {
+        const score = pages[i + 1];
+        if (page && score !== undefined) {
           popularPages.push({
             page,
-            views: Math.floor(views),
+            views: Math.floor(Number(score)),
           });
         }
       }
