@@ -28,6 +28,7 @@ try {
 }
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
+const QSTASH_URL = process.env.QSTASH_URL || 'https://qstash.upstash.io';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
   ? `https://${process.env.VERCEL_URL}` 
   : 'http://localhost:3099';
@@ -39,12 +40,14 @@ if (!QSTASH_TOKEN) {
   console.log('2. לחץ על "Create Token"');
   console.log('3. העתק את ה-Token');
   console.log('4. הוסף ל-.env.local: QSTASH_TOKEN=your_token_here');
+  console.log('   (אופציונלי: QSTASH_URL=https://qstash.upstash.io)');
   process.exit(1);
 }
 
 async function setupQStashCron() {
   const qstash = new Client({
     token: QSTASH_TOKEN,
+    baseUrl: QSTASH_URL,
   });
 
   const cronUrl = `${APP_URL}/api/cron/sync-visitors`;

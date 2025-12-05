@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const pageKey = `store:${storeSlug}:popular_pages`;
     
     // קבלת Top 20 עמודים פופולריים (Upstash Redis משתמש ב-zrange עם rev: true)
-    const pages = await redisClient.zrange<string>(pageKey, 0, 19, { rev: true, withScores: true });
+    const pages = await redisClient.zrange(pageKey, 0, 19, { rev: true, withScores: true });
 
     const popularPages = [];
     if (Array.isArray(pages)) {

@@ -110,6 +110,7 @@ npm install @upstash/qstash
 
 # 2. הוסף QSTASH_TOKEN ל-.env.local
 # קבל מ-https://console.upstash.com/qstash
+# הוסף גם: QSTASH_URL=https://qstash.upstash.io (אופציונלי)
 
 # 3. הרץ את הסקריפט
 npm run setup:qstash
@@ -117,8 +118,12 @@ npm run setup:qstash
 
 **לפרטים נוספים**: ראה `QSTASH_SETUP.md`
 
-#### 2. **Vercel Cron Jobs** (יומי בלבד)
-הוסף ל-`vercel.json`:
+**⚠️ חשוב**: זה הפתרון המומלץ והמוגדר כבר במערכת. אין צורך בהגדרות נוספות.
+
+#### 2. **Vercel Cron Jobs** (לא מומלץ - יומי בלבד)
+⚠️ **לא בשימוש** - המערכת מוגדרת עם QStash.
+
+אם אתה רוצה להשתמש ב-Vercel CRON (רק יומי), הוסף ל-`vercel.json`:
 ```json
 {
   "crons": [{
@@ -128,7 +133,7 @@ npm run setup:qstash
 }
 ```
 
-**⚠️ הערה**: זה רק יומי, לא שעתי. נתונים עלולים להיאבד.
+**⚠️ הערה**: זה רק יומי, לא שעתי. נתונים עלולים להיאבד. **מומלץ להשתמש ב-QStash במקום.**
 
 #### 3. **שירותים חיצוניים חינמיים**
 - **cron-job.org** - חינמי, CRON שעתי
@@ -195,7 +200,7 @@ GET /api/analytics/reports/visitors?start_date=2024-01-01
 ## 🚨 נקודות חשובות
 
 1. **Batch Sync חייב לרוץ כל 5 דקות** - אחרת נתונים יאבדו
-2. **Vercel Cron Jobs** - רק ב-Pro plan (או השתמש בשירות חיצוני)
+2. **QStash CRON Job** - מוגדר כבר במערכת, ראה `QSTASH_SETUP.md` להגדרה
 3. **Error Handling** - שגיאות לא אמורות לעצור את התהליך
 4. **Deduplication** - בדיקה למניעת כפילויות
 

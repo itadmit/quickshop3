@@ -156,7 +156,7 @@ export async function middleware(request: NextRequest) {
             // GeoIP
             country: geo?.country,
             country_code: geo?.countryCode,
-            city: geo?.city,
+            city: geo?.city || undefined, // המרת null ל-undefined
             region: geo?.region,
             lat: geo?.lat,
             lon: geo?.lon,

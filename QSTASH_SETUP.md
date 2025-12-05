@@ -15,11 +15,14 @@ Upstash QStash מאפשר להריץ CRON jobs שעתיים בחינם (עד 10,
 
 ### שלב 2: הוספת Token ל-.env.local
 
-הוסף את השורה הבאה ל-`.env.local`:
+הוסף את השורות הבאות ל-`.env.local`:
 
 ```bash
 QSTASH_TOKEN=your_token_here
+QSTASH_URL=https://qstash.upstash.io
 ```
+
+**הערה**: `QSTASH_URL` הוא אופציונלי (ברירת מחדל: `https://qstash.upstash.io`)
 
 ### שלב 3: הגדרת CRON Job
 
