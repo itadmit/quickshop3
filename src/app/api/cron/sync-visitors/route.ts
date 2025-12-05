@@ -36,13 +36,15 @@ async function handler(request: NextRequest) {
   }
 }
 
-// QStash signature verification (אם יש QSTASH_TOKEN)
+// QStash signature verification (אם יש QSTASH_TOKEN ו-QSTASH_CURRENT_SIGNING_KEY)
 // אם אין, מאפשר גישה ישירה (למקרה של בדיקות מקומיות)
-export const GET = process.env.QSTASH_TOKEN 
+const hasQStashConfig = process.env.QSTASH_TOKEN && process.env.QSTASH_CURRENT_SIGNING_KEY;
+
+export const GET = hasQStashConfig 
   ? verifySignatureAppRouter(handler)
   : handler;
 
 // Allow POST for manual triggers (with QStash verification)
-export const POST = process.env.QSTASH_TOKEN
+export const POST = hasQStashConfig
   ? verifySignatureAppRouter(handler)
   : handler;
