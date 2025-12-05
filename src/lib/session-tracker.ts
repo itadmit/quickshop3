@@ -321,6 +321,17 @@ export async function updateVisitorActivity(
 
     const now = Date.now();
     const pageViews = (existingVisitor?.page_views || 0) + 1;
+    
+    // בדיקה אם ה-IP השתנה - אם כן, נעדכן את המיקום גם אם הוא לא מוגדר ב-metadata
+    const ipChanged = metadata?.ip_address && 
+                      existingVisitor?.ip_address && 
+                      metadata.ip_address !== existingVisitor.ip_address;
+    
+    // אם ה-IP השתנה, נעדכן את המיקום גם אם metadata?.city הוא undefined
+    // (כי GeoIP עדיין לא חזר, אבל נעדכן אותו כשיחזור)
+    const shouldUpdateGeo = ipChanged || metadata?.city !== undefined || 
+                            metadata?.country !== undefined || 
+                            metadata?.lat !== undefined;
 
     const data: ActiveVisitorData = {
       visitor_id: visitorId,
@@ -330,14 +341,15 @@ export async function updateVisitorActivity(
       first_seen: existingVisitor?.first_seen || now,
       ip_address: metadata?.ip_address || existingVisitor?.ip_address,
       user_agent: metadata?.user_agent || existingVisitor?.user_agent,
-      // GeoIP
-      country: metadata?.country || existingVisitor?.country,
-      country_code: metadata?.country_code || existingVisitor?.country_code,
-      city: metadata?.city || existingVisitor?.city,
-      region: metadata?.region || existingVisitor?.region,
-      lat: metadata?.lat || existingVisitor?.lat,
-      lon: metadata?.lon || existingVisitor?.lon,
-      timezone: metadata?.timezone || existingVisitor?.timezone,
+      // GeoIP - עדכון רק אם יש ערך חדש (לא undefined) או אם ה-IP השתנה
+      // אם metadata?.city הוא undefined, נשאיר את הערך הישן (אלא אם ה-IP השתנה)
+      country: metadata?.country !== undefined ? metadata.country : (shouldUpdateGeo ? undefined : existingVisitor?.country),
+      country_code: metadata?.country_code !== undefined ? metadata.country_code : (shouldUpdateGeo ? undefined : existingVisitor?.country_code),
+      city: metadata?.city !== undefined ? metadata.city : (shouldUpdateGeo ? undefined : existingVisitor?.city),
+      region: metadata?.region !== undefined ? metadata.region : (shouldUpdateGeo ? undefined : existingVisitor?.region),
+      lat: metadata?.lat !== undefined ? metadata.lat : (shouldUpdateGeo ? undefined : existingVisitor?.lat),
+      lon: metadata?.lon !== undefined ? metadata.lon : (shouldUpdateGeo ? undefined : existingVisitor?.lon),
+      timezone: metadata?.timezone !== undefined ? metadata.timezone : (shouldUpdateGeo ? undefined : existingVisitor?.timezone),
       // Device
       device_type: metadata?.device_type || existingVisitor?.device_type,
       browser: metadata?.browser || existingVisitor?.browser,

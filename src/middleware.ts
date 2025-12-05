@@ -153,10 +153,12 @@ export async function middleware(request: NextRequest) {
             store_slug: storeSlug,
             current_page: currentPage,
             referrer: referrer,
-            // GeoIP
+            // GeoIP - שולח את כל הנתונים
+            // אם geo?.city הוא null, נשלח undefined כדי לא לעדכן את הערך הקיים
+            // אם geo?.city הוא string, נשלח אותו כדי לעדכן את המיקום
             country: geo?.country,
             country_code: geo?.countryCode,
-            city: geo?.city || undefined, // המרת null ל-undefined
+            city: geo?.city ?? undefined, // null -> undefined (לא מעדכן), string -> string (מעדכן)
             region: geo?.region,
             lat: geo?.lat,
             lon: geo?.lon,
