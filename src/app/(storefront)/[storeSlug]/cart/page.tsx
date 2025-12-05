@@ -5,12 +5,14 @@ import { CartSummary } from '@/components/storefront/CartSummary';
 import Link from 'next/link';
 import { HiTrash, HiPlus, HiMinus } from 'react-icons/hi';
 import { useRouter, useParams } from 'next/navigation';
+import { useStoreId } from '@/hooks/useStoreId';
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity } = useCart();
   const router = useRouter();
   const params = useParams();
   const storeSlug = params.storeSlug as string;
+  const storeId = useStoreId();
 
   if (cartItems.length === 0) {
     return (
@@ -107,7 +109,7 @@ export default function CartPage() {
         {/* Cart Summary with Calculator */}
         <div className="lg:col-span-1">
           <CartSummary
-            storeId={1} // TODO: Get from storeSlug
+            storeId={storeId || 1}
             onCheckout={() => router.push(`/${storeSlug}/checkout`)}
           />
           <Link

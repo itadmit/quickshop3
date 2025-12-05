@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useStoreId } from './useStoreId';
 
 export interface CartItem {
@@ -20,14 +20,8 @@ export interface CartItem {
 
 const CART_STORAGE_KEY = 'quickshop_cart';
 
-// Shopify-style cart: Server-side storage with localStorage fallback
-// Shopify behavior:
-// 1. Cart loads from localStorage on mount (fast, no server call)
-// 2. Cart loads from server only when opened (lazy loading)
-// 3. All operations sync to server immediately
-// 4. Optimistic updates for instant UI feedback
-// Helper function to load cart from localStorage synchronously
-function loadCartFromLocalStorage(): CartItem[] {
+// === SINGLE SOURCE OF TRUTH: localStorage ===
+function getCartFromStorage(): CartItem[] {
   if (typeof window === 'undefined') {
     return [];
   }
@@ -41,21 +35,72 @@ function loadCartFromLocalStorage(): CartItem[] {
       }
     }
   } catch (e) {
-    console.error('Failed to parse cart from localStorage', e);
+    console.error('[useCart] Failed to parse cart from localStorage', e);
   }
   
   return [];
 }
 
+function setCartToStorage(items: CartItem[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('[useCart] Error saving to localStorage:', error);
+  }
+}
+
+function clearCartFromStorage(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  
+  try {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  } catch (error) {
+    console.error('[useCart] Error clearing localStorage:', error);
+  }
+}
+
 export function useCart() {
-  // טעינה מיידית מ-localStorage בטעינה ראשונית (synchronous)
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => loadCartFromLocalStorage());
-  const [isLoading, setIsLoading] = useState(false); // לא טוען מהשרת בטעינה ראשונית
+  // State מסונכרן עם localStorage
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isLoadingFromServer, setIsLoadingFromServer] = useState(false);
-  const storeId = useStoreId(); // Get from URL (Shopify-style)
+  const storeId = useStoreId();
+  
+  // Ref to track if we've initialized from localStorage
+  const initialized = useRef(false);
+  
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    if (!initialized.current && typeof window !== 'undefined') {
+      initialized.current = true;
+      const stored = getCartFromStorage();
+      setCartItems(stored);
+    }
+  }, []);
+  
+  // Listen to localStorage changes (from other tabs or direct updates)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === CART_STORAGE_KEY) {
+        const newItems = e.newValue ? JSON.parse(e.newValue) : [];
+        setCartItems(Array.isArray(newItems) ? newItems : []);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
-  // Load cart from server (Shopify-style - only when needed, e.g., when cart opens)
+  // Load cart from server
   const loadCartFromServer = useCallback(async () => {
     if (!storeId) {
       return;
@@ -74,11 +119,8 @@ export function useCart() {
         const data = await response.json();
         
         if (data.items && Array.isArray(data.items)) {
+          setCartToStorage(data.items);
           setCartItems(data.items);
-          // Sync to localStorage
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data.items));
-          }
         }
       }
     } catch (error) {
@@ -88,10 +130,11 @@ export function useCart() {
     }
   }, [storeId]);
 
-  // Save cart to server (Shopify-style - immediate sync)
+  // Save cart to server
   const saveCartToServer = useCallback(async (items: CartItem[]) => {
     if (!storeId) {
-      throw new Error('storeId is missing');
+      console.warn('[useCart] Cannot save to server: storeId is missing');
+      return;
     }
 
     try {
@@ -111,19 +154,32 @@ export function useCart() {
       }
     } catch (error) {
       console.error('[useCart] Error saving cart to server:', error);
-      throw error;
     }
   }, [storeId]);
 
-  // Save to localStorage on every cart change (Shopify-style - immediate sync)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && cartItems.length >= 0) {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+  // Helper function to compare cart items (including properties)
+  const areItemsEqual = useCallback((a: CartItem, b: CartItem): boolean => {
+    if (a.variant_id !== b.variant_id) {
+      return false;
     }
-  }, [cartItems]);
+    // Compare properties if they exist
+    const aProps = a.properties || [];
+    const bProps = b.properties || [];
+    if (aProps.length !== bProps.length) {
+      return false;
+    }
+    // Sort properties for comparison
+    const sortProps = (props: Array<{ name: string; value: string }>) =>
+      [...props].sort((x, y) => x.name.localeCompare(y.name));
+    const sortedA = sortProps(aProps);
+    const sortedB = sortProps(bProps);
+    return sortedA.every((prop, idx) => 
+      prop.name === sortedB[idx].name && prop.value === sortedB[idx].value
+    );
+  }, []);
 
   const addToCart = useCallback(async (item: CartItem) => {
-    // בדיקת תקינות פריט לפני הוספה
+    // Validation
     if (!item.variant_id || !item.product_id || !item.price || item.price < 0) {
       console.error('[useCart] Invalid cart item:', item);
       return;
@@ -132,77 +188,63 @@ export function useCart() {
       console.error('[useCart] Invalid quantity:', item.quantity);
       return;
     }
-
     if (!storeId) {
       console.error('[useCart] Cannot add to cart: storeId is missing');
       return;
     }
-
-    // מניעת duplicate calls
     if (isAddingToCart) {
+      console.log('[useCart] Already adding to cart, skipping');
       return;
     }
 
     setIsAddingToCart(true);
 
-    // Shopify-style: Optimistic update - עדכון מיד ב-UI
-    setCartItems((prev) => {
-      const existing = prev.find((i) => i.variant_id === item.variant_id);
+    try {
+      // === READ DIRECTLY FROM LOCALSTORAGE (SOURCE OF TRUTH) ===
+      const currentItems = getCartFromStorage();
+      
+      const existing = currentItems.find((i) => areItemsEqual(i, item));
       
       let newItems: CartItem[];
       if (existing) {
-        newItems = prev.map((i) =>
-          i.variant_id === item.variant_id
+        // Update existing item quantity
+        newItems = currentItems.map((i) =>
+          areItemsEqual(i, item)
             ? { ...i, quantity: i.quantity + item.quantity }
             : i
         );
       } else {
-        newItems = [...prev, item];
+        // Add new item
+        newItems = [...currentItems, item];
       }
       
-      // שמירה מיד ל-localStorage (Shopify-style)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-      }
+      // === UPDATE BOTH LOCALSTORAGE AND STATE ===
+      setCartToStorage(newItems);
+      setCartItems(newItems);
       
-      // שמירה לשרת ברקע (Shopify-style - לא חוסם את ה-UI)
-      if (newItems.length > 0) {
-        saveCartToServer(newItems)
-          .catch((error) => {
-            console.error('[useCart] Error saving cart to server:', error);
-            // במקרה של שגיאה, נסה לטעון מהשרת
-            loadCartFromServer();
-          })
-          .finally(() => {
-            setIsAddingToCart(false);
-          });
-      } else {
-        setIsAddingToCart(false);
-      }
-      
-      return newItems;
-    });
-  }, [storeId, saveCartToServer, loadCartFromServer, isAddingToCart]);
+      // Save to server (background, non-blocking)
+      saveCartToServer(newItems);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }, [storeId, saveCartToServer, areItemsEqual, isAddingToCart]);
 
   const removeFromCart = useCallback((variantId: number) => {
-    // Shopify-style: Optimistic update
-    setCartItems((prev) => {
-      const newItems = prev.filter((i) => i.variant_id !== variantId);
-      
-      // שמירה מיד ל-localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-      }
-      
-      // שמירה לשרת ברקע
-      saveCartToServer(newItems).catch((error) => {
-        console.error('Error saving cart to server:', error);
-        loadCartFromServer();
-      });
-      
-      return newItems;
-    });
-  }, [saveCartToServer, loadCartFromServer]);
+    // === READ DIRECTLY FROM LOCALSTORAGE (SOURCE OF TRUTH) ===
+    const currentItems = getCartFromStorage();
+    
+    // Filter out the item
+    const newItems = currentItems.filter((i) => i.variant_id !== variantId);
+    
+    // === UPDATE BOTH LOCALSTORAGE AND STATE ===
+    setCartToStorage(newItems);
+    setCartItems(newItems);
+    
+    // Save to server (background, non-blocking)
+    if (storeId) {
+      saveCartToServer(newItems);
+    }
+  }, [storeId, saveCartToServer]);
 
   const updateQuantity = useCallback((variantId: number, quantity: number) => {
     if (quantity <= 0) {
@@ -210,29 +252,28 @@ export function useCart() {
       return;
     }
     
-    // Shopify-style: Optimistic update
-    setCartItems((prev) => {
-      const newItems = prev.map((i) => 
-        i.variant_id === variantId ? { ...i, quantity } : i
-      );
-      
-      // שמירה מיד ל-localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-      }
-      
-      // שמירה לשרת ברקע
-      saveCartToServer(newItems).catch((error) => {
-        console.error('Error saving cart to server:', error);
-        loadCartFromServer();
-      });
-      
-      return newItems;
-    });
-  }, [removeFromCart, saveCartToServer, loadCartFromServer]);
+    // === READ DIRECTLY FROM LOCALSTORAGE (SOURCE OF TRUTH) ===
+    const currentItems = getCartFromStorage();
+    
+    const newItems = currentItems.map((i) => 
+      i.variant_id === variantId ? { ...i, quantity } : i
+    );
+    
+    // === UPDATE BOTH LOCALSTORAGE AND STATE ===
+    setCartToStorage(newItems);
+    setCartItems(newItems);
+    
+    // Save to server (background, non-blocking)
+    if (storeId) {
+      saveCartToServer(newItems);
+    }
+  }, [storeId, removeFromCart, saveCartToServer]);
 
   const clearCart = useCallback(() => {
+    // === CLEAR BOTH LOCALSTORAGE AND STATE ===
+    clearCartFromStorage();
     setCartItems([]);
+    
     // Clear from server
     if (storeId) {
       fetch(`/api/cart?storeId=${storeId}`, {
@@ -240,19 +281,11 @@ export function useCart() {
         credentials: 'include',
       }).catch(console.error);
     }
-    // Clear localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(CART_STORAGE_KEY);
-    }
   }, [storeId]);
 
   const getCartCount = useCallback(() => {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
-
-  // הסרת getCartTotal - חישוב ידני אסור!
-  // במקום זה, השתמש ב-useCartCalculator.getTotal()
-  // SINGLE SOURCE OF TRUTH - כל החישובים דרך המנוע המרכזי
 
   return {
     cartItems,
@@ -264,6 +297,6 @@ export function useCart() {
     updateQuantity,
     clearCart,
     getCartCount,
-    refreshCart: loadCartFromServer, // Shopify-style: טעינה מהשרת רק כשצריך
+    refreshCart: loadCartFromServer,
   };
 }

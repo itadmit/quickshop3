@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { SideCart } from '@/components/storefront/SideCart';
@@ -10,6 +10,7 @@ import { CountrySelector } from '@/components/storefront/CountrySelector';
 import { MegaMenu } from '@/components/storefront/MegaMenu';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextSkeleton } from '@/components/ui/Skeleton';
+import { useStoreId } from '@/hooks/useStoreId';
 
 interface Collection {
   id: number;
@@ -28,6 +29,7 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo, c
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+  const storeId = useStoreId(); // Get storeId dynamically from URL
   
   // Translations
   const { t, loading: translationsLoading } = useTranslation('storefront');
@@ -89,7 +91,7 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo, c
             <CountrySelector />
 
             {/* Side Cart */}
-            <SideCart storeId={1} /> {/* TODO: Get from props/context */}
+            {storeId && <SideCart storeId={storeId} />}
 
             {/* Mobile Menu Button */}
             <button

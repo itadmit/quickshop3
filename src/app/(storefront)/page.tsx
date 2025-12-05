@@ -1,13 +1,18 @@
-import { query } from '@/lib/db';
+import { query, queryOne } from '@/lib/db';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ProductCard } from '@/components/storefront/ProductCard';
 
-// Get store ID from domain or default to 1
-async function getStoreId(): Promise<number> {
-  // TODO: Get from domain/subdomain or query param
-  // For now, default to store_id = 1
-  return 1;
+// Get first active store ID or default to 1
+async function getStoreId(): Promise<number | null> {
+  try {
+    const store = await queryOne<{ id: number }>(
+      `SELECT id FROM stores WHERE is_active = true ORDER BY id LIMIT 1`
+    );
+    return store?.id || null;
+  } catch (error) {
+    console.error('Error getting store ID:', error);
+    return null;
+  }
 }
 
 // Get featured products (SSR)
@@ -73,6 +78,19 @@ async function getCollections(storeId: number) {
 
 export default async function StorefrontHomePage() {
   const storeId = await getStoreId();
+  
+  // If no active store found, show empty state
+  if (!storeId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">ברוכים הבאים</h1>
+          <p className="text-gray-600">אין מוצרים להצגה כרגע</p>
+        </div>
+      </div>
+    );
+  }
+  
   const [products, collections] = await Promise.all([
     getFeaturedProducts(storeId),
     getCollections(storeId),
@@ -171,4 +189,3 @@ export default async function StorefrontHomePage() {
     </div>
   );
 }
-

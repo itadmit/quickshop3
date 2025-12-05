@@ -138,10 +138,25 @@ export function Header() {
         
         {/* View Store */}
         <button 
-          onClick={() => {
-            // TODO: Get store slug from context/API
-            const storeSlug = 'nike'; // This should come from user context
-            window.open(`/${storeSlug}`, '_blank');
+          onClick={async () => {
+            try {
+              // Get store slug from API
+              const response = await fetch('/api/settings/store', {
+                credentials: 'include',
+              });
+              if (response.ok) {
+                const data = await response.json();
+                const storeSlug = data.store?.slug || 'nike'; // Fallback to 'nike' if not found
+                window.open(`/shops/${storeSlug}`, '_blank');
+              } else {
+                // Fallback if API fails
+                window.open('/shops/nike', '_blank');
+              }
+            } catch (error) {
+              console.error('Error getting store slug:', error);
+              // Fallback if error
+              window.open('/shops/nike', '_blank');
+            }
           }}
           className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:block"
           title="צפייה בחנות"
