@@ -6,6 +6,7 @@ interface Store {
   id: number;
   owner_id: number;
   name: string;
+  slug: string;
   domain: string | null;
   myshopify_domain: string | null;
   currency: string;
@@ -13,6 +14,7 @@ interface Store {
   timezone: string;
   plan: string;
   is_active: boolean;
+  settings: any;
   created_at: Date;
   updated_at: Date;
 }
@@ -25,6 +27,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Try to get settings from store_settings table first
+    let storeSettings = null;
+    try {
+      const settingsResult = await queryOne<{ settings: any }>(
+        'SELECT settings FROM store_settings WHERE store_id = $1',
+        [user.store_id]
+      );
+      if (settingsResult) {
+        storeSettings = typeof settingsResult.settings === 'string' 
+          ? JSON.parse(settingsResult.settings) 
+          : settingsResult.settings;
+      }
+    } catch (error: any) {
+      // If store_settings table doesn't exist, continue without it
+      if (!error.message?.includes('does not exist')) {
+        console.warn('Error fetching store_settings:', error);
+      }
+    }
+
     const store = await queryOne<Store>(
       'SELECT * FROM stores WHERE id = $1',
       [user.store_id]
@@ -32,6 +53,13 @@ export async function GET(request: NextRequest) {
 
     if (!store) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+    }
+
+    // Merge settings from store_settings if exists
+    if (storeSettings) {
+      store.settings = storeSettings;
+    } else {
+      store.settings = {};
     }
 
     return NextResponse.json({ store });
@@ -88,24 +116,102 @@ export async function PUT(request: NextRequest) {
       paramIndex++;
     }
 
-    if (updates.length === 0) {
+    // Handle themeSettings (email colors, sender name, etc.)
+    if (body.themeSettings !== undefined) {
+      // Try to update store_settings table
+      try {
+        // Check if store_settings table exists
+        const tableExists = await queryOne<{ count: number }>(
+          `SELECT COUNT(*) as count 
+           FROM information_schema.tables 
+           WHERE table_schema = 'public' AND table_name = 'store_settings'`
+        );
+
+        if (tableExists && tableExists.count > 0) {
+          // Get existing settings
+          const existing = await queryOne<{ settings: any }>(
+            'SELECT settings FROM store_settings WHERE store_id = $1',
+            [user.store_id]
+          );
+
+          const existingSettings = existing 
+            ? (typeof existing.settings === 'string' ? JSON.parse(existing.settings) : existing.settings)
+            : {};
+
+          // Merge themeSettings
+          const mergedSettings = {
+            ...existingSettings,
+            themeSettings: {
+              ...(existingSettings.themeSettings || {}),
+              ...body.themeSettings,
+            },
+          };
+
+          // Update or insert
+          await query(
+            `INSERT INTO store_settings (store_id, settings, updated_at)
+             VALUES ($1, $2, now())
+             ON CONFLICT (store_id) 
+             DO UPDATE SET settings = $2, updated_at = now()`,
+            [user.store_id, JSON.stringify(mergedSettings)]
+          );
+        }
+      } catch (error: any) {
+        // If store_settings table doesn't exist, silently ignore
+        if (!error.message?.includes('does not exist')) {
+          console.warn('Error updating store_settings:', error);
+        }
+      }
+    }
+
+    if (updates.length === 0 && body.themeSettings === undefined) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    updates.push(`updated_at = now()`);
-    values.push(user.store_id);
+    let updatedStore: Store | null = null;
 
-    const sql = `
-      UPDATE stores 
-      SET ${updates.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `;
+    if (updates.length > 0) {
+      updates.push(`updated_at = now()`);
+      values.push(user.store_id);
 
-    const updatedStore = await queryOne<Store>(sql, values);
+      const sql = `
+        UPDATE stores 
+        SET ${updates.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+
+      updatedStore = await queryOne<Store>(sql, values);
+    } else {
+      // If only themeSettings was updated, fetch the store
+      updatedStore = await queryOne<Store>(
+        'SELECT * FROM stores WHERE id = $1',
+        [user.store_id]
+      );
+    }
 
     if (!updatedStore) {
       return NextResponse.json({ error: 'Failed to update store settings' }, { status: 500 });
+    }
+
+    // Load settings from store_settings if exists
+    try {
+      const settingsResult = await queryOne<{ settings: any }>(
+        'SELECT settings FROM store_settings WHERE store_id = $1',
+        [user.store_id]
+      );
+      if (settingsResult) {
+        updatedStore.settings = typeof settingsResult.settings === 'string' 
+          ? JSON.parse(settingsResult.settings) 
+          : settingsResult.settings;
+      } else {
+        updatedStore.settings = {};
+      }
+    } catch (error: any) {
+      if (!error.message?.includes('does not exist')) {
+        console.warn('Error fetching store_settings:', error);
+      }
+      updatedStore.settings = {};
     }
 
     return NextResponse.json({ store: updatedStore });

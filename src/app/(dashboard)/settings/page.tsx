@@ -112,10 +112,44 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="p-6 space-y-6" dir="rtl">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-8 bg-gray-200 rounded w-32 animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar Skeleton */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow p-2">
+              <div className="space-y-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+                  <div key={i} className="h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Content Skeleton */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="space-y-6">
+                {/* Title */}
+                <div className="h-7 bg-gray-200 rounded w-48 animate-pulse"></div>
+                
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-5 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
