@@ -96,33 +96,26 @@
 
 ### 🎯 פתרונות מומלצים
 
-#### 1. **Upstash QStash** (מומלץ - חינמי!)
+#### 1. **Upstash QStash** (מומלץ - חינמי!) ✅
 Upstash מציעים **QStash** - שירות CRON חינמי עם:
 - ✅ CRON שעתי בחינם
 - ✅ עד 10,000 requests/day חינם
 - ✅ אמין ומהיר
 - ✅ אינטגרציה קלה עם Upstash Redis
 
-**הגדרה:**
+**הגדרה מהירה:**
 ```bash
+# 1. התקן את החבילה (כבר מותקן)
 npm install @upstash/qstash
+
+# 2. הוסף QSTASH_TOKEN ל-.env.local
+# קבל מ-https://console.upstash.com/qstash
+
+# 3. הרץ את הסקריפט
+npm run setup:qstash
 ```
 
-```typescript
-import { Client } from '@upstash/qstash';
-
-const qstash = new Client({
-  token: process.env.QSTASH_TOKEN,
-});
-
-// הגדרת CRON כל 5 דקות
-await qstash.publishJSON({
-  url: 'https://your-domain.com/api/cron/sync-visitors',
-  schedule: '*/5 * * * *', // כל 5 דקות
-});
-```
-
-**קבלת Token**: היכנס ל-[Upstash Console](https://console.upstash.com/) → QStash → Create Token
+**לפרטים נוספים**: ראה `QSTASH_SETUP.md`
 
 #### 2. **Vercel Cron Jobs** (יומי בלבד)
 הוסף ל-`vercel.json`:

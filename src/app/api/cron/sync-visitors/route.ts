@@ -1,34 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncAllVisitorsToPostgres, updateDailyAnalytics } from '@/lib/analytics/redis-to-postgres';
+import { verifySignatureAppRouter } from '@upstash/qstash/nextjs';
 
 /**
  * CRON Job: העברת מבקרים מ-Redis ל-PostgreSQL
- * נקרא כל 5 דקות (Vercel Cron Jobs או external cron service)
+ * נקרא כל 5 דקות דרך Upstash QStash
  * 
- * Vercel Cron: https://vercel.com/docs/cron-jobs
- * הוסף ל-vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/sync-visitors",
- *     "schedule": "*/5 * * * *"
- *   }]
- * }
+ * הגדרה:
+ * 1. קבל QSTASH_TOKEN מ-https://console.upstash.com/qstash
+ * 2. הוסף ל-.env.local: QSTASH_TOKEN=...
+ * 3. הרץ: npm run setup:qstash
  */
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest) {
   try {
-    // בדיקת Authorization (Vercel Cron או API Key)
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      // אם יש CRON_SECRET, נדרוש אותו
-      // אם לא, נאפשר גישה (למקרה של Vercel Cron)
-      const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron');
-      if (!isVercelCron) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-    }
-
     // העברת מבקרים מ-Redis ל-PostgreSQL
     const synced = await syncAllVisitorsToPostgres();
     
@@ -52,8 +36,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Allow POST for manual triggers
-export async function POST(request: NextRequest) {
-  return GET(request);
-}
+// QStash signature verification (אם יש QSTASH_TOKEN)
+// אם אין, מאפשר גישה ישירה (למקרה של בדיקות מקומיות)
+export const GET = process.env.QSTASH_TOKEN 
+  ? verifySignatureAppRouter(handler)
+  : handler;
 
+// Allow POST for manual triggers (with QStash verification)
+export const POST = process.env.QSTASH_TOKEN
+  ? verifySignatureAppRouter(handler)
+  : handler;
