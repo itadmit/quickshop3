@@ -31,11 +31,18 @@ export async function GET(request: NextRequest) {
     };
 
     visitors.forEach((v) => {
-      if (v.current_page?.includes('/cart')) {
+      const currentPage = v.current_page || '';
+      
+      // עגלות פעילות - מחפש /cart (עם או בלי /shops/[storeSlug])
+      if (currentPage.includes('/cart') && !currentPage.includes('/checkout')) {
         behavior.active_carts++;
-      } else if (v.current_page?.includes('/checkout') && !v.current_page?.includes('/success')) {
+      } 
+      // בתהליך תשלום - מחפש /checkout אבל לא /success
+      else if (currentPage.includes('/checkout') && !currentPage.includes('/success')) {
         behavior.checking_out++;
-      } else if (v.current_page?.includes('/checkout/success')) {
+      } 
+      // רכישות שהושלמו - מחפש /checkout/success
+      else if (currentPage.includes('/checkout/success')) {
         behavior.purchased++;
       }
     });
