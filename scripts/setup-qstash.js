@@ -33,14 +33,21 @@ const VERCEL_URL = process.env.VERCEL_URL;
 const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 // קביעת APP_URL לפי סדר עדיפות
-let APP_URL = process.env.APP_URL || NEXT_PUBLIC_APP_URL;
+let APP_URL = process.argv[2] || process.env.APP_URL || NEXT_PUBLIC_APP_URL;
 if (!APP_URL && VERCEL_URL) {
   APP_URL = `https://${VERCEL_URL}`;
 }
-if (!APP_URL) {
-  APP_URL = 'http://localhost:3099';
-  console.warn('⚠️  APP_URL לא מוגדר, משתמש ב-localhost:3099');
-  console.warn('   הוסף ל-.env.local: APP_URL=https://your-domain.com');
+if (!APP_URL || APP_URL.includes('localhost')) {
+  // אם אין APP_URL או שהוא localhost, נדרוש אותו
+  console.error('❌ שגיאה: APP_URL לא מוגדר או הוא localhost');
+  console.log('\n💡 הוסף ל-.env.local:');
+  console.log('   APP_URL=https://your-domain.vercel.app');
+  console.log('   או: APP_URL=https://your-custom-domain.com');
+  console.log('\n   לדוגמה:');
+  console.log('   APP_URL=https://quickshop3.vercel.app');
+  console.log('\n   או העבר כפרמטר:');
+  console.log('   npm run setup:qstash -- https://your-domain.vercel.app');
+  process.exit(1);
 }
 
 if (!QSTASH_TOKEN) {
