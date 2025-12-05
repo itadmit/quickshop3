@@ -716,6 +716,11 @@ SESSION_SECRET=your-session-secret-here
 # Note: The system uses 'jose' library for JWT operations
 # This ensures compatibility with both Edge Runtime (middleware) and Node.js Runtime (API routes)
 
+# Redis (Upstash) - למעקב משתמשים מחוברים בזמן אמת
+# הירשם חינם ב: https://upstash.com/
+UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
+
 # API
 API_BASE_URL=http://localhost:3000/api
 ```
@@ -1332,11 +1337,20 @@ GET    /api/auth/me
 
 **קבצים רלוונטיים:**
 - `src/lib/auth.ts` - פונקציות עזר לאימות (generateToken, verifyToken, clearSessionCookie)
-- `src/middleware.ts` - Next.js Middleware להגנה על routes
+- `src/lib/session-tracker.ts` - מעקב משתמשים מחוברים בזמן אמת עם Upstash Redis
+- `src/middleware.ts` - Next.js Middleware להגנה על routes + עדכון פעילות משתמשים
 - `src/app/api/auth/login/route.ts` - API route להתחברות
 - `src/app/api/auth/register/route.ts` - API route להרשמה
 - `src/app/api/auth/logout/route.ts` - API route להתנתקות
 - `src/app/api/auth/me/route.ts` - API route לקבלת פרטי משתמש נוכחי
+- `src/app/api/analytics/active-users/route.ts` - API route לספירת משתמשים מחוברים
+
+**מעקב משתמשים מחוברים:**
+המערכת משתמשת ב-**Upstash Redis** למעקב משתמשים מחוברים בזמן אמת:
+- כל פעולה של משתמש מחובר מעדכנת את ה-session ב-Redis עם TTL של 10 דקות
+- ניתן לספור משתמשים מחוברים דרך `/api/analytics/active-users`
+- פתרון יעיל שלא מעמיס על PostgreSQL
+- **חינמי** - Upstash מציע 10,000 commands/יום חינם
 
 **אירועים:**
 - `user.created` - כשמשתמש נרשם

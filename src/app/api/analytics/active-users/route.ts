@@ -29,13 +29,9 @@ export async function GET(request: NextRequest) {
     );
     const storeSlug = stores && stores.length > 0 ? stores[0].slug : undefined;
     
-    console.log('[active-users API] Store ID:', user.store_id, 'Store Slug:', storeSlug);
-    
     // נחפש לפי storeSlug בלבד כי זה מה שנשמר ב-middleware
     // לא נשלח storeId כי ב-middleware אנחנו שומרים storeId = 0
     const visitorsCount = await getActiveVisitorsCount(undefined, storeSlug);
-    
-    console.log('[active-users API] Visitors count result:', visitorsCount);
 
     if (!includeDetails && !includeVisitors) {
       return NextResponse.json({

@@ -379,16 +379,12 @@ export async function updateVisitorActivity(
  */
 export async function getActiveVisitorsCount(storeId?: number, storeSlug?: string): Promise<number> {
   try {
-    console.log('[getActiveVisitorsCount] Called with storeId:', storeId, 'storeSlug:', storeSlug);
-    
     const redisClient = getRedis();
     if (!redisClient) {
-      console.log('[getActiveVisitorsCount] ⚠️ Redis client not available');
       return 0;
     }
 
     const visitorIds = await redisClient.smembers(ACTIVE_VISITORS_SET);
-    console.log('[getActiveVisitorsCount] Found', visitorIds.length, 'visitor IDs in set:', visitorIds);
     
     if (!storeId && !storeSlug) {
       let count = 0;
@@ -401,7 +397,6 @@ export async function getActiveVisitorsCount(storeId?: number, storeSlug?: strin
           await redisClient.srem(ACTIVE_VISITORS_SET, visitorId);
         }
       }
-      console.log('[getActiveVisitorsCount] Total count (no filter):', count);
       return count;
     }
 
@@ -419,30 +414,19 @@ export async function getActiveVisitorsCount(storeId?: number, storeSlug?: strin
             visitorData = data as ActiveVisitorData;
           }
           
-          console.log('[getActiveVisitorsCount] Checking visitor:', {
-            visitorId,
-            visitor_store_slug: visitorData.store_slug,
-            visitor_store_id: visitorData.store_id,
-            search_store_slug: storeSlug,
-            search_store_id: storeId,
-          });
-          
           // אם יש storeSlug, נחפש רק לפי storeSlug (כי ב-middleware אנחנו שומרים storeId = 0)
           // אם אין storeSlug אבל יש storeId (וגם storeId != 0), נחפש לפי storeId
           let matches = false;
           if (storeSlug) {
             // אם יש storeSlug, נחפש רק לפי storeSlug (לא נבדוק storeId)
             matches = visitorData.store_slug === storeSlug;
-            console.log('[getActiveVisitorsCount] Match by storeSlug?', matches, visitorData.store_slug, '===', storeSlug);
           } else if (storeId !== undefined && storeId !== 0) {
             // אם אין storeSlug, נחפש לפי storeId
             matches = visitorData.store_id === storeId;
-            console.log('[getActiveVisitorsCount] Match by storeId?', matches, visitorData.store_id, '===', storeId);
           }
           
           if (matches) {
             count++;
-            console.log('[getActiveVisitorsCount] ✅ Match! Count now:', count);
           }
         } else {
           await redisClient.srem(ACTIVE_VISITORS_SET, visitorId);
@@ -453,7 +437,6 @@ export async function getActiveVisitorsCount(storeId?: number, storeSlug?: strin
       }
     }
 
-    console.log('[getActiveVisitorsCount] Final count:', count);
     return count;
   } catch (error) {
     console.error('Error getting active visitors count:', error);

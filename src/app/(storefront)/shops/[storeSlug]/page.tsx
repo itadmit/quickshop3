@@ -95,7 +95,7 @@ export default async function StorefrontHomePage({
               מגוון רחב של מוצרים איכותיים במחירים מעולים
             </p>
             <Link
-              href={`/${storeSlug}/products`}
+              href={`/shops/${storeSlug}/products`}
               className="inline-block bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
             >
               גלה את כל המוצרים
@@ -113,7 +113,7 @@ export default async function StorefrontHomePage({
               {collections.map((collection) => (
                 <Link
                   key={collection.id}
-                  href={`/${storeSlug}/collections/${collection.handle}`}
+                  href={`/shops/${storeSlug}/collections/${collection.handle}`}
                   className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow"
                 >
                   {collection.image_url ? (
@@ -148,7 +148,7 @@ export default async function StorefrontHomePage({
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold text-gray-900">מוצרים מובילים</h2>
               <Link
-                href={`/${storeSlug}/products`}
+                href={`/shops/${storeSlug}/products`}
                 className="text-green-600 hover:text-green-700 font-medium"
               >
                 צפה בכל המוצרים →

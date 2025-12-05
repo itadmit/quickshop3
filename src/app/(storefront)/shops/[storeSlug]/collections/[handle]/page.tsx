@@ -111,7 +111,7 @@ export default async function CollectionPage({
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg mb-4">אין מוצרים בקטגוריה זו כרגע</p>
           <Link
-            href={`/${storeSlug}/products`}
+            href={`/shops/${storeSlug}/products`}
             className="inline-block text-green-600 hover:text-green-700 font-medium"
           >
             צפה בכל המוצרים →

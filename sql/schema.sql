@@ -821,6 +821,25 @@ CREATE TABLE request_logs (
 CREATE INDEX idx_request_logs_store_id ON request_logs(store_id);
 CREATE INDEX idx_request_logs_created_at ON request_logs(created_at DESC);
 
+-- User Sessions (למעקב ארוך טווח - Redis משמש למעקב בזמן אמת)
+CREATE TABLE user_sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES store_owners(id) ON DELETE CASCADE,
+  store_id INT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  session_token VARCHAR(255) UNIQUE NOT NULL,
+  ip_address VARCHAR(100),
+  user_agent TEXT,
+  last_activity TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+);
+
+CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX idx_user_sessions_store_id ON user_sessions(store_id);
+CREATE INDEX idx_user_sessions_last_activity ON user_sessions(last_activity DESC);
+CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
+CREATE INDEX idx_user_sessions_session_token ON user_sessions(session_token);
+
 -- ============================================
 -- 12. ADMIN USERS & PERMISSIONS
 -- ============================================

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { verifyPassword, generateToken, setSessionCookie } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
+import { updateUserActivity } from '@/lib/session-tracker';
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,6 +84,14 @@ export async function POST(req: NextRequest) {
       store_id: store.id,
       source: 'api',
       user_id: user.id,
+    });
+
+    // עדכון פעילות משתמש ב-Redis
+    await updateUserActivity(user.id, store.id, {
+      email: user.email,
+      name: user.name,
+    }).catch((error) => {
+      console.error('Failed to update user activity in Redis:', error);
     });
 
     const response = NextResponse.json({

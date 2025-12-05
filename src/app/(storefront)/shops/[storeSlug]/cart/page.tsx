@@ -19,7 +19,7 @@ export default function CartPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">העגלה שלך ריקה</h1>
           <p className="text-gray-600 mb-8">הוסף מוצרים לעגלה כדי להתחיל לקנות</p>
           <Link
-            href={`/${storeSlug}/products`}
+            href={`/shops/${storeSlug}/products`}
             className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
           >
             המשך לקניות
@@ -108,10 +108,10 @@ export default function CartPage() {
         <div className="lg:col-span-1">
           <CartSummary
             storeId={1} // TODO: Get from storeSlug
-            onCheckout={() => router.push(`/${storeSlug}/checkout`)}
+            onCheckout={() => router.push(`/shops/${storeSlug}/checkout`)}
           />
           <Link
-            href={`/${storeSlug}/products`}
+            href={`/shops/${storeSlug}/products`}
             className="block text-center mt-4 text-gray-600 hover:text-gray-900 transition-colors"
           >
             ← המשך לקניות

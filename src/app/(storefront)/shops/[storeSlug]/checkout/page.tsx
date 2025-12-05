@@ -49,7 +49,7 @@ export default function CheckoutPage() {
       });
 
       clearCart();
-      router.push(`/${storeSlug}/checkout/success?orderId=${order.id}`);
+      router.push(`/shops/${storeSlug}/checkout/success?orderId=${order.id}`);
     } catch (error) {
       console.error('Checkout error:', error);
       alert('שגיאה ביצירת ההזמנה. נסה שוב.');
@@ -59,7 +59,7 @@ export default function CheckoutPage() {
   };
 
   if (cartItems.length === 0) {
-    router.push(`/${storeSlug}/cart`);
+    router.push(`/shops/${storeSlug}/cart`);
     return null;
   }
 

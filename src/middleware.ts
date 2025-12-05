@@ -102,12 +102,9 @@ export async function middleware(request: NextRequest) {
     try {
       // חילוץ storeSlug מה-URL
       const storeSlugMatch = pathname.match(/^\/shops\/([^\/]+)/);
-      console.log('[Middleware] Storefront route detected:', pathname);
-      console.log('[Middleware] StoreSlug match:', storeSlugMatch);
       
       if (storeSlugMatch) {
         const storeSlug = storeSlugMatch[1];
-        console.log('[Middleware] Extracted storeSlug:', storeSlug);
         
         // קבלת או יצירת visitor session ID (ייחודי לכל טאב/דפדפן)
         let visitorSessionId = request.cookies.get(VISITOR_SESSION_COOKIE_NAME)?.value;
@@ -123,9 +120,6 @@ export async function middleware(request: NextRequest) {
             maxAge: 60 * 60 * 24 * 30, // 30 days
             path: '/',
           });
-          console.log('[Middleware] Created new visitor session ID:', visitorSessionId);
-        } else {
-          console.log('[Middleware] Using existing visitor session ID:', visitorSessionId);
         }
         
         // יצירת visitor ID ייחודי (storeSlug + session ID)
@@ -203,8 +197,6 @@ export async function middleware(request: NextRequest) {
         });
         
         return response;
-      } else {
-        console.log('[Middleware] ⚠️ No storeSlug match found for pathname:', pathname);
       }
     } catch (error) {
       // לא נכשל את הבקשה אם יש שגיאה במעקב

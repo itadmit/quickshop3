@@ -37,6 +37,7 @@
 | GET | `/api/analytics/sales` | Get sales data | ✅ |
 | GET | `/api/analytics/top-products` | Get top products | ✅ |
 | GET | `/api/analytics/visits` | Get visit analytics | ✅ |
+| GET | `/api/analytics/active-users` | Get active users (last 10 min) | ✅ |
 | GET | `/api/analytics/revenue` | Get revenue data | ⚠️ |
 | GET | `/api/analytics/conversion` | Get conversion rates | ⚠️ |
 

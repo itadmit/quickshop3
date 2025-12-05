@@ -21,7 +21,7 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href={`/${storeSlug}`} className="flex items-center gap-3">
+          <Link href={`/shops/${storeSlug}`} className="flex items-center gap-3">
             {storeLogo ? (
               <img src={storeLogo} alt={storeName} className="h-10 w-auto" />
             ) : (
@@ -31,16 +31,16 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link href={`/${storeSlug}`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
+            <Link href={`/shops/${storeSlug}`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
               בית
             </Link>
-            <Link href={`/${storeSlug}/collections`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
+            <Link href={`/shops/${storeSlug}/collections`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
               קטגוריות
             </Link>
-            <Link href={`/${storeSlug}/products`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
+            <Link href={`/shops/${storeSlug}/products`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
               כל המוצרים
             </Link>
-            <Link href={`/${storeSlug}/blog`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
+            <Link href={`/shops/${storeSlug}/blog`} className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
               בלוג
             </Link>
           </nav>
@@ -74,28 +74,28 @@ export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo }:
           <div className="md:hidden border-t border-gray-200 py-4">
             <nav className="flex flex-col gap-4">
               <Link
-                href={`/${storeSlug}`}
+                href={`/shops/${storeSlug}`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 בית
               </Link>
               <Link
-                href={`/${storeSlug}/collections`}
+                href={`/shops/${storeSlug}/collections`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 קטגוריות
               </Link>
               <Link
-                href={`/${storeSlug}/products`}
+                href={`/shops/${storeSlug}/products`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 כל המוצרים
               </Link>
               <Link
-                href={`/${storeSlug}/blog`}
+                href={`/shops/${storeSlug}/blog`}
                 className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

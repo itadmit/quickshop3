@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
-import { HiTrendingUp, HiShoppingCart, HiUsers, HiCurrencyDollar } from 'react-icons/hi';
+import { HiTrendingUp, HiShoppingCart, HiUsers, HiCurrencyDollar, HiGlobeAlt } from 'react-icons/hi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface SalesData {
@@ -109,21 +110,33 @@ export default function AnalyticsPage() {
     <div className="p-6 space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">אנליטיקס</h1>
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={dateRange.start_date}
-            onChange={(e) => setDateRange({ ...dateRange, start_date: e.target.value })}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
-          <span className="text-gray-500">עד</span>
-          <input
-            type="date"
-            value={dateRange.end_date}
-            onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">אנליטיקס</h1>
+          <p className="text-gray-500 mt-1">ניתוח מכירות ותנועה</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/analytics/realtime"
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+          >
+            <HiGlobeAlt className="w-5 h-5" />
+            <span>אנליטיקה בזמן אמת</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateRange.start_date}
+              onChange={(e) => setDateRange({ ...dateRange, start_date: e.target.value })}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-gray-500">עד</span>
+            <input
+              type="date"
+              value={dateRange.end_date}
+              onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
         </div>
       </div>
 

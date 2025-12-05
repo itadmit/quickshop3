@@ -35,13 +35,13 @@ export default function CheckoutSuccessPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href={`/${storeSlug}/products`}
+              href={`/shops/${storeSlug}/products`}
               className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
             >
               המשך לקניות
             </Link>
             <Link
-              href={`/${storeSlug}`}
+              href={`/shops/${storeSlug}`}
               className="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-colors"
             >
               חזרה לדף הבית

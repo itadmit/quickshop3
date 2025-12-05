@@ -42,21 +42,17 @@ export async function getGeoLocation(ip: string): Promise<GeoLocation | null> {
     });
 
     if (!response.ok) {
-      console.warn('[GeoIP] Failed to fetch location:', response.status);
-      // אם נכשל, נחזיר null במקום "Local"
       return null;
     }
 
     const data = await response.json();
 
     if (data.status === 'fail') {
-      console.warn('[GeoIP] IP lookup failed:', data.message);
       return null;
     }
 
     // אם יש עיר, נחזיר אותה. אם לא, נחזיר null במקום "Local"
     if (!data.city || data.city === '') {
-      console.warn('[GeoIP] No city data available for IP:', ip);
       return null;
     }
 

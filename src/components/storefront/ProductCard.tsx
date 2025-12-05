@@ -20,7 +20,7 @@ export function ProductCard({ product }: ProductCardProps) {
   
   return (
     <Link
-      href={`/${storeSlug}/products/${product.handle}`}
+      href={`/shops/${storeSlug}/products/${product.handle}`}
       className="group bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden"
     >
       {/* Product Image */}

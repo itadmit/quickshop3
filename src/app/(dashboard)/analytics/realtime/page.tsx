@@ -109,7 +109,6 @@ export default function RealtimeDashboard() {
           count: group.count,
         }));
         
-        console.log('[Dashboard] Setting markers:', newMarkers);
         setMarkers(newMarkers);
 
         setData((prev) => ({
