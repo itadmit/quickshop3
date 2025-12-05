@@ -10,7 +10,7 @@ import { HiTrash, HiPlus, HiMinus } from 'react-icons/hi';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
 import { emitTrackingEvent } from '@/lib/tracking/events';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { TextSkeleton } from '@/components/ui/Skeleton';
 
 export default function CartPage() {
