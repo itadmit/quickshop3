@@ -161,3 +161,115 @@ export const WELCOME_TEMPLATE = {
 `
 };
 
+export const ORDER_SHIPPED_TEMPLATE = {
+  subject: 'ההזמנה {{order_name}} נשלחה!',
+  body: `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ההזמנה {{order_name}} נשלחה</title>
+  ${EMAIL_STYLES}
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      {{shop_logo_or_name}}
+    </div>
+    
+    <div class="content">
+      <div class="greeting">שלום {{customer_first_name}},</div>
+      <p>ההזמנה שלך נשלחה! 🚀</p>
+      <p>ההזמנה <strong>{{order_name}}</strong> יצאה לדרך ותגיע אליך בקרוב.</p>
+      
+      {{#if tracking_number}}
+      <div class="order-info">
+        <div class="info-title">מספר מעקב</div>
+        <div style="font-size: 18px; font-weight: bold; margin-top: 10px;">{{tracking_number}}</div>
+        {{#if tracking_url}}
+        <div class="button-container">
+          <a href="{{tracking_url}}" class="button">עקוב אחר המשלוח</a>
+        </div>
+        {{/if}}
+      </div>
+      {{/if}}
+
+      <div class="button-container">
+        <a href="{{order_status_url}}" class="button">צפה בהזמנה שלך</a>
+      </div>
+
+      <p>תודה שקנית אצלנו!</p>
+    </div>
+
+    <div class="footer">
+      <p>אם יש לך שאלות, השב למייל זה או צור קשר ב- <a href="mailto:{{shop_email}}">{{shop_email}}</a></p>
+      <p>© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+};
+
+export const ORDER_CANCELLED_TEMPLATE = {
+  subject: 'ההזמנה {{order_name}} בוטלה',
+  body: `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ההזמנה {{order_name}} בוטלה</title>
+  ${EMAIL_STYLES}
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      {{shop_logo_or_name}}
+    </div>
+    
+    <div class="content">
+      <div class="greeting">שלום {{customer_first_name}},</div>
+      <p>אנו מודיעים לך שההזמנה <strong>{{order_name}}</strong> בוטלה.</p>
+      
+      {{#if cancellation_reason}}
+      <div class="order-info">
+        <div class="info-title">סיבת ביטול</div>
+        <div style="margin-top: 10px;">{{cancellation_reason}}</div>
+      </div>
+      {{/if}}
+
+      {{#if refund_amount}}
+      <p>אם שולם תשלום עבור ההזמנה, הוא יוחזר לך תוך 5-10 ימי עסקים.</p>
+      {{/if}}
+
+      <div class="button-container">
+        <a href="{{shop_url}}" class="button">עיין במוצרים נוספים</a>
+      </div>
+
+      <p>אם יש לך שאלות או אם ההזמנה לא הייתה אמורה להיות מבוטלת, אנא צור קשר איתנו.</p>
+    </div>
+
+    <div class="footer">
+      <p>אם יש לך שאלות, השב למייל זה או צור קשר ב- <a href="mailto:{{shop_email}}">{{shop_email}}</a></p>
+      <p>© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+};
+
+/**
+ * מחזיר את כל תבניות ברירת המחדל
+ */
+export function getDefaultTemplates() {
+  return {
+    ORDER_CONFIRMATION: ORDER_CONFIRMATION_TEMPLATE,
+    WELCOME: WELCOME_TEMPLATE,
+    ORDER_SHIPPED: ORDER_SHIPPED_TEMPLATE,
+    ORDER_CANCELLED: ORDER_CANCELLED_TEMPLATE,
+  };
+}
+

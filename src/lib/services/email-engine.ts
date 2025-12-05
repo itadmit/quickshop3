@@ -1,6 +1,6 @@
 import { queryOne } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
-import { ORDER_CONFIRMATION_TEMPLATE, WELCOME_TEMPLATE } from '@/lib/templates/default-emails';
+import { ORDER_CONFIRMATION_TEMPLATE, WELCOME_TEMPLATE, ORDER_SHIPPED_TEMPLATE, ORDER_CANCELLED_TEMPLATE } from '@/lib/templates/default-emails';
 
 export type EmailType = 'ORDER_CONFIRMATION' | 'WELCOME' | 'ORDER_SHIPPED' | 'ORDER_CANCELLED';
 
@@ -84,6 +84,10 @@ export class EmailEngine {
         return ORDER_CONFIRMATION_TEMPLATE;
       case 'WELCOME':
         return WELCOME_TEMPLATE;
+      case 'ORDER_SHIPPED':
+        return ORDER_SHIPPED_TEMPLATE;
+      case 'ORDER_CANCELLED':
+        return ORDER_CANCELLED_TEMPLATE;
       default:
         throw new Error(`Unknown email type: ${type}`);
     }

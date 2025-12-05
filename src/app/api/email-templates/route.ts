@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { getDefaultTemplates } from '@/lib/templates/default-emails';
 
-// GET /api/email-templates - Get all email templates for store
+const TEMPLATE_TYPES = ['ORDER_CONFIRMATION', 'WELCOME', 'ORDER_SHIPPED', 'ORDER_CANCELLED'];
+
+// GET /api/email-templates - Get all email templates for store (including defaults)
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
@@ -10,7 +13,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const templates = await query<{
+    // טעינת תבניות מותאמות אישית מהמסד נתונים
+    const customTemplates = await query<{
       id: number;
       template_type: string;
       subject: string;
@@ -21,7 +25,39 @@ export async function GET(request: NextRequest) {
       [user.store_id]
     );
 
-    return NextResponse.json({ templates });
+    // יצירת מפה של תבניות מותאמות אישית לפי סוג
+    const customTemplatesMap = new Map(
+      customTemplates.map(t => [t.template_type, t])
+    );
+
+    // קבלת תבניות ברירת מחדל
+    const defaultTemplates = getDefaultTemplates();
+
+    // יצירת רשימה משולבת של כל התבניות (מותאמות אישית + ברירת מחדל)
+    const allTemplates = TEMPLATE_TYPES.map(templateType => {
+      const customTemplate = customTemplatesMap.get(templateType);
+      const defaultTemplate = defaultTemplates[templateType as keyof typeof defaultTemplates];
+
+      if (customTemplate) {
+        // יש תבנית מותאמת אישית
+        return {
+          ...customTemplate,
+          is_custom: true,
+        };
+      } else {
+        // אין תבנית מותאמת אישית - השתמש בברירת מחדל
+        return {
+          id: null,
+          template_type: templateType,
+          subject: defaultTemplate.subject,
+          body_html: defaultTemplate.body,
+          is_active: true,
+          is_custom: false,
+        };
+      }
+    });
+
+    return NextResponse.json({ templates: allTemplates });
   } catch (error: any) {
     console.error('Error fetching email templates:', error);
     return NextResponse.json(

@@ -10,11 +10,12 @@ import { HiMail, HiSave, HiPlus } from 'react-icons/hi';
 import { DataTable, TableColumn } from '@/components/ui/DataTable';
 
 interface EmailTemplate {
-  id: number;
+  id: number | null;
   template_type: string;
   subject: string;
   body_html: string;
   is_active: boolean;
+  is_custom?: boolean;
 }
 
 const TEMPLATE_TYPES = [
@@ -64,7 +65,7 @@ export default function EmailTemplatesPage() {
       template_type: template.template_type,
       subject: template.subject,
       body_html: template.body_html,
-      is_active: template.is_active,
+      is_active: template.is_active ?? true,
     });
   };
 
@@ -169,15 +170,22 @@ export default function EmailTemplatesPage() {
               <div className="space-y-2">
                 {templates.map((template) => (
                   <button
-                    key={template.id}
+                    key={template.template_type}
                     onClick={() => handleEdit(template)}
                     className={`w-full text-right px-4 py-2 rounded-lg transition-colors ${
-                      selectedTemplate?.id === template.id
+                      selectedTemplate?.template_type === template.template_type
                         ? 'bg-green-50 text-green-700 font-medium'
                         : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    {TEMPLATE_TYPES.find(t => t.value === template.template_type)?.label || template.template_type}
+                    <div className="flex items-center justify-between">
+                      <span>{TEMPLATE_TYPES.find(t => t.value === template.template_type)?.label || template.template_type}</span>
+                      {!template.is_custom && (
+                        <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+                          ברירת מחדל
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
                 {templates.length === 0 && (
@@ -192,11 +200,18 @@ export default function EmailTemplatesPage() {
         <div className="lg:col-span-2">
           <Card>
             <div className="p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <HiMail className="w-5 h-5 text-gray-500" />
-                <h2 className="text-lg font-semibold">
-                  {selectedTemplate ? 'עריכת תבנית' : 'תבנית חדשה'}
-                </h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <HiMail className="w-5 h-5 text-gray-500" />
+                  <h2 className="text-lg font-semibold">
+                    {selectedTemplate ? 'עריכת תבנית' : 'תבנית חדשה'}
+                  </h2>
+                </div>
+                {selectedTemplate && !selectedTemplate.is_custom && (
+                  <span className="text-xs text-gray-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                    תבנית ברירת מחדל - שמירה תהפוך אותה למותאמת אישית
+                  </span>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -205,8 +220,29 @@ export default function EmailTemplatesPage() {
                   <select
                     id="template_type"
                     value={formData.template_type}
-                    onChange={(e) => setFormData({ ...formData, template_type: e.target.value })}
-                    disabled={!!selectedTemplate}
+                    onChange={(e) => {
+                      const selectedType = e.target.value;
+                      // אם בוחרים סוג תבנית חדש, טען את ברירת המחדל אם יש
+                      if (selectedType) {
+                        const existingTemplate = templates.find(t => t.template_type === selectedType);
+                        if (existingTemplate) {
+                          setFormData({
+                            template_type: existingTemplate.template_type,
+                            subject: existingTemplate.subject,
+                            body_html: existingTemplate.body_html,
+                            is_active: existingTemplate.is_active ?? true,
+                          });
+                          setSelectedTemplate(existingTemplate);
+                        } else {
+                          setFormData({ ...formData, template_type: selectedType });
+                          setSelectedTemplate(null);
+                        }
+                      } else {
+                        setFormData({ ...formData, template_type: '' });
+                        setSelectedTemplate(null);
+                      }
+                    }}
+                    disabled={!!selectedTemplate && selectedTemplate.is_custom}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-2 disabled:bg-gray-100"
                   >
                     <option value="">בחר סוג תבנית</option>
@@ -264,23 +300,57 @@ export default function EmailTemplatesPage() {
               <div className="flex items-center gap-3 pt-4 border-t">
                 <Button onClick={handleSave} disabled={saving || !formData.template_type || !formData.subject}>
                   <HiSave className="w-4 h-4 ml-2" />
-                  {saving ? 'שומר...' : 'שמור תבנית'}
+                  {saving ? 'שומר...' : selectedTemplate && !selectedTemplate.is_custom ? 'שמור כמותאם אישית' : 'שמור תבנית'}
                 </Button>
                 {selectedTemplate && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setSelectedTemplate(null);
-                      setFormData({
-                        template_type: '',
-                        subject: '',
-                        body_html: '',
-                        is_active: true,
-                      });
-                    }}
-                  >
-                    ביטול
-                  </Button>
+                  <>
+                    {selectedTemplate.is_custom && (
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          if (!confirm('האם אתה בטוח שברצונך למחוק את התבנית המותאמת אישית ולחזור לברירת המחדל?')) {
+                            return;
+                          }
+                          try {
+                            const response = await fetch(`/api/email-templates/${selectedTemplate.id}`, {
+                              method: 'DELETE',
+                              credentials: 'include',
+                            });
+                            if (!response.ok) throw new Error('Failed to delete template');
+                            await loadTemplates();
+                            setSelectedTemplate(null);
+                            setFormData({
+                              template_type: '',
+                              subject: '',
+                              body_html: '',
+                              is_active: true,
+                            });
+                            alert('התבנית נמחקה, חזרת לברירת המחדל');
+                          } catch (error: any) {
+                            console.error('Error deleting template:', error);
+                            alert(`שגיאה במחיקת תבנית: ${error.message}`);
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        מחק תבנית מותאמת
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setSelectedTemplate(null);
+                        setFormData({
+                          template_type: '',
+                          subject: '',
+                          body_html: '',
+                          is_active: true,
+                        });
+                      }}
+                    >
+                      ביטול
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

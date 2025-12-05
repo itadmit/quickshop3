@@ -77,10 +77,13 @@ async function getCollections(storeId: number) {
 }
 
 export default async function StorefrontHomePage() {
-  const storeId = await getStoreId();
+  // Get first active store (with slug)
+  const store = await queryOne<{ id: number; slug: string }>(
+    `SELECT id, slug FROM stores WHERE is_active = true ORDER BY id LIMIT 1`
+  );
   
   // If no active store found, show empty state
-  if (!storeId) {
+  if (!store) {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
         <div className="text-center">
@@ -92,8 +95,8 @@ export default async function StorefrontHomePage() {
   }
   
   const [products, collections] = await Promise.all([
-    getFeaturedProducts(storeId),
-    getCollections(storeId),
+    getFeaturedProducts(store.id),
+    getCollections(store.id),
   ]);
 
   return (
@@ -127,7 +130,7 @@ export default async function StorefrontHomePage() {
               {collections.map((collection) => (
                 <Link
                   key={collection.id}
-                  href={`/shops/collections/${collection.handle}`}
+                  href={`/shops/${store.slug}/collections/${collection.handle}`}
                   className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow"
                 >
                   {collection.image_url ? (
@@ -162,7 +165,7 @@ export default async function StorefrontHomePage() {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold text-gray-900">מוצרים מובילים</h2>
               <Link
-                href="/shops/products"
+                href={`/shops/${store.slug}/products`}
                 className="text-green-600 hover:text-green-700 font-medium"
               >
                 צפה בכל המוצרים →
@@ -170,7 +173,7 @@ export default async function StorefrontHomePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} storeSlug={store.slug} />
               ))}
             </div>
           </div>

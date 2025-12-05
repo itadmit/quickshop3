@@ -13,12 +13,14 @@ interface ProductCardProps {
     image: string | null;
     price: number | null;
   };
+  storeSlug?: string; // Optional prop - if not provided, will try to get from params
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, storeSlug: propStoreSlug }: ProductCardProps) {
   const params = useParams();
   const pathname = usePathname();
-  const storeSlug = params?.storeSlug as string || '';
+  // Use prop if provided, otherwise try to get from params
+  const storeSlug = propStoreSlug || (params?.storeSlug as string) || '';
   
   // Track ViewContent when product card is viewed
   useEffect(() => {
