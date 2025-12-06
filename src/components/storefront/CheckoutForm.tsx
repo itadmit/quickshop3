@@ -1122,114 +1122,77 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                                 {item.variant_title}
                               </div>
                             )}
-                            {calculatedItem.appliedDiscounts && calculatedItem.appliedDiscounts.length > 0 && (
-                              <div className="mt-1 space-y-0.5">
-                                {calculatedItem.appliedDiscounts.map((discount, idx) => (
-                                  <div key={idx} className="text-xs text-green-600">
-                                    {discount.source === 'automatic' && '🔵 '}
-                                    {discount.source === 'code' && '🟢 '}
-                                    {discount.description}: -₪{discount.amount.toFixed(2)}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                           <div className="font-medium">
-                            {hasDiscount ? (
-                              <div className="text-right">
-                                <div className="text-sm text-gray-400 line-through">
-                                  ₪{calculatedItem.lineTotal.toFixed(2)}
-                                </div>
-                                <div className="text-base font-bold text-green-600">
-                                  ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-base font-bold">
-                                ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                              </div>
-                            )}
+                            <div className="text-base font-bold">
+                              ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                            </div>
                           </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Coupon/Discount Code */}
-                  <div className="mb-6">
-                    {discountCode ? (
-                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-green-800">
-                            {discountCode}
-                          </div>
-                            {getDiscounts().filter(d => d.source === 'code').length > 0 && (
-                              <div className="text-xs text-green-600">
-                                {translationsLoading ? (
-                                  <TextSkeleton width="w-24" height="h-3" />
-                                ) : getDiscounts().filter(d => d.source === 'code').some(d => d.type === 'free_shipping') ? (
-                                  'משלוח חינם'
-                                ) : (
-                                  `חיסכון של ₪${getDiscounts()
-                                    .filter(d => d.source === 'code')
-                                    .reduce((sum, d) => sum + d.amount, 0)
-                                    .toFixed(2)}`
-                                )}
-                              </div>
-                            )}
+                  {/* Coupon/Discount Code - מועבר למטה לסיכום */}
+                  {discountCode && (
+                    <div className="mb-4 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-green-800">
+                          {discountCode}
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-green-700 hover:text-green-900 hover:bg-green-100"
-                          onClick={async () => {
-                            await removeDiscountCode();
-                          }}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
                       </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          value={codeInput}
-                          onChange={(e) => {
-                            setCodeInput(e.target.value);
-                            setCodeError('');
-                          }}
-                          onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
-                          placeholder={translationsLoading ? '' : 'קוד קופון או הנחה'}
-                          className="flex-1"
-                          style={{ backgroundColor: '#ffffff' }}
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="px-6"
-                          style={{ backgroundColor: '#e5e7eb' }}
-                          onClick={handleApplyCode}
-                          disabled={validatingCode || !codeInput.trim()}
-                        >
-                          {validatingCode ? (
-                            translationsLoading ? (
-                              <TextSkeleton width="w-12" height="h-4" />
-                            ) : (
-                              t('checkout.checking')
-                            )
-                          ) : translationsLoading ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-700 hover:text-green-900 hover:bg-green-100"
+                        onClick={async () => {
+                          await removeDiscountCode();
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  {!discountCode && (
+                    <div className="mb-4 flex gap-2">
+                      <Input
+                        type="text"
+                        value={codeInput}
+                        onChange={(e) => {
+                          setCodeInput(e.target.value);
+                          setCodeError('');
+                        }}
+                        onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
+                        placeholder={translationsLoading ? '' : 'קוד קופון או הנחה'}
+                        className="flex-1"
+                        style={{ backgroundColor: '#ffffff' }}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="px-6"
+                        style={{ backgroundColor: '#e5e7eb' }}
+                        onClick={handleApplyCode}
+                        disabled={validatingCode || !codeInput.trim()}
+                      >
+                        {validatingCode ? (
+                          translationsLoading ? (
                             <TextSkeleton width="w-12" height="h-4" />
                           ) : (
-                            t('checkout.apply')
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                    {codeError && (
-                      <p className="mt-2 text-sm text-red-600">{codeError}</p>
-                    )}
-                  </div>
+                            t('checkout.checking')
+                          )
+                        ) : translationsLoading ? (
+                          <TextSkeleton width="w-12" height="h-4" />
+                        ) : (
+                          t('checkout.apply')
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  {codeError && (
+                    <p className="mb-4 text-sm text-red-600">{codeError}</p>
+                  )}
 
                   {/* Summary */}
                   <div 
@@ -1249,44 +1212,46 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       <span className="font-medium">₪{getSubtotal().toFixed(2)}</span>
                     </div>
                     
-                    {/* הנחות - סיכום בלבד ללא כפילות */}
+                    {/* הנחות - סיכום מפורט עם שמות */}
                     {getDiscount() > 0 && (
                       <>
-                        {getDiscounts().filter(d => d.source === 'code').length > 0 && (
-                          <div className="flex justify-between text-green-600">
+                        {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
+                          <div key={`auto-${idx}`} className="flex justify-between text-green-600">
+                            <span>
+                              {translationsLoading ? (
+                                <TextSkeleton width="w-24" height="h-4" />
+                              ) : (
+                                discount.name || discount.description || 'הנחה אוטומטית'
+                              )}
+                            </span>
+                            <span>
+                              {discount.type === 'free_shipping' ? (
+                                'משלוח חינם'
+                              ) : (
+                                `-₪${discount.amount.toFixed(2)}`
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                        
+                        {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
+                          <div key={`code-${idx}`} className="flex justify-between text-green-600">
                             <span>
                               {translationsLoading ? (
                                 <TextSkeleton width="w-16" height="h-4" />
                               ) : (
-                                'קופון'
+                                `קופון ${discount.code || discount.name || 'הנחה'}`
                               )}
                             </span>
                             <span>
-                              -₪{getDiscounts()
-                                .filter(d => d.source === 'code')
-                                .reduce((sum, d) => sum + d.amount, 0)
-                                .toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
-                          <div className="flex items-center justify-between gap-2">
-                            <Badge className="bg-green-100 hover:bg-green-100 text-green-800 border border-green-700 text-xs font-semibold whitespace-nowrap px-2 py-1 rounded-sm">
-                              {translationsLoading ? (
-                                <TextSkeleton width="w-24" height="h-3" />
+                              {discount.type === 'free_shipping' ? (
+                                'משלוח חינם'
                               ) : (
-                                getDiscounts().find(d => d.source === 'automatic')?.name || 'הנחה אוטומטית'
+                                `-₪${discount.amount.toFixed(2)}`
                               )}
-                            </Badge>
-                            <span className="text-green-600 font-medium">
-                              -₪{getDiscounts()
-                                .filter(d => d.source === 'automatic')
-                                .reduce((sum, d) => sum + d.amount, 0)
-                                .toFixed(2)}
                             </span>
                           </div>
-                        )}
+                        ))}
                       </>
                     )}
                     

@@ -375,12 +375,15 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                             </button>
                           </div>
 
-                          {/* כמות ומחיר */}
+                          {/* כמות ומחיר - פשוט ללא חיווי הנחות */}
                           <div className="flex items-center justify-between mt-3">
                             {/* שינוי כמות */}
                             <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
                               <button
-                                onClick={() => handleQuantityChange(item.variant_id, item.quantity - 1)}
+                                onClick={async () => {
+                                  await handleQuantityChange(item.variant_id, item.quantity - 1);
+                                  await recalculate(); // רענון חישוב אחרי שינוי כמות
+                                }}
                                 disabled={loadingInventory.has(item.variant_id)}
                                 className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
                                 aria-label="הפחת כמות"
@@ -391,7 +394,10 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                                 {item.quantity}
                               </span>
                               <button
-                                onClick={() => handleQuantityChange(item.variant_id, item.quantity + 1)}
+                                onClick={async () => {
+                                  await handleQuantityChange(item.variant_id, item.quantity + 1);
+                                  await recalculate(); // רענון חישוב אחרי שינוי כמות
+                                }}
                                 disabled={
                                   loadingInventory.has(item.variant_id) ||
                                   (inventoryMap.get(item.variant_id) !== undefined && 
@@ -404,43 +410,13 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                               </button>
                             </div>
 
-                            {/* מחיר */}
-                            <div className="flex flex-col items-end gap-1">
-                              {hasDiscount ? (
-                                <>
-                                  <p className="text-xs text-gray-400 line-through">
-                                    ₪{calculatedItem.lineTotal.toFixed(2)}
-                                  </p>
-                                  <p className="text-sm font-semibold text-gray-900">
-                                    ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-sm font-semibold text-gray-900">
-                                  ₪{calculatedItem.lineTotal.toFixed(2)}
-                                </p>
-                              )}
-                              {hasDiscount && (
-                                <p className="text-xs font-semibold text-green-600">
-                                  -₪{calculatedItem.lineDiscount.toFixed(2)}
-                                </p>
-                              )}
+                            {/* מחיר - רק המחיר הסופי ללא חיווי הנחות */}
+                            <div className="flex flex-col items-end">
+                              <p className="text-sm font-semibold text-gray-900">
+                                ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                              </p>
                             </div>
                           </div>
-
-                          {/* Applied Discounts Badge */}
-                          {hasDiscount && calculatedItem.appliedDiscounts && calculatedItem.appliedDiscounts.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {calculatedItem.appliedDiscounts.map((discount, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded"
-                                >
-                                  {discount.source === 'automatic' ? 'אוטומטי' : discount.code || 'הנחה'}
-                                </span>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );

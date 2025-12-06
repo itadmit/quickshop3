@@ -168,34 +168,40 @@ export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = fa
           </div>
         )}
 
-        {/* הנחות - סיכום בלבד ללא כפילות */}
+        {/* הנחות - סיכום מפורט עם שמות */}
         {getDiscount() > 0 && (
           <div className="space-y-1">
             {/* הנחות אוטומטיות */}
-            {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">הנחה אוטומטית:</span>
+            {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">
+                  {discount.name || discount.description || 'הנחה אוטומטית'}:
+                </span>
                 <span className="font-semibold text-green-600">
-                  -₪{getDiscounts()
-                    .filter(d => d.source === 'automatic')
-                    .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
-                    .toFixed(2)}
+                  {discount.type === 'free_shipping' ? (
+                    <span className="text-green-600">משלוח חינם</span>
+                  ) : (
+                    `-₪${discount.amount.toFixed(2)}`
+                  )}
                 </span>
               </div>
-            )}
+            ))}
 
             {/* הנחת קופון */}
-            {getDiscounts().filter(d => d.source === 'code').length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">הנחת קופון:</span>
+            {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">
+                  קופון {discount.code || discount.name || 'הנחה'}:
+                </span>
                 <span className="font-semibold text-green-600">
-                  -₪{getDiscounts()
-                    .filter(d => d.source === 'code')
-                    .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
-                    .toFixed(2)}
+                  {discount.type === 'free_shipping' ? (
+                    <span className="text-green-600">משלוח חינם</span>
+                  ) : (
+                    `-₪${discount.amount.toFixed(2)}`
+                  )}
                 </span>
               </div>
-            )}
+            ))}
           </div>
         )}
 

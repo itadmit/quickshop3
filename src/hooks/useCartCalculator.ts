@@ -321,8 +321,10 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       if (response2.ok) {
         const result = await response2.json();
         setCalculation(result);
-        // Ensure discountCode is empty in state
+        // Ensure discountCode is empty in state - force update
         setDiscountCode('');
+        // Force a re-render by updating calculation again
+        setCalculation({ ...result, discountCode: null });
       } else {
         // If calculation fails, still update state and recalculate normally
         setDiscountCode('');

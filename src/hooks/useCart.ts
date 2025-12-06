@@ -246,7 +246,7 @@ export function useCart() {
     }
   }, [storeId, saveCartToServer]);
 
-  const updateQuantity = useCallback((variantId: number, quantity: number) => {
+  const updateQuantity = useCallback(async (variantId: number, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(variantId);
       return;
@@ -263,12 +263,11 @@ export function useCart() {
     setCartToStorage(newItems);
     setCartItems(newItems);
     
-    // Save to server (background, non-blocking)
+    // Save to server (await to ensure sync)
     if (storeId) {
-      saveCartToServer(newItems).then(() => {
-        // רענון נוסף אחרי שמירה לשרת כדי לוודא שהכל מסונכרן
-        loadCartFromServer();
-      });
+      await saveCartToServer(newItems);
+      // רענון נוסף אחרי שמירה לשרת כדי לוודא שהכל מסונכרן
+      await loadCartFromServer();
     }
   }, [storeId, removeFromCart, saveCartToServer, loadCartFromServer]);
 
