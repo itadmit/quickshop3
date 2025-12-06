@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -9,23 +9,18 @@ import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { HiSave, HiX, HiTag, HiTrash } from 'react-icons/hi';
-import { DiscountCode, UpdateDiscountCodeRequest } from '@/types/discount';
+import { HiSave, HiX, HiSparkles } from 'react-icons/hi';
+import { CreateAutomaticDiscountRequest } from '@/types/discount';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ProductSelector } from '@/components/discounts/ProductSelector';
 import { CollectionSelector } from '@/components/discounts/CollectionSelector';
 import { TagSelector } from '@/components/discounts/TagSelector';
 
-export default function EditDiscountPage() {
-  const params = useParams();
+export default function NewAutomaticDiscountPage() {
   const router = useRouter();
   const { toast } = useOptimisticToast();
-  const discountId = parseInt(params.id as string);
-  
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [discount, setDiscount] = useState<DiscountCode | null>(null);
-  const [formData, setFormData] = useState<Partial<UpdateDiscountCodeRequest> & {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<Partial<CreateAutomaticDiscountRequest> & {
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
@@ -37,90 +32,41 @@ export default function EditDiscountPage() {
     hour_start?: string;
     hour_end?: string;
     max_combined_discounts?: string;
-    usage_limit?: string;
-  }>({});
-
-  useEffect(() => {
-    loadDiscount();
-  }, [discountId]);
-
-  const loadDiscount = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/discounts/${discountId}`, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          toast({
-            title: 'שגיאה',
-            description: 'קוד הנחה לא נמצא',
-            variant: 'destructive',
-          });
-          router.push('/discounts');
-          return;
-        }
-        throw new Error('Failed to load discount');
-      }
-
-      const data = await response.json();
-      setDiscount(data.discount);
-      
-      // Format dates for datetime-local input
-      const startsAt = data.discount.starts_at 
-        ? new Date(data.discount.starts_at).toISOString().slice(0, 16)
-        : '';
-      const endsAt = data.discount.ends_at
-        ? new Date(data.discount.ends_at).toISOString().slice(0, 16)
-        : '';
-
-      setFormData({
-        code: data.discount.code,
-        discount_type: data.discount.discount_type,
-        value: data.discount.value || '',
-        minimum_order_amount: data.discount.minimum_order_amount || '',
-        maximum_order_amount: data.discount.maximum_order_amount || '',
-        minimum_quantity: data.discount.minimum_quantity ? String(data.discount.minimum_quantity) : '',
-        maximum_quantity: data.discount.maximum_quantity ? String(data.discount.maximum_quantity) : '',
-        usage_limit: data.discount.usage_limit ? String(data.discount.usage_limit) : '',
-        applies_to: data.discount.applies_to,
-        priority: String(data.discount.priority || 0),
-        can_combine_with_automatic: data.discount.can_combine_with_automatic,
-        can_combine_with_other_codes: data.discount.can_combine_with_other_codes,
-        max_combined_discounts: String(data.discount.max_combined_discounts || 1),
-        customer_segment: data.discount.customer_segment || 'all',
-        minimum_orders_count: data.discount.minimum_orders_count ? String(data.discount.minimum_orders_count) : '',
-        minimum_lifetime_value: data.discount.minimum_lifetime_value || '',
-        starts_at: startsAt,
-        ends_at: endsAt,
-        day_of_week: data.discount.day_of_week || [],
-        hour_start: data.discount.hour_start ? String(data.discount.hour_start) : '',
-        hour_end: data.discount.hour_end ? String(data.discount.hour_end) : '',
-        is_active: data.discount.is_active,
-        product_ids: data.discount.product_ids || [],
-        collection_ids: data.discount.collection_ids || [],
-        tag_names: data.discount.tag_names || [],
-      });
-    } catch (error: any) {
-      console.error('Error loading discount:', error);
-      toast({
-        title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה בטעינת קוד הנחה',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }>({
+    name: '',
+    description: '',
+    discount_type: 'percentage',
+    value: '',
+    minimum_order_amount: '',
+    maximum_order_amount: '',
+    minimum_quantity: '',
+    maximum_quantity: '',
+    applies_to: 'all',
+    priority: '0',
+    can_combine_with_codes: true,
+    can_combine_with_other_automatic: false,
+    max_combined_discounts: '1',
+    customer_segment: 'all',
+    minimum_orders_count: '',
+    minimum_lifetime_value: '',
+    starts_at: '',
+    ends_at: '',
+    day_of_week: [],
+    hour_start: '',
+    hour_end: '',
+    is_active: true,
+    product_ids: [],
+    collection_ids: [],
+    tag_names: [],
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.code || !formData.code.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       toast({
         title: 'שגיאה',
-        description: 'קוד הנחה הוא שדה חובה',
+        description: 'שם ההנחה הוא שדה חובה',
         variant: 'destructive',
       });
       return;
@@ -136,23 +82,23 @@ export default function EditDiscountPage() {
     }
 
     try {
-      setSaving(true);
+      setLoading(true);
       
-      const payload: UpdateDiscountCodeRequest = {
-        code: formData.code!.toUpperCase().trim(),
-        discount_type: formData.discount_type,
+      const payload: CreateAutomaticDiscountRequest = {
+        name: formData.name!.trim(),
+        description: formData.description || undefined,
+        discount_type: formData.discount_type!,
         value: formData.discount_type !== 'free_shipping' ? formData.value : undefined,
         minimum_order_amount: formData.minimum_order_amount || undefined,
         maximum_order_amount: formData.maximum_order_amount || undefined,
         minimum_quantity: formData.minimum_quantity ? parseInt(formData.minimum_quantity) : undefined,
         maximum_quantity: formData.maximum_quantity ? parseInt(formData.maximum_quantity) : undefined,
-        usage_limit: formData.usage_limit ? parseInt(String(formData.usage_limit)) : undefined,
-        applies_to: formData.applies_to,
-        priority: formData.priority ? parseInt(formData.priority) : undefined,
-        can_combine_with_automatic: formData.can_combine_with_automatic,
-        can_combine_with_other_codes: formData.can_combine_with_other_codes,
-        max_combined_discounts: formData.max_combined_discounts ? parseInt(formData.max_combined_discounts) : undefined,
-        customer_segment: formData.customer_segment,
+        applies_to: formData.applies_to || 'all',
+        priority: formData.priority ? parseInt(formData.priority) : 0,
+        can_combine_with_codes: formData.can_combine_with_codes !== undefined ? formData.can_combine_with_codes : true,
+        can_combine_with_other_automatic: formData.can_combine_with_other_automatic !== undefined ? formData.can_combine_with_other_automatic : false,
+        max_combined_discounts: formData.max_combined_discounts ? parseInt(formData.max_combined_discounts) : 1,
+        customer_segment: formData.customer_segment || 'all',
         minimum_orders_count: formData.minimum_orders_count ? parseInt(formData.minimum_orders_count) : undefined,
         minimum_lifetime_value: formData.minimum_lifetime_value || undefined,
         starts_at: formData.starts_at || undefined,
@@ -160,14 +106,14 @@ export default function EditDiscountPage() {
         day_of_week: formData.day_of_week && formData.day_of_week.length > 0 ? formData.day_of_week : null,
         hour_start: formData.hour_start ? parseInt(formData.hour_start) : undefined,
         hour_end: formData.hour_end ? parseInt(formData.hour_end) : undefined,
-        is_active: formData.is_active,
+        is_active: formData.is_active !== undefined ? formData.is_active : true,
         product_ids: formData.product_ids && formData.product_ids.length > 0 ? formData.product_ids : undefined,
         collection_ids: formData.collection_ids && formData.collection_ids.length > 0 ? formData.collection_ids : undefined,
         tag_names: formData.tag_names && formData.tag_names.length > 0 ? formData.tag_names : undefined,
       };
 
-      const response = await fetch(`/api/discounts/${discountId}`, {
-        method: 'PUT',
+      const response = await fetch('/api/automatic-discounts', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
@@ -175,117 +121,95 @@ export default function EditDiscountPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'שגיאה בעדכון קוד הנחה');
+        throw new Error(error.error || 'שגיאה ביצירת הנחה אוטומטית');
       }
 
       const data = await response.json();
       
       toast({
         title: 'הצלחה',
-        description: `קוד הנחה "${data.discount?.code || formData.code}" עודכן בהצלחה`,
+        description: `הנחה אוטומטית "${data.discount?.name || formData.name}" נוצרה בהצלחה`,
       });
 
-      router.push('/discounts');
+      router.push('/automatic-discounts');
     } catch (error: any) {
       toast({
         title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה בעדכון קוד הנחה',
+        description: error.message || 'אירעה שגיאה ביצירת הנחה אוטומטית',
         variant: 'destructive',
       });
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק את קוד ההנחה הזה?')) return;
+  const daysOfWeek = [
+    { value: 0, label: 'ראשון' },
+    { value: 1, label: 'שני' },
+    { value: 2, label: 'שלישי' },
+    { value: 3, label: 'רביעי' },
+    { value: 4, label: 'חמישי' },
+    { value: 5, label: 'שישי' },
+    { value: 6, label: 'שבת' },
+  ];
 
-    try {
-      const response = await fetch(`/api/discounts/${discountId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete discount');
-      }
-
-      toast({
-        title: 'הצלחה',
-        description: 'קוד הנחה נמחק בהצלחה',
-      });
-
-      router.push('/discounts');
-    } catch (error: any) {
-      toast({
-        title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה במחיקת קוד הנחה',
-        variant: 'destructive',
-      });
+  const toggleDayOfWeek = (day: number) => {
+    const currentDays = formData.day_of_week || [];
+    if (currentDays.includes(day)) {
+      setFormData({ ...formData, day_of_week: currentDays.filter(d => d !== day) });
+    } else {
+      setFormData({ ...formData, day_of_week: [...currentDays, day] });
     }
   };
-
-  if (loading) {
-    return (
-      <div className="p-6" dir="rtl">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-64"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!discount) {
-    return null;
-  }
 
   return (
     <div className="p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">ערוך קוד הנחה</h1>
-          <p className="text-gray-500 mt-1">ערוך את פרטי קוד ההנחה</p>
+          <h1 className="text-2xl font-bold text-gray-900">הנחה אוטומטית חדשה</h1>
+          <p className="text-gray-500 mt-1">צור הנחה שמוחלת אוטומטית ללא קוד קופון</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleDelete}
-            className="flex items-center gap-2 text-red-600 hover:text-red-700"
-          >
-            <HiTrash className="w-4 h-4" />
-            מחק
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => router.back()}
-            className="flex items-center gap-2"
-          >
-            <HiX className="w-4 h-4" />
-            ביטול
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="flex items-center gap-2"
+        >
+          <HiX className="w-4 h-4" />
+          ביטול
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <HiTag className="w-5 h-5" />
-            פרטי קוד הנחה
+            <HiSparkles className="w-5 h-5" />
+            פרטי הנחה אוטומטית
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="code">קוד הנחה *</Label>
+            <div className="md:col-span-2">
+              <Label htmlFor="name">שם ההנחה *</Label>
               <Input
-                id="code"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="SUMMER2024"
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="10% הנחה על כל המוצרים"
                 required
                 className="mt-1"
               />
-              <p className="text-sm text-gray-500 mt-1">הקוד יומר לאותיות גדולות אוטומטית</p>
+            </div>
+
+            <div className="md:col-span-2">
+              <Label htmlFor="description">תיאור</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="תיאור ההנחה..."
+                className="mt-1"
+                rows={3}
+              />
             </div>
 
             <div>
@@ -397,44 +321,6 @@ export default function EditDiscountPage() {
                 />
               </div>
             )}
-
-            <div>
-              <Label htmlFor="starts_at">תאריך התחלה</Label>
-              <Input
-                id="starts_at"
-                type="datetime-local"
-                value={formData.starts_at}
-                onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="ends_at">תאריך סיום</Label>
-              <Input
-                id="ends_at"
-                type="datetime-local"
-                value={formData.ends_at}
-                onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-                />
-                <Label htmlFor="is_active" className="cursor-pointer">
-                  קוד פעיל
-                </Label>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">רק קודים פעילים יכולים לשמש בהזמנות</p>
-            </div>
           </div>
         </Card>
 
@@ -495,22 +381,6 @@ export default function EditDiscountPage() {
                 placeholder="10"
                 className="mt-1"
               />
-            </div>
-
-            <div>
-              <Label htmlFor="usage_limit">מגבלת שימושים</Label>
-              <Input
-                id="usage_limit"
-                type="number"
-                min="1"
-                value={formData.usage_limit || ''}
-                onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value || undefined })}
-                placeholder="ללא הגבלה"
-                className="mt-1"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                שימושים נוכחיים: {discount.usage_count} / {discount.usage_limit || '∞'}
-              </p>
             </div>
           </div>
         </Card>
@@ -599,38 +469,20 @@ export default function EditDiscountPage() {
             <div className="md:col-span-2">
               <Label>ימים בשבוע</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {[
-                  { value: 0, label: 'ראשון' },
-                  { value: 1, label: 'שני' },
-                  { value: 2, label: 'שלישי' },
-                  { value: 3, label: 'רביעי' },
-                  { value: 4, label: 'חמישי' },
-                  { value: 5, label: 'שישי' },
-                  { value: 6, label: 'שבת' },
-                ].map((day) => {
-                  const toggleDayOfWeek = (dayValue: number) => {
-                    const currentDays = formData.day_of_week || [];
-                    if (currentDays.includes(dayValue)) {
-                      setFormData({ ...formData, day_of_week: currentDays.filter(d => d !== dayValue) });
-                    } else {
-                      setFormData({ ...formData, day_of_week: [...currentDays, dayValue] });
-                    }
-                  };
-                  return (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => toggleDayOfWeek(day.value)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                        (formData.day_of_week || []).includes(day.value)
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {day.label}
-                    </button>
-                  );
-                })}
+                {daysOfWeek.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => toggleDayOfWeek(day.value)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      (formData.day_of_week || []).includes(day.value)
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
               </div>
               <p className="text-sm text-gray-500 mt-1">השאר ריק לכל הימים</p>
             </div>
@@ -673,12 +525,12 @@ export default function EditDiscountPage() {
             <div className="md:col-span-2">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  id="can_combine_with_automatic"
-                  checked={formData.can_combine_with_automatic}
-                  onCheckedChange={(checked) => setFormData({ ...formData, can_combine_with_automatic: checked as boolean })}
+                  id="can_combine_with_codes"
+                  checked={formData.can_combine_with_codes}
+                  onCheckedChange={(checked) => setFormData({ ...formData, can_combine_with_codes: checked as boolean })}
                 />
-                <Label htmlFor="can_combine_with_automatic" className="cursor-pointer">
-                  ניתן לשלב עם הנחות אוטומטיות
+                <Label htmlFor="can_combine_with_codes" className="cursor-pointer">
+                  ניתן לשלב עם קופונים
                 </Label>
               </div>
             </div>
@@ -686,12 +538,12 @@ export default function EditDiscountPage() {
             <div className="md:col-span-2">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  id="can_combine_with_other_codes"
-                  checked={formData.can_combine_with_other_codes}
-                  onCheckedChange={(checked) => setFormData({ ...formData, can_combine_with_other_codes: checked as boolean })}
+                  id="can_combine_with_other_automatic"
+                  checked={formData.can_combine_with_other_automatic}
+                  onCheckedChange={(checked) => setFormData({ ...formData, can_combine_with_other_automatic: checked as boolean })}
                 />
-                <Label htmlFor="can_combine_with_other_codes" className="cursor-pointer">
-                  ניתן לשלב עם קופונים אחרים
+                <Label htmlFor="can_combine_with_other_automatic" className="cursor-pointer">
+                  ניתן לשלב עם הנחות אוטומטיות אחרות
                 </Label>
               </div>
             </div>
@@ -717,10 +569,10 @@ export default function EditDiscountPage() {
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked as boolean })}
                 />
                 <Label htmlFor="is_active" className="cursor-pointer">
-                  קוד פעיל
+                  הנחה פעילה
                 </Label>
               </div>
-              <p className="text-sm text-gray-500 mt-1">רק קודים פעילים יכולים לשמש בהזמנות</p>
+              <p className="text-sm text-gray-500 mt-1">רק הנחות פעילות מוחלות אוטומטית</p>
             </div>
           </div>
         </Card>
@@ -730,18 +582,18 @@ export default function EditDiscountPage() {
             type="button"
             variant="outline"
             onClick={() => router.back()}
-            disabled={saving}
+            disabled={loading}
           >
             <HiX className="w-4 h-4 ml-2" />
             ביטול
           </Button>
           <Button
             type="submit"
-            disabled={saving}
+            disabled={loading}
             className="bg-emerald-500 hover:bg-emerald-600"
           >
             <HiSave className="w-4 h-4 ml-2" />
-            {saving ? 'שומר...' : 'שמור שינויים'}
+            {loading ? 'שומר...' : 'שמור הנחה אוטומטית'}
           </Button>
         </div>
       </form>

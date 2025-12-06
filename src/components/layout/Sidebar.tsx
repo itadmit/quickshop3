@@ -46,8 +46,8 @@ const menuItems: MenuItem[] = [
     href: '#',
     icon: MenuIcons.discounts,
     children: [
-      { label: 'הנחות', href: '/discounts', icon: MenuIcons.discounts },
-      { label: 'קופונים', href: '/coupons', icon: MenuIcons.coupons },
+      { label: 'הנחות אוטומטיות', href: '/automatic-discounts', icon: MenuIcons.discounts },
+      { label: 'קופונים', href: '/discounts', icon: MenuIcons.coupons },
       { label: 'מועדון לקוחות', href: '/loyalty', icon: MenuIcons.loyalty },
       { label: 'כרטיסי מתנה', href: '/gift-cards', icon: MenuIcons.giftCards },
       { label: 'עגלות נטושות', href: '/abandoned-carts', icon: MenuIcons.abandonedCarts },

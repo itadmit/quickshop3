@@ -28,7 +28,30 @@ export async function GET(
       return NextResponse.json({ error: 'Discount code not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ discount });
+    // Load mappings
+    const [productIds, collectionIds, tagNames] = await Promise.all([
+      query<{ product_id: number }>(
+        'SELECT product_id FROM discount_code_products WHERE discount_code_id = $1',
+        [discountId]
+      ),
+      query<{ collection_id: number }>(
+        'SELECT collection_id FROM discount_code_collections WHERE discount_code_id = $1',
+        [discountId]
+      ),
+      query<{ tag_name: string }>(
+        'SELECT tag_name FROM discount_code_tags WHERE discount_code_id = $1',
+        [discountId]
+      ),
+    ]);
+
+    return NextResponse.json({
+      discount: {
+        ...discount,
+        product_ids: productIds.map(p => p.product_id),
+        collection_ids: collectionIds.map(c => c.collection_id),
+        tag_names: tagNames.map(t => t.tag_name),
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching discount code:', error);
     return NextResponse.json(
@@ -81,6 +104,24 @@ export async function PUT(
       paramIndex++;
     }
 
+    if (body.maximum_order_amount !== undefined) {
+      updates.push(`maximum_order_amount = $${paramIndex}`);
+      values.push(body.maximum_order_amount);
+      paramIndex++;
+    }
+
+    if (body.minimum_quantity !== undefined) {
+      updates.push(`minimum_quantity = $${paramIndex}`);
+      values.push(body.minimum_quantity);
+      paramIndex++;
+    }
+
+    if (body.maximum_quantity !== undefined) {
+      updates.push(`maximum_quantity = $${paramIndex}`);
+      values.push(body.maximum_quantity);
+      paramIndex++;
+    }
+
     if (body.usage_limit !== undefined) {
       updates.push(`usage_limit = $${paramIndex}`);
       values.push(body.usage_limit);
@@ -93,6 +134,48 @@ export async function PUT(
       paramIndex++;
     }
 
+    if (body.priority !== undefined) {
+      updates.push(`priority = $${paramIndex}`);
+      values.push(body.priority);
+      paramIndex++;
+    }
+
+    if (body.can_combine_with_automatic !== undefined) {
+      updates.push(`can_combine_with_automatic = $${paramIndex}`);
+      values.push(body.can_combine_with_automatic);
+      paramIndex++;
+    }
+
+    if (body.can_combine_with_other_codes !== undefined) {
+      updates.push(`can_combine_with_other_codes = $${paramIndex}`);
+      values.push(body.can_combine_with_other_codes);
+      paramIndex++;
+    }
+
+    if (body.max_combined_discounts !== undefined) {
+      updates.push(`max_combined_discounts = $${paramIndex}`);
+      values.push(body.max_combined_discounts);
+      paramIndex++;
+    }
+
+    if (body.customer_segment !== undefined) {
+      updates.push(`customer_segment = $${paramIndex}`);
+      values.push(body.customer_segment);
+      paramIndex++;
+    }
+
+    if (body.minimum_orders_count !== undefined) {
+      updates.push(`minimum_orders_count = $${paramIndex}`);
+      values.push(body.minimum_orders_count);
+      paramIndex++;
+    }
+
+    if (body.minimum_lifetime_value !== undefined) {
+      updates.push(`minimum_lifetime_value = $${paramIndex}`);
+      values.push(body.minimum_lifetime_value);
+      paramIndex++;
+    }
+
     if (body.starts_at !== undefined) {
       updates.push(`starts_at = $${paramIndex}`);
       values.push(body.starts_at);
@@ -102,6 +185,24 @@ export async function PUT(
     if (body.ends_at !== undefined) {
       updates.push(`ends_at = $${paramIndex}`);
       values.push(body.ends_at);
+      paramIndex++;
+    }
+
+    if (body.day_of_week !== undefined) {
+      updates.push(`day_of_week = $${paramIndex}`);
+      values.push(body.day_of_week);
+      paramIndex++;
+    }
+
+    if (body.hour_start !== undefined) {
+      updates.push(`hour_start = $${paramIndex}`);
+      values.push(body.hour_start);
+      paramIndex++;
+    }
+
+    if (body.hour_end !== undefined) {
+      updates.push(`hour_end = $${paramIndex}`);
+      values.push(body.hour_end);
       paramIndex++;
     }
 
@@ -129,6 +230,43 @@ export async function PUT(
 
     if (!updatedDiscount) {
       return NextResponse.json({ error: 'Failed to update discount code' }, { status: 500 });
+    }
+
+    // Update mappings if provided
+    if (body.product_ids !== undefined) {
+      await query('DELETE FROM discount_code_products WHERE discount_code_id = $1', [discountId]);
+      if (body.product_ids.length > 0) {
+        for (const productId of body.product_ids) {
+          await query(
+            'INSERT INTO discount_code_products (discount_code_id, product_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [discountId, productId]
+          );
+        }
+      }
+    }
+
+    if (body.collection_ids !== undefined) {
+      await query('DELETE FROM discount_code_collections WHERE discount_code_id = $1', [discountId]);
+      if (body.collection_ids.length > 0) {
+        for (const collectionId of body.collection_ids) {
+          await query(
+            'INSERT INTO discount_code_collections (discount_code_id, collection_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [discountId, collectionId]
+          );
+        }
+      }
+    }
+
+    if (body.tag_names !== undefined) {
+      await query('DELETE FROM discount_code_tags WHERE discount_code_id = $1', [discountId]);
+      if (body.tag_names.length > 0) {
+        for (const tagName of body.tag_names) {
+          await query(
+            'INSERT INTO discount_code_tags (discount_code_id, tag_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [discountId, tagName]
+          );
+        }
+      }
     }
 
     // Emit event
