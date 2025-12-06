@@ -40,7 +40,7 @@ export interface CartItem {
 export interface DiscountCode {
   id: number;
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value: number | null;
   minimum_order_amount: number | null;
   maximum_order_amount: number | null;
@@ -57,6 +57,22 @@ export interface DiscountCode {
   day_of_week: number[] | null;
   hour_start: number | null;
   hour_end: number | null;
+  // BOGO fields
+  buy_quantity?: number | null;
+  get_quantity?: number | null;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount' | null;
+  get_discount_value?: string | null;
+  applies_to_same_product?: boolean | null;
+  // Bundle fields
+  bundle_min_products?: number | null;
+  bundle_discount_type?: 'percentage' | 'fixed_amount' | null;
+  bundle_discount_value?: string | null;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }> | null;
   product_ids?: number[];
   collection_ids?: number[];
   tag_names?: string[];
@@ -66,7 +82,7 @@ export interface AutomaticDiscount {
   id: number;
   name: string;
   description: string | null;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value: number | null;
   minimum_order_amount: number | null;
   maximum_order_amount: number | null;
@@ -85,6 +101,22 @@ export interface AutomaticDiscount {
   day_of_week: number[] | null;
   hour_start: number | null;
   hour_end: number | null;
+  // BOGO fields
+  buy_quantity?: number | null;
+  get_quantity?: number | null;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount' | null;
+  get_discount_value?: string | null;
+  applies_to_same_product?: boolean | null;
+  // Bundle fields
+  bundle_min_products?: number | null;
+  bundle_discount_type?: 'percentage' | 'fixed_amount' | null;
+  bundle_discount_value?: string | null;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }> | null;
   product_ids?: number[];
   collection_ids?: number[];
   tag_names?: string[];
@@ -210,6 +242,15 @@ export class CartCalculator {
         day_of_week: number[] | null;
         hour_start: number | null;
         hour_end: number | null;
+        buy_quantity: number | null;
+        get_quantity: number | null;
+        get_discount_type: string | null;
+        get_discount_value: string | null;
+        applies_to_same_product: boolean | null;
+        bundle_min_products: number | null;
+        bundle_discount_type: string | null;
+        bundle_discount_value: string | null;
+        volume_tiers: any;
       }>(
         `SELECT 
           id, code, discount_type, value,
@@ -223,7 +264,10 @@ export class CartCalculator {
           COALESCE(priority, 0) as priority,
           customer_segment, minimum_orders_count,
           minimum_lifetime_value,
-          day_of_week, hour_start, hour_end
+          day_of_week, hour_start, hour_end,
+          buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
+          bundle_min_products, bundle_discount_type, bundle_discount_value,
+          volume_tiers
         FROM discount_codes
         WHERE store_id = $1 AND code = $2 AND is_active = true`,
         [this.storeId, code.toUpperCase()]
@@ -306,10 +350,10 @@ export class CartCalculator {
       }
 
       // Convert to DiscountCode format
-      this.discountCode = {
+        this.discountCode = {
         id: discount.id,
         code: discount.code,
-        discount_type: discount.discount_type as 'percentage' | 'fixed_amount' | 'free_shipping',
+        discount_type: discount.discount_type as 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume',
         value: discount.value ? parseFloat(discount.value) : null,
         minimum_order_amount: discount.minimum_order_amount ? parseFloat(discount.minimum_order_amount) : null,
         maximum_order_amount: discount.maximum_order_amount ? parseFloat(discount.maximum_order_amount) : null,
@@ -326,6 +370,18 @@ export class CartCalculator {
         day_of_week: discount.day_of_week,
         hour_start: discount.hour_start,
         hour_end: discount.hour_end,
+        // BOGO fields
+        buy_quantity: discount.buy_quantity,
+        get_quantity: discount.get_quantity,
+        get_discount_type: discount.get_discount_type as 'free' | 'percentage' | 'fixed_amount' | null,
+        get_discount_value: discount.get_discount_value || null,
+        applies_to_same_product: discount.applies_to_same_product !== null ? discount.applies_to_same_product : true,
+        // Bundle fields
+        bundle_min_products: discount.bundle_min_products,
+        bundle_discount_type: discount.bundle_discount_type as 'percentage' | 'fixed_amount' | null,
+        bundle_discount_value: discount.bundle_discount_value || null,
+        // Volume fields
+        volume_tiers: discount.volume_tiers ? (typeof discount.volume_tiers === 'string' ? JSON.parse(discount.volume_tiers) : discount.volume_tiers) : null,
         product_ids: productIds.map(p => p.product_id),
         collection_ids: collectionIds.map(c => c.collection_id),
         tag_names: tagNames.map(t => t.tag_name),
@@ -371,6 +427,15 @@ export class CartCalculator {
         day_of_week: number[] | null;
         hour_start: number | null;
         hour_end: number | null;
+        buy_quantity: number | null;
+        get_quantity: number | null;
+        get_discount_type: string | null;
+        get_discount_value: string | null;
+        applies_to_same_product: boolean | null;
+        bundle_min_products: number | null;
+        bundle_discount_type: string | null;
+        bundle_discount_value: string | null;
+        volume_tiers: any;
       }>(
         `SELECT 
           id, name, description, discount_type, value,
@@ -383,7 +448,10 @@ export class CartCalculator {
           customer_segment, minimum_orders_count,
           minimum_lifetime_value,
           starts_at, ends_at,
-          day_of_week, hour_start, hour_end
+          day_of_week, hour_start, hour_end,
+          buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
+          bundle_min_products, bundle_discount_type, bundle_discount_value,
+          volume_tiers
         FROM automatic_discounts
         WHERE store_id = $1 
           AND is_active = true
@@ -440,7 +508,7 @@ export class CartCalculator {
           id: discount.id,
           name: (discount as AutomaticDiscount).name,
           description: (discount as AutomaticDiscount).description || '',
-          discount_type: discount.discount_type as 'percentage' | 'fixed_amount' | 'free_shipping',
+          discount_type: discount.discount_type as 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume',
           value: discount.value ? parseFloat(discount.value) : null,
           minimum_order_amount: discount.minimum_order_amount ? parseFloat(discount.minimum_order_amount) : null,
           maximum_order_amount: discount.maximum_order_amount ? parseFloat(discount.maximum_order_amount) : null,
@@ -459,6 +527,15 @@ export class CartCalculator {
           day_of_week: discount.day_of_week,
           hour_start: discount.hour_start,
           hour_end: discount.hour_end,
+          buy_quantity: discount.buy_quantity,
+          get_quantity: discount.get_quantity,
+          get_discount_type: discount.get_discount_type as 'free' | 'percentage' | 'fixed_amount' | null,
+          get_discount_value: discount.get_discount_value ? String(discount.get_discount_value) : null,
+          applies_to_same_product: discount.applies_to_same_product !== null ? discount.applies_to_same_product : true,
+          bundle_min_products: discount.bundle_min_products,
+          bundle_discount_type: discount.bundle_discount_type as 'percentage' | 'fixed_amount' | null,
+          bundle_discount_value: discount.bundle_discount_value ? String(discount.bundle_discount_value) : null,
+          volume_tiers: discount.volume_tiers ? (typeof discount.volume_tiers === 'string' ? JSON.parse(discount.volume_tiers) : discount.volume_tiers) : null,
           product_ids: productIds.map(p => p.product_id),
           collection_ids: collectionIds.map(c => c.collection_id),
           tag_names: tagNames.map(t => t.tag_name),
@@ -852,6 +929,89 @@ export class CartCalculator {
       case 'free_shipping':
         // משלוח חינם מטופל בנפרד
         return { amount: 0, items: itemDiscounts, description: '' };
+
+      case 'bogo':
+        // BOGO - Buy One Get One (עובד גם אוטומטי וגם קופון)
+        const bogoDiscount = discount as AutomaticDiscount | DiscountCode;
+        if (bogoDiscount.buy_quantity && bogoDiscount.get_quantity) {
+          const bogoResult = this.calculateBOGO(
+            applicableItems,
+            bogoDiscount.buy_quantity,
+            bogoDiscount.get_quantity,
+            bogoDiscount.get_discount_type || 'free',
+            bogoDiscount.get_discount_value ? parseFloat(bogoDiscount.get_discount_value) : null,
+            bogoDiscount.applies_to_same_product !== false
+          );
+          discountAmount = bogoResult.amount;
+          // עדכון itemDiscounts לפי התוצאה
+          applicableItems.forEach((itemData, idx) => {
+            const originalIdx = items.findIndex(i => i.item === itemData.item);
+            if (originalIdx >= 0 && bogoResult.itemDiscounts[idx]) {
+              itemDiscounts[originalIdx] = bogoResult.itemDiscounts[idx];
+            }
+          });
+          if (source === 'automatic') {
+            description = `${(bogoDiscount as AutomaticDiscount).name}: קנה ${bogoDiscount.buy_quantity} קבל ${bogoDiscount.get_quantity} ${
+              bogoDiscount.get_discount_type === 'free' ? 'חינם' :
+              bogoDiscount.get_discount_type === 'percentage' ? `ב-${bogoDiscount.get_discount_value}% הנחה` :
+              `ב-₪${bogoDiscount.get_discount_value}`
+            }`;
+          } else {
+            description = `קופון ${(bogoDiscount as DiscountCode).code}: קנה ${bogoDiscount.buy_quantity} קבל ${bogoDiscount.get_quantity} ${
+              bogoDiscount.get_discount_type === 'free' ? 'חינם' :
+              bogoDiscount.get_discount_type === 'percentage' ? `ב-${bogoDiscount.get_discount_value}% הנחה` :
+              `ב-₪${bogoDiscount.get_discount_value}`
+            }`;
+          }
+        }
+        break;
+
+      case 'bundle':
+        // Bundle - הנחה על חבילת מוצרים (עובד גם אוטומטי וגם קופון)
+        const bundleDiscount = discount as AutomaticDiscount | DiscountCode;
+        if (bundleDiscount.bundle_min_products && applicableItems.length >= bundleDiscount.bundle_min_products) {
+          const bundleTotal = applicableItems.reduce((sum, item) => sum + item.lineTotalAfterDiscount, 0);
+          if (bundleDiscount.bundle_discount_type === 'percentage' && bundleDiscount.bundle_discount_value) {
+            discountAmount = (bundleTotal * parseFloat(bundleDiscount.bundle_discount_value)) / 100;
+          } else if (bundleDiscount.bundle_discount_type === 'fixed_amount' && bundleDiscount.bundle_discount_value) {
+            discountAmount = Math.min(parseFloat(bundleDiscount.bundle_discount_value), bundleTotal);
+          }
+          if (source === 'automatic') {
+            description = `${(bundleDiscount as AutomaticDiscount).name}: הנחה על חבילה של ${bundleDiscount.bundle_min_products}+ מוצרים`;
+          } else {
+            description = `קופון ${(bundleDiscount as DiscountCode).code}: הנחה על חבילה של ${bundleDiscount.bundle_min_products}+ מוצרים`;
+          }
+        }
+        break;
+
+      case 'volume':
+        // Volume - הנחה לפי כמות (tiers) (עובד גם אוטומטי וגם קופון)
+        const volumeDiscount = discount as AutomaticDiscount | DiscountCode;
+        if (volumeDiscount.volume_tiers && volumeDiscount.volume_tiers.length > 0) {
+          const totalQuantity = applicableItems.reduce((sum, item) => sum + item.item.quantity, 0);
+          // מציאת ה-tier המתאים (הגבוה ביותר שהכמות מגיעה אליו)
+          let applicableTier = null;
+          for (const tier of volumeDiscount.volume_tiers.sort((a, b) => b.quantity - a.quantity)) {
+            if (totalQuantity >= tier.quantity) {
+              applicableTier = tier;
+              break;
+            }
+          }
+          if (applicableTier) {
+            const volumeTotal = applicableItems.reduce((sum, item) => sum + item.lineTotalAfterDiscount, 0);
+            if (applicableTier.discount_type === 'percentage') {
+              discountAmount = (volumeTotal * applicableTier.value) / 100;
+            } else {
+              discountAmount = Math.min(applicableTier.value, volumeTotal);
+            }
+            if (source === 'automatic') {
+              description = `${(volumeDiscount as AutomaticDiscount).name}: ${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
+            } else {
+              description = `קופון ${(volumeDiscount as DiscountCode).code}: ${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
+            }
+          }
+        }
+        break;
     }
 
     // חלוקת ההנחה בין הפריטים (יחסית)
@@ -871,6 +1031,85 @@ export class CartCalculator {
       items: itemDiscounts,
       description,
     };
+  }
+
+  /**
+   * מחשב הנחת BOGO (Buy One Get One)
+   */
+  private calculateBOGO(
+    items: Array<{ item: CartItem; lineTotal: number; lineTotalAfterDiscount: number }>,
+    buyQuantity: number,
+    getQuantity: number,
+    getDiscountType: 'free' | 'percentage' | 'fixed_amount',
+    getDiscountValue: number | null,
+    appliesToSameProduct: boolean
+  ): { amount: number; itemDiscounts: number[] } {
+    const itemDiscounts: number[] = new Array(items.length).fill(0);
+    let totalDiscount = 0;
+
+    if (appliesToSameProduct) {
+      // BOGO על אותו מוצר
+      items.forEach((itemData, index) => {
+        const item = itemData.item;
+        const totalQuantity = item.quantity;
+        
+        // כמה "חבילות" של buy+get יש
+        const bundles = Math.floor(totalQuantity / (buyQuantity + getQuantity));
+        const freeQuantity = bundles * getQuantity;
+        
+        if (freeQuantity > 0) {
+          const pricePerUnit = item.price;
+          let discountPerUnit = 0;
+          
+          if (getDiscountType === 'free') {
+            discountPerUnit = pricePerUnit;
+          } else if (getDiscountType === 'percentage' && getDiscountValue) {
+            discountPerUnit = (pricePerUnit * getDiscountValue) / 100;
+          } else if (getDiscountType === 'fixed_amount' && getDiscountValue) {
+            discountPerUnit = Math.min(getDiscountValue, pricePerUnit);
+          }
+          
+          const itemDiscount = discountPerUnit * freeQuantity;
+          itemDiscounts[index] = itemDiscount;
+          totalDiscount += itemDiscount;
+        }
+      });
+    } else {
+      // BOGO על מוצרים שונים - מורכב יותר, נדרש מימוש נוסף
+      // כרגע נשתמש בלוגיקה פשוטה יותר
+      const totalApplicableQuantity = items.reduce((sum, item) => sum + item.item.quantity, 0);
+      const bundles = Math.floor(totalApplicableQuantity / (buyQuantity + getQuantity));
+      const freeQuantity = bundles * getQuantity;
+      
+      if (freeQuantity > 0) {
+        // חלוקה יחסית של ההנחה בין הפריטים
+        const totalValue = items.reduce((sum, item) => sum + item.lineTotalAfterDiscount, 0);
+        const avgPricePerUnit = totalValue / totalApplicableQuantity;
+        
+        let discountPerUnit = 0;
+        if (getDiscountType === 'free') {
+          discountPerUnit = avgPricePerUnit;
+        } else if (getDiscountType === 'percentage' && getDiscountValue) {
+          discountPerUnit = (avgPricePerUnit * getDiscountValue) / 100;
+        } else if (getDiscountType === 'fixed_amount' && getDiscountValue) {
+          discountPerUnit = Math.min(getDiscountValue, avgPricePerUnit);
+        }
+        
+        const totalDiscountAmount = discountPerUnit * freeQuantity;
+        
+        // חלוקה יחסית בין הפריטים
+        items.forEach((itemData, index) => {
+          if (totalValue > 0) {
+            const ratio = itemData.lineTotalAfterDiscount / totalValue;
+            itemDiscounts[index] = totalDiscountAmount * ratio;
+          }
+        });
+        
+        totalDiscount = totalDiscountAmount;
+      }
+    }
+
+    return { amount: totalDiscount, itemDiscounts };
   }
 
   /**
@@ -968,7 +1207,7 @@ export async function validateDiscountCode(
     const discountCode: DiscountCode = {
       id: discount.id,
       code: discount.code,
-      discount_type: discount.discount_type as 'percentage' | 'fixed_amount' | 'free_shipping',
+      discount_type: discount.discount_type as 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume',
       value: discount.value ? parseFloat(discount.value) : null,
       minimum_order_amount: discount.minimum_order_amount ? parseFloat(discount.minimum_order_amount) : null,
       maximum_order_amount: discount.maximum_order_amount ? parseFloat(discount.maximum_order_amount) : null,

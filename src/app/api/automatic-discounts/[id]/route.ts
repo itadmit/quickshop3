@@ -18,7 +18,11 @@ export async function GET(
     const storeId = user.store_id;
 
     const discount = await queryOne(
-      `SELECT * FROM automatic_discounts WHERE id = $1 AND store_id = $2`,
+      `SELECT 
+        *,
+        CASE WHEN volume_tiers IS NOT NULL THEN volume_tiers::jsonb ELSE NULL END as volume_tiers_json
+      FROM automatic_discounts 
+      WHERE id = $1 AND store_id = $2`,
       [id, storeId]
     );
 
@@ -45,6 +49,7 @@ export async function GET(
     return NextResponse.json({
       discount: {
         ...discount,
+        volume_tiers: discount.volume_tiers_json ? JSON.parse(discount.volume_tiers_json) : null,
         product_ids: productIds.map(p => p.product_id),
         collection_ids: collectionIds.map(c => c.collection_id),
         tag_names: tagNames.map(t => t.tag_name),
@@ -108,7 +113,16 @@ export async function PUT(
         day_of_week = COALESCE($21, day_of_week),
         hour_start = COALESCE($22, hour_start),
         hour_end = COALESCE($23, hour_end),
-        is_active = COALESCE($24, is_active),
+        buy_quantity = COALESCE($24, buy_quantity),
+        get_quantity = COALESCE($25, get_quantity),
+        get_discount_type = COALESCE($26, get_discount_type),
+        get_discount_value = COALESCE($27, get_discount_value),
+        applies_to_same_product = COALESCE($28, applies_to_same_product),
+        bundle_min_products = COALESCE($29, bundle_min_products),
+        bundle_discount_type = COALESCE($30, bundle_discount_type),
+        bundle_discount_value = COALESCE($31, bundle_discount_value),
+        volume_tiers = COALESCE($32::jsonb, volume_tiers),
+        is_active = COALESCE($33, is_active),
         updated_at = now()
       WHERE id = $1 AND store_id = $2
       RETURNING *`,
@@ -136,6 +150,15 @@ export async function PUT(
         body.day_of_week,
         body.hour_start,
         body.hour_end,
+        body.buy_quantity,
+        body.get_quantity,
+        body.get_discount_type,
+        body.get_discount_value,
+        body.applies_to_same_product,
+        body.bundle_min_products,
+        body.bundle_discount_type,
+        body.bundle_discount_value,
+        body.volume_tiers ? JSON.stringify(body.volume_tiers) : null,
         body.is_active,
       ]
     );

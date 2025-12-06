@@ -574,7 +574,7 @@ CREATE TABLE discount_codes (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
   code VARCHAR(100) NOT NULL,
-  discount_type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping
+  discount_type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping, bogo, bundle, volume
   value NUMERIC(12,2),
   minimum_order_amount NUMERIC(12,2),
   maximum_order_amount NUMERIC(12,2),
@@ -595,6 +595,18 @@ CREATE TABLE discount_codes (
   day_of_week INT[], -- 0=Sunday, 1=Monday, etc. NULL = כל יום
   hour_start INT, -- שעה התחלה (0-23)
   hour_end INT, -- שעה סיום (0-23)
+  -- BOGO fields (Buy One Get One)
+  buy_quantity INT, -- כמה לקנות (לדוגמה: 1)
+  get_quantity INT, -- כמה לקבל (לדוגמה: 1)
+  get_discount_type VARCHAR(50), -- free, percentage, fixed_amount (על מה שמקבלים)
+  get_discount_value NUMERIC(12,2), -- ערך ההנחה על מה שמקבלים (אם לא free)
+  applies_to_same_product BOOLEAN DEFAULT true, -- האם זה חל על אותו מוצר
+  -- Bundle fields (קנה X מוצרים ביחד)
+  bundle_min_products INT, -- מינימום מוצרים בחבילה
+  bundle_discount_type VARCHAR(50), -- percentage, fixed_amount
+  bundle_discount_value NUMERIC(12,2), -- ערך ההנחה על החבילה
+  -- Volume fields (הנחה לפי כמות)
+  volume_tiers JSONB, -- [{quantity: 5, discount_type: 'percentage', value: 10}, ...]
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -612,7 +624,7 @@ CREATE TABLE automatic_discounts (
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   description TEXT,
-  discount_type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping
+  discount_type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping, bogo, bundle, volume
   value NUMERIC(12,2),
   minimum_order_amount NUMERIC(12,2),
   maximum_order_amount NUMERIC(12,2),
@@ -631,6 +643,18 @@ CREATE TABLE automatic_discounts (
   day_of_week INT[], -- 0=Sunday, 1=Monday, etc. NULL = כל יום
   hour_start INT, -- שעה התחלה (0-23)
   hour_end INT, -- שעה סיום (0-23)
+  -- BOGO fields (Buy One Get One)
+  buy_quantity INT, -- כמה לקנות (לדוגמה: 1)
+  get_quantity INT, -- כמה לקבל (לדוגמה: 1)
+  get_discount_type VARCHAR(50), -- free, percentage, fixed_amount (על מה שמקבלים)
+  get_discount_value NUMERIC(12,2), -- ערך ההנחה על מה שמקבלים (אם לא free)
+  applies_to_same_product BOOLEAN DEFAULT true, -- האם זה חל על אותו מוצר
+  -- Bundle fields (קנה X מוצרים ביחד)
+  bundle_min_products INT, -- מינימום מוצרים בחבילה
+  bundle_discount_type VARCHAR(50), -- percentage, fixed_amount
+  bundle_discount_value NUMERIC(12,2), -- ערך ההנחה על החבילה
+  -- Volume fields (הנחה לפי כמות)
+  volume_tiers JSONB, -- [{quantity: 5, discount_type: 'percentage', value: 10}, ...]
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()

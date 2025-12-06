@@ -28,7 +28,7 @@ export default function EditAutomaticDiscountPage() {
   const [formData, setFormData] = useState<{
     name?: string;
     description?: string;
-    discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping';
+    discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
@@ -51,6 +51,22 @@ export default function EditAutomaticDiscountPage() {
     product_ids?: number[];
     collection_ids?: number[];
     tag_names?: string[];
+    // BOGO fields
+    buy_quantity?: string;
+    get_quantity?: string;
+    get_discount_type?: 'free' | 'percentage' | 'fixed_amount';
+    get_discount_value?: string;
+    applies_to_same_product?: boolean;
+    // Bundle fields
+    bundle_min_products?: string;
+    bundle_discount_type?: 'percentage' | 'fixed_amount';
+    bundle_discount_value?: string;
+    // Volume fields
+    volume_tiers?: Array<{
+      quantity: number;
+      discount_type: 'percentage' | 'fixed_amount';
+      value: number;
+    }>;
   }>({});
 
   useEffect(() => {
@@ -116,6 +132,18 @@ export default function EditAutomaticDiscountPage() {
         product_ids: data.discount.product_ids || [],
         collection_ids: data.discount.collection_ids || [],
         tag_names: data.discount.tag_names || [],
+        // BOGO fields
+        buy_quantity: data.discount.buy_quantity ? String(data.discount.buy_quantity) : undefined,
+        get_quantity: data.discount.get_quantity ? String(data.discount.get_quantity) : undefined,
+        get_discount_type: data.discount.get_discount_type || undefined,
+        get_discount_value: data.discount.get_discount_value || undefined,
+        applies_to_same_product: data.discount.applies_to_same_product !== null ? data.discount.applies_to_same_product : true,
+        // Bundle fields
+        bundle_min_products: data.discount.bundle_min_products ? String(data.discount.bundle_min_products) : undefined,
+        bundle_discount_type: data.discount.bundle_discount_type || undefined,
+        bundle_discount_value: data.discount.bundle_discount_value || undefined,
+        // Volume fields
+        volume_tiers: data.discount.volume_tiers || undefined,
       });
     } catch (error: any) {
       console.error('Error loading automatic discount:', error);
@@ -141,7 +169,43 @@ export default function EditAutomaticDiscountPage() {
       return;
     }
 
-    if (formData.discount_type !== 'free_shipping' && (!formData.value || !formData.value.trim())) {
+    // Validation based on discount type
+    if (formData.discount_type === 'bogo') {
+      if (!formData.buy_quantity || !formData.get_quantity) {
+        toast({
+          title: 'שגיאה',
+          description: 'כמות לקנייה וכמות לקבלה הן שדות חובה עבור BOGO',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (formData.get_discount_type !== 'free' && !formData.get_discount_value) {
+        toast({
+          title: 'שגיאה',
+          description: 'ערך ההנחה על מה שמקבלים הוא שדה חובה',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (formData.discount_type === 'bundle') {
+      if (!formData.bundle_min_products || !formData.bundle_discount_value) {
+        toast({
+          title: 'שגיאה',
+          description: 'מינימום מוצרים וערך ההנחה הם שדות חובה עבור הנחת חבילה',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (formData.discount_type === 'volume') {
+      if (!formData.volume_tiers || formData.volume_tiers.length === 0) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש להוסיף לפחות tier אחד עבור הנחה לפי כמות',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (formData.discount_type !== 'free_shipping' && (!formData.value || !formData.value.trim())) {
       toast({
         title: 'שגיאה',
         description: 'ערך ההנחה הוא שדה חובה',
@@ -157,7 +221,19 @@ export default function EditAutomaticDiscountPage() {
         name: formData.name!.trim(),
         description: formData.description || undefined,
         discount_type: formData.discount_type,
-        value: formData.discount_type !== 'free_shipping' ? formData.value : undefined,
+        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume') ? formData.value : undefined,
+        // BOGO fields
+        buy_quantity: formData.discount_type === 'bogo' && formData.buy_quantity ? parseInt(formData.buy_quantity) : undefined,
+        get_quantity: formData.discount_type === 'bogo' && formData.get_quantity ? parseInt(formData.get_quantity) : undefined,
+        get_discount_type: formData.discount_type === 'bogo' ? formData.get_discount_type : undefined,
+        get_discount_value: formData.discount_type === 'bogo' && formData.get_discount_value ? formData.get_discount_value : undefined,
+        applies_to_same_product: formData.discount_type === 'bogo' ? formData.applies_to_same_product : undefined,
+        // Bundle fields
+        bundle_min_products: formData.discount_type === 'bundle' && formData.bundle_min_products ? parseInt(formData.bundle_min_products) : undefined,
+        bundle_discount_type: formData.discount_type === 'bundle' ? formData.bundle_discount_type : undefined,
+        bundle_discount_value: formData.discount_type === 'bundle' && formData.bundle_discount_value ? formData.bundle_discount_value : undefined,
+        // Volume fields
+        volume_tiers: formData.discount_type === 'volume' && formData.volume_tiers && formData.volume_tiers.length > 0 ? formData.volume_tiers : undefined,
         minimum_order_amount: formData.minimum_order_amount || undefined,
         maximum_order_amount: formData.maximum_order_amount || undefined,
         minimum_quantity: formData.minimum_quantity ? parseInt(formData.minimum_quantity) : undefined,
@@ -339,7 +415,7 @@ export default function EditAutomaticDiscountPage() {
               <Select
                 value={formData.discount_type}
                 onValueChange={(value: string) => 
-                  setFormData({ ...formData, discount_type: value as 'percentage' | 'fixed_amount' | 'free_shipping' })
+                  setFormData({ ...formData, discount_type: value as 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' })
                 }
               >
                 <SelectTrigger className="mt-1">
@@ -349,6 +425,9 @@ export default function EditAutomaticDiscountPage() {
                   <SelectItem value="percentage">אחוזים (%)</SelectItem>
                   <SelectItem value="fixed_amount">סכום קבוע (₪)</SelectItem>
                   <SelectItem value="free_shipping">משלוח חינם</SelectItem>
+                  <SelectItem value="bogo">קנה X קבל Y (BOGO)</SelectItem>
+                  <SelectItem value="bundle">הנחת חבילה</SelectItem>
+                  <SelectItem value="volume">הנחה לפי כמות (Volume)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -4,23 +4,55 @@ export interface DiscountCode {
   id: number;
   store_id: number;
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value: string | null;
   minimum_order_amount: string | null;
+  maximum_order_amount: string | null;
+  minimum_quantity: number | null;
+  maximum_quantity: number | null;
   usage_limit: number | null;
   usage_count: number;
-  applies_to: 'all' | 'specific_products' | 'specific_collections';
+  applies_to: 'all' | 'specific_products' | 'specific_collections' | 'specific_tags';
+  priority: number;
+  can_combine_with_automatic: boolean;
+  can_combine_with_other_codes: boolean;
+  max_combined_discounts: number;
+  customer_segment: 'all' | 'vip' | 'new_customer' | 'returning_customer' | null;
+  minimum_orders_count: number | null;
+  minimum_lifetime_value: string | null;
   starts_at: Date | null;
   ends_at: Date | null;
+  day_of_week: number[] | null;
+  hour_start: number | null;
+  hour_end: number | null;
+  // BOGO fields
+  buy_quantity: number | null;
+  get_quantity: number | null;
+  get_discount_type: 'free' | 'percentage' | 'fixed_amount' | null;
+  get_discount_value: string | null;
+  applies_to_same_product: boolean | null;
+  // Bundle fields
+  bundle_min_products: number | null;
+  bundle_discount_type: 'percentage' | 'fixed_amount' | null;
+  bundle_discount_value: string | null;
+  // Volume fields
+  volume_tiers: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }> | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+  product_ids?: number[];
+  collection_ids?: number[];
+  tag_names?: string[];
 }
 
 // API Request/Response types
 export interface CreateDiscountCodeRequest {
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -40,6 +72,22 @@ export interface CreateDiscountCodeRequest {
   day_of_week?: number[] | null;
   hour_start?: number;
   hour_end?: number;
+  // BOGO fields
+  buy_quantity?: number;
+  get_quantity?: number;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount';
+  get_discount_value?: string;
+  applies_to_same_product?: boolean;
+  // Bundle fields
+  bundle_min_products?: number;
+  bundle_discount_type?: 'percentage' | 'fixed_amount';
+  bundle_discount_value?: string;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }>;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -48,7 +96,7 @@ export interface CreateDiscountCodeRequest {
 
 export interface UpdateDiscountCodeRequest {
   code?: string;
-  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -68,6 +116,22 @@ export interface UpdateDiscountCodeRequest {
   day_of_week?: number[] | null;
   hour_start?: number;
   hour_end?: number;
+  // BOGO fields
+  buy_quantity?: number;
+  get_quantity?: number;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount';
+  get_discount_value?: string;
+  applies_to_same_product?: boolean;
+  // Bundle fields
+  bundle_min_products?: number;
+  bundle_discount_type?: 'percentage' | 'fixed_amount';
+  bundle_discount_value?: string;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }>;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -80,7 +144,7 @@ export interface AutomaticDiscount {
   store_id: number;
   name: string;
   description: string | null;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value: string | null;
   minimum_order_amount: string | null;
   maximum_order_amount: string | null;
@@ -99,6 +163,22 @@ export interface AutomaticDiscount {
   day_of_week: number[] | null;
   hour_start: number | null;
   hour_end: number | null;
+  // BOGO fields
+  buy_quantity?: number | null;
+  get_quantity?: number | null;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount' | null;
+  get_discount_value?: string | null;
+  applies_to_same_product?: boolean | null;
+  // Bundle fields
+  bundle_min_products?: number | null;
+  bundle_discount_type?: 'percentage' | 'fixed_amount' | null;
+  bundle_discount_value?: string | null;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }> | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -110,7 +190,7 @@ export interface AutomaticDiscount {
 export interface CreateAutomaticDiscountRequest {
   name: string;
   description?: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -129,6 +209,22 @@ export interface CreateAutomaticDiscountRequest {
   day_of_week?: number[] | null;
   hour_start?: number;
   hour_end?: number;
+  // BOGO fields
+  buy_quantity?: number;
+  get_quantity?: number;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount';
+  get_discount_value?: string;
+  applies_to_same_product?: boolean;
+  // Bundle fields
+  bundle_min_products?: number;
+  bundle_discount_type?: 'percentage' | 'fixed_amount';
+  bundle_discount_value?: string;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }>;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -138,7 +234,7 @@ export interface CreateAutomaticDiscountRequest {
 export interface UpdateAutomaticDiscountRequest {
   name?: string;
   description?: string;
-  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping';
+  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -157,6 +253,22 @@ export interface UpdateAutomaticDiscountRequest {
   day_of_week?: number[] | null;
   hour_start?: number;
   hour_end?: number;
+  // BOGO fields
+  buy_quantity?: number;
+  get_quantity?: number;
+  get_discount_type?: 'free' | 'percentage' | 'fixed_amount';
+  get_discount_value?: string;
+  applies_to_same_product?: boolean;
+  // Bundle fields
+  bundle_min_products?: number;
+  bundle_discount_type?: 'percentage' | 'fixed_amount';
+  bundle_discount_value?: string;
+  // Volume fields
+  volume_tiers?: Array<{
+    quantity: number;
+    discount_type: 'percentage' | 'fixed_amount';
+    value: number;
+  }>;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];

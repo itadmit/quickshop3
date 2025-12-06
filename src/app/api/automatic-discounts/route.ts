@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
         max_combined_discounts,
         customer_segment, minimum_orders_count, minimum_lifetime_value,
         starts_at, ends_at, day_of_week, hour_start, hour_end,
+        buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
+        bundle_min_products, bundle_discount_type, bundle_discount_value,
+        volume_tiers,
         is_active, created_at, updated_at
       FROM automatic_discounts
       WHERE store_id = $1
@@ -73,6 +76,15 @@ export async function POST(request: NextRequest) {
       day_of_week,
       hour_start,
       hour_end,
+      buy_quantity,
+      get_quantity,
+      get_discount_type,
+      get_discount_value,
+      applies_to_same_product,
+      bundle_min_products,
+      bundle_discount_type,
+      bundle_discount_value,
+      volume_tiers,
       product_ids,
       collection_ids,
       tag_names,
@@ -89,10 +101,14 @@ export async function POST(request: NextRequest) {
         max_combined_discounts,
         customer_segment, minimum_orders_count, minimum_lifetime_value,
         starts_at, ends_at, day_of_week, hour_start, hour_end,
+        buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
+        bundle_min_products, bundle_discount_type, bundle_discount_value,
+        volume_tiers,
         is_active, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-        $15, $16, $17, $18, $19, $20, $21, $22, true, now(), now()
+        $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+        $28, $29, $30, $31, true, now(), now()
       )
       RETURNING *`,
       [
@@ -118,6 +134,15 @@ export async function POST(request: NextRequest) {
         day_of_week || null,
         hour_start || null,
         hour_end || null,
+        buy_quantity || null,
+        get_quantity || null,
+        get_discount_type || null,
+        get_discount_value || null,
+        applies_to_same_product !== undefined ? applies_to_same_product : true,
+        bundle_min_products || null,
+        bundle_discount_type || null,
+        bundle_discount_value || null,
+        volume_tiers ? JSON.stringify(volume_tiers) : null,
       ]
     );
 

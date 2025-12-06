@@ -70,14 +70,17 @@ export async function POST(request: NextRequest) {
         max_combined_discounts,
         customer_segment, minimum_orders_count, minimum_lifetime_value,
         starts_at, ends_at, day_of_week, hour_start, hour_end,
+        buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
+        bundle_min_products, bundle_discount_type, bundle_discount_value,
+        volume_tiers,
         is_active, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now(), now())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, now(), now())
       RETURNING *`,
       [
         storeId,
         body.code,
         body.discount_type,
-        body.value || null,
+        (body.discount_type !== 'free_shipping' && body.discount_type !== 'bogo' && body.discount_type !== 'bundle' && body.discount_type !== 'volume') ? (body.value || null) : null,
         body.minimum_order_amount || null,
         body.maximum_order_amount || null,
         body.minimum_quantity || null,
@@ -96,6 +99,15 @@ export async function POST(request: NextRequest) {
         body.day_of_week || null,
         body.hour_start || null,
         body.hour_end || null,
+        body.buy_quantity || null,
+        body.get_quantity || null,
+        body.get_discount_type || null,
+        body.get_discount_value || null,
+        body.applies_to_same_product !== undefined ? body.applies_to_same_product : true,
+        body.bundle_min_products || null,
+        body.bundle_discount_type || null,
+        body.bundle_discount_value || null,
+        body.volume_tiers ? JSON.stringify(body.volume_tiers) : null,
         body.is_active !== undefined ? body.is_active : true,
       ]
     );
