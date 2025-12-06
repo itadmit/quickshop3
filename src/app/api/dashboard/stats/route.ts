@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Get pending orders count
     const pendingOrders = await queryOne<{ count: number }>(
-      `SELECT COUNT(*) as count FROM orders WHERE store_id = $1 AND fulfillment_status IS NULL OR fulfillment_status = 'pending'`,
+      `SELECT COUNT(*) as count FROM orders WHERE store_id = $1 AND (fulfillment_status IS NULL OR fulfillment_status = 'pending')`,
       [storeId]
     );
 
