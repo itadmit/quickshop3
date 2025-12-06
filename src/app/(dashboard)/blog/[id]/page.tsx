@@ -227,27 +227,59 @@ export default function BlogPostDetailsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Title (SEO)
-                </label>
-                <Input
-                  value={formData.meta_title}
-                  onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
-                  placeholder="כותרת SEO"
-                />
-              </div>
+                <div className="md:col-span-2">
+                  <Card className="p-4 bg-blue-50 border-blue-200">
+                    <h3 className="text-sm font-semibold text-blue-900 mb-4">הגדרות SEO</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Meta Title (SEO)
+                          <span className="text-xs text-gray-500 mr-2">
+                            ({formData.meta_title.length}/60 תווים)
+                          </span>
+                        </label>
+                        <Input
+                          value={formData.meta_title}
+                          onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
+                          placeholder="כותרת SEO"
+                          maxLength={60}
+                          className={formData.meta_title.length > 60 ? 'border-red-300' : ''}
+                        />
+                        {formData.meta_title && (
+                          <div className="mt-2 p-3 bg-white border border-gray-200 rounded text-sm">
+                            <div className="text-xs text-gray-500 mb-1">תצוגה מקדימה:</div>
+                            <div className="font-semibold text-blue-600">{formData.meta_title}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {formData.meta_description || 'תיאור SEO...'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Description (SEO)
-                </label>
-                <Input
-                  value={formData.meta_description}
-                  onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
-                  placeholder="תיאור SEO"
-                />
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Meta Description (SEO)
+                          <span className="text-xs text-gray-500 mr-2">
+                            ({formData.meta_description.length}/160 תווים)
+                          </span>
+                        </label>
+                        <textarea
+                          value={formData.meta_description}
+                          onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+                          placeholder="תיאור SEO"
+                          maxLength={160}
+                          rows={3}
+                          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                            formData.meta_description.length > 160 ? 'border-red-300' : ''
+                          }`}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          תיאור קצר שיופיע בתוצאות החיפוש
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
             </div>
 
             <div className="flex items-center gap-2">
