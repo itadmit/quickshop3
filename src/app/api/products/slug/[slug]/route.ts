@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { Product, ProductWithDetails, ProductImage, ProductVariant, ProductOption } from '@/types/product';
+import { getUserFromRequest } from '@/lib/auth';
 
 // GET /api/products/slug/[slug] - Get product by slug (handle)
 export async function GET(
@@ -8,8 +9,13 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { slug } = await params;
-    const storeId = 1; // TODO: Get from auth
+    const storeId = user.store_id;
 
     // Next.js already decodes the slug from params automatically
     // So slug is already decoded (e.g., "מוצר-בדיקה")

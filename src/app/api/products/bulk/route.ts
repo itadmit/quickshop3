@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { Product } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
+import { getUserFromRequest } from '@/lib/auth';
 
 // POST /api/products/bulk - Bulk operations on products
 export async function POST(request: NextRequest) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action, product_ids, data } = body;
 
@@ -16,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const storeId = data?.store_id || 1; // TODO: Get from auth
+    const storeId = user.store_id;
 
     let results: any[] = [];
 

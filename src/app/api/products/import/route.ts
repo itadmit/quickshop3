@@ -3,13 +3,19 @@ import { query, queryOne } from '@/lib/db';
 import { Product } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
 import { generateUniqueSlug } from '@/lib/utils/slug';
+import { getUserFromRequest } from '@/lib/auth';
 
 // POST /api/products/import - Import products from CSV
 export async function POST(request: NextRequest) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const storeId = parseInt(formData.get('shopId') as string) || 1;
+    const storeId = user.store_id;
 
     if (!file) {
       return NextResponse.json(

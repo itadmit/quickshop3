@@ -91,7 +91,7 @@ export default function EditProductPage() {
       // New product
       setProduct({
         id: 0,
-        store_id: 1,
+        store_id: 0, // Will be set by server from auth
         title: '',
         handle: '',
         body_html: '',

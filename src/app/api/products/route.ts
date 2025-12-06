@@ -3,14 +3,20 @@ import { query, queryOne } from '@/lib/db';
 import { Product, ProductWithDetails, ProductImage, ProductVariant, ProductOption } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
 import { generateUniqueSlug } from '@/lib/utils/slug';
+import { getUserFromRequest } from '@/lib/auth';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
 // GET /api/products - List all products
 export async function GET(request: NextRequest) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const storeId = searchParams.get('store_id') || '1'; // TODO: Get from auth
+    const storeId = user.store_id;
     const status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -71,8 +77,13 @@ export async function GET(request: NextRequest) {
 // POST /api/products - Create new product
 export async function POST(request: NextRequest) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const storeId = body.store_id || 1; // TODO: Get from auth
+    const storeId = user.store_id;
 
     const sql = `
       INSERT INTO products (
