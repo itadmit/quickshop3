@@ -146,6 +146,9 @@ export async function getProductByHandle(
   handle: string,
   storeId: number
 ): Promise<ProductDetails | null> {
+  // Decode URL-encoded handle (for Hebrew slugs)
+  const decodedHandle = decodeURIComponent(handle);
+  
   // Query ראשי עם JOINs
   const product = await queryOne<{
     id: number;
@@ -189,7 +192,7 @@ export async function getProductByHandle(
     ) pv ON true
     LEFT JOIN variant_inventory vi ON vi.variant_id = pv.id
     WHERE p.store_id = $1 AND p.handle = $2 AND p.status = 'active'`,
-    [storeId, handle]
+    [storeId, decodedHandle]
   );
 
   if (!product) return null;

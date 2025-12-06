@@ -8,6 +8,10 @@ import { NotificationsDrawer } from './NotificationsDrawer';
 export function Header() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userName, setUserName] = useState<string>('');
+  const [userInitials, setUserInitials] = useState<string>('');
+  const [loadingUser, setLoadingUser] = useState(true);
+  
   // TODO: לקבל מהקונטקסט/API את החנויות שהמשתמש מקושר אליהן
   const userStores = [
     { id: 1, name: 'החנות שלי' },
@@ -20,6 +24,38 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // טעינת פרטי המשתמש
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const name = data.user?.name || data.user?.email || '';
+          setUserName(name);
+          // יצירת ראשי תיבות
+          if (name) {
+            const parts = name.split(' ');
+            if (parts.length >= 2) {
+              setUserInitials((parts[0][0] || '') + (parts[1][0] || ''));
+            } else {
+              setUserInitials(name.substring(0, 2).toUpperCase());
+            }
+          } else if (data.user?.email) {
+            setUserInitials(data.user.email.substring(0, 2).toUpperCase());
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+    loadUser();
+  }, []);
 
   // Close switcher when clicking outside
   useEffect(() => {
@@ -180,10 +216,12 @@ export function Header() {
             className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors cursor-pointer"
           >
             <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold">
-              יא
+              {loadingUser ? '...' : userInitials || 'U'}
             </div>
             <div className="text-right">
-              <div className="text-sm font-semibold text-gray-900">יוגב אביטן</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {loadingUser ? 'טוען...' : userName || 'משתמש'}
+              </div>
               <div className="text-xs text-gray-500">סופר אדמין</div>
             </div>
             <HiChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
@@ -214,12 +252,14 @@ export function Header() {
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold hover:bg-green-600 transition-colors"
           >
-            יא
+            {loadingUser ? '...' : userInitials || 'U'}
           </button>
           {showUserMenu && (
             <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
               <div className="px-4 py-3 border-b border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">יוגב אביטן</div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {loadingUser ? 'טוען...' : userName || 'משתמש'}
+                </div>
                 <div className="text-xs text-gray-500">סופר אדמין</div>
               </div>
               <button

@@ -50,6 +50,8 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
     getDiscount,
     getTotal,
     getDiscounts,
+    recalculate,
+    removeDiscountCode,
   } = useCartCalculator({
     storeId,
     cartItems, // ✅ מעביר את cartItems מ-useCart
@@ -454,8 +456,10 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                   storeId={storeId}
                   shippingRate={shippingRate}
                   isNavigatingToCheckout={isNavigatingToCheckout}
-                  onCheckout={() => {
+                  onCheckout={async () => {
                     setIsNavigatingToCheckout(true);
+                    // רענון אחרון של החישוב לפני מעבר לצ'ק אאוט
+                    await recalculate();
                     // המתין קצת כדי שהמשתמש יראה את החיווי לפני סגירת העגלה
                     setTimeout(() => {
                       closeCart();

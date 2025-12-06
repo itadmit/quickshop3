@@ -35,6 +35,7 @@ export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = fa
     loading: calcLoading,
     applyDiscountCode,
     removeDiscountCode,
+    recalculate,
     getSubtotal,
     getDiscount,
     getShipping,
@@ -105,7 +106,9 @@ export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = fa
               <span className="font-medium text-green-800">{discountCode}</span>
             </div>
             <button
-              onClick={removeDiscountCode}
+              onClick={() => {
+                removeDiscountCode();
+              }}
               className="text-green-600 hover:text-green-800 transition-colors"
             >
               <HiX className="w-5 h-5" />

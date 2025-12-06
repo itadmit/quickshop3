@@ -164,15 +164,16 @@ CREATE TABLE product_option_values (
 CREATE INDEX idx_option_values_option_id ON product_option_values(option_id);
 
 -- Product Variants (Shopify-like: Variants)
+-- כל מוצר חייב להיות לו לפחות variant אחד (כמו Shopify)
 CREATE TABLE product_variants (
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id) ON DELETE CASCADE,
-  title VARCHAR(255),
-  price NUMERIC(12,2) DEFAULT 0,
+  title VARCHAR(255) DEFAULT 'Default Title',
+  price NUMERIC(12,2) DEFAULT 0 NOT NULL,
   compare_at_price NUMERIC(12,2),
   sku VARCHAR(100),
   barcode VARCHAR(100),
-  position INT DEFAULT 1,
+  position INT DEFAULT 1 NOT NULL,
   option1 VARCHAR(255),
   option2 VARCHAR(255),
   option3 VARCHAR(255),
@@ -191,6 +192,32 @@ CREATE TABLE product_variants (
 CREATE INDEX idx_variants_product_id ON product_variants(product_id);
 CREATE INDEX idx_variants_sku ON product_variants(sku);
 CREATE INDEX idx_variants_barcode ON product_variants(barcode);
+CREATE INDEX idx_variants_position ON product_variants(product_id, position);
+
+-- Function to ensure every product has at least one variant
+CREATE OR REPLACE FUNCTION ensure_product_has_variant()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- After deleting a variant, check if product still has variants
+  IF NOT EXISTS (
+    SELECT 1 FROM product_variants WHERE product_id = OLD.product_id
+  ) THEN
+    -- Create default variant if none exist
+    INSERT INTO product_variants (
+      product_id, title, price, position, taxable, inventory_policy, created_at, updated_at
+    ) VALUES (
+      OLD.product_id, 'Default Title', 0, 1, true, 'deny', now(), now()
+    );
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to ensure product always has at least one variant
+CREATE TRIGGER ensure_product_variant_after_delete
+AFTER DELETE ON product_variants
+FOR EACH ROW
+EXECUTE FUNCTION ensure_product_has_variant();
 
 -- Variant Inventory (Shopify-like: Inventory Levels)
 CREATE TABLE variant_inventory (
@@ -1669,6 +1696,7 @@ CREATE TABLE visitor_carts (
   visitor_session_id VARCHAR(255) NOT NULL,
   store_id INT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
   items JSONB NOT NULL DEFAULT '[]',
+  discount_code VARCHAR(100),
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   PRIMARY KEY (visitor_session_id, store_id)
@@ -1677,6 +1705,7 @@ CREATE TABLE visitor_carts (
 CREATE INDEX idx_visitor_carts_session ON visitor_carts(visitor_session_id);
 CREATE INDEX idx_visitor_carts_store ON visitor_carts(store_id);
 CREATE INDEX idx_visitor_carts_updated_at ON visitor_carts(updated_at DESC);
+CREATE INDEX idx_visitor_carts_discount_code ON visitor_carts(discount_code);
 
 -- Function to update analytics_daily from visitor_sessions
 CREATE OR REPLACE FUNCTION update_analytics_daily_from_visitors(target_date DATE DEFAULT CURRENT_DATE)
@@ -1768,6 +1797,40 @@ CREATE TABLE template_translations (
 CREATE INDEX idx_template_translations_template ON template_translations(template_id);
 CREATE INDEX idx_template_translations_store ON template_translations(store_id);
 CREATE INDEX idx_template_translations_locale ON template_translations(locale);
+
+-- ============================================
+-- 28. STORE SETTINGS (הגדרות חנות מותאמות)
+-- ============================================
+
+-- Store Settings (הגדרות מותאמות לכל חנות)
+CREATE TABLE store_settings (
+  store_id INT PRIMARY KEY REFERENCES stores(id) ON DELETE CASCADE,
+  settings JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_store_settings_store_id ON store_settings(store_id);
+
+-- ============================================
+-- 29. API KEYS (מפתחות API)
+-- ============================================
+
+-- API Keys (מפתחות API לחנויות)
+CREATE TABLE api_keys (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  key_hash TEXT NOT NULL UNIQUE,
+  key_prefix VARCHAR(8) NOT NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  last_used_at TIMESTAMP WITHOUT TIME ZONE,
+  is_active BOOLEAN DEFAULT true
+);
+
+CREATE INDEX idx_api_keys_store_id ON api_keys(store_id);
+CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
+CREATE INDEX idx_api_keys_is_active ON api_keys(is_active);
 
 -- ============================================
 -- END OF SCHEMA

@@ -70,6 +70,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     loading: calcLoading,
     applyDiscountCode,
     removeDiscountCode,
+    recalculate,
     getSubtotal,
     getDiscount,
     getShipping,
@@ -80,6 +81,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     cartItems,
     autoCalculate: true,
   });
+
+  // רענון חישוב כשהעגלה משתנה - רק כשהכמויות משתנות
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      recalculate();
+    }
+  }, [cartItems.map(i => `${i.variant_id}-${i.quantity}`).join(','), recalculate]);
 
   const [formData, setFormData] = useState({
     email: '',

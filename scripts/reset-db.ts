@@ -8,6 +8,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { Pool } from 'pg';
+import { config } from 'dotenv';
+
+// Load environment variables from .env file
+config({ path: '.env' });
+config({ path: '.env.local' });
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -69,42 +74,71 @@ async function resetDatabase() {
     // Execute the entire schema
     console.log('🚀 Creating schema...');
     
-    // Split by semicolons but keep CREATE statements together
-    const statements = schema
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--') && !s.startsWith('-- ='));
+    // Remove comments and split into statements
+    // We'll execute the entire schema as one transaction to avoid dependency issues
+    const cleanSchema = schema
+      .split('\n')
+      .filter(line => {
+        const trimmed = line.trim();
+        // Keep lines that are not comments (but keep CREATE statements even if they have inline comments)
+        return !trimmed.startsWith('--') || trimmed.startsWith('-- =');
+      })
+      .join('\n');
 
     let executed = 0;
     let errors = 0;
 
-    for (const statement of statements) {
-      try {
-        // Skip comments
-        if (statement.startsWith('--') || statement.length === 0) {
-          continue;
-        }
+    try {
+      // Execute entire schema at once
+      await pool.query(cleanSchema);
+      console.log('✅ Schema executed successfully');
+      executed = 1; // Mark as executed
+    } catch (error: any) {
+      // If full execution fails, try executing statement by statement
+      console.log('⚠️  Full schema execution failed, trying statement by statement...');
+      
+      // Split by semicolons but keep multi-line statements together
+      const statements = cleanSchema
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && !s.startsWith('--'));
 
-        // Execute statement
-        await pool.query(statement);
-        executed++;
-        
-        // Show progress every 5 statements
-        if (executed % 5 === 0) {
-          process.stdout.write(`\r   Executed ${executed} statements...`);
+      for (const statement of statements) {
+        try {
+          // Skip empty statements and comments
+          if (statement.length === 0 || statement.startsWith('--')) {
+            continue;
+          }
+
+          // Execute statement
+          await pool.query(statement + ';');
+          executed++;
+          
+          // Show progress every 10 statements
+          if (executed % 10 === 0) {
+            process.stdout.write(`\r   Executed ${executed} statements...`);
+          }
+        } catch (error: any) {
+          // Ignore "already exists" errors
+          if (!error.message.includes('already exists') && 
+              !error.message.includes('duplicate') &&
+              !error.message.includes('does not exist')) {
+            console.error(`\n❌ Error executing statement:`, error.message);
+            console.error(`   Statement preview: ${statement.substring(0, 150)}...`);
+            errors++;
+          }
         }
-      } catch (error: any) {
-        // Ignore "already exists" errors (shouldn't happen after drop, but just in case)
-        if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
-          console.error(`\n❌ Error executing statement:`, error.message);
-          console.error(`   Statement: ${statement.substring(0, 100)}...`);
-          errors++;
-        }
+      }
+      
+      if (errors > 0) {
+        console.log(`\n⚠️  Completed with ${errors} errors (some may be expected)`);
       }
     }
 
     console.log(`\n✅ Schema setup complete!`);
-    console.log(`   Executed: ${executed} statements`);
+    if (executed > 0) {
+      console.log(`   Executed: ${executed === 1 ? 'full schema' : `${executed} statements`}`);
+    }
     if (errors > 0) {
       console.log(`   Errors: ${errors} (check above for details)`);
     }

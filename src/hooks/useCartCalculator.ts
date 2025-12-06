@@ -45,6 +45,41 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
   const [calculation, setCalculation] = useState<CartCalculationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [validatingCode, setValidatingCode] = useState(false);
+  const [isLoadingDiscountCode, setIsLoadingDiscountCode] = useState(true);
+
+  // Load discount code from server (session) on mount
+  useEffect(() => {
+    const loadDiscountCode = async () => {
+      if (!options.storeId) {
+        setIsLoadingDiscountCode(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/cart/discount-code?storeId=${options.storeId}`,
+          {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.discountCode) {
+            setDiscountCode(data.discountCode);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading discount code:', error);
+      } finally {
+        setIsLoadingDiscountCode(false);
+      }
+    };
+
+    loadDiscountCode();
+  }, [options.storeId]);
 
   // חישוב העגלה - SINGLE SOURCE OF TRUTH
   const recalculate = useCallback(async () => {
@@ -161,13 +196,13 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
   }, [cartItems, discountCode, options.shippingRate, options.storeId, options.customerId, options.customerSegment, options.customerOrdersCount, options.customerLifetimeValue]);
 
   // חישוב אוטומטי כשהעגלה משתנה
-  // ✅ תיקון: לא תלוי ב-recalculate אלא ב-dependencies האמיתיים
+  // ✅ תיקון: תלוי ב-cartItems עצמו ולא רק ב-length כדי לזהות שינויים בכמויות
   useEffect(() => {
     if (options.autoCalculate !== false) {
       recalculate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartItems.length, discountCode, options.shippingRate?.id, options.storeId]);
+  }, [cartItems, discountCode, options.shippingRate?.id, options.storeId]);
 
   // אימות קופון
   const validateCode = useCallback(async (code: string): Promise<{ valid: boolean; error?: string }> => {
@@ -207,7 +242,24 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       const result = await response.json();
 
       if (result.valid) {
-        setDiscountCode(code.toUpperCase());
+        const upperCode = code.toUpperCase();
+        setDiscountCode(upperCode);
+        
+        // Save to server (session)
+        try {
+          await fetch('/api/cart/discount-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              discountCode: upperCode,
+              storeId: options.storeId,
+            }),
+          });
+        } catch (error) {
+          console.error('Error saving discount code:', error);
+        }
+        
         await recalculate();
         return { valid: true };
       } else {
@@ -222,16 +274,28 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
   }, [cartItems, options.storeId, recalculate]);
 
   // הסרת קופון
-  const removeDiscountCode = useCallback(() => {
+  const removeDiscountCode = useCallback(async () => {
     setDiscountCode('');
-    recalculate();
-  }, [recalculate]);
+    
+    // Remove from server (session)
+    try {
+      await fetch(`/api/cart/discount-code?storeId=${options.storeId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Error removing discount code:', error);
+    }
+    
+    // רענון מיידי של החישוב
+    await recalculate();
+  }, [recalculate, options.storeId]);
 
   return {
     // State
     calculation,
     discountCode,
-    loading,
+    loading: loading || isLoadingDiscountCode,
     validatingCode,
 
     // Actions

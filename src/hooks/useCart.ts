@@ -265,9 +265,12 @@ export function useCart() {
     
     // Save to server (background, non-blocking)
     if (storeId) {
-      saveCartToServer(newItems);
+      saveCartToServer(newItems).then(() => {
+        // רענון נוסף אחרי שמירה לשרת כדי לוודא שהכל מסונכרן
+        loadCartFromServer();
+      });
     }
-  }, [storeId, removeFromCart, saveCartToServer]);
+  }, [storeId, removeFromCart, saveCartToServer, loadCartFromServer]);
 
   const clearCart = useCallback(() => {
     // === CLEAR BOTH LOCALSTORAGE AND STATE ===
