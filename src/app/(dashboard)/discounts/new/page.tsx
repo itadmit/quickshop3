@@ -20,27 +20,40 @@ export default function NewDiscountPage() {
   const router = useRouter();
   const { toast } = useOptimisticToast();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<Partial<CreateDiscountCodeRequest> & {
+  const [formData, setFormData] = useState<{
+    code: string;
+    discount_type: 'percentage' | 'fixed_amount' | 'free_shipping';
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
     minimum_quantity?: string;
     maximum_quantity?: string;
+    usage_limit?: string;
+    applies_to?: 'all' | 'specific_products' | 'specific_collections' | 'specific_tags';
     priority?: string;
+    can_combine_with_automatic?: boolean;
+    can_combine_with_other_codes?: boolean;
+    max_combined_discounts?: string;
+    customer_segment?: 'all' | 'vip' | 'new_customer' | 'returning_customer' | null;
     minimum_orders_count?: string;
     minimum_lifetime_value?: string;
+    starts_at?: string;
+    ends_at?: string;
+    day_of_week?: number[] | null;
     hour_start?: string;
     hour_end?: string;
-    max_combined_discounts?: string;
-    usage_limit?: string;
+    is_active?: boolean;
+    product_ids?: number[];
+    collection_ids?: number[];
+    tag_names?: string[];
   }>({
     code: '',
     discount_type: 'percentage',
     value: '',
     minimum_order_amount: '',
     maximum_order_amount: '',
-    minimum_quantity: '',
-    maximum_quantity: '',
+    minimum_quantity: undefined,
+    maximum_quantity: undefined,
     usage_limit: undefined,
     applies_to: 'all',
     priority: '0',
@@ -48,13 +61,13 @@ export default function NewDiscountPage() {
     can_combine_with_other_codes: false,
     max_combined_discounts: '1',
     customer_segment: 'all',
-    minimum_orders_count: '',
+    minimum_orders_count: undefined,
     minimum_lifetime_value: '',
-    starts_at: '',
-    ends_at: '',
+    starts_at: undefined,
+    ends_at: undefined,
     day_of_week: [],
-    hour_start: '',
-    hour_end: '',
+    hour_start: undefined,
+    hour_end: undefined,
     is_active: true,
     product_ids: [],
     collection_ids: [],
@@ -371,8 +384,8 @@ export default function NewDiscountPage() {
                 id="minimum_quantity"
                 type="number"
                 min="1"
-                value={formData.minimum_quantity}
-                onChange={(e) => setFormData({ ...formData, minimum_quantity: e.target.value })}
+                value={formData.minimum_quantity || ''}
+                onChange={(e) => setFormData({ ...formData, minimum_quantity: e.target.value || undefined })}
                 placeholder="3"
                 className="mt-1"
               />
@@ -384,8 +397,8 @@ export default function NewDiscountPage() {
                 id="maximum_quantity"
                 type="number"
                 min="1"
-                value={formData.maximum_quantity}
-                onChange={(e) => setFormData({ ...formData, maximum_quantity: e.target.value })}
+                value={formData.maximum_quantity || ''}
+                onChange={(e) => setFormData({ ...formData, maximum_quantity: e.target.value || undefined })}
                 placeholder="10"
                 className="mt-1"
               />
@@ -415,7 +428,7 @@ export default function NewDiscountPage() {
             <div>
               <Label htmlFor="customer_segment">קטע לקוחות</Label>
               <Select
-                value={formData.customer_segment}
+                value={formData.customer_segment || 'all'}
                 onValueChange={(value: string) => 
                   setFormData({ ...formData, customer_segment: value as 'all' | 'vip' | 'new_customer' | 'returning_customer' })
                 }
@@ -438,8 +451,8 @@ export default function NewDiscountPage() {
                 id="minimum_orders_count"
                 type="number"
                 min="0"
-                value={formData.minimum_orders_count}
-                onChange={(e) => setFormData({ ...formData, minimum_orders_count: e.target.value })}
+                value={formData.minimum_orders_count || ''}
+                onChange={(e) => setFormData({ ...formData, minimum_orders_count: e.target.value || undefined })}
                 placeholder="5"
                 className="mt-1"
               />
@@ -471,8 +484,8 @@ export default function NewDiscountPage() {
               <Input
                 id="starts_at"
                 type="datetime-local"
-                value={formData.starts_at}
-                onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
+                value={formData.starts_at || ''}
+                onChange={(e) => setFormData({ ...formData, starts_at: e.target.value || undefined })}
                 className="mt-1"
               />
             </div>
@@ -482,8 +495,8 @@ export default function NewDiscountPage() {
               <Input
                 id="ends_at"
                 type="datetime-local"
-                value={formData.ends_at}
-                onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
+                value={formData.ends_at || ''}
+                onChange={(e) => setFormData({ ...formData, ends_at: e.target.value || undefined })}
                 className="mt-1"
               />
             </div>
@@ -534,8 +547,8 @@ export default function NewDiscountPage() {
                 type="number"
                 min="0"
                 max="23"
-                value={formData.hour_start}
-                onChange={(e) => setFormData({ ...formData, hour_start: e.target.value })}
+                value={formData.hour_start || ''}
+                onChange={(e) => setFormData({ ...formData, hour_start: e.target.value || undefined })}
                 placeholder="9"
                 className="mt-1"
               />
@@ -548,8 +561,8 @@ export default function NewDiscountPage() {
                 type="number"
                 min="0"
                 max="23"
-                value={formData.hour_end}
-                onChange={(e) => setFormData({ ...formData, hour_end: e.target.value })}
+                value={formData.hour_end || ''}
+                onChange={(e) => setFormData({ ...formData, hour_end: e.target.value || undefined })}
                 placeholder="17"
                 className="mt-1"
               />

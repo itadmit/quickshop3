@@ -25,18 +25,32 @@ export default function EditAutomaticDiscountPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [discount, setDiscount] = useState<AutomaticDiscount | null>(null);
-  const [formData, setFormData] = useState<Partial<UpdateAutomaticDiscountRequest> & {
+  const [formData, setFormData] = useState<{
+    name?: string;
+    description?: string;
+    discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping';
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
     minimum_quantity?: string;
     maximum_quantity?: string;
+    applies_to?: 'all' | 'specific_products' | 'specific_collections' | 'specific_tags';
     priority?: string;
+    can_combine_with_codes?: boolean;
+    can_combine_with_other_automatic?: boolean;
+    max_combined_discounts?: string;
+    customer_segment?: 'all' | 'vip' | 'new_customer' | 'returning_customer' | null;
     minimum_orders_count?: string;
     minimum_lifetime_value?: string;
+    starts_at?: string;
+    ends_at?: string;
+    day_of_week?: number[] | null;
     hour_start?: string;
     hour_end?: string;
-    max_combined_discounts?: string;
+    is_active?: boolean;
+    product_ids?: number[];
+    collection_ids?: number[];
+    tag_names?: string[];
   }>({});
 
   useEffect(() => {
@@ -83,21 +97,21 @@ export default function EditAutomaticDiscountPage() {
         value: data.discount.value || '',
         minimum_order_amount: data.discount.minimum_order_amount || '',
         maximum_order_amount: data.discount.maximum_order_amount || '',
-        minimum_quantity: data.discount.minimum_quantity ? String(data.discount.minimum_quantity) : '',
-        maximum_quantity: data.discount.maximum_quantity ? String(data.discount.maximum_quantity) : '',
+        minimum_quantity: data.discount.minimum_quantity !== null && data.discount.minimum_quantity !== undefined ? String(data.discount.minimum_quantity) : undefined,
+        maximum_quantity: data.discount.maximum_quantity !== null && data.discount.maximum_quantity !== undefined ? String(data.discount.maximum_quantity) : undefined,
         applies_to: data.discount.applies_to,
         priority: String(data.discount.priority || 0),
         can_combine_with_codes: data.discount.can_combine_with_codes,
         can_combine_with_other_automatic: data.discount.can_combine_with_other_automatic,
         max_combined_discounts: String(data.discount.max_combined_discounts || 1),
         customer_segment: data.discount.customer_segment || 'all',
-        minimum_orders_count: data.discount.minimum_orders_count ? String(data.discount.minimum_orders_count) : '',
-        minimum_lifetime_value: data.discount.minimum_lifetime_value || '',
-        starts_at: startsAt,
-        ends_at: endsAt,
-        day_of_week: data.discount.day_of_week || [],
-        hour_start: data.discount.hour_start ? String(data.discount.hour_start) : '',
-        hour_end: data.discount.hour_end ? String(data.discount.hour_end) : '',
+        minimum_orders_count: data.discount.minimum_orders_count !== null && data.discount.minimum_orders_count !== undefined ? String(data.discount.minimum_orders_count) : undefined,
+        minimum_lifetime_value: data.discount.minimum_lifetime_value || undefined,
+        starts_at: startsAt || undefined,
+        ends_at: endsAt || undefined,
+        day_of_week: data.discount.day_of_week || undefined,
+        hour_start: data.discount.hour_start !== null && data.discount.hour_start !== undefined ? String(data.discount.hour_start) : undefined,
+        hour_end: data.discount.hour_end !== null && data.discount.hour_end !== undefined ? String(data.discount.hour_end) : undefined,
         is_active: data.discount.is_active,
         product_ids: data.discount.product_ids || [],
         collection_ids: data.discount.collection_ids || [],
@@ -471,8 +485,8 @@ export default function EditAutomaticDiscountPage() {
                 id="minimum_quantity"
                 type="number"
                 min="1"
-                value={formData.minimum_quantity}
-                onChange={(e) => setFormData({ ...formData, minimum_quantity: e.target.value })}
+                value={formData.minimum_quantity || ''}
+                onChange={(e) => setFormData({ ...formData, minimum_quantity: e.target.value || undefined })}
                 placeholder="3"
                 className="mt-1"
               />
@@ -484,8 +498,8 @@ export default function EditAutomaticDiscountPage() {
                 id="maximum_quantity"
                 type="number"
                 min="1"
-                value={formData.maximum_quantity}
-                onChange={(e) => setFormData({ ...formData, maximum_quantity: e.target.value })}
+                value={formData.maximum_quantity || ''}
+                onChange={(e) => setFormData({ ...formData, maximum_quantity: e.target.value || undefined })}
                 placeholder="10"
                 className="mt-1"
               />
@@ -501,7 +515,7 @@ export default function EditAutomaticDiscountPage() {
             <div>
               <Label htmlFor="customer_segment">קטע לקוחות</Label>
               <Select
-                value={formData.customer_segment}
+                value={formData.customer_segment || 'all'}
                 onValueChange={(value: string) => 
                   setFormData({ ...formData, customer_segment: value as 'all' | 'vip' | 'new_customer' | 'returning_customer' })
                 }
@@ -524,8 +538,8 @@ export default function EditAutomaticDiscountPage() {
                 id="minimum_orders_count"
                 type="number"
                 min="0"
-                value={formData.minimum_orders_count}
-                onChange={(e) => setFormData({ ...formData, minimum_orders_count: e.target.value })}
+                value={formData.minimum_orders_count || ''}
+                onChange={(e) => setFormData({ ...formData, minimum_orders_count: e.target.value || undefined })}
                 placeholder="5"
                 className="mt-1"
               />
@@ -602,8 +616,8 @@ export default function EditAutomaticDiscountPage() {
                 type="number"
                 min="0"
                 max="23"
-                value={formData.hour_start}
-                onChange={(e) => setFormData({ ...formData, hour_start: e.target.value })}
+                value={formData.hour_start || ''}
+                onChange={(e) => setFormData({ ...formData, hour_start: e.target.value || undefined })}
                 placeholder="9"
                 className="mt-1"
               />
@@ -616,8 +630,8 @@ export default function EditAutomaticDiscountPage() {
                 type="number"
                 min="0"
                 max="23"
-                value={formData.hour_end}
-                onChange={(e) => setFormData({ ...formData, hour_end: e.target.value })}
+                value={formData.hour_end || ''}
+                onChange={(e) => setFormData({ ...formData, hour_end: e.target.value || undefined })}
                 placeholder="17"
                 className="mt-1"
               />
