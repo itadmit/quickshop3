@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { ProductImage } from '@/types/product';
+import { getUserFromRequest } from '@/lib/auth';
 
 // POST /api/products/[id]/images - Upload product images
 export async function POST(
@@ -8,6 +9,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
     const body = await request.json();
@@ -20,10 +26,10 @@ export async function POST(
       );
     }
 
-    // Verify product exists
+    // Verify product exists and belongs to user's store
     const product = await queryOne<{ store_id: number }>(
-      'SELECT store_id FROM products WHERE id = $1',
-      [productId]
+      'SELECT store_id FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
     );
 
     if (!product) {
@@ -84,6 +90,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
     
@@ -91,6 +102,19 @@ export async function DELETE(
     const url = new URL(request.url);
     const imageIdParam = url.searchParams.get('image_id') || (await request.json()).image_id;
     const imageId = imageIdParam ? parseInt(imageIdParam) : NaN;
+
+    // Verify product belongs to user's store
+    const product = await queryOne<{ store_id: number }>(
+      'SELECT store_id FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
+    );
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
 
     // Verify image belongs to product
     const image = await queryOne<ProductImage>(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { generateUniqueSlug } from '@/lib/utils/slug';
 import { eventBus } from '@/lib/events/eventBus';
+import { getUserFromRequest } from '@/lib/auth';
 
 // POST /api/products/[id]/duplicate - Duplicate a product
 export async function POST(
@@ -9,10 +10,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
-    // Get original product
+    // Get original product - verify it belongs to user's store
     const originalProduct = await queryOne<{
       id: number;
       store_id: number;
@@ -24,8 +30,8 @@ export async function POST(
       status: string;
       published_scope: string;
     }>(
-      'SELECT * FROM products WHERE id = $1',
-      [productId]
+      'SELECT * FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
     );
 
     if (!originalProduct) {

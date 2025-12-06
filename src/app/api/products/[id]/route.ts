@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { Product, ProductWithDetails, ProductImage, ProductVariant, ProductOption } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
 import { generateUniqueSlug } from '@/lib/utils/slug';
+import { getUserFromRequest } from '@/lib/auth';
 
 // GET /api/products/[id] - Get single product
 export async function GET(
@@ -10,12 +11,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
     const product = await queryOne<Product>(
-      'SELECT * FROM products WHERE id = $1',
-      [productId]
+      'SELECT * FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
     );
 
     if (!product) {
@@ -99,14 +105,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
     const body = await request.json();
 
-    // Get old product for comparison
+    // Get old product for comparison - verify it belongs to user's store
     const oldProduct = await queryOne<Product>(
-      'SELECT * FROM products WHERE id = $1',
-      [productId]
+      'SELECT * FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
     );
 
     if (!oldProduct) {
@@ -136,7 +147,7 @@ export async function PUT(
         show_price_per_100ml = $10,
         price_per_100ml = $11,
         updated_at = now()
-      WHERE id = $12
+      WHERE id = $12 AND store_id = $13
       RETURNING *
     `;
 
@@ -153,6 +164,7 @@ export async function PUT(
       body.show_price_per_100ml !== undefined ? body.show_price_per_100ml : (oldProduct as any).show_price_per_100ml || false,
       body.price_per_100ml !== undefined ? body.price_per_100ml : (oldProduct as any).price_per_100ml || null,
       productId,
+      user.store_id,
     ]);
 
     if (!product) {
@@ -408,13 +420,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
   ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
-    // Get product before deletion for event
+    // Get product before deletion for event - verify it belongs to user's store
     const product = await queryOne<Product>(
-      'SELECT * FROM products WHERE id = $1',
-      [productId]
+      'SELECT * FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
     );
 
     if (!product) {
@@ -424,7 +441,7 @@ export async function DELETE(
       );
     }
 
-    await query('DELETE FROM products WHERE id = $1', [productId]);
+    await query('DELETE FROM products WHERE id = $1 AND store_id = $2', [productId, user.store_id]);
 
     // Emit product.deleted event
     await eventBus.emitEvent('product.deleted', { product }, {

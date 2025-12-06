@@ -4,6 +4,7 @@ import { queryOne, query } from '@/lib/db';
 /**
  * GET /api/variants/[id]/options
  * קבלת אפשרויות (options) של variant עם שמות האפשרויות
+ * Public API - אבל בודק שהמוצר שייך לחנות הנכונה דרך variant_id -> product_id -> store_id
  */
 export async function GET(
   request: NextRequest,
@@ -20,16 +21,18 @@ export async function GET(
       );
     }
 
-    // קבלת variant עם option1, option2, option3
+    // קבלת variant עם option1, option2, option3 ו-store_id לבדיקת multi-tenancy
     const variant = await queryOne<{
       product_id: number;
       option1: string | null;
       option2: string | null;
       option3: string | null;
+      store_id: number;
     }>(
-      `SELECT product_id, option1, option2, option3 
-       FROM product_variants 
-       WHERE id = $1`,
+      `SELECT pv.product_id, pv.option1, pv.option2, pv.option3, p.store_id
+       FROM product_variants pv
+       INNER JOIN products p ON pv.product_id = p.id
+       WHERE pv.id = $1`,
       [variantId]
     );
 

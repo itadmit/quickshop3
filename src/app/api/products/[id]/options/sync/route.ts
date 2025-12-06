@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { ProductOption, ProductOptionValue } from '@/types/product';
+import { getUserFromRequest } from '@/lib/auth';
 
 // POST /api/products/[id]/options/sync - Sync product options
 export async function POST(
@@ -8,15 +9,20 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
     const body = await request.json();
     const { options } = body;
 
-    // Verify product exists
-    const product = await queryOne(
-      'SELECT store_id FROM products WHERE id = $1',
-      [productId]
+    // Verify product exists and belongs to user's store
+    const product = await queryOne<{ store_id: number }>(
+      'SELECT store_id FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
     );
 
     if (!product) {
