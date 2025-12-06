@@ -5,10 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { HiSave, HiX, HiTrash } from 'react-icons/hi';
+import { HiSave, HiX, HiTrash, HiPlay, HiRefresh, HiClock } from 'react-icons/hi';
+import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { WebhookSubscription } from '@/types/webhook';
 
 export default function WebhookDetailsPage() {
+  const { toast } = useOptimisticToast();
   const params = useParams();
   const router = useRouter();
   const webhookId = params.id as string;
@@ -16,6 +18,9 @@ export default function WebhookDetailsPage() {
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [loadingDeliveries, setLoadingDeliveries] = useState(false);
   const [formData, setFormData] = useState({
     url: '',
     topic: 'order.created',
@@ -25,6 +30,7 @@ export default function WebhookDetailsPage() {
   useEffect(() => {
     if (!isNew && webhookId) {
       loadWebhook();
+      loadDeliveries();
     }
   }, [webhookId, isNew]);
 
@@ -90,10 +96,97 @@ export default function WebhookDetailsPage() {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to delete webhook');
+      toast({
+        title: 'הצלחה',
+        description: 'ה-Webhook נמחק בהצלחה',
+      });
       router.push('/webhooks');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting webhook:', error);
-      alert('שגיאה במחיקת ה-Webhook');
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה במחיקת ה-Webhook',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleTest = async () => {
+    try {
+      setTesting(true);
+      const response = await fetch(`/api/webhooks/subscriptions/${webhookId}/test`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: 'הצלחה',
+          description: data.message || 'ה-Webhook נשלח בהצלחה',
+        });
+      } else {
+        toast({
+          title: 'שגיאה',
+          description: data.error || 'שגיאה בשליחת ה-Webhook',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בשליחת ה-Webhook',
+        variant: 'destructive',
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const loadDeliveries = async () => {
+    try {
+      setLoadingDeliveries(true);
+      const response = await fetch(`/api/webhooks/subscriptions/${webhookId}/deliveries?limit=20`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDeliveries(data.deliveries || []);
+      }
+    } catch (error) {
+      console.error('Error loading deliveries:', error);
+    } finally {
+      setLoadingDeliveries(false);
+    }
+  };
+
+  const handleRetry = async (eventId: number) => {
+    try {
+      const response = await fetch(`/api/webhooks/events/${eventId}/retry`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: 'הצלחה',
+          description: 'ה-Webhook נשלח שוב בהצלחה',
+        });
+        await loadDeliveries();
+      } else {
+        toast({
+          title: 'שגיאה',
+          description: data.error || 'שגיאה בשליחה חוזרת',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בשליחה חוזרת',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -131,10 +224,21 @@ export default function WebhookDetailsPage() {
         </h1>
         <div className="flex items-center gap-2">
           {!isNew && (
-            <Button variant="ghost" onClick={handleDelete} className="text-red-600">
-              <HiTrash className="w-5 h-5 ml-2" />
-              מחק
-            </Button>
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={handleTest}
+                disabled={testing}
+                className="text-blue-600"
+              >
+                <HiPlay className="w-5 h-5 ml-2" />
+                {testing ? 'בודק...' : 'בדוק Webhook'}
+              </Button>
+              <Button variant="ghost" onClick={handleDelete} className="text-red-600">
+                <HiTrash className="w-5 h-5 ml-2" />
+                מחק
+              </Button>
+            </>
           )}
           <Button variant="ghost" onClick={() => router.back()}>
             <HiX className="w-5 h-5 ml-2" />
@@ -184,6 +288,77 @@ export default function WebhookDetailsPage() {
 
           </div>
         </Card>
+
+        {!isNew && (
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <HiClock className="w-5 h-5" />
+                  היסטוריית משלוחים
+                </h2>
+                <Button variant="ghost" size="sm" onClick={loadDeliveries}>
+                  <HiRefresh className="w-4 h-4 ml-1" />
+                  רענן
+                </Button>
+              </div>
+              
+              {loadingDeliveries ? (
+                <div className="animate-pulse space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              ) : deliveries.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  אין משלוחים להצגה
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {deliveries.map((delivery) => (
+                    <div
+                      key={delivery.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                    >
+                      <div>
+                        <div className="font-medium text-gray-900">{delivery.topic}</div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {new Date(delivery.created_at).toLocaleString('he-IL')}
+                        </div>
+                        {delivery.last_error && (
+                          <div className="text-xs text-red-600 mt-1">{delivery.last_error}</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            delivery.status === 'sent'
+                              ? 'bg-green-100 text-green-800'
+                              : delivery.status === 'failed'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
+                          {delivery.status === 'sent' ? 'נשלח' : delivery.status === 'failed' ? 'נכשל' : 'ממתין'}
+                        </span>
+                        {delivery.status === 'failed' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRetry(delivery.id)}
+                          >
+                            <HiRefresh className="w-4 h-4 ml-1" />
+                            נסה שוב
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
         <div className="flex items-center justify-end gap-3 mt-6">
           <Button variant="ghost" onClick={() => router.back()}>

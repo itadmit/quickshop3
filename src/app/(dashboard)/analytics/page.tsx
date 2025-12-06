@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
-import { HiTrendingUp, HiShoppingCart, HiUsers, HiCurrencyDollar, HiGlobeAlt } from 'react-icons/hi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Button } from '@/components/ui/Button';
+import { HiTrendingUp, HiShoppingCart, HiUsers, HiCurrencyDollar, HiGlobeAlt, HiDownload, HiChartBar } from 'react-icons/hi';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
+import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface SalesData {
   date: string;
@@ -22,6 +25,7 @@ interface TopProduct {
 }
 
 export default function AnalyticsPage() {
+  const { toast } = useOptimisticToast();
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [totals, setTotals] = useState({
@@ -39,10 +43,14 @@ export default function AnalyticsPage() {
     total_visits: 0,
     total_unique_visitors: 0,
   });
+  const [conversionData, setConversionData] = useState<any>(null);
+  const [customerAnalytics, setCustomerAnalytics] = useState<any>(null);
+  const [productPerformance, setProductPerformance] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState({
     start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end_date: new Date().toISOString().split('T')[0],
   });
+  const [activeTab, setActiveTab] = useState<'overview' | 'customers' | 'products' | 'conversion'>('overview');
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -63,7 +71,7 @@ export default function AnalyticsPage() {
       params.append('end_date', dateRange.end_date);
 
       // Load all in parallel
-      const [salesResponse, productsResponse, visitsResponse] = await Promise.all([
+      const [salesResponse, productsResponse, visitsResponse, conversionResponse, customersResponse, productsPerfResponse] = await Promise.all([
         fetch(`/api/analytics/sales?${params.toString()}`, {
           credentials: 'include',
           signal,
@@ -73,6 +81,18 @@ export default function AnalyticsPage() {
           signal,
         }),
         fetch(`/api/analytics/visits?${params.toString()}`, {
+          credentials: 'include',
+          signal,
+        }),
+        fetch(`/api/analytics/conversion?${params.toString()}`, {
+          credentials: 'include',
+          signal,
+        }),
+        fetch(`/api/analytics/customers?${params.toString()}`, {
+          credentials: 'include',
+          signal,
+        }),
+        fetch(`/api/analytics/products?${params.toString()}&limit=20`, {
           credentials: 'include',
           signal,
         }),
@@ -96,6 +116,21 @@ export default function AnalyticsPage() {
         setTrafficData(visitsResult.visits || []);
         setTrafficTotals(visitsResult.totals || trafficTotals);
       }
+
+      if (conversionResponse.ok) {
+        const conversionResult = await conversionResponse.json();
+        setConversionData(conversionResult);
+      }
+
+      if (customersResponse.ok) {
+        const customersResult = await customersResponse.json();
+        setCustomerAnalytics(customersResult);
+      }
+
+      if (productsPerfResponse.ok) {
+        const productsPerfResult = await productsPerfResponse.json();
+        setProductPerformance(productsPerfResult.products || []);
+      }
     } catch (error: any) {
       if (error.name === 'AbortError') return;
       console.error('Error loading analytics:', error);
@@ -106,8 +141,105 @@ export default function AnalyticsPage() {
     }
   };
 
+  const handleExport = async (reportType: 'sales' | 'products' | 'customers') => {
+    try {
+      const response = await fetch('/api/analytics/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          report_type: reportType,
+          format: 'csv',
+          start_date: dateRange.start_date,
+          end_date: dateRange.end_date,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to export');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reportType}-report-${dateRange.start_date}-${dateRange.end_date}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'הצלחה',
+        description: 'הדוח יוצא בהצלחה',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בייצוא הדוח',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6" dir="rtl">
+      {/* Tabs */}
+      <div className="flex items-center justify-between border-b border-gray-200">
+        <div className="flex gap-2">
+          {[
+            { id: 'overview', label: 'סקירה כללית' },
+            { id: 'customers', label: 'לקוחות' },
+            { id: 'products', label: 'מוצרים' },
+            { id: 'conversion', label: 'המרות' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-green-500 text-green-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Select
+            value={`${dateRange.start_date}_${dateRange.end_date}`}
+            onValueChange={(value) => {
+              const [start, end] = value.split('_');
+              setDateRange({ start_date: start, end_date: end });
+            }}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
+                7 ימים אחרונים
+              </SelectItem>
+              <SelectItem value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
+                30 ימים אחרונים
+              </SelectItem>
+              <SelectItem value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
+                90 ימים אחרונים
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleExport('sales')}
+          >
+            <HiDownload className="w-4 h-4 ml-1" />
+            ייצא דוח
+          </Button>
+        </div>
+      </div>
+
+      {activeTab === 'overview' && (
+        <>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -375,6 +507,167 @@ export default function AnalyticsPage() {
           )}
         </div>
       </Card>
+        </>
+      )}
+
+      {activeTab === 'conversion' && (
+        <div className="space-y-6">
+          {conversionData && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">שיעור המרה כללי</div>
+                    <div className="text-3xl font-bold text-gray-900">
+                      {parseFloat(conversionData.overall_conversion_rate).toFixed(2)}%
+                    </div>
+                  </div>
+                </Card>
+                <Card>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">שיעור המרה מבקרים</div>
+                    <div className="text-3xl font-bold text-gray-900">
+                      {parseFloat(conversionData.visitor_conversion_rate).toFixed(2)}%
+                    </div>
+                  </div>
+                </Card>
+                <Card>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">שיעור נטישת עגלות</div>
+                    <div className="text-3xl font-bold text-red-600">
+                      {parseFloat(conversionData.cart_abandonment_rate).toFixed(2)}%
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {conversionData.conversion_by_date && conversionData.conversion_by_date.length > 0 && (
+                <Card>
+                  <div className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">שיעור המרה לפי תאריך</h2>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={conversionData.conversion_by_date.map((item: any) => ({
+                        date: new Date(item.date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' }),
+                        conversion_rate: parseFloat(item.conversion_rate),
+                        visits: item.visits,
+                        orders: item.orders,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="conversion_rate" stroke="#10b981" strokeWidth={2} name="שיעור המרה (%)" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'customers' && (
+        <div className="space-y-6">
+          {customerAnalytics && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">לקוחות חדשים</div>
+                    <div className="text-3xl font-bold text-gray-900">{customerAnalytics.new_customers}</div>
+                  </div>
+                </Card>
+                <Card>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">לקוחות חוזרים</div>
+                    <div className="text-3xl font-bold text-gray-900">{customerAnalytics.returning_customers}</div>
+                  </div>
+                </Card>
+                <Card>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">ערך הזמנה ממוצע</div>
+                    <div className="text-3xl font-bold text-gray-900">
+                      ₪{parseFloat(customerAnalytics.average_order_value || '0').toLocaleString('he-IL')}
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {customerAnalytics.top_customers && customerAnalytics.top_customers.length > 0 && (
+                <Card>
+                  <div className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">לקוחות מובילים</h2>
+                    <div className="space-y-3">
+                      {customerAnalytics.top_customers.map((customer: any, index: number) => (
+                        <div key={customer.customer_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{customer.customer_name || customer.customer_email}</div>
+                              <div className="text-sm text-gray-500">{customer.customer_email}</div>
+                              <div className="text-xs text-gray-400 mt-1">{customer.order_count} הזמנות</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-gray-900">
+                              ₪{parseFloat(customer.total_spent).toLocaleString('he-IL')}
+                            </div>
+                            <div className="text-sm text-gray-500">סה"כ הוצאות</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'products' && (
+        <div className="space-y-6">
+          {productPerformance.length > 0 && (
+            <Card>
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">ביצועי מוצרים</h2>
+                <div className="space-y-3">
+                  {productPerformance.map((product: any, index: number) => (
+                    <div key={product.product_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{product.product_title}</div>
+                          <div className="text-sm text-gray-500">
+                            {product.order_count} הזמנות • {product.total_quantity} יחידות • {product.views} צפיות
+                          </div>
+                          {product.conversion_rate && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              שיעור המרה: {product.conversion_rate}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-gray-900">
+                          ₪{parseFloat(product.total_revenue).toLocaleString('he-IL')}
+                        </div>
+                        <div className="text-sm text-gray-500">סה"כ הכנסות</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
