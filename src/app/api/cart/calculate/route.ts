@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CartCalculator } from '@/lib/services/cartCalculator';
 
+const VISITOR_SESSION_COOKIE_NAME = 'quickshop3_visitor_session';
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { storeId, items, discountCode, shippingRate, customerId, customerSegment, customerOrdersCount, customerLifetimeValue } = body;
+    let { storeId, items, discountCode, shippingRate, customerId, customerSegment, customerOrdersCount, customerLifetimeValue } = body;
+    
+    // אם לא נשלח discountCode, נטען אותו מהשרת (session)
+    if (!discountCode) {
+      const visitorSessionId = req.cookies.get(VISITOR_SESSION_COOKIE_NAME)?.value;
+      if (visitorSessionId && storeId) {
+        const { queryOne } = await import('@/lib/db');
+        const cartData = await queryOne<{ discount_code: string | null }>(
+          `SELECT discount_code 
+           FROM visitor_carts 
+           WHERE visitor_session_id = $1 AND store_id = $2
+           ORDER BY updated_at DESC 
+           LIMIT 1`,
+          [visitorSessionId, typeof storeId === 'string' ? parseInt(storeId, 10) : storeId]
+        );
+        if (cartData?.discount_code) {
+          discountCode = cartData.discount_code;
+        }
+      }
+    }
 
     // לוגים לדיבוג (רק ב-development)
     if (process.env.NODE_ENV === 'development') {
@@ -130,7 +151,11 @@ export async function POST(req: NextRequest) {
     // Calculate cart (this will also load automatic discounts)
     const result = await calculator.calculate();
 
-    return NextResponse.json(result);
+    // Include discountCode in response so client can sync
+    return NextResponse.json({
+      ...result,
+      discountCode: discountCode || null, // Include current discount code in response
+    });
   } catch (error: any) {
     console.error('Cart calculation error:', error);
     console.error('Error stack:', error.stack);

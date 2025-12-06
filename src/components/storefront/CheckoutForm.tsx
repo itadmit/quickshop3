@@ -1163,25 +1163,29 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           <div className="text-sm font-medium text-green-800">
                             {discountCode}
                           </div>
-                          {getDiscounts().filter(d => d.source === 'code').length > 0 && (
-                            <div className="text-xs text-green-600">
-                              {translationsLoading ? (
-                                <TextSkeleton width="w-24" height="h-3" />
-                              ) : (
-                                `חיסכון של ₪${getDiscounts()
-                                  .filter(d => d.source === 'code')
-                                  .reduce((sum, d) => sum + d.amount, 0)
-                                  .toFixed(2)}`
-                              )}
-                            </div>
-                          )}
+                            {getDiscounts().filter(d => d.source === 'code').length > 0 && (
+                              <div className="text-xs text-green-600">
+                                {translationsLoading ? (
+                                  <TextSkeleton width="w-24" height="h-3" />
+                                ) : getDiscounts().filter(d => d.source === 'code').some(d => d.type === 'free_shipping') ? (
+                                  'משלוח חינם'
+                                ) : (
+                                  `חיסכון של ₪${getDiscounts()
+                                    .filter(d => d.source === 'code')
+                                    .reduce((sum, d) => sum + d.amount, 0)
+                                    .toFixed(2)}`
+                                )}
+                              </div>
+                            )}
                         </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="text-green-700 hover:text-green-900 hover:bg-green-100"
-                          onClick={removeDiscountCode}
+                          onClick={async () => {
+                            await removeDiscountCode();
+                          }}
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -1245,40 +1249,45 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       <span className="font-medium">₪{getSubtotal().toFixed(2)}</span>
                     </div>
                     
-                    {getDiscounts().filter(d => d.source === 'code').length > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-16" height="h-4" />
-                          ) : (
-                            'קופון'
-                          )}
-                        </span>
-                        <span>
-                          -₪{getDiscounts()
-                            .filter(d => d.source === 'code')
-                            .reduce((sum, d) => sum + d.amount, 0)
-                            .toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge className="bg-green-100 hover:bg-green-100 text-green-800 border border-green-700 text-xs font-semibold whitespace-nowrap px-2 py-1 rounded-sm">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-24" height="h-3" />
-                          ) : (
-                            getDiscounts().find(d => d.source === 'automatic')?.name || 'הנחה אוטומטית'
-                          )}
-                        </Badge>
-                        <span className="text-green-600 font-medium">
-                          -₪{getDiscounts()
-                            .filter(d => d.source === 'automatic')
-                            .reduce((sum, d) => sum + d.amount, 0)
-                            .toFixed(2)}
-                        </span>
-                      </div>
+                    {/* הנחות - סיכום בלבד ללא כפילות */}
+                    {getDiscount() > 0 && (
+                      <>
+                        {getDiscounts().filter(d => d.source === 'code').length > 0 && (
+                          <div className="flex justify-between text-green-600">
+                            <span>
+                              {translationsLoading ? (
+                                <TextSkeleton width="w-16" height="h-4" />
+                              ) : (
+                                'קופון'
+                              )}
+                            </span>
+                            <span>
+                              -₪{getDiscounts()
+                                .filter(d => d.source === 'code')
+                                .reduce((sum, d) => sum + d.amount, 0)
+                                .toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
+                          <div className="flex items-center justify-between gap-2">
+                            <Badge className="bg-green-100 hover:bg-green-100 text-green-800 border border-green-700 text-xs font-semibold whitespace-nowrap px-2 py-1 rounded-sm">
+                              {translationsLoading ? (
+                                <TextSkeleton width="w-24" height="h-3" />
+                              ) : (
+                                getDiscounts().find(d => d.source === 'automatic')?.name || 'הנחה אוטומטית'
+                              )}
+                            </Badge>
+                            <span className="text-green-600 font-medium">
+                              -₪{getDiscounts()
+                                .filter(d => d.source === 'automatic')
+                                .reduce((sum, d) => sum + d.amount, 0)
+                                .toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                     
                     {shippingCost > 0 && (

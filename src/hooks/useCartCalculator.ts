@@ -47,7 +47,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
   const [validatingCode, setValidatingCode] = useState(false);
   const [isLoadingDiscountCode, setIsLoadingDiscountCode] = useState(true);
 
-  // Load discount code from server (session) on mount
+  // Load discount code from server (session) on mount and when storeId changes
   useEffect(() => {
     const loadDiscountCode = async () => {
       if (!options.storeId) {
@@ -67,12 +67,15 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.discountCode) {
-            setDiscountCode(data.discountCode);
-          }
+          const serverCode = data.discountCode || '';
+          // Always sync with server - this ensures consistency after refresh
+          setDiscountCode(serverCode);
+        } else {
+          setDiscountCode('');
         }
       } catch (error) {
         console.error('Error loading discount code:', error);
+        setDiscountCode('');
       } finally {
         setIsLoadingDiscountCode(false);
       }
@@ -163,6 +166,15 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
       const result = await response.json();
       setCalculation(result);
+      
+      // Sync discountCode from server response if provided
+      // This ensures consistency after operations like remove/add
+      if (result.discountCode !== undefined) {
+        const serverCode = result.discountCode || '';
+        if (serverCode !== discountCode) {
+          setDiscountCode(serverCode);
+        }
+      }
     } catch (error) {
       console.error('Error calculating cart:', error);
       // טיפול נכון ב-shippingRate null/undefined
@@ -275,21 +287,54 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
   // הסרת קופון
   const removeDiscountCode = useCallback(async () => {
-    setDiscountCode('');
-    
-    // Remove from server (session)
+    // Remove from server (session) FIRST - wait for completion
     try {
-      await fetch(`/api/cart/discount-code?storeId=${options.storeId}`, {
+      const response = await fetch(`/api/cart/discount-code?storeId=${options.storeId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove discount code from server');
+      }
+      
+      // Update state immediately after successful server removal
+      setDiscountCode('');
+      
+      // Force immediate recalculation with empty discount code
+      // This ensures UI updates immediately without waiting for useEffect
+      const response2 = await fetch('/api/cart/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: options.storeId,
+          items: cartItems,
+          discountCode: '', // Explicitly pass empty string to override server value
+          shippingRate: options.shippingRate,
+          customerId: options.customerId,
+          customerSegment: options.customerSegment,
+          customerOrdersCount: options.customerOrdersCount,
+          customerLifetimeValue: options.customerLifetimeValue,
+        }),
+      });
+
+      if (response2.ok) {
+        const result = await response2.json();
+        setCalculation(result);
+        // Ensure discountCode is empty in state
+        setDiscountCode('');
+      } else {
+        // If calculation fails, still update state and recalculate normally
+        setDiscountCode('');
+        await recalculate();
+      }
     } catch (error) {
       console.error('Error removing discount code:', error);
+      // Even if server call fails, update UI optimistically
+      setDiscountCode('');
+      await recalculate();
     }
-    
-    // רענון מיידי של החישוב
-    await recalculate();
-  }, [recalculate, options.storeId]);
+  }, [cartItems, options.storeId, options.shippingRate, options.customerId, options.customerSegment, options.customerOrdersCount, options.customerLifetimeValue, recalculate]);
 
   return {
     // State

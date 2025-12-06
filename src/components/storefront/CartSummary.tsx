@@ -106,10 +106,11 @@ export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = fa
               <span className="font-medium text-green-800">{discountCode}</span>
             </div>
             <button
-              onClick={() => {
-                removeDiscountCode();
+              onClick={async () => {
+                await removeDiscountCode();
               }}
               className="text-green-600 hover:text-green-800 transition-colors"
+              type="button"
             >
               <HiX className="w-5 h-5" />
             </button>
@@ -157,37 +158,6 @@ export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = fa
         </div>
       )}
 
-      {/* Applied Discounts */}
-      {getDiscounts().length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">הנחות שהוחלו:</h3>
-          {getDiscounts()
-            .sort((a, b) => b.priority - a.priority) // Sort by priority
-            .map((discount, index) => (
-              <div key={index} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-600">{discount.description}</span>
-                  {discount.source === 'automatic' && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                      אוטומטי
-                    </span>
-                  )}
-                  {discount.source === 'code' && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                      קופון
-                    </span>
-                  )}
-                </div>
-                {discount.type === 'free_shipping' ? (
-                  <span className="font-semibold text-green-600">חינם</span>
-                ) : (
-                  <span className="font-semibold text-green-600">-₪{discount.amount.toFixed(2)}</span>
-                )}
-              </div>
-            ))}
-        </div>
-      )}
-
       {/* Summary */}
       <div className="border-t border-gray-200 pt-4 space-y-3">
         {/* סה"כ פריטים - מוצג רק אם יש הנחה */}
@@ -198,63 +168,34 @@ export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = fa
           </div>
         )}
 
-        {/* הנחות אוטומטיות */}
-        {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
+        {/* הנחות - סיכום בלבד ללא כפילות */}
+        {getDiscount() > 0 && (
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">הנחה אוטומטית:</span>
-              <span className="font-semibold text-green-600">
-                -₪{getDiscounts()
-                  .filter(d => d.source === 'automatic')
-                  .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
-                  .toFixed(2)}
-              </span>
-            </div>
-            {/* רשימת הנחות אוטומטיות */}
-            {getDiscounts()
-              .filter(d => d.source === 'automatic')
-              .map((discount, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs text-gray-500 pr-4">
-                  <span>{discount.name || discount.description}</span>
-                  <span>
-                    {discount.type === 'free_shipping' ? (
-                      <span className="text-green-600">משלוח חינם</span>
-                    ) : (
-                      `-₪${discount.amount.toFixed(2)}`
-                    )}
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
+            {/* הנחות אוטומטיות */}
+            {getDiscounts().filter(d => d.source === 'automatic').length > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">הנחה אוטומטית:</span>
+                <span className="font-semibold text-green-600">
+                  -₪{getDiscounts()
+                    .filter(d => d.source === 'automatic')
+                    .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
+                    .toFixed(2)}
+                </span>
+              </div>
+            )}
 
-        {/* הנחת קופון */}
-        {getDiscounts().filter(d => d.source === 'code').length > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">הנחת קופון:</span>
-              <span className="font-semibold text-green-600">
-                -₪{getDiscounts()
-                  .filter(d => d.source === 'code')
-                  .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
-                  .toFixed(2)}
-              </span>
-            </div>
-            {/* רשימת הנחות קופון */}
-            {getDiscounts()
-              .filter(d => d.source === 'code')
-              .map((discount, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs text-gray-500 pr-4">
-                  <span>{discount.code || discount.name || discount.description}</span>
-                  <span>
-                    {discount.type === 'free_shipping' ? (
-                      <span className="text-green-600">משלוח חינם</span>
-                    ) : (
-                      `-₪${discount.amount.toFixed(2)}`
-                    )}
-                  </span>
-                </div>
-              ))}
+            {/* הנחת קופון */}
+            {getDiscounts().filter(d => d.source === 'code').length > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">הנחת קופון:</span>
+                <span className="font-semibold text-green-600">
+                  -₪{getDiscounts()
+                    .filter(d => d.source === 'code')
+                    .reduce((sum, d) => sum + (d.type === 'free_shipping' ? 0 : d.amount), 0)
+                    .toFixed(2)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
