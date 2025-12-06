@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
-import { HiCube, HiExclamationCircle, HiPencil, HiPlus } from 'react-icons/hi';
+import { HiCube, HiExclamationCircle, HiPencil, HiPlus, HiClock, HiDownload } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface InventoryItem {
@@ -32,6 +32,10 @@ export default function InventoryPage() {
   const [adjustmentQuantity, setAdjustmentQuantity] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [adjusting, setAdjusting] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
   useEffect(() => {
     loadInventory();
@@ -137,6 +141,25 @@ export default function InventoryPage() {
     setAdjustmentQuantity('');
     setAdjustmentReason('');
     setAdjustmentDialogOpen(true);
+  };
+
+  const loadHistory = async (variantId?: number) => {
+    try {
+      setLoadingHistory(true);
+      const params = new URLSearchParams();
+      if (variantId) params.append('variant_id', variantId.toString());
+      const response = await fetch(`/api/inventory/history?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHistory(data.history || []);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const columns: TableColumn<InventoryItem>[] = [
@@ -253,9 +276,25 @@ export default function InventoryPage() {
         </Card>
       )}
 
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900">מלאי</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setShowHistory(!showHistory);
+              if (!showHistory) loadHistory();
+            }}
+          >
+            <HiClock className="w-4 h-4 ml-1" />
+            היסטוריה
+          </Button>
+        </div>
+      </div>
+
       <DataTable
-        title="מלאי"
-        description="נהל מלאי מוצרים"
+        title=""
+        description=""
         searchPlaceholder="חיפוש במלאי..."
         onSearch={setSearchTerm}
         columns={columns}
@@ -346,6 +385,57 @@ export default function InventoryPage() {
               {adjusting ? 'מעדכן...' : 'עדכן מלאי'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent dir="rtl" className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>היסטוריית מלאי</DialogTitle>
+          </DialogHeader>
+          <div className="p-6">
+            {loadingHistory ? (
+              <div className="animate-pulse space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                אין היסטוריה להצגה
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div>
+                      <div className="font-medium text-gray-900">{item.message}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {new Date(item.created_at).toLocaleString('he-IL')}
+                      </div>
+                      {item.context && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {JSON.stringify(item.context)}
+                        </div>
+                      )}
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        item.level === 'error'
+                          ? 'bg-red-100 text-red-800'
+                          : item.level === 'warn'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {item.level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
