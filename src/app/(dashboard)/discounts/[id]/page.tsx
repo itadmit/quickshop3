@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { HiSave, HiX, HiTag, HiTrash, HiPlus } from 'react-icons/hi';
+import { HiSave, HiX, HiTag, HiTrash, HiPlus, HiChartBar, HiShoppingCart } from 'react-icons/hi';
 import { DiscountCode, UpdateDiscountCodeRequest } from '@/types/discount';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ProductSelector } from '@/components/discounts/ProductSelector';
@@ -25,6 +25,9 @@ export default function EditDiscountPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [discount, setDiscount] = useState<DiscountCode | null>(null);
+  const [usageData, setUsageData] = useState<any>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
+  const [showUsage, setShowUsage] = useState(false);
   const [formData, setFormData] = useState<{
     code?: string;
     discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
@@ -72,6 +75,23 @@ export default function EditDiscountPage() {
   useEffect(() => {
     loadDiscount();
   }, [discountId]);
+
+  const loadUsageData = async () => {
+    try {
+      setLoadingUsage(true);
+      const response = await fetch(`/api/discounts/${discountId}/usage`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsageData(data);
+      }
+    } catch (error) {
+      console.error('Error loading usage data:', error);
+    } finally {
+      setLoadingUsage(false);
+    }
+  };
 
   const loadDiscount = async () => {
     try {
@@ -1037,6 +1057,111 @@ export default function EditDiscountPage() {
               <p className="text-sm text-gray-500 mt-1">רק קודים פעילים יכולים לשמש בהזמנות</p>
             </div>
           </div>
+        </Card>
+
+        {/* Usage Statistics */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <HiChartBar className="w-5 h-5" />
+              סטטיסטיקות שימוש
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowUsage(!showUsage);
+                if (!showUsage && !usageData) {
+                  loadUsageData();
+                }
+              }}
+            >
+              {showUsage ? 'הסתר' : 'הצג סטטיסטיקות'}
+            </Button>
+          </div>
+
+          {showUsage && (
+            <div className="space-y-4">
+              {loadingUsage ? (
+                <div className="text-center py-8 text-gray-500">טוען נתונים...</div>
+              ) : usageData ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm text-gray-600 mb-1">שימושים</div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {usageData.discount?.usage_count || 0}
+                        {usageData.discount?.usage_limit && (
+                          <span className="text-sm font-normal text-gray-500">
+                            {' '}/ {usageData.discount.usage_limit}
+                          </span>
+                        )}
+                      </div>
+                      {usageData.discount?.usage_percentage !== null && (
+                        <div className="mt-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-emerald-500 h-2 rounded-full"
+                              style={{ width: `${usageData.discount.usage_percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm text-gray-600 mb-1">סה"כ הזמנות</div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {usageData.statistics?.total_orders || 0}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm text-gray-600 mb-1">סה"כ הכנסות</div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        ₪{parseFloat(usageData.statistics?.total_revenue || '0').toLocaleString('he-IL')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {usageData.recent_orders && usageData.recent_orders.length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <HiShoppingCart className="w-4 h-4" />
+                        הזמנות אחרונות
+                      </h3>
+                      <div className="space-y-2">
+                        {usageData.recent_orders.slice(0, 5).map((order: any) => (
+                          <div
+                            key={order.id}
+                            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
+                          >
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {order.order_name || `#${order.id}`}
+                              </div>
+                              <div className="text-sm text-gray-500">{order.email}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-gray-900">
+                                ₪{parseFloat(order.total_price).toLocaleString('he-IL')}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(order.created_at).toLocaleDateString('he-IL')}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  אין נתוני שימוש עדיין
+                </div>
+              )}
+            </div>
+          )}
         </Card>
 
         <div className="flex items-center justify-end gap-4">

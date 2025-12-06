@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { DataTable, TableColumn } from '@/components/ui/DataTable';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { HiCube, HiExclamationCircle } from 'react-icons/hi';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
+import { HiCube, HiExclamationCircle, HiPencil, HiPlus } from 'react-icons/hi';
+import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface InventoryItem {
   id: number;
@@ -17,11 +21,17 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const { toast } = useOptimisticToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [lowStockItems, setLowStockItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [adjustmentQuantity, setAdjustmentQuantity] = useState('');
+  const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
   useEffect(() => {
     loadInventory();
@@ -73,6 +83,62 @@ export default function InventoryPage() {
     }
   };
 
+  const handleAdjustInventory = async () => {
+    if (!selectedItem || !adjustmentQuantity) {
+      toast({
+        title: 'שגיאה',
+        description: 'נא להזין כמות',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setAdjusting(true);
+      const newQuantity = selectedItem.available + parseInt(adjustmentQuantity);
+      
+      const response = await fetch(`/api/inventory/${selectedItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          available: newQuantity,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to adjust inventory');
+      }
+
+      toast({
+        title: 'הצלחה',
+        description: 'המלאי עודכן בהצלחה',
+      });
+
+      setAdjustmentDialogOpen(false);
+      setSelectedItem(null);
+      setAdjustmentQuantity('');
+      setAdjustmentReason('');
+      await loadInventory();
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'אירעה שגיאה בעדכון המלאי',
+        variant: 'destructive',
+      });
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  const openAdjustmentDialog = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setAdjustmentQuantity('');
+    setAdjustmentReason('');
+    setAdjustmentDialogOpen(true);
+  };
+
   const columns: TableColumn<InventoryItem>[] = [
     {
       key: 'product',
@@ -113,6 +179,20 @@ export default function InventoryPage() {
       label: 'בדרך',
       render: (item) => (
         <div className="text-gray-600">{item.incoming}</div>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'פעולות',
+      render: (item) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => openAdjustmentDialog(item)}
+        >
+          <HiPencil className="w-4 h-4 ml-1" />
+          עדכן
+        </Button>
       ),
     },
   ];
@@ -191,6 +271,83 @@ export default function InventoryPage() {
           </div>
         }
       />
+
+      {/* Adjustment Dialog */}
+      <Dialog open={adjustmentDialogOpen} onOpenChange={setAdjustmentDialogOpen}>
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>עדכן מלאי</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4 space-y-4">
+            {selectedItem && (
+              <>
+                <div>
+                  <Label>מוצר</Label>
+                  <div className="mt-1 p-2 bg-gray-50 rounded">
+                    <div className="font-medium">{selectedItem.product_title}</div>
+                    {selectedItem.variant_title && (
+                      <div className="text-sm text-gray-500">{selectedItem.variant_title}</div>
+                    )}
+                    <div className="text-sm text-gray-500 mt-1">
+                      מלאי נוכחי: <span className="font-semibold">{selectedItem.available}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <Label>שינוי כמות *</Label>
+                  <Input
+                    type="number"
+                    value={adjustmentQuantity}
+                    onChange={(e) => setAdjustmentQuantity(e.target.value)}
+                    placeholder="לדוגמה: +10 או -5"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    הזן מספר חיובי להוספה או שלילי להפחתה
+                  </p>
+                  {adjustmentQuantity && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                      מלאי חדש: <span className="font-semibold">
+                        {selectedItem.available + (parseInt(adjustmentQuantity) || 0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label>סיבה (אופציונלי)</Label>
+                  <Input
+                    type="text"
+                    value={adjustmentReason}
+                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                    placeholder="לדוגמה: החזרה מלקוח, ספירת מלאי"
+                    className="mt-1"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAdjustmentDialogOpen(false);
+                setSelectedItem(null);
+                setAdjustmentQuantity('');
+                setAdjustmentReason('');
+              }}
+              disabled={adjusting}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleAdjustInventory}
+              disabled={adjusting || !adjustmentQuantity}
+            >
+              {adjusting ? 'מעדכן...' : 'עדכן מלאי'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
