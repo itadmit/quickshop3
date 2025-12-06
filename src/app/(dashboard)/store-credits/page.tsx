@@ -27,8 +27,35 @@ export default function StoreCreditsPage() {
   const loadCredits = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/store-credits
-      setCredits([]);
+      const response = await fetch('/api/store-credits');
+      if (!response.ok) throw new Error('Failed to load store credits');
+      const data = await response.json();
+      
+      // Fetch customer names for each credit
+      const creditsWithNames = await Promise.all(
+        (data.store_credits || []).map(async (credit: any) => {
+          if (credit.customer_id) {
+            try {
+              const customerRes = await fetch(`/api/customers/${credit.customer_id}`);
+              if (customerRes.ok) {
+                const customerData = await customerRes.json();
+                return {
+                  ...credit,
+                  customer_name: `${customerData.customer?.first_name || ''} ${customerData.customer?.last_name || ''}`.trim() || `לקוח #${credit.customer_id}`,
+                };
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          }
+          return {
+            ...credit,
+            customer_name: `לקוח #${credit.customer_id || 'אורח'}`,
+          };
+        })
+      );
+      
+      setCredits(creditsWithNames);
     } catch (error) {
       console.error('Error loading store credits:', error);
     } finally {

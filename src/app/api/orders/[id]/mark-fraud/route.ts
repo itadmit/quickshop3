@@ -3,6 +3,7 @@ import { queryOne, query } from '@/lib/db';
 import { Order } from '@/types/order';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { quickshopItem } from '@/lib/utils/apiFormatter';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -111,7 +112,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      order: updatedOrder,
+      ...quickshopItem('order', updatedOrder),
       risk_level,
     });
   } catch (error: any) {

@@ -25,8 +25,10 @@ export default function AbandonedCartsPage() {
   const loadCarts = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/abandoned-carts
-      setCarts([]);
+      const response = await fetch('/api/abandoned-carts');
+      if (!response.ok) throw new Error('Failed to load abandoned carts');
+      const data = await response.json();
+      setCarts(data.abandoned_carts || []);
     } catch (error) {
       console.error('Error loading abandoned carts:', error);
     } finally {

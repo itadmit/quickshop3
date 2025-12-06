@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
+import { quickshopList } from '@/lib/utils/apiFormatter';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -44,7 +45,7 @@ export async function GET(
       [productId]
     );
 
-    return NextResponse.json({ collections });
+    return NextResponse.json(quickshopList('collections', collections));
   } catch (error: any) {
     console.error('Error fetching product collections:', error);
     return NextResponse.json(

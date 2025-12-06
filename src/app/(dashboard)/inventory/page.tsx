@@ -26,9 +26,21 @@ export default function InventoryPage() {
   const loadInventory = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/inventory
-      // For now, show empty state
-      setItems([]);
+      const response = await fetch('/api/inventory');
+      if (!response.ok) throw new Error('Failed to load inventory');
+      const data = await response.json();
+      
+      const mappedItems = (data.inventory || []).map((item: any) => ({
+        id: item.id,
+        product_title: item.product_title || 'מוצר לא נמצא',
+        variant_title: item.variant_title || null,
+        sku: item.sku || null,
+        available: item.available || 0,
+        committed: item.committed || 0,
+        incoming: item.incoming || 0,
+      }));
+      
+      setItems(mappedItems);
     } catch (error) {
       console.error('Error loading inventory:', error);
     } finally {

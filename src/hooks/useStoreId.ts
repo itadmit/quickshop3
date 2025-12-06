@@ -8,7 +8,7 @@ const CART_STORE_SLUG_KEY = 'quickshop_cart_store_slug';
 
 /**
  * Hook לקבלת storeId מה-URL
- * Shopify-style: storeId נקבע לפי storeSlug מה-URL
+ * Quickshop: storeId נקבע לפי storeSlug מה-URL
  * משתמש ב-API endpoint במקום server function ישיר
  */
 export function useStoreId(): number | null {

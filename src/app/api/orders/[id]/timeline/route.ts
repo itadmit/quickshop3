@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { quickshopList } from '@/lib/utils/apiFormatter';
 
 // GET /api/orders/:id/timeline - Get order timeline events
 export async function GET(
@@ -87,7 +88,7 @@ export async function GET(
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    return NextResponse.json({ events: allEvents });
+    return NextResponse.json(quickshopList('events', allEvents));
   } catch (error: any) {
     console.error('Error fetching timeline:', error);
     return NextResponse.json(

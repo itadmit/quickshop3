@@ -24,8 +24,29 @@ export default function WishlistPage() {
   const loadWishlist = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/wishlist
-      setItems([]);
+      const response = await fetch('/api/wishlist');
+      if (!response.ok) throw new Error('Failed to load wishlist');
+      const data = await response.json();
+      
+      // Flatten wishlists and items
+      const allItems: WishlistItem[] = [];
+      if (data.wishlists) {
+        data.wishlists.forEach((wishlist: any) => {
+          if (wishlist.items) {
+            wishlist.items.forEach((item: any) => {
+              allItems.push({
+                id: item.id,
+                customer_id: wishlist.customer_id,
+                product_id: item.product_id,
+                product_title: item.product_title || 'Unknown Product',
+                created_at: item.created_at,
+              });
+            });
+          }
+        });
+      }
+      
+      setItems(allItems);
     } catch (error) {
       console.error('Error loading wishlist:', error);
     } finally {

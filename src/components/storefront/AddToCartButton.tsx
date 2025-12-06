@@ -71,7 +71,7 @@ export function AddToCartButton({
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
 
-      // פתיחת העגלה אוטומטית אחרי הוספה (Shopify-style)
+      // פתיחת העגלה אוטומטית אחרי הוספה (Quickshop)
       setTimeout(() => {
         openCart();
       }, 300);

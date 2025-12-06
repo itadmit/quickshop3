@@ -24,18 +24,24 @@ export default function NotificationsPage() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/notifications
-      // For now, show sample data
-      setNotifications([
-        {
-          id: 1,
-          type: 'success',
-          title: 'הזמנה חדשה',
-          message: 'התקבלה הזמנה חדשה #1234',
-          is_read: false,
-          created_at: new Date(),
-        },
-      ]);
+      const response = await fetch('/api/notifications?is_read=false');
+      if (!response.ok) throw new Error('Failed to load notifications');
+      const data = await response.json();
+      
+      // Map notification_type to type
+      const mappedNotifications = (data.notifications || []).map((n: any) => ({
+        id: n.id,
+        type: n.notification_type?.includes('error') ? 'error' :
+              n.notification_type?.includes('warning') ? 'warning' :
+              n.notification_type?.includes('success') ? 'success' : 'info',
+        title: n.title,
+        message: n.message,
+        is_read: n.is_read,
+        created_at: new Date(n.created_at),
+        link_url: n.link_url,
+      }));
+      
+      setNotifications(mappedNotifications);
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {

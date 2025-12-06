@@ -7,8 +7,8 @@
 import './productInventoryListener';
 import './inventoryListener';
 import './webhookListener';
+import './emailListener';
 
 // Add more listeners here as they are created:
-// import './emailListener';
 // import './analyticsListener';
 

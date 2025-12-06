@@ -3,8 +3,8 @@ import { getDb, query, queryOne } from '@/lib/db';
 import { hashPassword, generateToken, setSessionCookie } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
 
-// Generate Shopify-like domain
-function generateShopifyDomain(storeName: string): string {
+// Generate Quickshop domain identifier
+function generateQuickshopDomain(storeName: string): string {
   const sanitized = storeName
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '-')
@@ -93,8 +93,8 @@ export async function POST(req: NextRequest) {
       );
       const owner = ownerResult.rows[0];
 
-      // Generate Shopify-like domain
-      const myshopifyDomain = generateShopifyDomain(storeName);
+      // Generate Quickshop domain identifier
+      const quickshopDomain = generateQuickshopDomain(storeName);
       const normalizedSlug = storeSlug.toLowerCase();
 
       // Create store
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         `INSERT INTO stores (owner_id, name, slug, myshopify_domain, currency, locale, timezone, plan)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id, name, slug, myshopify_domain, currency, locale, timezone, plan, created_at`,
-        [owner.id, storeName, normalizedSlug, myshopifyDomain, 'ILS', 'he-IL', 'Asia/Jerusalem', 'free']
+        [owner.id, storeName, normalizedSlug, quickshopDomain, 'ILS', 'he-IL', 'Asia/Jerusalem', 'free']
       );
       const store = storeResult.rows[0];
 

@@ -29,8 +29,37 @@ export default function ReviewsPage() {
   const loadReviews = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/reviews
-      setReviews([]);
+      const response = await fetch('/api/reviews');
+      if (!response.ok) throw new Error('Failed to load reviews');
+      const data = await response.json();
+      
+      // Fetch product titles for each review
+      const reviewsWithTitles = await Promise.all(
+        (data.reviews || []).map(async (review: any) => {
+          if (review.product_id) {
+            try {
+              const productRes = await fetch(`/api/products/${review.product_id}`);
+              if (productRes.ok) {
+                const productData = await productRes.json();
+                return {
+                  ...review,
+                  product_title: productData.product?.title || 'מוצר לא נמצא',
+                  body: review.review_text || review.title || '',
+                };
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          }
+          return {
+            ...review,
+            product_title: 'מוצר לא נמצא',
+            body: review.review_text || review.title || '',
+          };
+        })
+      );
+      
+      setReviews(reviewsWithTitles);
     } catch (error) {
       console.error('Error loading reviews:', error);
     } finally {

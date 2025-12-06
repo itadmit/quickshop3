@@ -223,15 +223,22 @@ export async function PUT(
       );
 
       if (existingVariant) {
+        // Get old variant for comparison
+        const oldVariant = await queryOne<ProductVariant>(
+          'SELECT * FROM product_variants WHERE id = $1',
+          [existingVariant.id]
+        );
+
         // Update existing default variant
-        await query(
+        const updatedVariant = await queryOne<ProductVariant>(
           `UPDATE product_variants SET
             price = $1,
             compare_at_price = $2,
             sku = $3,
             taxable = $4,
             updated_at = now()
-           WHERE id = $5`,
+           WHERE id = $5
+           RETURNING *`,
           [
             body.price || '0.00',
             body.compare_at_price || null,
@@ -240,6 +247,24 @@ export async function PUT(
             existingVariant.id,
           ]
         );
+
+        // Emit variant.updated event
+        if (updatedVariant && oldVariant) {
+          const changes: any = {};
+          if (oldVariant.price !== updatedVariant.price) changes.price = { from: oldVariant.price, to: updatedVariant.price };
+          if (oldVariant.compare_at_price !== updatedVariant.compare_at_price) changes.compare_at_price = { from: oldVariant.compare_at_price, to: updatedVariant.compare_at_price };
+          if (oldVariant.sku !== updatedVariant.sku) changes.sku = { from: oldVariant.sku, to: updatedVariant.sku };
+          if (oldVariant.taxable !== updatedVariant.taxable) changes.taxable = { from: oldVariant.taxable, to: updatedVariant.taxable };
+          
+          await eventBus.emitEvent('variant.updated', {
+            variant: updatedVariant,
+            changes,
+          }, {
+            store_id: user.store_id,
+            source: 'api',
+            user_id: user.id,
+          });
+        }
 
         // Update inventory
         if (body.track_inventory !== false && body.inventory_quantity !== undefined) {

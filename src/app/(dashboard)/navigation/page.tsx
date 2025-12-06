@@ -17,8 +17,10 @@ export default function NavigationPage() {
   const loadMenus = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/navigation
-      setMenus([]);
+      const response = await fetch('/api/navigation');
+      if (!response.ok) throw new Error('Failed to load navigation menus');
+      const data = await response.json();
+      setMenus(data.navigation_menus || []);
     } catch (error) {
       console.error('Error loading menus:', error);
     } finally {

@@ -20,8 +20,10 @@ export default function PopupsPage() {
   const loadPopups = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/popups
-      setPopups([]);
+      const response = await fetch('/api/popups');
+      if (!response.ok) throw new Error('Failed to load popups');
+      const data = await response.json();
+      setPopups(data.popups || []);
     } catch (error) {
       console.error('Error loading popups:', error);
     } finally {

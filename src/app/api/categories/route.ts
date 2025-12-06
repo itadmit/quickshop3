@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { eventBus } from '@/lib/events/eventBus';
+import { quickshopList, quickshopItem } from '@/lib/utils/apiFormatter';
+// Initialize event listeners
+import '@/lib/events/listeners';
 
 // GET /api/categories - Get all categories for a shop
 export async function GET(request: NextRequest) {
@@ -29,10 +33,7 @@ export async function GET(request: NextRequest) {
 
     const collections = await query(sql, params);
 
-    return NextResponse.json({
-      collections: collections,
-      total: collections.length,
-    });
+    return NextResponse.json(quickshopList('collections', collections));
   } catch (error: any) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
@@ -88,11 +89,21 @@ export async function POST(request: NextRequest) {
 
     const category = result[0];
 
-    return NextResponse.json(
-      { 
-        category,
-        message: 'Category created successfully' 
+    // Emit event
+    await eventBus.emitEvent('category.created', {
+      category: {
+        id: category.id,
+        name: category.name,
+        handle: category.handle,
       },
+    }, {
+      store_id: user.store_id,
+      source: 'api',
+      user_id: user.id,
+    });
+
+    return NextResponse.json(
+      quickshopItem('category', category),
       { status: 201 }
     );
   } catch (error: any) {

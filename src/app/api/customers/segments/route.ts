@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
+import { quickshopList, quickshopItem } from '@/lib/utils/apiFormatter';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       criteria: typeof segment.criteria === 'string' ? JSON.parse(segment.criteria) : segment.criteria,
     }));
 
-    return NextResponse.json({ segments: parsedSegments });
+    return NextResponse.json(quickshopList('segments', parsedSegments));
   } catch (error: any) {
     console.error('Error fetching segments:', error);
     return NextResponse.json(
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
     });
 
-    return NextResponse.json({ segment: parsedSegment }, { status: 201 });
+    return NextResponse.json(quickshopItem('segment', parsedSegment), { status: 201 });
   } catch (error: any) {
     console.error('Error creating segment:', error);
     return NextResponse.json(

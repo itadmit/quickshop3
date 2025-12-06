@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-// Global state לפתיחת העגלה (Shopify-style)
+// Global state לפתיחת העגלה (Quickshop)
 let cartOpenListeners: Array<() => void> = [];
 let isCartOpen = false;
 

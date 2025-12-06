@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
+import { quickshopItem } from '@/lib/utils/apiFormatter';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -33,15 +34,13 @@ export async function GET(
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      category: {
-        id: category.id,
-        name: category.title,
-        handle: category.handle,
-        description: category.description,
-        image_url: category.image_url,
-      },
-    });
+    return NextResponse.json(quickshopItem('category', {
+      id: category.id,
+      name: category.title,
+      handle: category.handle,
+      description: category.description,
+      image_url: category.image_url,
+    }));
   } catch (error: any) {
     console.error('Error fetching category:', error);
     return NextResponse.json(
@@ -121,7 +120,7 @@ export async function PUT(
       user_id: user.id,
     });
 
-    return NextResponse.json({ category });
+    return NextResponse.json(quickshopItem('category', category));
   } catch (error: any) {
     console.error('Error updating category:', error);
     return NextResponse.json(

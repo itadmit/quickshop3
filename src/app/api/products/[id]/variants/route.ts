@@ -3,6 +3,9 @@ import { query, queryOne } from '@/lib/db';
 import { ProductVariant } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { quickshopItem } from '@/lib/utils/apiFormatter';
+// Initialize event listeners
+import '@/lib/events/listeners';
 
 // POST /api/products/[id]/variants - Create variant
 export async function POST(
@@ -75,7 +78,7 @@ export async function POST(
       source: 'api',
     });
 
-    return NextResponse.json({ variant }, { status: 201 });
+    return NextResponse.json(quickshopItem('variant', variant), { status: 201 });
   } catch (error: any) {
     console.error('Error creating variant:', error);
     return NextResponse.json(

@@ -474,6 +474,115 @@ export const ORDER_CANCELLED_TEMPLATE = {
 `
 };
 
+export const ORDER_FULFILLED_TEMPLATE = {
+  subject: 'ההזמנה {{order_name}} נשלחה!',
+  body: `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ההזמנה {{order_name}} נשלחה</title>
+  ${EMAIL_STYLES}
+</head>
+<body>
+  <div class="wrapper">
+    <div class="email-container">
+      <div class="header">
+        {{shop_logo_or_name}}
+      </div>
+      
+      <div class="content">
+        <div class="greeting">שלום {{customer_first_name}},</div>
+        <p>חדשות טובות! ההזמנה שלך נשלחה ונמצאת בדרך אליך 🚀</p>
+        <p>ההזמנה <strong>{{order_name}}</strong> נאספה על ידי חברת המשלוחים.</p>
+        
+        {{#if tracking_number}}
+        <div class="order-info">
+          <div class="info-title">פרטי מעקב</div>
+          <div style="font-size: 18px; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">{{tracking_number}}</div>
+          {{#if tracking_url}}
+          <div class="button-container" style="margin: 20px 0 0 0;">
+            <a href="{{tracking_url}}" class="button">עקוב אחר המשלוח</a>
+          </div>
+          {{/if}}
+        </div>
+        {{/if}}
+
+        <div class="button-container">
+          <a href="{{order_status_url}}" class="button">צפה בפרטי ההזמנה</a>
+        </div>
+
+        <p>תודה שקנית אצלנו!</p>
+      </div>
+
+      <div class="footer">
+        <p>אם יש לך שאלות, השב למייל זה או צור קשר ב- <a href="mailto:{{shop_email}}">{{shop_email}}</a></p>
+        <p>© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`
+};
+
+export const ORDER_REFUNDED_TEMPLATE = {
+  subject: 'החזר עבור ההזמנה {{order_name}}',
+  body: `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>החזר עבור ההזמנה {{order_name}}</title>
+  ${EMAIL_STYLES}
+</head>
+<body>
+  <div class="wrapper">
+    <div class="email-container">
+      <div class="header">
+        {{shop_logo_or_name}}
+      </div>
+      
+      <div class="content">
+        <div class="greeting">שלום {{customer_first_name}},</div>
+        <p>בוצע החזר עבור ההזמנה <strong>{{order_name}}</strong>.</p>
+        
+        {{#if refund_amount}}
+        <div class="order-info" style="background-color: #f0fdf4; border-color: #bbf7d0;">
+          <div class="info-title" style="color: #166534;">סכום ההחזר</div>
+          <div style="font-size: 24px; font-weight: bold; margin-top: 10px; color: #166534;">{{refund_amount}}</div>
+        </div>
+        {{/if}}
+
+        {{#if refund_reason}}
+        <div class="order-info">
+          <div class="info-title">סיבת ההחזר</div>
+          <div style="margin-top: 10px;">{{refund_reason}}</div>
+        </div>
+        {{/if}}
+
+        <p>ההחזר צפוי להופיע בחשבונך תוך 5-10 ימי עסקים, בהתאם לחברת האשראי.</p>
+
+        <div class="button-container">
+          <a href="{{order_status_url}}" class="button">צפה בפרטי ההזמנה</a>
+        </div>
+
+        <p>אם יש לך שאלות נוספות, אנחנו כאן בשבילך.</p>
+      </div>
+
+      <div class="footer">
+        <p>אם יש לך שאלות, השב למייל זה או צור קשר ב- <a href="mailto:{{shop_email}}">{{shop_email}}</a></p>
+        <p>© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`
+};
+
 /**
  * מחזיר את כל תבניות ברירת המחדל
  */
@@ -483,5 +592,7 @@ export function getDefaultTemplates() {
     WELCOME: WELCOME_TEMPLATE,
     ORDER_SHIPPED: ORDER_SHIPPED_TEMPLATE,
     ORDER_CANCELLED: ORDER_CANCELLED_TEMPLATE,
+    ORDER_FULFILLED: ORDER_FULFILLED_TEMPLATE,
+    ORDER_REFUNDED: ORDER_REFUNDED_TEMPLATE,
   };
 }

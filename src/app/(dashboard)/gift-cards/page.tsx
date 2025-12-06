@@ -28,8 +28,10 @@ export default function GiftCardsPage() {
   const loadGiftCards = async () => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint /api/gift-cards
-      setGiftCards([]);
+      const response = await fetch('/api/gift-cards');
+      if (!response.ok) throw new Error('Failed to load gift cards');
+      const data = await response.json();
+      setGiftCards(data.gift_cards || []);
     } catch (error) {
       console.error('Error loading gift cards:', error);
     } finally {

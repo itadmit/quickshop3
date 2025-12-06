@@ -87,7 +87,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
     }
   }, [isOpen]);
 
-  // Shopify-style: טעינת עגלה מהשרת כשפותחים אותה
+  // Quickshop: טעינת עגלה מהשרת כשפותחים אותה
   // תמיד טוענים מהשרת כדי לסנכרן עם השרת (גם אם יש פריטים ב-localStorage)
   useEffect(() => {
     if (isOpen && storeId && !isAddingToCart) {
