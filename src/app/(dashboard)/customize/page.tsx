@@ -15,10 +15,6 @@ export default function CustomizePage() {
   const pageType = (searchParams.get('page') || 'home') as PageType;
   const pageHandle = searchParams.get('handle') || undefined;
 
-  return (
-    <div className="h-screen flex flex-col" dir="rtl">
-      <CustomizerLayout pageType={pageType} pageHandle={pageHandle} />
-    </div>
-  );
+  return <CustomizerLayout pageType={pageType} pageHandle={pageHandle} />;
 }
 

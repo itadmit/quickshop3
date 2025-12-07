@@ -10,6 +10,7 @@ import { Sidebar } from './Sidebar';
 import { PreviewFrame } from './PreviewFrame';
 import { PageType } from '@/lib/customizer/types';
 import { savePageDraft, publishPage } from '../actions';
+import { HiDesktopComputer, HiDeviceMobile, HiDeviceTablet, HiEye, HiSave, HiPaperAirplane } from 'react-icons/hi';
 
 interface CustomizerLayoutProps {
   pageType: PageType;
@@ -74,7 +75,7 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
   }, [pageType, pageHandle]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-screen w-screen">
       {/* Sidebar */}
       <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
         <Sidebar
@@ -94,6 +95,10 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
           <div className="flex items-center gap-4">
             <select
               value={pageType}
+              onChange={(e) => {
+                const newPageType = e.target.value as PageType;
+                window.location.href = `/customize?page=${newPageType}`;
+              }}
               className="px-3 py-1 border border-gray-300 rounded-md text-sm"
             >
               <option value="home">עמוד בית</option>
@@ -112,7 +117,7 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
                 }`}
                 title="Desktop"
               >
-                🖥️
+                <HiDesktopComputer className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setDevice('tablet')}
@@ -121,7 +126,7 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
                 }`}
                 title="Tablet"
               >
-                📱
+                <HiDeviceTablet className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setDevice('mobile')}
@@ -130,7 +135,7 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
                 }`}
                 title="Mobile"
               >
-                📱
+                <HiDeviceMobile className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -146,23 +151,26 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
                 // Open preview in new tab
                 window.open(`/shops/demo-store/preview?token=preview-token-placeholder&page=${pageType}`, '_blank');
               }}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center gap-2"
             >
-              👁️ תצוגה מקדימה
+              <HiEye className="w-4 h-4" />
+              תצוגה מקדימה
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm disabled:opacity-50"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm disabled:opacity-50 flex items-center gap-2"
             >
-              {saving ? '💾 שומר...' : '💾 שמור'}
+              <HiSave className="w-4 h-4" />
+              {saving ? 'שומר...' : 'שמור'}
             </button>
             <button
               onClick={handlePublish}
               disabled={publishing || saving}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm disabled:opacity-50 flex items-center gap-2"
             >
-              {publishing ? '🚀 מפרסם...' : '🚀 פרסם'}
+              <HiPaperAirplane className="w-4 h-4" />
+              {publishing ? 'מפרסם...' : 'פרסם'}
             </button>
           </div>
         </div>

@@ -33,11 +33,20 @@ export async function GET(request: NextRequest) {
 
     const config = await getPageConfig(storeId, pageType, pageHandle, useDraft);
 
+    // אם אין config, מחזירים config ריק (הקומפוננטה תצור default sections)
     if (!config) {
-      return NextResponse.json(
-        { error: 'Page config not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        config: {
+          version: '1.0.0',
+          generated_at: new Date().toISOString(),
+          page_type: pageType,
+          global_settings: {},
+          sections: {},
+          section_order: [],
+          custom_css: '',
+          custom_js: '',
+        },
+      });
     }
 
     return NextResponse.json({ config });

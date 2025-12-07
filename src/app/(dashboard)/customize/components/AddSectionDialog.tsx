@@ -90,7 +90,7 @@ export function AddSectionDialog({
         page_type: pageType as any,
         section_type: sectionType,
         position: 999, // יוכנס בסוף
-        settings: {},
+        settings_json: {},
       });
       onSectionAdded();
       onOpenChange(false);

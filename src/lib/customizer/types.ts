@@ -339,9 +339,10 @@ export interface PublishPageRequest {
 
 export interface AddSectionRequest {
   page_type: PageType;
+  page_handle?: string;
   section_type: SectionType;
   position: number;
-  settings?: Record<string, any>;
+  settings_json?: Record<string, any>;
 }
 
 export interface UpdateSectionRequest {

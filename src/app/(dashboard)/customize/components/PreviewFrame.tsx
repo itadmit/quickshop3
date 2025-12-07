@@ -87,15 +87,28 @@ export function PreviewFrame({
     mobile: 'max-w-sm mx-auto h-full',
   };
 
+  if (!previewUrl) {
+    return (
+      <div className={`${deviceStyles[device]} bg-white rounded-lg shadow-lg flex items-center justify-center`}>
+        <div className="text-gray-500 text-center">
+          <div className="text-lg mb-2">טוען תצוגה מקדימה...</div>
+          <div className="text-sm">אנא המתן</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`${deviceStyles[device]} bg-white rounded-lg shadow-lg overflow-hidden`}>
-      <iframe
-        ref={iframeRef}
-        src={previewUrl}
-        className="w-full h-full border-0"
-        title="Preview"
-        sandbox="allow-same-origin allow-scripts"
-      />
+      {previewUrl && (
+        <iframe
+          ref={iframeRef}
+          src={previewUrl}
+          className="w-full h-full border-0"
+          title="Preview"
+          sandbox="allow-scripts allow-forms allow-popups allow-modals"
+        />
+      )}
     </div>
   );
 }

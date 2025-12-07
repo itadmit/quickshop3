@@ -28,9 +28,10 @@ import { SectionSettings } from './SectionSettings';
 import { AddSectionDialog } from './AddSectionDialog';
 import { DeveloperMode } from './DeveloperMode';
 import { ThemeSettings } from './ThemeSettings';
-import { updateSection, deleteSection } from '../actions';
+import { updateSection, deleteSection, addSection } from '../actions';
 import { SortableSectionItem } from './SortableSectionItem';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { HiColorSwatch, HiCode, HiCog, HiSave } from 'react-icons/hi';
 
 interface SidebarProps {
   pageType: PageType;
@@ -99,7 +100,7 @@ export function Sidebar({
       const response = await fetch(`/api/customizer/pages?${params}`);
       const data = await response.json();
 
-      if (data.config) {
+      if (data.config && data.config.section_order && data.config.section_order.length > 0) {
         const sectionsList = data.config.section_order.map((sectionId: string, index: number) => {
           const sectionData = data.config.sections[sectionId];
           return {
@@ -115,6 +116,9 @@ export function Sidebar({
           } as PageSection;
         });
         setSections(sectionsList);
+      } else {
+        // אין סקשנים - יצירת default sections
+        await createDefaultSections();
       }
     } catch (error) {
       console.error('Error loading sections:', error);
@@ -166,6 +170,44 @@ export function Sidebar({
     }
   }
 
+  async function createDefaultSections() {
+    try {
+      // יצירת סקשנים ברירת מחדל לעמוד בית
+      if (pageType === 'home') {
+        const defaultSections = [
+          { type: 'announcement_bar', position: 0 },
+          { type: 'slideshow', position: 1 },
+          { type: 'collection_list', position: 2 },
+          { type: 'product_grid', position: 3 },
+        ];
+
+        for (const section of defaultSections) {
+          await addSection({
+            page_type: pageType,
+            page_handle: pageHandle,
+            section_type: section.type as any,
+            position: section.position,
+            settings_json: {},
+          });
+        }
+      } else {
+        // לעמודים אחרים - רק announcement_bar
+        await addSection({
+          page_type: pageType,
+          page_handle: pageHandle,
+          section_type: 'announcement_bar',
+          position: 0,
+          settings_json: {},
+        });
+      }
+
+      // טען מחדש
+      loadSections();
+    } catch (error) {
+      console.error('Error creating default sections:', error);
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-4">
@@ -199,15 +241,17 @@ export function Sidebar({
         <div className="flex gap-2">
           <button
             onClick={() => onModeChange('visual')}
-            className="flex-1 px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
+            className="flex-1 px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white flex items-center justify-center gap-2"
           >
-            🎨 ויזואלי
+            <HiColorSwatch className="w-4 h-4" />
+            ויזואלי
           </button>
           <button
             onClick={() => onModeChange('developer')}
-            className="flex-1 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+            className="flex-1 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center justify-center gap-2"
           >
-            💻 מפתח
+            <HiCode className="w-4 h-4" />
+            מפתח
           </button>
         </div>
       </div>
@@ -262,8 +306,9 @@ export function Sidebar({
       {/* Auto-save indicator */}
       {lastSaved && (
         <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500 text-center">
-            💾 נשמר אוטומטית: {lastSaved.toLocaleTimeString('he-IL')}
+          <div className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
+            <HiSave className="w-3 h-3" />
+            נשמר אוטומטית: {lastSaved.toLocaleTimeString('he-IL')}
           </div>
         </div>
       )}
@@ -272,9 +317,10 @@ export function Sidebar({
       <div className="p-4 border-t border-gray-200">
         <button
           onClick={() => setShowThemeSettings(true)}
-          className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-700"
+          className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-700 flex items-center justify-center gap-2"
         >
-          ⚙️ הגדרות תבנית
+          <HiCog className="w-4 h-4" />
+          הגדרות תבנית
         </button>
       </div>
 
