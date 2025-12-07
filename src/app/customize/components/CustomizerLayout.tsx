@@ -75,7 +75,7 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
   }, [pageType, pageHandle]);
 
   return (
-    <div className="flex h-screen w-screen">
+    <div className="flex h-full w-full">
       {/* Sidebar */}
       <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
         <Sidebar
