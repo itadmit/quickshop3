@@ -288,21 +288,35 @@ export async function addSection(data: AddSectionRequest) {
   try {
     const { storeId, userId } = await getAuthInfo();
 
-    // מצא את ה-layout
-    const layoutResult = await query(
+    // מצא את ה-layout או צור אחד חדש
+    let layoutResult = await query(
       `
       SELECT id FROM page_layouts
-      WHERE store_id = $1 AND page_type = $2
+      WHERE store_id = $1 
+        AND page_type = $2 
+        AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))
+        AND is_published = false
       LIMIT 1
       `,
-      [storeId, data.page_type]
+      [storeId, data.page_type, data.page_handle || null]
     );
 
+    let layoutId: number;
     if (layoutResult.length === 0) {
-      return { success: false, error: 'Page layout not found' };
+      // צור layout חדש
+      const newLayoutResult = await query(
+        `
+        INSERT INTO page_layouts (store_id, page_type, page_handle, is_published)
+        VALUES ($1, $2, $3, false)
+        RETURNING id
+        `,
+        [storeId, data.page_type, data.page_handle || null]
+      );
+      layoutId = newLayoutResult[0].id;
+    } else {
+      layoutId = layoutResult[0].id;
     }
 
-    const layoutId = layoutResult[0].id;
     const sectionId = `section_${Date.now()}`;
 
     // הוסף סקשן
@@ -320,7 +334,7 @@ export async function addSection(data: AddSectionRequest) {
         data.section_type,
         sectionId,
         data.position,
-        JSON.stringify(data.settings || {}),
+        JSON.stringify(data.settings_json || {}),
       ]
     );
 
