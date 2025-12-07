@@ -215,7 +215,7 @@ export function CategoryTreeSelector({
     }
   };
 
-  const renderCategoryTree = (items: Category[], level: number = 0): JSX.Element[] => {
+  const renderCategoryTree = (items: Category[], level: number = 0): React.ReactElement[] => {
     return items.map(category => {
       const hasChildren = category.children && category.children.length > 0;
       const isExpanded = expandedIds.has(category.id);
