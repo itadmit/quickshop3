@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useCart } from '@/hooks/useCart';
 import { useCartOpen } from '@/hooks/useCartOpen';
 import { useCartCalculator } from '@/hooks/useCartCalculator';
@@ -102,9 +102,25 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
   }, [isOpen, storeId]); // לא כולל isAddingToCart כדי לא ליצור לולאה
 
   // טעינת מלאי ואפשרויות לכל variant בעגלה
+  // ✅ תיקון: מונע קריאות כפולות עם useRef ו-debounce
+  const loadingVariantDataRef = useRef(false);
+  
   useEffect(() => {
+    // מונע קריאות כפולות
+    if (loadingVariantDataRef.current) {
+      return;
+    }
+
     const loadVariantData = async () => {
-      const variantIds = cartItems.map(item => item.variant_id);
+      if (cartItems.length === 0) {
+        setInventoryMap(new Map());
+        setPropertiesMap(new Map());
+        return;
+      }
+
+      loadingVariantDataRef.current = true;
+      
+      const variantIds = [...new Set(cartItems.map(item => item.variant_id))]; // ✅ מונע כפילויות
       const newInventoryMap = new Map<number, number>();
       const newPropertiesMap = new Map<number, Array<{ name: string; value: string }>>();
       
@@ -128,18 +144,19 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
             }
           } catch (error) {
             console.error(`Error loading data for variant ${variantId}:`, error);
+            // ✅ במקרה של שגיאה, לא נכשל - פשוט לא נציג מלאי
           }
         })
       );
       
       setInventoryMap(newInventoryMap);
       setPropertiesMap(newPropertiesMap);
+      loadingVariantDataRef.current = false;
     };
 
-    if (cartItems.length > 0) {
-      loadVariantData();
-    }
-  }, [cartItems]);
+    loadVariantData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartItems.length, cartItems.map(item => item.variant_id).join(',')]); // ✅ תלוי רק ב-variant IDs, לא ב-cartItems עצמו
 
   // פונקציה לבדיקת מלאי לפני עדכון כמות
   const handleQuantityChange = async (variantId: number, newQuantity: number) => {
@@ -449,33 +466,45 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
 
             {/* Cart Summary */}
             {cartItems.length > 0 && (
-              <div className="border-t border-gray-200 p-4">
+              <div className="border-t border-gray-200 p-4 space-y-3">
+                {/* כפתור מעבר לצ'ק אאוט - באותו גודל כמו כפתור הצ'ק אאוט */}
+                <button
+                  onClick={async () => {
+                    setIsNavigatingToCheckout(true);
+                    // רענון אחרון של החישוב לפני מעבר לצ'ק אאוט
+                    await recalculate();
+                    // סגירת העגלה מיד לפני מעבר
+                    closeCart();
+                    // מעבר לצ'ק אאוט
+                    if (storeSlug) {
+                      router.push(`/shops/${storeSlug}/checkout`);
+                    } else {
+                      router.push('/checkout');
+                    }
+                  }}
+                  disabled={!calculation?.isValid || calculation?.total === 0 || isNavigatingToCheckout}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isNavigatingToCheckout ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      עובר לצ'ק אאוט...
+                    </>
+                  ) : (
+                    'המשך לצ\'ק אאוט'
+                  )}
+                </button>
+                
                 <CartSummary
                   storeId={storeId}
                   shippingRate={shippingRate}
                   isNavigatingToCheckout={isNavigatingToCheckout}
                   cartItems={cartItems} // ✅ מעביר את cartItems המעודכנים
                   calculation={calculation} // ✅ מעביר את ה-calculation מ-SideCart
-                  discountCode={discountCode} // ✅ מעביר את discountCode מ-SideCart
-                  applyDiscountCode={applyDiscountCode} // ✅ מעביר את applyDiscountCode מ-SideCart
-                  removeDiscountCode={removeDiscountCode} // ✅ מעביר את removeDiscountCode מ-SideCart
-                  recalculate={recalculate} // ✅ מעביר את recalculate מ-SideCart
-                  onCheckout={async () => {
-                    setIsNavigatingToCheckout(true);
-                    // רענון אחרון של החישוב לפני מעבר לצ'ק אאוט
-                    await recalculate();
-                    // המתין קצת כדי שהמשתמש יראה את החיווי לפני סגירת העגלה
-                    setTimeout(() => {
-                      closeCart();
-                      // אם יש storeSlug, נפנה ל-/shops/[storeSlug]/checkout
-                      // אחרת נפנה ל-/checkout (דומיין מותאם אישית)
-                      if (storeSlug) {
-                        router.push(`/shops/${storeSlug}/checkout`);
-                      } else {
-                        router.push('/checkout');
-                      }
-                    }, 600); // 600ms כדי שהמשתמש יראה את החיווי לפני סגירת העגלה
-                  }}
+                  onCheckout={undefined} // ✅ לא מעביר onCheckout כי הכפתור כבר למעלה
                 />
               </div>
             )}

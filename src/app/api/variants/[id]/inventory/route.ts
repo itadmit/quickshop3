@@ -23,10 +23,9 @@ export async function GET(
 
     // Get variant with product and store info to verify multi-tenancy
     const variantWithStore = await queryOne<{ 
-      inventory_quantity: number | null;
       store_id: number;
     }>(
-      `SELECT pv.inventory_quantity, p.store_id
+      `SELECT p.store_id
        FROM product_variants pv
        INNER JOIN products p ON pv.product_id = p.id
        WHERE pv.id = $1`,
@@ -40,7 +39,7 @@ export async function GET(
       );
     }
 
-    // בדיקת מלאי מה-variant_inventory
+    // בדיקת מלאי מה-variant_inventory (הטבלה הנכונה)
     const inventory = await queryOne<{ available: number; committed: number }>(
       `SELECT available, committed 
        FROM variant_inventory 
@@ -49,11 +48,11 @@ export async function GET(
       [variantId]
     );
 
-    // אם אין רשומה ב-variant_inventory, בדוק מה-product_variants
+    // אם אין רשומה ב-variant_inventory, מחזיר 0 (אין מלאי)
     if (!inventory) {
       return NextResponse.json({
         variant_id: variantId,
-        available: variantWithStore.inventory_quantity || 0,
+        available: 0,
         committed: 0,
       });
     }
