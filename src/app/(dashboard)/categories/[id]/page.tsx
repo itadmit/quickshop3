@@ -359,26 +359,45 @@ export default function CategoryDetailsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {isNew ? 'קטגוריה חדשה' : 'עריכת קטגוריה'}
-        </h1>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6" dir="rtl">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            {isNew ? 'קטגוריה חדשה' : 'עריכת קטגוריה'}
+          </h1>
+          <p className="text-sm md:text-base text-gray-600">
+            {isNew ? 'צרו קטגוריה חדשה לארגון המוצרים' : 'ערכו את פרטי הקטגוריה'}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3 mt-4">
           {!isNew && (
-            <Button variant="ghost" onClick={handleDelete} className="text-red-600">
-              <HiTrash className="w-5 h-5 ml-2" />
+            <Button variant="destructive" onClick={handleDelete}>
+              <HiTrash className="w-4 h-4 ml-2" />
               מחק
             </Button>
           )}
-          <Button variant="ghost" onClick={() => router.back()}>
-            <HiX className="w-5 h-5 ml-2" />
+          <Button
+            variant="outline"
+            onClick={() => router.push('/categories')}
+            className="px-4 py-2 text-sm border-gray-300"
+          >
             ביטול
+          </Button>
+          <Button
+            type="submit"
+            form="category-form"
+            variant="default"
+            disabled={saving}
+            className="px-4 py-2 text-sm"
+          >
+            {saving ? 'שומר...' : 'שמור'}
           </Button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form id="category-form" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* מידע בסיסי */}
@@ -466,11 +485,11 @@ export default function CategoryDetailsPage() {
                   <Label htmlFor="type">איך מוצרים מתווספים לקטגוריה?</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: 'MANUAL' | 'AUTOMATIC') =>
-                      setFormData((prev) => ({ ...prev, type: value }))
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, type: value as 'MANUAL' | 'AUTOMATIC' }))
                     }
                   >
-                    <SelectTrigger id="type">
+                    <SelectTrigger>
                       <SelectValue placeholder="בחר סוג קטגוריה" />
                     </SelectTrigger>
                     <SelectContent>
@@ -484,7 +503,7 @@ export default function CategoryDetailsPage() {
                   <div className="space-y-4 pt-4 border-t">
                     <div className="flex items-center justify-between">
                       <Label>תנאי בחירת מוצרים</Label>
-                      <Select value={matchType} onValueChange={(v: 'all' | 'any') => setMatchType(v)}>
+                      <Select value={matchType} onValueChange={(v) => setMatchType(v as 'all' | 'any')}>
                         <SelectTrigger className="w-[200px]">
                           <SelectValue />
                         </SelectTrigger>
@@ -735,15 +754,6 @@ export default function CategoryDetailsPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 mt-6">
-          <Button type="button" variant="ghost" onClick={() => router.back()}>
-            ביטול
-          </Button>
-          <Button type="submit" disabled={saving}>
-            <HiSave className="w-4 h-4 ml-2" />
-            {saving ? 'שומר...' : 'שמור'}
-          </Button>
-        </div>
       </form>
     </div>
   );

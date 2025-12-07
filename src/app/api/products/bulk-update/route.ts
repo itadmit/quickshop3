@@ -105,18 +105,18 @@ export async function POST(request: NextRequest) {
             });
 
             // Find the first variant for this product
-            let variant = await queryOne<{ id: number; price: string }>(
-              'SELECT id, price FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
+            let variant = await queryOne<{ id: number; price: string; inventory_quantity: number | null }>(
+              'SELECT id, price, inventory_quantity FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
               [productId]
             );
 
             if (!variant) {
               // Create a default variant
               console.log('Creating default variant for product:', productId);
-              variant = await queryOne<{ id: number; price: string }>(
+              variant = await queryOne<{ id: number; price: string; inventory_quantity: number | null }>(
                 `INSERT INTO product_variants (product_id, title, price, position, created_at, updated_at)
                  VALUES ($1, 'Default Title', $2, 1, now(), now())
-                 RETURNING id, price`,
+                 RETURNING id, price, inventory_quantity`,
                 [productId, update.changes.price || 0]
               );
             }

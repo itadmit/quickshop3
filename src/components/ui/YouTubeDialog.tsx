@@ -138,9 +138,8 @@ export function YouTubeDialog({ open, onOpenChange, onInsert }: YouTubeDialogPro
 
   return (
     <Dialog
-      isOpen={open}
-      onClose={() => onOpenChange(false)}
-      title="הוסף סרטון YouTube"
+      open={open}
+      onOpenChange={onOpenChange}
     >
       <div className="space-y-4">
         <div className="space-y-2">

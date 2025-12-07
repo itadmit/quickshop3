@@ -186,6 +186,10 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    if (!collection) {
+      return NextResponse.json({ error: 'Failed to create collection' }, { status: 500 });
+    }
+
     // עדכון מוצרים - רק אם זה קטגוריה ידנית וסופקו productIds
     const finalType = type || 'MANUAL';
     if (finalType === 'MANUAL' && productIds && productIds.length > 0) {

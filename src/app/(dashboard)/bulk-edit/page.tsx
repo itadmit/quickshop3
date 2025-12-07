@@ -890,7 +890,7 @@ export default function BulkEditPage() {
               </div>
             )}
             {isNameEditable ? (
-              <Input
+              <input
                 type="text"
                 value={row.name}
                 onChange={(e) => updateRow(row.id, column.key, e.target.value)}
@@ -1006,13 +1006,13 @@ export default function BulkEditPage() {
     }
 
     return (
-      <Input
+      <input
         type={column.type === 'number' ? 'number' : 'text'}
         value={value}
         onChange={(e) => updateRow(row.id, column.key, e.target.value)}
         onBlur={handleBlur}
         onKeyDown={(e) => handleKeyDown(e, row.id, column.key)}
-        className={`h-9 w-full border rounded-md bg-white px-3 py-2 text-sm transition-colors ${
+        className={`h-9 w-full border rounded-md bg-white px-3 py-2 text-sm transition-colors focus:outline-none ${
           isComparePriceInvalid
             ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
             : 'border-gray-200 hover:border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500'

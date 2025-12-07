@@ -135,8 +135,24 @@ export async function PUT(
         sold_by_weight = $9,
         show_price_per_100ml = $10,
         price_per_100ml = $11,
+        availability = $12,
+        available_date = $13,
+        track_inventory = $14,
+        low_stock_alert = $15,
+        seo_title = $16,
+        seo_description = $17,
+        video_url = $18,
+        weight = $19,
+        length = $20,
+        width = $21,
+        height = $22,
+        price = $23,
+        compare_at_price = $24,
+        cost_per_item = $25,
+        sku = $26,
+        taxable = $27,
         updated_at = now()
-      WHERE id = $12 AND store_id = $13
+      WHERE id = $28 AND store_id = $29
       RETURNING *
     `;
 
@@ -152,6 +168,22 @@ export async function PUT(
       body.sold_by_weight !== undefined ? body.sold_by_weight : (oldProduct as any).sold_by_weight || false,
       body.show_price_per_100ml !== undefined ? body.show_price_per_100ml : (oldProduct as any).show_price_per_100ml || false,
       body.price_per_100ml !== undefined ? body.price_per_100ml : (oldProduct as any).price_per_100ml || null,
+      body.availability || (oldProduct as any).availability || 'IN_STOCK',
+      body.available_date !== undefined ? body.available_date : (oldProduct as any).available_date || null,
+      body.track_inventory !== undefined ? body.track_inventory : (oldProduct as any).track_inventory !== false,
+      body.low_stock_alert !== undefined ? body.low_stock_alert : (oldProduct as any).low_stock_alert || null,
+      body.seo_title !== undefined ? body.seo_title : (oldProduct as any).seo_title || null,
+      body.seo_description !== undefined ? body.seo_description : (oldProduct as any).seo_description || null,
+      body.video_url !== undefined ? body.video_url : (oldProduct as any).video_url || null,
+      body.weight !== undefined ? body.weight : (oldProduct as any).weight || null,
+      body.length !== undefined ? body.length : (oldProduct as any).length || null,
+      body.width !== undefined ? body.width : (oldProduct as any).width || null,
+      body.height !== undefined ? body.height : (oldProduct as any).height || null,
+      body.price !== undefined ? body.price : (oldProduct as any).price || 0,
+      body.compare_at_price !== undefined ? body.compare_at_price : (oldProduct as any).compare_at_price || null,
+      body.cost_per_item !== undefined ? body.cost_per_item : (oldProduct as any).cost_per_item || null,
+      body.sku !== undefined ? body.sku : (oldProduct as any).sku || null,
+      body.taxable !== undefined ? body.taxable : (oldProduct as any).taxable !== false,
       productId,
       user.store_id,
     ]);

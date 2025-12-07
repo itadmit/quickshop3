@@ -76,7 +76,7 @@ export default function EditProductPage() {
     seoDescription: '',
     slug: '',
     tags: [] as string[],
-    categories: [] as string[],
+    categories: [] as number[],
     badges: [] as any[],
     exclusiveToTier: [] as string[],
   });
@@ -177,39 +177,47 @@ export default function EditProductPage() {
 
       // טעינת נתוני המוצר לטופס
       const firstVariant = data.product.variants?.[0];
+      const prod = data.product as any;
+      
+      // Format scheduled publish date
+      let scheduledPublishFormatted = '';
+      if (prod.published_at) {
+        const date = new Date(prod.published_at);
+        scheduledPublishFormatted = date.toISOString().slice(0, 16);
+      }
+      
       setFormData({
-        name: data.product.title || '',
-        description: data.product.body_html || '',
-        price: firstVariant?.price?.toString() || '',
-        comparePrice: firstVariant?.compare_at_price?.toString() || '',
-        cost: '',
-        taxEnabled: firstVariant?.taxable ?? true,
-        inventoryEnabled: true,
-        // המלאי נטען מה-variant
+        name: prod.title || '',
+        description: prod.body_html || '',
+        price: firstVariant?.price?.toString() || prod.price?.toString() || '',
+        comparePrice: firstVariant?.compare_at_price?.toString() || prod.compare_at_price?.toString() || '',
+        cost: prod.cost_per_item?.toString() || '',
+        taxEnabled: firstVariant?.taxable ?? prod.taxable ?? true,
+        inventoryEnabled: prod.track_inventory !== false,
         inventoryQty: firstVariant?.inventory_quantity?.toString() || '0',
-        lowStockAlert: '',
-        availability: 'IN_STOCK',
+        lowStockAlert: prod.low_stock_alert?.toString() || '',
+        availability: prod.availability || 'IN_STOCK',
         availableDate: availableDateFormatted,
-        sellWhenSoldOut: (data.product as any).sell_when_sold_out || false,
-        priceByWeight: (data.product as any).sold_by_weight || false,
-        showPricePer100ml: (data.product as any).show_price_per_100ml || false,
-        pricePer100ml: (data.product as any).price_per_100ml?.toString() || '',
-        weight: firstVariant?.weight?.toString() || '',
+        sellWhenSoldOut: prod.sell_when_sold_out || false,
+        priceByWeight: prod.sold_by_weight || false,
+        showPricePer100ml: prod.show_price_per_100ml || false,
+        pricePer100ml: prod.price_per_100ml?.toString() || '',
+        weight: prod.weight?.toString() || firstVariant?.weight?.toString() || '',
         dimensions: {
-          length: '',
-          width: '',
-          height: '',
+          length: prod.length?.toString() || '',
+          width: prod.width?.toString() || '',
+          height: prod.height?.toString() || '',
         },
-        status: data.product.status || 'draft',
-        scheduledPublishDate: data.product.published_at ? new Date(data.product.published_at).toISOString().slice(0, 16) : '',
+        status: prod.status || 'draft',
+        scheduledPublishDate: scheduledPublishFormatted,
         notifyOnPublish: false,
-        sku: firstVariant?.sku || '',
-        video: '',
-        seoTitle: '',
-        seoDescription: '',
-        slug: data.product.handle || '',
-        tags: Array.isArray(data.product.tags) ? data.product.tags.map((t: any) => (typeof t === 'string' ? t : t.name)) : [],
-        categories: Array.isArray(data.product.collections) ? data.product.collections.map((c: any) => c.id).filter((id: any): id is number => typeof id === 'number') : [],
+        sku: prod.sku || firstVariant?.sku || '',
+        video: prod.video_url || '',
+        seoTitle: prod.seo_title || '',
+        seoDescription: prod.seo_description || '',
+        slug: prod.handle || '',
+        tags: Array.isArray(prod.tags) ? prod.tags.map((t: any) => (typeof t === 'string' ? t : t.name)) : [],
+        categories: Array.isArray(prod.collections) ? prod.collections.map((c: any) => c.id).filter((id: any): id is number => typeof id === 'number') : [],
         badges: [],
         exclusiveToTier: [],
       });
@@ -256,6 +264,8 @@ export default function EditProductPage() {
         track_inventory: formData.inventoryEnabled,
         inventory_quantity: hasVariants ? 0 : (parseInt(formData.inventoryQty) || 0),
         low_stock_alert: formData.lowStockAlert ? parseInt(formData.lowStockAlert) : null,
+        availability: formData.availability,
+        available_date: formData.availableDate ? new Date(formData.availableDate).toISOString() : null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
         length: formData.dimensions.length ? parseFloat(formData.dimensions.length) : null,
         width: formData.dimensions.width ? parseFloat(formData.dimensions.width) : null,
@@ -340,8 +350,10 @@ export default function EditProductPage() {
         description: 'המוצר נשמר בהצלחה',
       });
 
-      // Redirect to the new slug URL
-      router.push(`/products/edit/${finalSlug}`);
+      // Redirect to products list
+      setTimeout(() => {
+        router.push('/products');
+      }, 800);
     } catch (error: any) {
       console.error('Error saving product:', error);
       toast({
@@ -585,7 +597,7 @@ export default function EditProductPage() {
           <ProductAddonsCard
             productId={product.id || undefined}
             shopId={product.store_id}
-            categoryIds={formData.categories}
+            categoryIds={formData.categories.map(String)}
             onChange={setProductAddonIds}
           />
 
@@ -593,7 +605,7 @@ export default function EditProductPage() {
           <CustomFieldsCard
             productId={product.id || undefined}
             shopId={product.store_id}
-            categoryIds={formData.categories}
+            categoryIds={formData.categories.map(String)}
             values={customFieldValues}
             onChange={setCustomFieldValues}
           />

@@ -29,11 +29,6 @@ export function Select({ value, onValueChange, children }: SelectProps) {
     setSelectedLabel(label);
   };
 
-  // כאשר הערך משתנה מבחוץ, נאפס את ה-label כדי שה-SelectItem יעדכן אותו
-  useEffect(() => {
-    setSelectedLabel(undefined);
-  }, [value]);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) {
@@ -68,14 +63,14 @@ export function SelectTrigger({ children, className = '' }: { children: ReactNod
       type="button"
       onClick={() => context.setOpen(!context.open)}
       className={`
-        w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
+        w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
         flex items-center justify-between
         focus:outline-none focus:ring-2 focus:ring-green-500
         ${className}
       `}
     >
       {children}
-      <HiChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${context.open ? 'rotate-180' : ''}`} />
+      <HiChevronDown className={`w-4 h-4 text-gray-500 transition-transform flex-shrink-0 ${context.open ? 'rotate-180' : ''}`} />
     </button>
   );
 }
@@ -86,25 +81,28 @@ export function SelectValue({ placeholder, children }: { placeholder?: string; c
 
   // If children provided, use them (for custom display)
   if (children) {
-    return <span className="text-gray-700">{children}</span>;
+    return <span className="text-sm text-gray-700">{children}</span>;
   }
 
   // אם יש טקסט שנשמר, נציג אותו
   if (context.selectedLabel) {
-    return <span className="text-gray-700">{context.selectedLabel}</span>;
+    return <span className="text-sm text-gray-700">{context.selectedLabel}</span>;
   }
 
-  return <span className="text-gray-700">{context.value || placeholder || 'בחר...'}</span>;
+  // אם אין label, נציג את ה-placeholder ולא את ה-value הגולמי
+  return <span className="text-sm text-gray-500">{placeholder || 'בחר...'}</span>;
 }
 
 export function SelectContent({ children }: { children: ReactNode }) {
   const context = useContext(SelectContext);
   if (!context) throw new Error('SelectContent must be used within Select');
 
-  if (!context.open) return null;
-
   return (
-    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+    <div 
+      className={`absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto ${
+        context.open ? '' : 'hidden'
+      }`}
+    >
       {children}
     </div>
   );

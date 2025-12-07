@@ -39,12 +39,14 @@ export default async function CheckoutGroupLayout({
     <>
       {/* Head Tracking Pixels */}
       {headPixels.map((pixel) => (
-        <Script
-          key={`head-pixel-${pixel.id}`}
-          id={`head-pixel-${pixel.id}`}
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{ __html: pixel.code }}
-        />
+        pixel.pixel_code && (
+          <Script
+            key={`head-pixel-${pixel.id}`}
+            id={`head-pixel-${pixel.id}`}
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{ __html: pixel.pixel_code }}
+          />
+        )
       ))}
 
       {/* Head Tracking Codes */}
@@ -59,16 +61,18 @@ export default async function CheckoutGroupLayout({
 
       {/* Body Tracking Pixels (for noscript tags) */}
       {bodyPixels
-        .filter((p) => p.code.includes('<noscript'))
+        .filter((p) => p.pixel_code?.includes('<noscript'))
         .map((pixel) => (
-          <noscript
-            key={`body-pixel-noscript-${pixel.id}`}
-            dangerouslySetInnerHTML={{
-              __html: pixel.code
-                .replace(/<noscript>/gi, '')
-                .replace(/<\/noscript>/gi, ''),
-            }}
-          />
+          pixel.pixel_code && (
+            <noscript
+              key={`body-pixel-noscript-${pixel.id}`}
+              dangerouslySetInnerHTML={{
+                __html: pixel.pixel_code
+                  .replace(/<noscript>/gi, '')
+                  .replace(/<\/noscript>/gi, ''),
+              }}
+            />
+          )
         ))}
 
       <LocaleSetter locale={store.locale || 'he'} />
