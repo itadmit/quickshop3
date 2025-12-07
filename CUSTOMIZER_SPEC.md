@@ -32,6 +32,19 @@
 3. **עוצמה למתכנתים** - גישה מלאה ל-CSS, HTML, JavaScript
 4. **סקייל** - בנוי לאלפי חנויות במקביל
 5. **ביצועים** - לא מעמיס על השרת
+6. **תאימות מלאה למערכת הקיימת** - עובד עם הארכיטקטורה, DB, ו-Event System הקיימים
+
+### 🔗 אינטגרציה עם המערכת הקיימת:
+
+הקסטומייזר **משתלב לחלוטין** עם המערכת הקיימת של Quickshop3:
+
+- ✅ **מבנה URL:** `/dashboard/customize` (דשבורד) + `/shops/{storeSlug}/preview` (תצוגה מקדימה)
+- ✅ **Event-Driven:** כל פעולה פולטת אירועים (`customizer.page.published`, `customizer.section.updated`, וכו')
+- ✅ **Server Actions:** שימוש ב-Server Actions לפעולות מהירות (פרסום, שמירה)
+- ✅ **DB Schema:** משתמש בטבלאות הקיימות + טבלאות חדשות לקסטומייזר
+- ✅ **Storefront Integration:** עובד עם הסטורפרונט הקיים (`/shops/[storeSlug]/`)
+- ✅ **Client-Side Dashboard:** הקסטומייזר הוא Client Component (100% `use client`)
+- ✅ **Documentation Driven:** כל פיצ'ר מתועד ב-README (לפי המתודולוגיה הקיימת)
 
 ---
 
@@ -795,6 +808,458 @@ const monacoConfig = {
 
 ---
 
+## 🔄 עמודי Template דינמיים (Loop Pages)
+
+### הקונספט:
+
+עמודים כמו **עמוד מוצר** ו**עמוד קטגוריה** הם עמודי לופ - אותו Template משמש להרבה עמודים שונים. הקסטומייזר מאפשר לערוך את ה-Template עם **widgets דינמיים** שמושכים מידע מהאובייקט הנוכחי.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    עמודי Template דינמיים                            │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  📦 עמוד מוצר (Product Template)                                    │
+│  ─────────────────────────────────────                              │
+│  Template אחד → משרת את כל המוצרים                                 │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  [Header] ← סטטי                                             │   │
+│  │                                                               │   │
+│  │  [Product Images] ← {{ product.images }}                     │   │
+│  │  [Product Title]  ← {{ product.title }}                      │   │
+│  │  [Product Price]  ← {{ product.price }}                      │   │
+│  │  [Variant Selector] ← {{ product.variants }}                 │   │
+│  │  [Add to Cart Button] ← דינמי                                │   │
+│  │                                                               │   │
+│  │  [Product Description] ← {{ product.description }}           │   │
+│  │  [Custom Static Section] ← סטטי (ניתן להוסיף)                │   │
+│  │  [Related Products] ← {{ product.related }}                  │   │
+│  │                                                               │   │
+│  │  [Footer] ← סטטי                                             │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  📁 עמוד קטגוריה (Collection Template)                              │
+│  ─────────────────────────────────────                              │
+│  Template אחד → משרת את כל הקטגוריות                               │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  [Header] ← סטטי                                             │   │
+│  │                                                               │   │
+│  │  [Collection Header] ← {{ collection.title }}                │   │
+│  │  [Collection Image]  ← {{ collection.image }}                │   │
+│  │  [Filters Sidebar]   ← דינמי                                 │   │
+│  │  [Product Grid]      ← {{ collection.products }}             │   │
+│  │  [Pagination]        ← דינמי                                 │   │
+│  │                                                               │   │
+│  │  [Custom Banner] ← סטטי (ניתן להוסיף)                        │   │
+│  │  [Footer] ← סטטי                                             │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### סוגי Widgets:
+
+#### 1. Dynamic Widgets (וידג'טים דינמיים):
+מושכים מידע מהאובייקט הנוכחי (מוצר/קטגוריה)
+
+```typescript
+// Product Page Dynamic Widgets
+const PRODUCT_DYNAMIC_WIDGETS = {
+  'product_images': {
+    name: 'גלריית תמונות',
+    variable: '{{ product.images }}',
+    settings: ['layout', 'zoom', 'thumbnails_position']
+  },
+  'product_title': {
+    name: 'שם המוצר',
+    variable: '{{ product.title }}',
+    settings: ['font_size', 'font_weight', 'alignment']
+  },
+  'product_price': {
+    name: 'מחיר',
+    variable: '{{ product.price }}',
+    settings: ['show_compare_price', 'show_discount_badge']
+  },
+  'product_variants': {
+    name: 'בחירת וריאנט',
+    variable: '{{ product.variants }}',
+    settings: ['style', 'show_availability']
+  },
+  'product_quantity': {
+    name: 'בחירת כמות',
+    variable: '{{ cart.quantity }}',
+    settings: ['style', 'min', 'max']
+  },
+  'add_to_cart': {
+    name: 'כפתור הוספה לסל',
+    variable: '{{ product.available }}',
+    settings: ['text', 'style', 'sticky_mobile']
+  },
+  'product_description': {
+    name: 'תיאור המוצר',
+    variable: '{{ product.description }}',
+    settings: ['show_full', 'read_more']
+  },
+  'product_reviews': {
+    name: 'ביקורות',
+    variable: '{{ product.reviews }}',
+    settings: ['layout', 'per_page']
+  },
+  'related_products': {
+    name: 'מוצרים קשורים',
+    variable: '{{ product.related }}',
+    settings: ['count', 'algorithm']
+  },
+  'product_meta': {
+    name: 'מידע נוסף (SKU, ברקוד)',
+    variable: '{{ product.meta }}',
+    settings: ['show_sku', 'show_barcode', 'show_vendor']
+  },
+  'social_share': {
+    name: 'שיתוף ברשתות',
+    variable: '{{ product.url }}',
+    settings: ['networks', 'style']
+  }
+};
+
+// Collection Page Dynamic Widgets
+const COLLECTION_DYNAMIC_WIDGETS = {
+  'collection_header': {
+    name: 'כותרת קטגוריה',
+    variable: '{{ collection.title }}',
+    settings: ['show_image', 'show_description', 'alignment']
+  },
+  'collection_image': {
+    name: 'תמונת קטגוריה',
+    variable: '{{ collection.image }}',
+    settings: ['height', 'overlay']
+  },
+  'product_grid': {
+    name: 'גריד מוצרים',
+    variable: '{{ collection.products }}',
+    settings: ['columns', 'card_style', 'per_page']
+  },
+  'collection_filters': {
+    name: 'פילטרים',
+    variable: '{{ collection.filters }}',
+    settings: ['position', 'show_price', 'show_availability']
+  },
+  'collection_sort': {
+    name: 'מיון',
+    variable: '{{ collection.sort_options }}',
+    settings: ['default_sort', 'options']
+  },
+  'subcollections': {
+    name: 'תת-קטגוריות',
+    variable: '{{ collection.children }}',
+    settings: ['layout', 'show_count']
+  },
+  'pagination': {
+    name: 'עימוד',
+    variable: '{{ collection.pagination }}',
+    settings: ['style', 'per_page']
+  }
+};
+```
+
+#### 2. Static Widgets (וידג'טים סטטיים):
+תוכן קבוע שניתן להוסיף בין הוידג'טים הדינמיים
+
+```typescript
+const STATIC_WIDGETS = {
+  'rich_text': 'טקסט עשיר',
+  'image': 'תמונה',
+  'video': 'וידאו',
+  'banner': 'באנר',
+  'trust_badges': 'תגי אמון',
+  'faq': 'שאלות נפוצות',
+  'custom_html': 'HTML מותאם',
+  'spacer': 'רווח',
+  'divider': 'קו מפריד'
+};
+```
+
+### ממשק עריכת Template:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [← דשבורד]  Template: [עמוד מוצר ▼]  [🖥️][📱]  [👁️ תצוגה]  [💾 שמור]         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ⚠️ אתה עורך את ה-TEMPLATE - שינויים ישפיעו על כל עמודי המוצר              │
+│                                                                             │
+├───────────────────┬─────────────────────────────────────────────────────────┤
+│                   │                                                         │
+│  📋 מבנה Template │              PREVIEW                                   │
+│  ─────────────────│              (מציג מוצר לדוגמה)                         │
+│                   │                                                         │
+│  HEADER 🔒        │   ┌─────────────────────────────────────────────────┐ │
+│                   │   │  [Logo]              [Menu]          [Cart]    │ │
+│  ─────────────────│   ├─────────────────────────────────────────────────┤ │
+│                   │   │                                                 │ │
+│  ☰ גלריית תמונות  │   │  [████████████]   שם המוצר                     │ │
+│    ⚙️ 👁️          │   │  [████████████]   ₪199.00  ̶₪̶2̶4̶9̶              │ │
+│                   │   │  [████████████]                                 │ │
+│  ☰ שם המוצר      │   │                    צבע: [🔵][⚫][⚪]             │ │
+│    ⚙️ 👁️          │   │  [thumb][thumb]    מידה: [S][M][L][XL]          │ │
+│                   │   │                                                 │ │
+│  ☰ מחיר          │   │                    כמות: [-] 1 [+]              │ │
+│    ⚙️ 👁️          │   │                                                 │ │
+│                   │   │                    [  הוסף לסל  ]               │ │
+│  ☰ בחירת וריאנט  │   │                                                 │ │
+│    ⚙️ 👁️          │   │  ─────────────────────────────────────────────  │ │
+│                   │   │                                                 │ │
+│  ☰ כפתור הוסף לסל│   │  תיאור המוצר:                                   │ │
+│    ⚙️ 👁️          │   │  Lorem ipsum dolor sit amet...                 │ │
+│                   │   │                                                 │ │
+│  + הוסף widget   │   │  ─────────────────────────────────────────────  │ │
+│  ─────────────────│   │                                                 │ │
+│                   │   │  🛡️ משלוח חינם  ✓ החזרות  🔒 תשלום מאובטח      │ │
+│  ☰ תיאור המוצר   │   │  (תגי אמון - סטטי)                              │ │
+│    ⚙️ 👁️          │   │                                                 │ │
+│                   │   │  ─────────────────────────────────────────────  │ │
+│  ☰ תגי אמון 📌    │   │                                                 │ │
+│    (סטטי)         │   │  מוצרים קשורים:                                 │ │
+│                   │   │  [Card][Card][Card][Card]                       │ │
+│  ☰ מוצרים קשורים │   │                                                 │ │
+│    ⚙️ 👁️          │   │                                                 │ │
+│                   │   └─────────────────────────────────────────────────┘ │
+│  + הוסף widget   │                                                         │
+│  ─────────────────│   📝 מוצר לדוגמה: [חולצה כחולה ▼]                      │
+│                   │   (ניתן לבחור מוצר אחר לתצוגה מקדימה)                  │
+│  FOOTER 🔒        │                                                         │
+│                   │                                                         │
+└───────────────────┴─────────────────────────────────────────────────────────┘
+```
+
+### הגדרות Widget דינמי:
+
+```
+┌─────────────────────────────────┐
+│ ← גלריית תמונות             ••• │
+├─────────────────────────────────┤
+│                                 │
+│ 🔗 מקור: {{ product.images }}  │
+│    (אוטומטי מהמוצר)             │
+│                                 │
+│ ───────────────────────────────│
+│ Layout                          │
+│ [Grid] [Slider] [Stack]         │
+│                                 │
+│ תמונות בשורה                   │
+│ [●─────────────────────] 1      │
+│                                 │
+│ מיקום Thumbnails               │
+│ [למטה ▼]                        │
+│                                 │
+│ הפעל Zoom                       │
+│ [○ ●]                           │
+│                                 │
+│ הפעל Lightbox                   │
+│ [○ ●]                           │
+│                                 │
+│ ───────────────────────────────│
+│ Mobile                          │
+│ ───────────────────────────────│
+│ Swipe בין תמונות               │
+│ [● ○]                           │
+│                                 │
+│ הצג נקודות (dots)               │
+│ [● ○]                           │
+│                                 │
+└─────────────────────────────────┘
+```
+
+### מבנה נתונים ל-Template Pages:
+
+```sql
+-- Page Templates (עמודי לופ)
+CREATE TABLE page_templates (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  template_type VARCHAR(50) NOT NULL,  -- 'product', 'collection', 'blog_post', 'page'
+  name VARCHAR(100),                    -- 'default', 'minimal', 'full-width'
+  is_default BOOLEAN DEFAULT FALSE,
+  
+  -- Published vs Draft
+  is_published BOOLEAN DEFAULT FALSE,
+  published_at TIMESTAMP,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(store_id, template_type, name)
+);
+
+-- Template Widgets (וידג'טים ב-template)
+CREATE TABLE template_widgets (
+  id SERIAL PRIMARY KEY,
+  template_id INT REFERENCES page_templates(id) ON DELETE CASCADE,
+  widget_type VARCHAR(100) NOT NULL,   -- 'product_images', 'product_title', 'rich_text', etc.
+  widget_id VARCHAR(100) NOT NULL,     -- unique identifier
+  position INT NOT NULL,
+  is_visible BOOLEAN DEFAULT TRUE,
+  is_dynamic BOOLEAN DEFAULT TRUE,     -- true = pulls from object, false = static
+  
+  -- Settings
+  settings_json JSONB NOT NULL DEFAULT '{}',
+  
+  -- Custom styling
+  custom_css TEXT DEFAULT '',
+  custom_classes TEXT DEFAULT '',
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Override per specific product/collection (אופציונלי)
+CREATE TABLE template_overrides (
+  id SERIAL PRIMARY KEY,
+  template_id INT REFERENCES page_templates(id) ON DELETE CASCADE,
+  object_type VARCHAR(50) NOT NULL,    -- 'product', 'collection'
+  object_id INT NOT NULL,              -- product_id or collection_id
+  
+  -- Override specific widgets
+  widget_overrides JSONB DEFAULT '{}', -- { "widget_id": { "settings": {...} } }
+  
+  -- Or completely different structure
+  custom_widgets JSONB DEFAULT NULL,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(template_id, object_type, object_id)
+);
+```
+
+### Override למוצר/קטגוריה ספציפיים:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 💡 אפשרויות עריכה:                                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1️⃣ עריכת Template (ברירת מחדל)                                             │
+│     שינויים ישפיעו על כל המוצרים/קטגוריות                                  │
+│                                                                             │
+│  2️⃣ Override למוצר ספציפי                                                  │
+│     "אני רוצה שעמוד המוצר 'שעון יוקרה' יראה אחרת"                          │
+│     → יוצר override שדורס את ה-template הכללי                              │
+│                                                                             │
+│  3️⃣ Templates מרובים                                                       │
+│     - "Default" - ברירת מחדל                                               │
+│     - "Minimal" - מינימליסטי                                               │
+│     - "Full Gallery" - דגש על תמונות                                       │
+│     → בחירת template בעריכת מוצר                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Liquid-like Syntax לוידג'טים דינמיים:
+
+```typescript
+// הסינטקס הפנימי (לא חשוף למשתמש הפשוט, רק למתכנתים)
+interface DynamicVariable {
+  // Product variables
+  'product.title': string;
+  'product.description': string;
+  'product.price': number;
+  'product.compare_at_price': number;
+  'product.images': Image[];
+  'product.variants': Variant[];
+  'product.available': boolean;
+  'product.vendor': string;
+  'product.type': string;
+  'product.tags': string[];
+  'product.metafields': Record<string, any>;
+  
+  // Collection variables
+  'collection.title': string;
+  'collection.description': string;
+  'collection.image': Image;
+  'collection.products': Product[];
+  'collection.products_count': number;
+  'collection.filters': Filter[];
+  'collection.sort_options': SortOption[];
+  
+  // Global variables
+  'shop.name': string;
+  'shop.currency': string;
+  'cart.item_count': number;
+  'customer.logged_in': boolean;
+}
+
+// איך זה עובד בפועל:
+const ProductTitleWidget = ({ product, settings }) => {
+  return (
+    <h1 
+      className={`product-title ${settings.alignment}`}
+      style={{ fontSize: settings.font_size }}
+    >
+      {product.title}  {/* ← הוידג'ט יודע לשלוף את הנתון */}
+    </h1>
+  );
+};
+```
+
+### רינדור ב-Storefront:
+
+```typescript
+// src/app/(storefront)/shops/[storeSlug]/products/[handle]/page.tsx
+export default async function ProductPage({ params }) {
+  const store = await getStoreBySlug(params.storeSlug);
+  const product = await getProductByHandle(params.handle);
+  
+  // 1. Check for specific override
+  const override = await getTemplateOverride(store.id, 'product', product.id);
+  
+  // 2. Get template (default or assigned)
+  const templateName = product.template_name || 'default';
+  const template = await getPageTemplate(store.id, 'product', templateName);
+  
+  // 3. Merge override if exists
+  const finalWidgets = override 
+    ? mergeOverrides(template.widgets, override.widget_overrides)
+    : template.widgets;
+  
+  // 4. Render
+  return (
+    <ProductPageRenderer
+      product={product}
+      widgets={finalWidgets}
+      globalSettings={store.theme_settings}
+    />
+  );
+}
+
+// ProductPageRenderer
+function ProductPageRenderer({ product, widgets, globalSettings }) {
+  return (
+    <>
+      {widgets.map((widget) => {
+        const Component = WIDGET_COMPONENTS[widget.widget_type];
+        
+        // Inject product data into dynamic widgets
+        const data = widget.is_dynamic 
+          ? extractDataForWidget(widget.widget_type, product)
+          : null;
+        
+        return (
+          <Component
+            key={widget.widget_id}
+            data={data}
+            settings={widget.settings_json}
+            customCSS={widget.custom_css}
+          />
+        );
+      })}
+    </>
+  );
+}
+```
+
+---
+
 ## 🎭 מערכת תבניות
 
 ### תבנית "New York" (ברירת מחדל):
@@ -1062,29 +1527,154 @@ export async function GET(request: Request) {
 
 ---
 
-## 🔌 API Endpoints
+## 🎯 Event-Driven Architecture
 
-### Pages API:
+### אירועי הקסטומייזר:
+
+הקסטומייזר **משתלב לחלוטין** במערכת האירועים הקיימת של Quickshop3:
+
+#### Events Emitted (אירועים שנשלחים):
+
+| Event Topic | מתי נשלח | Payload | Source |
+|------------|----------|---------|--------|
+| `customizer.page.published` | כשעמוד מתפרסם | `{ store_id, page_type, page_handle }` | dashboard |
+| `customizer.page.draft_saved` | כששינויים נשמרים כ-draft | `{ store_id, page_type }` | dashboard |
+| `customizer.section.added` | כשסקשן נוסף | `{ store_id, page_type, section_type, section_id }` | dashboard |
+| `customizer.section.updated` | כשסקשן עודכן | `{ store_id, section_id, changes }` | dashboard |
+| `customizer.section.deleted` | כשסקשן נמחק | `{ store_id, section_id }` | dashboard |
+| `customizer.template.applied` | כשתבנית מוחלת | `{ store_id, template_id, template_name }` | dashboard |
+| `customizer.theme_settings.updated` | כשהגדרות תבנית משתנות | `{ store_id, settings }` | dashboard |
+| `customizer.custom_section.created` | כשסקשן מותאם נוצר | `{ store_id, section_name }` | dashboard |
+
+#### Events Listened (אירועים שהקסטומייזר מאזין להם):
+
+| Event Topic | מה קורה | מתי |
+|------------|---------|-----|
+| `product.created` | עדכון רשימת מוצרים זמינים לוידג'טים | כשנוצר מוצר חדש |
+| `product.updated` | עדכון תצוגה מקדימה | כשמוצר משתנה |
+| `collection.created` | עדכון רשימת קטגוריות זמינות | כשנוצרת קטגוריה חדשה |
+| `store.settings.updated` | עדכון הגדרות חנות | כשהגדרות חנות משתנות |
+
+### דוגמה לשימוש ב-Event Bus:
+
+```typescript
+// src/lib/customizer/publish.ts
+import { eventBus } from '@/lib/events/eventBus';
+
+export async function publishPage(storeId: number, pageType: string) {
+  // ... לוגיקת פרסום ...
+  
+  // ✅ חובה: פליטת אירוע
+  await eventBus.emit('customizer.page.published', {
+    store_id: storeId,
+    page_type: pageType,
+    page_handle: pageHandle,
+    edge_json_url: edgeUrl,
+    version: versionNumber
+  }, {
+    store_id: storeId,
+    source: 'dashboard',
+    user_id: getUserIdFromRequest()
+  });
+  
+  return { success: true, edgeUrl };
+}
+```
+
+---
+
+## 🔌 API Endpoints & Server Actions
+
+### Pages API & Server Actions:
+
+#### API Routes (לקריאות נתונים):
 
 ```http
 # קבלת מבנה עמוד (draft)
 GET /api/customizer/pages/:pageType?handle=:handle
 
-# שמירת שינויים (draft)
-PUT /api/customizer/pages/:pageType
-Content-Type: application/json
-{
-  "sections": [...],
-  "section_order": [...],
-  "custom_css": "..."
+# קבלת Template (עבור עמודי לופ)
+GET /api/customizer/templates/:templateType
+
+# קבלת רשימת תבניות זמינות
+GET /api/customizer/templates
+```
+
+#### Server Actions (לפעולות מהירות):
+
+```typescript
+// src/app/(dashboard)/customize/actions.ts
+'use server';
+
+import { eventBus } from '@/lib/events/eventBus';
+import { getStoreIdFromRequest } from '@/lib/auth';
+
+// שמירת שינויים (draft) - Server Action
+export async function savePageDraft(
+  pageType: string,
+  sections: Section[],
+  sectionOrder: string[]
+) {
+  const storeId = await getStoreIdFromRequest();
+  
+  // שמירה ל-DB
+  await db.query(`
+    UPDATE page_layouts 
+    SET draft_sections = $1, draft_section_order = $2
+    WHERE store_id = $3 AND page_type = $4
+  `, [sections, sectionOrder, storeId, pageType]);
+  
+  // ✅ פליטת אירוע
+  await eventBus.emit('customizer.page.draft_saved', {
+    store_id: storeId,
+    page_type: pageType
+  }, {
+    store_id: storeId,
+    source: 'dashboard'
+  });
+  
+  return { success: true };
 }
 
-# פרסום עמוד
-POST /api/customizer/pages/:pageType/publish
+// פרסום עמוד - Server Action
+export async function publishPage(pageType: string) {
+  const storeId = await getStoreIdFromRequest();
+  
+  // ... לוגיקת פרסום ...
+  
+  // ✅ פליטת אירוע
+  await eventBus.emit('customizer.page.published', {
+    store_id: storeId,
+    page_type: pageType
+  }, {
+    store_id: storeId,
+    source: 'dashboard'
+  });
+  
+  return { success: true, edgeUrl };
+}
 
-# שחזור לפורסם
-POST /api/customizer/pages/:pageType/discard-draft
+// שחזור לפורסם - Server Action
+export async function discardDraft(pageType: string) {
+  const storeId = await getStoreIdFromRequest();
+  
+  // שחזור מ-published ל-draft
+  await db.query(`
+    UPDATE page_layouts 
+    SET draft_sections = published_sections,
+        draft_section_order = published_section_order
+    WHERE store_id = $1 AND page_type = $2
+  `, [storeId, pageType]);
+  
+  return { success: true };
+}
 ```
+
+**למה Server Actions?**
+- ✅ מהיר יותר מ-API Routes
+- ✅ פחות overhead
+- ✅ תגובה מיידית
+- ✅ עובד טוב עם Forms
 
 ### Sections API:
 
@@ -1338,45 +1928,170 @@ const useCustomizerData = (pageType: string) => {
 
 ---
 
+## 📁 מבנה קבצים מומלץ
+
+### מבנה תיקיות:
+
+```
+src/
+├── app/
+│   ├── (dashboard)/
+│   │   └── customize/
+│   │       ├── page.tsx                    # דף הקסטומייזר הראשי
+│   │       ├── actions.ts                 # Server Actions
+│   │       ├── components/
+│   │       │   ├── CustomizerLayout.tsx   # Layout עם Sidebar + Preview
+│   │       │   ├── Sidebar.tsx            # Sidebar Editor
+│   │       │   ├── PreviewFrame.tsx       # Preview iframe
+│   │       │   ├── SectionList.tsx        # רשימת סקשנים
+│   │       │   ├── SectionSettings.tsx    # הגדרות סקשן
+│   │       │   ├── BlockSettings.tsx      # הגדרות בלוק
+│   │       │   ├── AddSectionDialog.tsx   # דיאלוג הוספת סקשן
+│   │       │   ├── CodeEditor.tsx          # עורך קוד (Monaco)
+│   │       │   └── ...
+│   │       └── README.md                   # תיעוד המודול (חובה!)
+│   │
+│   ├── (storefront)/
+│   │   └── shops/
+│   │       └── [storeSlug]/
+│   │           └── preview/
+│   │               └── route.ts            # Preview Mode Route
+│   │
+│   └── api/
+│       └── customizer/
+│           ├── pages/
+│           │   └── route.ts               # GET pages
+│           ├── sections/
+│           │   └── route.ts               # CRUD sections
+│           ├── templates/
+│           │   └── route.ts               # GET templates
+│           └── theme-settings/
+│               └── route.ts               # GET theme settings
+│
+├── lib/
+│   └── customizer/
+│       ├── getPageConfig.ts               # קריאת הגדרות עמוד
+│       ├── getTemplateConfig.ts           # קריאת הגדרות template
+│       ├── publish.ts                     # פונקציית פרסום
+│       ├── generateJSON.ts                # יצירת JSON ל-Edge
+│       ├── validateConfig.ts              # ולידציה של הגדרות
+│       └── types.ts                       # TypeScript types
+│
+└── components/
+    └── storefront/
+        └── sections/                      # קומפוננטות סקשנים
+            ├── Slideshow.tsx
+            ├── CollectionList.tsx
+            ├── FeaturedProduct.tsx
+            ├── DynamicSection.tsx         # רינדור דינמי של סקשנים
+            └── ...
+```
+
+### README של מודול הקסטומייזר:
+
+```markdown
+# Customizer Module – מודול קסטומייזר
+
+## Core Features | תכונות ליבה
+
+- [ ] Visual Editor (WYSIWYG)
+- [ ] Developer Mode (Code Editor)
+- [ ] Page Templates (Home, Product, Collection, etc.)
+- [ ] Section Management
+- [ ] Block Management
+- [ ] Theme Settings
+- [ ] Preview Mode
+- [ ] Publish Flow
+- [ ] Version History
+
+## Events | אירועים
+
+### Events Emitted | אירועים שנשלחים
+
+| Event Topic | מתי נשלח | Payload |
+|------------|----------|---------|
+| `customizer.page.published` | כשעמוד מתפרסם | `{ store_id, page_type }` |
+| `customizer.section.added` | כשסקשן נוסף | `{ store_id, section_type }` |
+
+### Events Listened | אירועים שמאזינים להם
+
+| Event Topic | מה קורה | מתי |
+|------------|---------|-----|
+| `product.created` | עדכון רשימת מוצרים | כשנוצר מוצר |
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/customizer/pages/:pageType` | Get page config |
+| POST | `/api/customizer/pages/:pageType/publish` | Publish page |
+
+## Server Actions
+
+| Function | Description |
+|----------|-------------|
+| `savePageDraft` | Save draft changes |
+| `publishPage` | Publish page |
+| `discardDraft` | Discard draft changes |
+```
+
+---
+
 ## ✅ Checklist יישום
 
 ### Phase 1: Foundation (שבוע 1-2)
 
 - [ ] **Database**
-  - [ ] יצירת טבלאות
+  - [ ] יצירת טבלאות (לפי הסכמה למעלה)
   - [ ] Migration scripts
   - [ ] Indexes ואופטימיזציה
+  - [ ] Seed data לתבנית New York
   
-- [ ] **API Layer**
-  - [ ] Pages CRUD
-  - [ ] Sections CRUD
-  - [ ] Blocks CRUD
-  - [ ] Theme Settings CRUD
+- [ ] **API Layer & Server Actions**
+  - [ ] API Routes לקריאות נתונים (GET)
+  - [ ] Server Actions לפעולות (POST/PUT/DELETE)
+  - [ ] Event emission לכל פעולה
+  - [ ] Error handling ו-validation
   
 - [ ] **Edge Storage**
   - [ ] Setup Vercel Blob / R2
   - [ ] Upload/Download functions
-  - [ ] Publish flow
+  - [ ] Publish flow עם JSON generation
+  - [ ] Cache invalidation
+  
+- [ ] **Event Integration**
+  - [ ] Event listeners רלוונטיים
+  - [ ] Event emission לכל פעולה
+  - [ ] תיעוד אירועים ב-README
 
 ### Phase 2: Visual Editor (שבוע 2-3)
 
 - [ ] **Layout**
-  - [ ] Main layout (Sidebar + Preview)
+  - [ ] Main layout (Sidebar + Preview) - Client Component
   - [ ] Device preview (Desktop/Tablet/Mobile)
   - [ ] Mode switcher (Visual/Developer)
+  - [ ] RTL support מלא
   
 - [ ] **Sidebar - Visual Mode**
-  - [ ] Sections list
+  - [ ] Sections list (Client Component)
   - [ ] Drag & Drop (dnd-kit)
   - [ ] Section settings panel
   - [ ] Block settings panel
   - [ ] Add section dialog
+  - [ ] Template widgets list (לעמודי לופ)
   
 - [ ] **Preview**
   - [ ] iframe implementation
   - [ ] PostMessage communication
   - [ ] Click-to-select section
   - [ ] Highlight on hover
+  - [ ] Preview mode route (`/shops/[storeSlug]/preview`)
+  
+- [ ] **Integration**
+  - [ ] Server Actions integration
+  - [ ] Auto-save (debounced)
+  - [ ] Loading states
+  - [ ] Error handling
 
 ### Phase 3: Developer Tools (שבוע 3-4)
 
@@ -1420,17 +2135,24 @@ const useCustomizerData = (pageType: string) => {
 ### Phase 5: Integration & Polish (שבוע 5-6)
 
 - [ ] **Storefront Integration**
-  - [ ] getPageConfig function
-  - [ ] DynamicSection component
+  - [ ] getPageConfig function (קורא מ-Edge JSON)
+  - [ ] DynamicSection component (רינדור דינמי)
+  - [ ] Template widgets rendering (לעמודי לופ)
   - [ ] Custom CSS injection
   - [ ] Custom JS sandboxing
+  - [ ] Preview mode route
   
 - [ ] **Features**
-  - [ ] Preview mode
-  - [ ] Publish flow
+  - [ ] Preview mode (קורא draft מ-DB)
+  - [ ] Publish flow (Generate JSON → Edge → Invalidate cache)
   - [ ] Version history
   - [ ] Undo/Redo
-  - [ ] Auto-save
+  - [ ] Auto-save (debounced)
+  
+- [ ] **Event Integration**
+  - [ ] כל פעולה פולטת אירוע
+  - [ ] Event listeners רלוונטיים
+  - [ ] תיעוד מלא ב-README
 
 ### Phase 6: Performance & Testing (שבוע 6-7)
 
@@ -1488,5 +2210,53 @@ const useCustomizerData = (pageType: string) => {
 - מחיר תחרותי
 
 **מתחרים בשופיפיי - ובעברית!** 🇮🇱🚀
+
+---
+
+## 📚 תיעוד ופיתוח
+
+### מתודולוגיית פיתוח:
+
+הקסטומייזר עוקב אחרי **מתודולוגיית הפיתוח הקיימת** של Quickshop3:
+
+1. **Documentation Driven Development**
+   - כל פיצ'ר מתועד ב-README של המודול
+   - לא מתחילים פיתוח בלי תיעוד
+
+2. **Event-Driven Architecture**
+   - כל פעולה פולטת אירוע
+   - מודולים לא תלויים זה בזה ישירות
+
+3. **Client-Side Dashboard**
+   - הקסטומייזר הוא 100% Client Component
+   - כל הלוגיקה רצה בדפדפן
+
+4. **Server Actions לפעולות**
+   - פרסום, שמירה = Server Actions
+   - קריאות נתונים = API Routes
+
+5. **Modular Structure**
+   - כל קומפוננטה במודול שלה
+   - קל לתחזק ולהרחיב
+
+### קבצים רלוונטיים:
+
+- `src/app/(dashboard)/customize/README.md` - תיעוד המודול (חובה!)
+- `src/lib/customizer/` - לוגיקה עסקית
+- `src/components/storefront/sections/` - קומפוננטות סקשנים
+- `sql/migrations/add_customizer_tables.sql` - Migration scripts
+
+### Checklist לפני PR:
+
+- [ ] README עודכן עם הפיצ'ר החדש
+- [ ] אירועים פולטים (eventBus.emit)
+- [ ] אירועים מתועדים ב-README
+- [ ] Server Actions במקום API Routes (לפעולות)
+- [ ] Client Components מסומנים כ-`use client`
+- [ ] RTL support מלא
+- [ ] Error handling
+- [ ] Loading states
+
+**זכור:** הקסטומייזר הוא חלק מהמערכת - הוא צריך לעקוב אחרי כל הכללים! 🎯
 
 </div>

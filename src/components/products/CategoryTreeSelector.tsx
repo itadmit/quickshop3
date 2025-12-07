@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -215,7 +215,7 @@ export function CategoryTreeSelector({
     }
   };
 
-  const renderCategoryTree = (items: Category[], level: number = 0): JSX.Element[] => {
+  const renderCategoryTree = (items: Category[], level: number = 0): React.ReactElement[] => {
     return items.map(category => {
       const hasChildren = category.children && category.children.length > 0;
       const isExpanded = expandedIds.has(category.id);
@@ -280,7 +280,7 @@ export function CategoryTreeSelector({
           )}
         </div>
       );
-    }).filter(Boolean) as JSX.Element[];
+    }).filter(Boolean) as React.ReactElement[];
   };
 
   if (compact) {
