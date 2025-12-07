@@ -19,6 +19,7 @@ const menuItems: MenuItem[] = [
   { label: 'בית', href: '/dashboard', icon: MenuIcons.home },
   { label: 'אנליטיקס', href: '/analytics', icon: MenuIcons.analytics },
   { label: 'התראות', href: '/notifications', icon: MenuIcons.notifications, badge: 3 },
+  { label: 'קסטומייזר', href: '/customize', icon: MenuIcons.customizer },
   {
     label: 'מכירות',
     href: '#',
