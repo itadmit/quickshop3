@@ -18,16 +18,35 @@ export interface CartItem {
   }>;
 }
 
-const CART_STORAGE_KEY = 'quickshop_cart';
+/**
+ * Cart Management Hook - Shopify-like Implementation
+ * 
+ * עקרונות כמו Shopify:
+ * 1. מבודד לחלוטין בין חנויות - כל חנות = עגלה נפרדת
+ * 2. שימוש ב-cookies (visitor_session_id) לזיהוי מבקרים
+ * 3. השרת הוא המקור האמת (visitor_carts table עם visitor_session_id + store_id)
+ * 4. localStorage הוא cache מקומי בלבד (per store)
+ * 5. כל החישובים דרך מנוע מרכזי אחד (cartCalculator)
+ * 
+ * Isolation Strategy:
+ * - Server: visitor_carts table עם (visitor_session_id, store_id) כמפתח ייחודי
+ * - Client: localStorage עם מפתח per-store: quickshop_cart_store_{storeId}
+ * - Cookies: visitor_session_id cookie משותף לכל החנויות (כמו Shopify)
+ */
 
-// === SINGLE SOURCE OF TRUTH: localStorage ===
-function getCartFromStorage(): CartItem[] {
-  if (typeof window === 'undefined') {
+// כל חנות מקבלת מפתח נפרד ב-localStorage - מונע ערבוב עגלות בין חנויות
+const CART_STORAGE_KEY_PREFIX = 'quickshop_cart_store_';
+
+// === SINGLE SOURCE OF TRUTH: Server (via cookies) ===
+// localStorage הוא cache מקומי בלבד - השרת הוא המקור האמת
+function getCartFromStorage(storeId: number | null): CartItem[] {
+  if (typeof window === 'undefined' || !storeId) {
     return [];
   }
   
   try {
-    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    const key = `${CART_STORAGE_KEY_PREFIX}${storeId}`;
+    const stored = localStorage.getItem(key);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) {
@@ -41,25 +60,27 @@ function getCartFromStorage(): CartItem[] {
   return [];
 }
 
-function setCartToStorage(items: CartItem[]): void {
-  if (typeof window === 'undefined') {
+function setCartToStorage(items: CartItem[], storeId: number | null): void {
+  if (typeof window === 'undefined' || !storeId) {
     return;
   }
   
   try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    const key = `${CART_STORAGE_KEY_PREFIX}${storeId}`;
+    localStorage.setItem(key, JSON.stringify(items));
   } catch (error) {
     console.error('[useCart] Error saving to localStorage:', error);
   }
 }
 
-function clearCartFromStorage(): void {
-  if (typeof window === 'undefined') {
+function clearCartFromStorage(storeId: number | null): void {
+  if (typeof window === 'undefined' || !storeId) {
     return;
   }
   
   try {
-    localStorage.removeItem(CART_STORAGE_KEY);
+    const key = `${CART_STORAGE_KEY_PREFIX}${storeId}`;
+    localStorage.removeItem(key);
   } catch (error) {
     console.error('[useCart] Error clearing localStorage:', error);
   }
@@ -76,21 +97,32 @@ export function useCart() {
   // Ref to track if we've initialized from localStorage
   const initialized = useRef(false);
   
-  // Initialize from localStorage on mount
+  // Initialize from server when storeId changes (like Shopify - server is source of truth)
+  // When switching stores, always load from server to ensure isolation
   useEffect(() => {
-    if (!initialized.current && typeof window !== 'undefined') {
-      initialized.current = true;
-      const stored = getCartFromStorage();
-      setCartItems(stored);
+    if (typeof window !== 'undefined' && storeId) {
+      // Reset state when storeId changes
+      setCartItems([]);
+      initialized.current = false;
+      
+      // Load from server first (source of truth), then sync to localStorage
+      loadCartFromServer();
+    } else if (typeof window !== 'undefined' && !storeId) {
+      // If no storeId, clear cart
+      setCartItems([]);
+      initialized.current = false;
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId]);
   
   // Listen to localStorage changes (from other tabs or direct updates)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !storeId) return;
+    
+    const cartKey = `${CART_STORAGE_KEY_PREFIX}${storeId}`;
     
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === CART_STORAGE_KEY) {
+      if (e.key === cartKey) {
         const newItems = e.newValue ? JSON.parse(e.newValue) : [];
         setCartItems(Array.isArray(newItems) ? newItems : []);
       }
@@ -98,9 +130,10 @@ export function useCart() {
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [storeId]);
 
-  // Load cart from server
+  // Load cart from server (like Shopify - cookies-based, per-store isolation)
+  // This is the SINGLE SOURCE OF TRUTH - server has the real cart via cookies
   const loadCartFromServer = useCallback(async () => {
     if (!storeId) {
       return;
@@ -109,9 +142,11 @@ export function useCart() {
     setIsLoadingFromServer(true);
     
     try {
+      // Fetch from server using cookies (visitor_session_id cookie)
+      // Server returns cart for this specific store_id + visitor_session_id combination
       const response = await fetch(`/api/cart?storeId=${storeId}`, {
         method: 'GET',
-        credentials: 'include',
+        credentials: 'include', // Important: sends cookies
         cache: 'no-store',
       });
 
@@ -119,18 +154,35 @@ export function useCart() {
         const data = await response.json();
         
         if (data.items && Array.isArray(data.items)) {
-          setCartToStorage(data.items);
+          // Sync server data to localStorage (for offline support)
+          setCartToStorage(data.items, storeId);
           setCartItems(data.items);
+          initialized.current = true;
+        } else {
+          // Empty cart - clear localStorage for this store
+          setCartToStorage([], storeId);
+          setCartItems([]);
+          initialized.current = true;
         }
+      } else {
+        // If server error, try localStorage as fallback
+        const stored = getCartFromStorage(storeId);
+        setCartItems(stored);
+        initialized.current = true;
       }
     } catch (error) {
       console.error('[useCart] Error loading cart from server:', error);
+      // Fallback to localStorage if server fails
+      const stored = getCartFromStorage(storeId);
+      setCartItems(stored);
+      initialized.current = true;
     } finally {
       setIsLoadingFromServer(false);
     }
   }, [storeId]);
 
-  // Save cart to server
+  // Save cart to server (like Shopify - cookies-based, per-store)
+  // Server stores cart in database using visitor_session_id cookie + store_id
   const saveCartToServer = useCallback(async (items: CartItem[]) => {
     if (!storeId) {
       console.warn('[useCart] Cannot save to server: storeId is missing');
@@ -138,10 +190,12 @@ export function useCart() {
     }
 
     try {
+      // Save to server using cookies (visitor_session_id cookie)
+      // Server stores in visitor_carts table with (visitor_session_id, store_id) as unique key
       const response = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        credentials: 'include', // Important: sends cookies
         body: JSON.stringify({
           items,
           storeId,
@@ -152,8 +206,16 @@ export function useCart() {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Failed to save cart: ${response.status}`);
       }
+      
+      // After successful save, sync response back to ensure consistency
+      const data = await response.json();
+      if (data.items && Array.isArray(data.items)) {
+        setCartToStorage(data.items, storeId);
+        setCartItems(data.items);
+      }
     } catch (error) {
       console.error('[useCart] Error saving cart to server:', error);
+      // Don't throw - allow localStorage to continue working offline
     }
   }, [storeId]);
 
@@ -201,7 +263,7 @@ export function useCart() {
 
     try {
       // === READ DIRECTLY FROM LOCALSTORAGE (SOURCE OF TRUTH) ===
-      const currentItems = getCartFromStorage();
+      const currentItems = getCartFromStorage(storeId);
       
       const existing = currentItems.find((i) => areItemsEqual(i, item));
       
@@ -219,7 +281,7 @@ export function useCart() {
       }
       
       // === UPDATE BOTH LOCALSTORAGE AND STATE ===
-      setCartToStorage(newItems);
+      setCartToStorage(newItems, storeId);
       setCartItems(newItems);
       
       // Save to server (background, non-blocking)
@@ -231,13 +293,13 @@ export function useCart() {
 
   const removeFromCart = useCallback((variantId: number) => {
     // === READ DIRECTLY FROM LOCALSTORAGE (SOURCE OF TRUTH) ===
-    const currentItems = getCartFromStorage();
+    const currentItems = getCartFromStorage(storeId);
     
     // Filter out the item
     const newItems = currentItems.filter((i) => i.variant_id !== variantId);
     
     // === UPDATE BOTH LOCALSTORAGE AND STATE ===
-    setCartToStorage(newItems);
+    setCartToStorage(newItems, storeId);
     setCartItems(newItems);
     
     // Save to server (background, non-blocking)
@@ -253,14 +315,14 @@ export function useCart() {
     }
     
     // === READ DIRECTLY FROM LOCALSTORAGE (SOURCE OF TRUTH) ===
-    const currentItems = getCartFromStorage();
+    const currentItems = getCartFromStorage(storeId);
     
     const newItems = currentItems.map((i) => 
       i.variant_id === variantId ? { ...i, quantity } : i
     );
     
     // === UPDATE BOTH LOCALSTORAGE AND STATE ===
-    setCartToStorage(newItems);
+    setCartToStorage(newItems, storeId);
     setCartItems(newItems);
     
     // Save to server (await to ensure sync)
@@ -273,7 +335,7 @@ export function useCart() {
 
   const clearCart = useCallback(() => {
     // === CLEAR BOTH LOCALSTORAGE AND STATE ===
-    clearCartFromStorage();
+    clearCartFromStorage(storeId);
     setCartItems([]);
     
     // Clear from server
