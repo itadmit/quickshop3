@@ -100,17 +100,10 @@ CREATE TABLE products (
   seo_description TEXT, -- תיאור SEO
   -- Media
   video_url TEXT, -- קישור לסרטון
-  -- Physical attributes
-  weight NUMERIC(10,2), -- משקל
+  -- Physical dimensions (משותף לכל הווריאציות)
   length NUMERIC(10,2), -- אורך
   width NUMERIC(10,2), -- רוחב
   height NUMERIC(10,2), -- גובה
-  -- Default pricing (for simple products without variants)
-  price NUMERIC(12,2) DEFAULT 0, -- מחיר
-  compare_at_price NUMERIC(12,2), -- מחיר השוואה
-  cost_per_item NUMERIC(12,2), -- עלות פריט
-  sku VARCHAR(100), -- מק"ט
-  taxable BOOLEAN DEFAULT true, -- חייב מע"מ
   -- Timestamps
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -123,7 +116,6 @@ CREATE INDEX idx_products_status ON products(status);
 CREATE INDEX idx_products_vendor ON products(vendor);
 CREATE INDEX idx_products_product_type ON products(product_type);
 CREATE INDEX idx_products_availability ON products(availability);
-CREATE INDEX idx_products_sku ON products(sku);
 
 -- Product Images (Shopify-like: Product Images)
 CREATE TABLE product_images (

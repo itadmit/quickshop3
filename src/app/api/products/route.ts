@@ -171,9 +171,8 @@ export async function POST(request: NextRequest) {
         status, published_scope, sell_when_sold_out, sold_by_weight,
         show_price_per_100ml, price_per_100ml, availability, available_date,
         track_inventory, low_stock_alert, seo_title, seo_description,
-        video_url, weight, length, width, height, price, compare_at_price,
-        cost_per_item, sku, taxable, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, now(), now())
+        video_url, length, width, height, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, now(), now())
       RETURNING *
     `;
 
@@ -200,15 +199,9 @@ export async function POST(request: NextRequest) {
       body.seo_title || null,
       body.seo_description || null,
       body.video_url || null,
-      body.weight || null,
       body.length || null,
       body.width || null,
       body.height || null,
-      body.price || 0,
-      body.compare_at_price || null,
-      body.cost_per_item || null,
-      body.sku || null,
-      body.taxable !== false,
     ]);
 
     if (!product) {

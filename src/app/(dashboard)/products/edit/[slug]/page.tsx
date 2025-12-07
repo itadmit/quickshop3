@@ -249,6 +249,7 @@ export default function EditProductPage() {
       const url = isNew ? '/api/products' : `/api/products/${product.id}`;
       const method = isNew ? 'POST' : 'PUT';
 
+      // Product-level data (not variant-level)
       const payload: any = {
         title: formData.name,
         handle: formData.slug || formData.name.toLowerCase().replace(/\s+/g, '-'),
@@ -257,20 +258,14 @@ export default function EditProductPage() {
         product_type: product.product_type || null,
         status: formData.status,
         published_at: formData.scheduledPublishDate ? new Date(formData.scheduledPublishDate).toISOString() : null,
-        price: hasVariants ? 0 : parseFloat(formData.price) || 0,
-        compare_at_price: hasVariants ? null : (formData.comparePrice ? parseFloat(formData.comparePrice) : null),
-        cost_per_item: hasVariants ? null : (formData.cost ? parseFloat(formData.cost) : null),
-        taxable: formData.taxEnabled,
+        // Product-level fields
         track_inventory: formData.inventoryEnabled,
-        inventory_quantity: hasVariants ? 0 : (parseInt(formData.inventoryQty) || 0),
         low_stock_alert: formData.lowStockAlert ? parseInt(formData.lowStockAlert) : null,
         availability: formData.availability,
         available_date: formData.availableDate ? new Date(formData.availableDate).toISOString() : null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
         length: formData.dimensions.length ? parseFloat(formData.dimensions.length) : null,
         width: formData.dimensions.width ? parseFloat(formData.dimensions.width) : null,
         height: formData.dimensions.height ? parseFloat(formData.dimensions.height) : null,
-        sku: formData.sku || null,
         video_url: formData.video || null,
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
@@ -320,7 +315,7 @@ export default function EditProductPage() {
         });
       }
 
-      // עבור מוצר רגיל (ללא hasVariants), עדכן את ה-variant הראשון עם המלאי
+      // עבור מוצר רגיל (ללא hasVariants), עדכן את ה-variant הראשון עם כל הנתונים
       if (!hasVariants) {
         // שלוף את ה-variant הראשון ועדכן אותו ישירות
         const variantsResponse = await fetch(`/api/products/${finalProductId}/variants`);
@@ -329,16 +324,17 @@ export default function EditProductPage() {
           if (variantsData.variants && variantsData.variants.length > 0) {
             const firstVariant = variantsData.variants[0];
             
-            // עדכון ה-variant עם הנתונים מהטופס
+            // עדכון ה-variant עם הנתונים מהטופס (price, sku, inventory, weight, taxable)
             await fetch(`/api/variants/${firstVariant.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                inventory_quantity: parseInt(formData.inventoryQty) || 0,
                 price: parseFloat(formData.price) || 0,
                 compare_at_price: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
                 sku: formData.sku || null,
                 taxable: formData.taxEnabled,
+                inventory_quantity: parseInt(formData.inventoryQty) || 0,
+                weight: formData.weight ? parseFloat(formData.weight) : null,
               }),
             });
           }

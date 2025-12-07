@@ -142,17 +142,11 @@ export async function PUT(
         seo_title = $16,
         seo_description = $17,
         video_url = $18,
-        weight = $19,
-        length = $20,
-        width = $21,
-        height = $22,
-        price = $23,
-        compare_at_price = $24,
-        cost_per_item = $25,
-        sku = $26,
-        taxable = $27,
+        length = $19,
+        width = $20,
+        height = $21,
         updated_at = now()
-      WHERE id = $28 AND store_id = $29
+      WHERE id = $22 AND store_id = $23
       RETURNING *
     `;
 
@@ -175,15 +169,9 @@ export async function PUT(
       body.seo_title !== undefined ? body.seo_title : (oldProduct as any).seo_title || null,
       body.seo_description !== undefined ? body.seo_description : (oldProduct as any).seo_description || null,
       body.video_url !== undefined ? body.video_url : (oldProduct as any).video_url || null,
-      body.weight !== undefined ? body.weight : (oldProduct as any).weight || null,
       body.length !== undefined ? body.length : (oldProduct as any).length || null,
       body.width !== undefined ? body.width : (oldProduct as any).width || null,
       body.height !== undefined ? body.height : (oldProduct as any).height || null,
-      body.price !== undefined ? body.price : (oldProduct as any).price || 0,
-      body.compare_at_price !== undefined ? body.compare_at_price : (oldProduct as any).compare_at_price || null,
-      body.cost_per_item !== undefined ? body.cost_per_item : (oldProduct as any).cost_per_item || null,
-      body.sku !== undefined ? body.sku : (oldProduct as any).sku || null,
-      body.taxable !== undefined ? body.taxable : (oldProduct as any).taxable !== false,
       productId,
       user.store_id,
     ]);
