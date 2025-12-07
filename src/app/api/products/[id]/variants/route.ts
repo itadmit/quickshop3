@@ -7,6 +7,49 @@ import { quickshopItem } from '@/lib/utils/apiFormatter';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
+// GET /api/products/[id]/variants - Get all variants for a product
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const productId = parseInt(id);
+
+    // Verify product exists and belongs to user's store
+    const product = await queryOne<{ store_id: number }>(
+      'SELECT store_id FROM products WHERE id = $1 AND store_id = $2',
+      [productId, user.store_id]
+    );
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get all variants for this product
+    const variants = await query<ProductVariant>(
+      'SELECT * FROM product_variants WHERE product_id = $1 ORDER BY position',
+      [productId]
+    );
+
+    return NextResponse.json({ variants }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error fetching variants:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch variants' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/products/[id]/variants - Create variant
 export async function POST(
   request: NextRequest,

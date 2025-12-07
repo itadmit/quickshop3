@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { HiCube, HiGift } from 'react-icons/hi';
 
 interface BasicInfoData {
@@ -39,13 +40,11 @@ export function BasicInfoCard({ data, onNameChange, onDescriptionChange, onIsGif
 
           <div>
             <Label htmlFor="description">תיאור</Label>
-            <textarea
-              id="description"
+            <RichTextEditor
               value={data.description}
-              onChange={(e) => onDescriptionChange(e.target.value)}
+              onChange={onDescriptionChange}
               placeholder="תיאור מפורט של המוצר..."
-              rows={8}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-green resize-none"
+              className="mt-2"
             />
           </div>
 

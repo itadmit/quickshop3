@@ -57,6 +57,10 @@ CREATE TABLE product_collections (
   published_at TIMESTAMP WITHOUT TIME ZONE,
   published_scope VARCHAR(50) DEFAULT 'web',
   sort_order VARCHAR(50) DEFAULT 'manual',
+  parent_id INT REFERENCES product_collections(id) ON DELETE CASCADE,
+  type VARCHAR(50) DEFAULT 'MANUAL' CHECK (type IN ('MANUAL', 'AUTOMATIC')),
+  rules JSONB DEFAULT NULL,
+  is_published BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   UNIQUE(store_id, handle)
@@ -64,6 +68,9 @@ CREATE TABLE product_collections (
 
 CREATE INDEX idx_collections_store_id ON product_collections(store_id);
 CREATE INDEX idx_collections_handle ON product_collections(handle);
+CREATE INDEX idx_collections_parent_id ON product_collections(parent_id);
+CREATE INDEX idx_collections_type ON product_collections(type);
+CREATE INDEX idx_collections_is_published ON product_collections(is_published);
 
 -- Products (Shopify-like: Products)
 CREATE TABLE products (
@@ -178,6 +185,7 @@ CREATE TABLE product_variants (
   option2 VARCHAR(255),
   option3 VARCHAR(255),
   taxable BOOLEAN DEFAULT true,
+  inventory_quantity INT DEFAULT 0, -- Inventory quantity for this variant
   grams INT, -- Weight in grams
   weight NUMERIC(6,2),
   weight_unit VARCHAR(10) DEFAULT 'kg',
@@ -193,21 +201,26 @@ CREATE INDEX idx_variants_product_id ON product_variants(product_id);
 CREATE INDEX idx_variants_sku ON product_variants(sku);
 CREATE INDEX idx_variants_barcode ON product_variants(barcode);
 CREATE INDEX idx_variants_position ON product_variants(product_id, position);
+CREATE INDEX idx_variants_inventory_qty ON product_variants(inventory_quantity);
 
 -- Function to ensure every product has at least one variant
+-- מוודא שמוצר לא נשאר בלי variants, אבל רק אם המוצר עדיין קיים
 CREATE OR REPLACE FUNCTION ensure_product_has_variant()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- After deleting a variant, check if product still has variants
-  IF NOT EXISTS (
-    SELECT 1 FROM product_variants WHERE product_id = OLD.product_id
-  ) THEN
-    -- Create default variant if none exist
-    INSERT INTO product_variants (
-      product_id, title, price, position, taxable, inventory_policy, created_at, updated_at
-    ) VALUES (
-      OLD.product_id, 'Default Title', 0, 1, true, 'deny', now(), now()
-    );
+  -- בדיקה אם המוצר עדיין קיים (כדי לא ליצור variant למוצר שנמחק)
+  IF EXISTS (SELECT 1 FROM products WHERE id = OLD.product_id) THEN
+    -- After deleting a variant, check if product still has variants
+    IF NOT EXISTS (
+      SELECT 1 FROM product_variants WHERE product_id = OLD.product_id
+    ) THEN
+      -- Create default variant if none exist
+      INSERT INTO product_variants (
+        product_id, title, price, inventory_quantity, position, taxable, inventory_policy, created_at, updated_at
+      ) VALUES (
+        OLD.product_id, 'Default Title', 0, 0, 1, true, 'deny', now(), now()
+      );
+    END IF;
   END IF;
   RETURN OLD;
 END;

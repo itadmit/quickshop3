@@ -225,11 +225,33 @@ export default function InventoryPage() {
     : items;
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6" dir="rtl">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">מלאי</h1>
+          <p className="text-sm md:text-base text-gray-600">נהל ועקוב אחר המלאי שלך</p>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowHistory(!showHistory);
+              if (!showHistory) loadHistory();
+            }}
+          >
+            <HiClock className="w-4 h-4 ml-2" />
+            היסטוריה
+          </Button>
+        </div>
+      </div>
+
       {/* Low Stock Alerts */}
       {lowStockItems.length > 0 && (
         <Card className="border-orange-200 bg-orange-50">
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <HiExclamationCircle className="w-6 h-6 text-orange-600" />
@@ -276,40 +298,30 @@ export default function InventoryPage() {
         </Card>
       )}
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">מלאי</h2>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setShowHistory(!showHistory);
-              if (!showHistory) loadHistory();
-            }}
-          >
-            <HiClock className="w-4 h-4 ml-1" />
-            היסטוריה
-          </Button>
+      {/* DataTable wrapped in Card */}
+      <Card className="overflow-hidden">
+        <div className="p-4 md:p-6">
+          <DataTable
+            title=""
+            description=""
+            searchPlaceholder="חיפוש במלאי..."
+            onSearch={setSearchTerm}
+            columns={columns}
+            data={filteredItems}
+            keyExtractor={(item) => item.id}
+            loading={loading}
+            noPadding={true}
+            emptyState={
+              <div className="text-center py-12">
+                <HiCube className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-4">
+                  {showLowStockOnly ? 'אין פריטים עם מלאי נמוך' : 'אין פריטי מלאי להצגה'}
+                </p>
+              </div>
+            }
+          />
         </div>
-      </div>
-
-      <DataTable
-        title=""
-        description=""
-        searchPlaceholder="חיפוש במלאי..."
-        onSearch={setSearchTerm}
-        columns={columns}
-        data={filteredItems}
-        keyExtractor={(item) => item.id}
-        loading={loading}
-        emptyState={
-          <div className="text-center py-12">
-            <HiCube className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">
-              {showLowStockOnly ? 'אין פריטים עם מלאי נמוך' : 'אין פריטי מלאי להצגה'}
-            </p>
-          </div>
-        }
-      />
+      </Card>
 
       {/* Adjustment Dialog */}
       <Dialog open={adjustmentDialogOpen} onOpenChange={setAdjustmentDialogOpen}>

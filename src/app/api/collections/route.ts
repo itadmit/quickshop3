@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
 
     // Build WHERE clause
     let sql = `SELECT id, title, handle, description, image_url, published_at, 
-                      published_scope, sort_order, created_at, updated_at
+                      published_scope, sort_order, parent_id, type, rules, is_published,
+                      created_at, updated_at
                FROM product_collections
                WHERE store_id = $1`;
     const params: any[] = [storeId];
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, handle, description, image_url, published_scope, sort_order } = body;
+    const { title, handle, description, image_url, published_scope, sort_order, parent_id, type, rules, is_published, productIds } = body;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -137,6 +138,17 @@ export async function POST(request: NextRequest) {
       counter++;
     }
 
+    // Validate parent_id if provided
+    if (parent_id) {
+      const parentExists = await queryOne<{ id: number }>(
+        'SELECT id FROM product_collections WHERE id = $1 AND store_id = $2',
+        [parent_id, storeId]
+      );
+      if (!parentExists) {
+        return NextResponse.json({ error: 'Parent collection not found' }, { status: 400 });
+      }
+    }
+
     // Create collection
     const collection = await queryOne<{
       id: number;
@@ -147,12 +159,17 @@ export async function POST(request: NextRequest) {
       published_at: Date | null;
       published_scope: string;
       sort_order: string;
+      parent_id: number | null;
+      type: string;
+      rules: any;
+      is_published: boolean;
       created_at: Date;
       updated_at: Date;
     }>(
       `INSERT INTO product_collections 
-       (store_id, title, handle, description, image_url, published_scope, sort_order, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+       (store_id, title, handle, description, image_url, published_scope, sort_order, 
+        parent_id, type, rules, is_published, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
        RETURNING *`,
       [
         storeId,
@@ -162,8 +179,23 @@ export async function POST(request: NextRequest) {
         image_url || null,
         published_scope || 'web',
         sort_order || 'manual',
+        parent_id || null,
+        type || 'MANUAL',
+        rules ? JSON.stringify(rules) : null,
+        is_published !== undefined ? is_published : true,
       ]
     );
+
+    // עדכון מוצרים - רק אם זה קטגוריה ידנית וסופקו productIds
+    const finalType = type || 'MANUAL';
+    if (finalType === 'MANUAL' && productIds && productIds.length > 0) {
+      for (let i = 0; i < productIds.length; i++) {
+        await query(
+          'INSERT INTO product_collection_map (product_id, collection_id, position) VALUES ($1, $2, $3)',
+          [parseInt(productIds[i]), collection.id, i]
+        );
+      }
+    }
 
     // Emit event
     await eventBus.emitEvent('collection.created', {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MenuIcons } from '@/components/icons/MenuIcons';
 import { IconType } from 'react-icons';
 import { HiCog, HiLogout } from 'react-icons/hi';
@@ -90,8 +90,27 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות']);
+  const [clickedLink, setClickedLink] = useState<string | null>(null);
 
   const isActive = (href: string) => pathname === href;
+  
+  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Don't prevent default - let Next.js handle navigation
+    // Just set visual feedback
+    setClickedLink(href);
+    
+    // Clear feedback after animation
+    setTimeout(() => {
+      if (pathname !== href) {
+        setClickedLink(null);
+      }
+    }, 300);
+  };
+  
+  // Clear clicked link when route changes
+  useEffect(() => {
+    setClickedLink(null);
+  }, [pathname]);
   
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev =>
@@ -153,11 +172,14 @@ export function Sidebar() {
                       <Link
                         key={child.href}
                         href={child.href}
+                        onClick={(e) => handleNavigation(e, child.href)}
                         className={`
-                          flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-all group
+                          flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-all duration-150 group
                           ${isActive(child.href)
                             ? 'bg-gradient-primary text-white font-semibold shadow-sm'
-                            : 'text-gray-700 hover:bg-gray-50'
+                            : clickedLink === child.href
+                            ? 'bg-emerald-50 border border-emerald-200'
+                            : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                           }
                         `}
                       >
@@ -171,11 +193,14 @@ export function Sidebar() {
             ) : (
               <Link
                 href={item.href}
+                onClick={(e) => handleNavigation(e, item.href)}
                 className={`
-                  flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all group
+                  flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all duration-150 group
                   ${isActive(item.href)
                     ? 'bg-gradient-primary text-white font-semibold shadow-sm'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    : clickedLink === item.href
+                    ? 'bg-emerald-50 border border-emerald-200'
+                    : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                   }
                 `}
               >

@@ -22,7 +22,7 @@ import { PricingCard } from '@/components/products/PricingCard';
 import { ProductDetailsCard } from '@/components/products/ProductDetailsCard';
 import { ShippingCard } from '@/components/products/ShippingCard';
 import { StatusCard } from '@/components/products/StatusCard';
-import { CategoriesCard } from '@/components/products/CategoriesCard';
+import { CategoryTreeSelector } from '@/components/products/CategoryTreeSelector';
 import { TagsCard } from '@/components/products/TagsCard';
 import { SEOCard } from '@/components/products/SEOCard';
 import { CustomFieldsCard } from '@/components/products/CustomFieldsCard';
@@ -165,6 +165,7 @@ export default function EditProductPage() {
       }
       const data = await response.json();
       setProduct(data.product);
+      // hasVariants = true רק אם יש options או יותר מ-variant אחד
       setHasVariants((data.product.options?.length || 0) > 0 || (data.product.variants?.length || 0) > 1);
       
       // Format availableDate for datetime-local input
@@ -174,15 +175,18 @@ export default function EditProductPage() {
         availableDateFormatted = date.toISOString().slice(0, 16);
       }
 
+      // טעינת נתוני המוצר לטופס
+      const firstVariant = data.product.variants?.[0];
       setFormData({
         name: data.product.title || '',
         description: data.product.body_html || '',
-        price: data.product.variants?.[0]?.price?.toString() || '',
-        comparePrice: data.product.variants?.[0]?.compare_at_price?.toString() || '',
+        price: firstVariant?.price?.toString() || '',
+        comparePrice: firstVariant?.compare_at_price?.toString() || '',
         cost: '',
-        taxEnabled: data.product.variants?.[0]?.taxable ?? true,
+        taxEnabled: firstVariant?.taxable ?? true,
         inventoryEnabled: true,
-        inventoryQty: data.product.variants?.[0]?.inventory_quantity?.toString() || '',
+        // המלאי נטען מה-variant
+        inventoryQty: firstVariant?.inventory_quantity?.toString() || '0',
         lowStockAlert: '',
         availability: 'IN_STOCK',
         availableDate: availableDateFormatted,
@@ -190,7 +194,7 @@ export default function EditProductPage() {
         priceByWeight: (data.product as any).sold_by_weight || false,
         showPricePer100ml: (data.product as any).show_price_per_100ml || false,
         pricePer100ml: (data.product as any).price_per_100ml?.toString() || '',
-        weight: data.product.variants?.[0]?.weight?.toString() || '',
+        weight: firstVariant?.weight?.toString() || '',
         dimensions: {
           length: '',
           width: '',
@@ -199,13 +203,13 @@ export default function EditProductPage() {
         status: data.product.status || 'draft',
         scheduledPublishDate: data.product.published_at ? new Date(data.product.published_at).toISOString().slice(0, 16) : '',
         notifyOnPublish: false,
-        sku: data.product.variants?.[0]?.sku || '',
+        sku: firstVariant?.sku || '',
         video: '',
         seoTitle: '',
         seoDescription: '',
         slug: data.product.handle || '',
         tags: Array.isArray(data.product.tags) ? data.product.tags.map((t: any) => (typeof t === 'string' ? t : t.name)) : [],
-        categories: Array.isArray(data.product.collections) ? data.product.collections.map((c: any) => c.id?.toString()) : [],
+        categories: Array.isArray(data.product.collections) ? data.product.collections.map((c: any) => c.id).filter((id: any): id is number => typeof id === 'number') : [],
         badges: [],
         exclusiveToTier: [],
       });
@@ -266,7 +270,7 @@ export default function EditProductPage() {
         price_per_100ml: formData.pricePer100ml ? parseFloat(formData.pricePer100ml) : null,
         images: product.images || [],
         tags: formData.tags,
-        collections: formData.categories.map(id => parseInt(id)),
+        collections: formData.categories,
         custom_fields: customFieldValues,
         addon_ids: productAddonIds,
         badges: formData.badges,
@@ -306,6 +310,31 @@ export default function EditProductPage() {
         });
       }
 
+      // עבור מוצר רגיל (ללא hasVariants), עדכן את ה-variant הראשון עם המלאי
+      if (!hasVariants) {
+        // שלוף את ה-variant הראשון ועדכן אותו ישירות
+        const variantsResponse = await fetch(`/api/products/${finalProductId}/variants`);
+        if (variantsResponse.ok) {
+          const variantsData = await variantsResponse.json();
+          if (variantsData.variants && variantsData.variants.length > 0) {
+            const firstVariant = variantsData.variants[0];
+            
+            // עדכון ה-variant עם הנתונים מהטופס
+            await fetch(`/api/variants/${firstVariant.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                inventory_quantity: parseInt(formData.inventoryQty) || 0,
+                price: parseFloat(formData.price) || 0,
+                compare_at_price: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
+                sku: formData.sku || null,
+                taxable: formData.taxEnabled,
+              }),
+            });
+          }
+        }
+      }
+
       toast({
         title: 'הצלחה',
         description: 'המוצר נשמר בהצלחה',
@@ -331,8 +360,98 @@ export default function EditProductPage() {
 
   if (loading || !product) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-500">טוען...</div>
+      <div className="space-y-6 p-4 md:p-6 animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-gray-200 rounded"></div>
+            <div className="h-4 w-64 bg-gray-200 rounded"></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-20 bg-gray-200 rounded"></div>
+            <div className="h-10 w-20 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Skeleton - 2/3 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Basic Info Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+            </Card>
+
+            {/* Images Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-24 bg-gray-200 rounded"></div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="aspect-square bg-gray-200 rounded"></div>
+                  <div className="aspect-square bg-gray-200 rounded"></div>
+                  <div className="aspect-square bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Pricing Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-24 bg-gray-200 rounded"></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Inventory Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </Card>
+
+            {/* Variants Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Sidebar Skeleton - 1/3 */}
+          <div className="space-y-6">
+            {/* Status Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-24 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </Card>
+
+            {/* Categories Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+            </Card>
+
+            {/* Details Card Skeleton */}
+            <Card>
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-28 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -409,22 +528,36 @@ export default function EditProductPage() {
           />
 
           {/* Inventory */}
-          <InventoryManager
-            data={{
-              inventoryEnabled: formData.inventoryEnabled,
-              inventoryQty: formData.inventoryQty,
-              lowStockAlert: formData.lowStockAlert,
-              availability: formData.availability,
-              availableDate: formData.availableDate,
-              sellWhenSoldOut: formData.sellWhenSoldOut,
-              priceByWeight: formData.priceByWeight,
-              showPricePer100ml: formData.showPricePer100ml,
-              pricePer100ml: formData.pricePer100ml,
-            }}
-            onChange={(data) => setFormData(prev => ({ ...prev, ...data as any }))}
-            variants={product.variants || []}
-            hidden={hasVariants}
-          />
+          {/* למוצר רגיל (variant אחד בלי options) מציגים את שדה המלאי ישירות */}
+          {!hasVariants && (
+            <InventoryManager
+              data={{
+                inventoryEnabled: formData.inventoryEnabled,
+                inventoryQty: formData.inventoryQty,
+                lowStockAlert: formData.lowStockAlert,
+                availability: formData.availability,
+                availableDate: formData.availableDate,
+                sellWhenSoldOut: formData.sellWhenSoldOut,
+                priceByWeight: formData.priceByWeight,
+                showPricePer100ml: formData.showPricePer100ml,
+                pricePer100ml: formData.pricePer100ml,
+              }}
+              onChange={(data) => {
+                setFormData(prev => ({ ...prev, ...data as any }));
+                // עדכון גם את ה-variant הראשון
+                if (data.inventoryQty !== undefined && product.variants && product.variants[0]) {
+                  const updatedVariants = [...product.variants];
+                  updatedVariants[0] = {
+                    ...updatedVariants[0],
+                    inventory_quantity: parseInt(data.inventoryQty) || 0,
+                  };
+                  setProduct({ ...product, variants: updatedVariants });
+                }
+              }}
+              variants={[]}
+              hidden={false}
+            />
+          )}
 
           {/* Variants */}
           <VariantsManager
@@ -509,10 +642,10 @@ export default function EditProductPage() {
           )}
 
           {/* Categories */}
-          <CategoriesCard
-            selectedCategories={formData.categories}
-            onChange={(categories) => setFormData(prev => ({ ...prev, categories }))}
-            shopId={product.store_id}
+          <CategoryTreeSelector
+            selectedCategoryIds={formData.categories}
+            onSelectionChange={(categoryIds) => setFormData(prev => ({ ...prev, categories: categoryIds }))}
+            storeId={product.store_id}
             productId={product.id || undefined}
           />
 

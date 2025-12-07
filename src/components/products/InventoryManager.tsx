@@ -59,40 +59,47 @@ export function InventoryManager({
             />
           </div>
 
-          {data.inventoryEnabled && variants.length === 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="inventoryQty">כמות במלאי</Label>
-                <Input
-                  id="inventoryQty"
-                  type="number"
-                  value={data.inventoryQty}
-                  onChange={(e) => onChange({ inventoryQty: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lowStockAlert">התראת מלאי נמוך</Label>
-                <Input
-                  id="lowStockAlert"
-                  type="number"
-                  value={data.lowStockAlert}
-                  onChange={(e) => onChange({ lowStockAlert: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-          )}
-
-          {data.inventoryEnabled && variants.length > 0 && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">סה"כ מלאי:</span>
-                <span className={`text-lg font-semibold ${totalInventory < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {totalInventory} יחידות
-                </span>
-              </div>
-            </div>
+          {data.inventoryEnabled && (
+            <>
+              {variants.length === 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="inventoryQty">כמות במלאי</Label>
+                    <Input
+                      id="inventoryQty"
+                      type="number"
+                      value={data.inventoryQty}
+                      onChange={(e) => onChange({ inventoryQty: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lowStockAlert">התראת מלאי נמוך</Label>
+                    <Input
+                      id="lowStockAlert"
+                      type="number"
+                      value={data.lowStockAlert}
+                      onChange={(e) => onChange({ lowStockAlert: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">סה"כ מלאי מכל הווריאנטים:</span>
+                    <span className={`text-lg font-semibold ${totalInventory < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                      {totalInventory} יחידות
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    ניהול המלאי לכל ווריאנט מתבצע בטבלת הווריאנטים למטה
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <div>

@@ -59,7 +59,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 export function DialogContent({ children, className = '', dir = 'rtl' }: DialogContentProps) {
   return (
     <div 
-      className={`relative z-50 bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col ${className}`}
+      className={`relative z-50 bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto flex flex-col ${className}`}
       dir={dir}
     >
       {children}

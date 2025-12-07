@@ -5,7 +5,9 @@ import { HiChevronDown } from 'react-icons/hi';
 
 interface SelectContextType {
   value?: string;
+  selectedLabel?: ReactNode; // הטקסט של הערך הנבחר
   onValueChange?: (value: string) => void;
+  onLabelChange?: (label: ReactNode) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
 }
@@ -20,7 +22,17 @@ interface SelectProps {
 
 export function Select({ value, onValueChange, children }: SelectProps) {
   const [open, setOpen] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState<ReactNode | undefined>(undefined);
   const ref = useRef<HTMLDivElement>(null);
+
+  const handleLabelChange = (label: ReactNode) => {
+    setSelectedLabel(label);
+  };
+
+  // כאשר הערך משתנה מבחוץ, נאפס את ה-label כדי שה-SelectItem יעדכן אותו
+  useEffect(() => {
+    setSelectedLabel(undefined);
+  }, [value]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,7 +51,7 @@ export function Select({ value, onValueChange, children }: SelectProps) {
   }, [open]);
 
   return (
-    <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
+    <SelectContext.Provider value={{ value, selectedLabel, onValueChange, onLabelChange: handleLabelChange, open, setOpen }}>
       <div className="relative" ref={ref}>
         {children}
       </div>
@@ -77,6 +89,11 @@ export function SelectValue({ placeholder, children }: { placeholder?: string; c
     return <span className="text-gray-700">{children}</span>;
   }
 
+  // אם יש טקסט שנשמר, נציג אותו
+  if (context.selectedLabel) {
+    return <span className="text-gray-700">{context.selectedLabel}</span>;
+  }
+
   return <span className="text-gray-700">{context.value || placeholder || 'בחר...'}</span>;
 }
 
@@ -99,10 +116,18 @@ export function SelectItem({ value, children, className = '' }: { value: string;
 
   const isSelected = context.value === value;
 
+  // אם זה הפריט הנבחר ואין עדיין label, נעדכן אותו
+  useEffect(() => {
+    if (isSelected) {
+      context.onLabelChange?.(children);
+    }
+  }, [isSelected, context.value, children, context]);
+
   return (
     <div
       onClick={() => {
         context.onValueChange?.(value);
+        context.onLabelChange?.(children);
         context.setOpen(false);
       }}
       className={`
@@ -115,4 +140,3 @@ export function SelectItem({ value, children, className = '' }: { value: string;
     </div>
   );
 }
-

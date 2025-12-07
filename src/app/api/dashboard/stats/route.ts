@@ -87,14 +87,14 @@ export async function GET(request: NextRequest) {
       `SELECT DISTINCT
         p.id,
         p.title,
-        vi.available
+        SUM(pv.inventory_quantity) as available
        FROM products p
        INNER JOIN product_variants pv ON pv.product_id = p.id
-       INNER JOIN variant_inventory vi ON vi.variant_id = pv.id
        WHERE p.store_id = $1 
          AND p.status = 'active'
-         AND vi.available < 10
-       ORDER BY vi.available ASC
+       GROUP BY p.id, p.title
+       HAVING SUM(pv.inventory_quantity) < 10
+       ORDER BY SUM(pv.inventory_quantity) ASC
        LIMIT 5`,
       [storeId]
     );

@@ -229,8 +229,8 @@ export async function POST(request: NextRequest) {
       await query(
         `INSERT INTO product_variants (
           product_id, title, price, compare_at_price, sku, taxable,
-          position, inventory_policy, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())`,
+          inventory_quantity, position, inventory_policy, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())`,
         [
           product.id,
           'Default Title',
@@ -238,37 +238,11 @@ export async function POST(request: NextRequest) {
           body.compare_at_price || null,
           body.sku || null,
           body.taxable !== false,
+          body.inventory_quantity || 0,
           1,
           'deny',
         ]
       );
-
-      // Handle inventory if enabled
-      if (body.track_inventory !== false && body.inventory_quantity !== undefined) {
-        const variant = await queryOne<{ id: number }>(
-          'SELECT id FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
-          [product.id]
-        );
-        if (variant) {
-          const existingInventory = await queryOne<{ id: number }>(
-            'SELECT id FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
-            [variant.id]
-          );
-          
-          if (existingInventory) {
-            await query(
-              `UPDATE variant_inventory SET available = $1, updated_at = now() WHERE variant_id = $2`,
-              [body.inventory_quantity || 0, variant.id]
-            );
-          } else {
-            await query(
-              `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
-               VALUES ($1, $2, $3, now(), now())`,
-              [variant.id, body.inventory_quantity || 0, 0]
-            );
-          }
-        }
-      }
     }
 
     // Handle collections if provided

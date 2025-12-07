@@ -64,19 +64,8 @@ export async function GET(
       ),
     ]);
 
-    // Get inventory for each variant
-    const variants = await Promise.all(
-      variantsRaw.map(async (variant) => {
-        const inventory = await queryOne<{ available: number; committed: number }>(
-          'SELECT available, committed FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
-          [variant.id]
-        );
-        return {
-          ...variant,
-          inventory_quantity: inventory?.available || 0,
-        };
-      })
-    );
+    // המלאי כבר נמצא ב-product_variants.inventory_quantity
+    const variants = variantsRaw;
 
     // Get collections
     const collections = await query(

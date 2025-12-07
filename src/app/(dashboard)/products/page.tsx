@@ -221,7 +221,7 @@ export default function ProductsPage() {
       return;
     }
     const ids = selectedArray.join(',');
-    router.push(`/products/bulk-edit?ids=${ids}`);
+    router.push(`/bulk-edit?ids=${ids}`);
   };
 
   const handleToggleVisibility = async (productId: number, currentStatus: string) => {
@@ -527,11 +527,17 @@ export default function ProductsPage() {
       key: 'stock',
       label: 'מלאי',
       render: (product) => {
-        const stock = product.variants && product.variants.length > 0
-          ? product.variants.reduce((sum: number, v: ProductVariant) => sum + (v.inventory_quantity || 0), 0)
-          : 0;
+        // חישוב מלאי כולל מכל הווריאנטים
+        let stock = 0;
+        if (product.variants && product.variants.length > 0) {
+          stock = product.variants.reduce((sum: number, v: ProductVariant) => {
+            const qty = typeof v.inventory_quantity === 'number' ? v.inventory_quantity : 0;
+            return sum + qty;
+          }, 0);
+        }
+        
         return (
-          <span className={stock < 10 ? 'text-red-600 font-semibold' : 'text-gray-900'}>
+          <span className={stock < 10 && stock > 0 ? 'text-orange-600 font-semibold' : stock === 0 ? 'text-red-600 font-semibold' : 'text-gray-900'}>
             {stock}
           </span>
         );
@@ -540,7 +546,7 @@ export default function ProductsPage() {
   ];
 
   return (
-    <div className="space-y-4 md:space-y-6 p-4 md:p-6" dir="rtl">
+    <div className="space-y-4 md:space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>

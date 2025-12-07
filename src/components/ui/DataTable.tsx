@@ -117,39 +117,43 @@ export function DataTable<T>({
   };
 
   return (
-    <div className={`${noPadding ? '' : 'space-y-4 md:space-y-6 p-4 md:p-6'}`}>
-      {/* Page Header with Actions */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{title}</h1>
-          {description && <p className="text-sm md:text-base text-gray-600">{description}</p>}
+    <div className={`${noPadding ? '' : 'space-y-4 md:space-y-6'}`}>
+      {/* Page Header with Actions - Only show if there's content */}
+      {(title || description || primaryAction || secondaryActions) && (
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          {(title || description) && (
+            <div>
+              {title && <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{title}</h1>}
+              {description && <p className="text-sm md:text-base text-gray-600">{description}</p>}
+            </div>
+          )}
+          
+          {/* Action Buttons - In Header */}
+          {(primaryAction || secondaryActions) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {secondaryActions?.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={action.onClick}
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors whitespace-nowrap"
+                >
+                  {action.label}
+                </button>
+              ))}
+              {primaryAction && (
+                <button
+                  onClick={primaryAction.onClick}
+                  className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-semibold text-white bg-gradient-primary rounded-lg shadow-sm hover:shadow-md transition-all"
+                  dir="rtl"
+                >
+                  {primaryAction.icon && <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center">{primaryAction.icon}</span>}
+                  <span>{primaryAction.label}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        
-        {/* Action Buttons - In Header */}
-        {(primaryAction || secondaryActions) && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {secondaryActions?.map((action, index) => (
-              <button
-                key={index}
-                onClick={action.onClick}
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors whitespace-nowrap"
-              >
-                {action.label}
-              </button>
-            ))}
-            {primaryAction && (
-              <button
-                onClick={primaryAction.onClick}
-                className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-semibold text-white bg-gradient-primary rounded-lg shadow-sm hover:shadow-md transition-all"
-                dir="rtl"
-              >
-                {primaryAction.icon && <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center">{primaryAction.icon}</span>}
-                <span>{primaryAction.label}</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Search & Filters Bar - Separate Card */}
       {(onSearch || (filters && filters.length > 0)) && (
@@ -270,7 +274,7 @@ export function DataTable<T>({
                   return (
                     <tr
                       key={key}
-                      className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                      className={`hover:bg-gray-50 active:bg-gray-100 transition-all cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
                       onClick={(e) => {
                         // Don't trigger if clicking on checkbox, button, or dropdown
                         if (

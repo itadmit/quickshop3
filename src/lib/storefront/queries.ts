@@ -103,7 +103,7 @@ export async function getProductsList(
     paramIndex++;
   }
 
-  const products = await query<ProductListItem>(
+  const products = await query<ProductListItem & { inventory_quantity?: number }>(
     `SELECT 
       p.id,
       p.title,
@@ -112,7 +112,7 @@ export async function getProductsList(
       pv.id as variant_id,
       pv.price,
       pv.compare_at_price,
-      COALESCE(vi.available, 0) as available
+      COALESCE(pv.inventory_quantity, 0) as inventory_quantity
     FROM products p
     LEFT JOIN LATERAL (
       SELECT src 
@@ -122,20 +122,23 @@ export async function getProductsList(
       LIMIT 1
     ) pi ON true
     LEFT JOIN LATERAL (
-      SELECT id, price, compare_at_price
+      SELECT id, price, compare_at_price, inventory_quantity
       FROM product_variants 
       WHERE product_id = p.id 
       ORDER BY position 
       LIMIT 1
     ) pv ON true
-    LEFT JOIN variant_inventory vi ON vi.variant_id = pv.id
     WHERE ${whereClause}
     ORDER BY p.created_at DESC
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
     [...params, limit, offset]
   );
 
-  return products;
+  // Map to use inventory_quantity as available
+  return products.map(p => ({
+    ...p,
+    available: p.inventory_quantity || 0,
+  }));
 }
 
 /**
@@ -174,7 +177,7 @@ export async function getProductByHandle(
       pv.id as variant_id,
       pv.price,
       pv.compare_at_price,
-      COALESCE(vi.available, 0) as available
+      COALESCE(pv.inventory_quantity, 0) as available
     FROM products p
     LEFT JOIN LATERAL (
       SELECT src 
@@ -184,13 +187,12 @@ export async function getProductByHandle(
       LIMIT 1
     ) pi ON true
     LEFT JOIN LATERAL (
-      SELECT id, price, compare_at_price
+      SELECT id, price, compare_at_price, inventory_quantity
       FROM product_variants 
       WHERE product_id = p.id 
       ORDER BY position 
       LIMIT 1
     ) pv ON true
-    LEFT JOIN variant_inventory vi ON vi.variant_id = pv.id
     WHERE p.store_id = $1 AND p.handle = $2 AND p.status = 'active'`,
     [storeId, decodedHandle]
   );
@@ -229,9 +231,8 @@ export async function getProductByHandle(
       pv.option1,
       pv.option2,
       pv.option3,
-      COALESCE(vi.available, 0) as available
+      COALESCE(pv.inventory_quantity, 0) as available
     FROM product_variants pv
-    LEFT JOIN variant_inventory vi ON vi.variant_id = pv.id
     WHERE pv.product_id = $1
     ORDER BY pv.position`,
     [product.id]

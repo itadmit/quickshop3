@@ -432,7 +432,7 @@ export default function OrdersPage() {
   ];
 
   return (
-    <div className="space-y-4 md:space-y-6 p-4 md:p-6" dir="rtl">
+    <div className="space-y-4 md:space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>

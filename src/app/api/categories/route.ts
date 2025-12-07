@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
-    let sql = `SELECT id, title as name, handle, description, image_url, published_at
+    let sql = `SELECT id, title as name, handle, description, image_url, published_at, 
+                      parent_id, type, rules, is_published
                FROM product_collections
                WHERE store_id = $1`;
     const params: any[] = [user.store_id];
@@ -81,8 +82,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query(
-      `INSERT INTO product_collections (store_id, title, handle, description, image_url, published_at, published_scope, sort_order)
-       VALUES ($1, $2, $3, $4, $5, NOW(), 'web', 'manual')
+      `INSERT INTO product_collections (store_id, title, handle, description, image_url, published_at, published_scope, sort_order, type, is_published)
+       VALUES ($1, $2, $3, $4, $5, NOW(), 'web', 'manual', 'MANUAL', true)
        RETURNING id, title as name, handle, description, image_url`,
       [user.store_id, name, finalHandle, description, imageUrl]
     );

@@ -8,15 +8,18 @@ interface DropdownMenuItem {
   icon?: ReactNode;
   onClick: () => void;
   variant?: 'default' | 'destructive';
+  checked?: boolean; // לתמיכה בצ'קבוקסים
+  showCheckbox?: boolean; // האם להציג צ'קבוקס
 }
 
 interface DropdownMenuProps {
   trigger: ReactNode;
   items: DropdownMenuItem[];
   align?: 'start' | 'end';
+  closeOnSelect?: boolean; // האם לסגור את התפריט לאחר בחירה (ברירת מחדל: true)
 }
 
-export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProps) {
+export function DropdownMenu({ trigger, items, align = 'end', closeOnSelect = true }: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [isPositioned, setIsPositioned] = useState(false);
@@ -111,8 +114,10 @@ export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProp
               key={index}
               onClick={(e) => {
                 e.stopPropagation();
-                setIsOpen(false);
-                setIsPositioned(false);
+                if (closeOnSelect) {
+                  setIsOpen(false);
+                  setIsPositioned(false);
+                }
                 item.onClick();
               }}
               className={`w-full text-right px-4 py-2 text-sm flex items-center gap-2 hover:bg-gray-100 transition-colors ${
@@ -122,6 +127,19 @@ export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProp
               }`}
               role="menuitem"
             >
+              {item.showCheckbox && (
+                <span className={`w-4 h-4 border rounded flex items-center justify-center flex-shrink-0 ${
+                  item.checked 
+                    ? 'bg-green-600 border-green-600' 
+                    : 'border-gray-300 bg-white'
+                }`}>
+                  {item.checked && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+              )}
               {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
               <span>{item.label}</span>
             </button>

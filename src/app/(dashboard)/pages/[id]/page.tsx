@@ -155,7 +155,7 @@ export default function PageDetailsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Handle (URL)
+                סלאג (URL)
               </label>
               <Input
                 value={formData.handle}

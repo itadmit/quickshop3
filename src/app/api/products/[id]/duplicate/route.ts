@@ -123,6 +123,7 @@ export async function POST(
       compare_at_price: string | null;
       sku: string | null;
       taxable: boolean;
+      inventory_quantity: number;
       option1: string | null;
       option2: string | null;
       option3: string | null;
@@ -133,9 +134,9 @@ export async function POST(
       [productId]
     );
     for (const variant of variants) {
-      const newVariant = await queryOne<{ id: number }>(
-        `INSERT INTO product_variants (product_id, price, compare_at_price, sku, taxable, option1, option2, option3, weight, position, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+      await queryOne<{ id: number }>(
+        `INSERT INTO product_variants (product_id, price, compare_at_price, sku, taxable, inventory_quantity, option1, option2, option3, weight, position, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
          RETURNING id`,
         [
           newProductId,
@@ -143,6 +144,7 @@ export async function POST(
           variant.compare_at_price,
           variant.sku ? `${variant.sku}-copy` : null,
           variant.taxable,
+          variant.inventory_quantity || 0,
           variant.option1,
           variant.option2,
           variant.option3,
@@ -150,21 +152,6 @@ export async function POST(
           variant.position,
         ]
       );
-
-      if (newVariant) {
-        // Duplicate inventory
-        const inventory = await queryOne<{ available: number; committed: number }>(
-          'SELECT available, committed FROM variant_inventory WHERE variant_id = $1',
-          [variant.id]
-        );
-        if (inventory) {
-          await query(
-            `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
-             VALUES ($1, $2, $3, now(), now())`,
-            [newVariant.id, inventory.available, inventory.committed]
-          );
-        }
-      }
     }
 
     // Duplicate collections

@@ -34,6 +34,10 @@ export async function GET(
       published_at: Date | null;
       published_scope: string;
       sort_order: string;
+      parent_id: number | null;
+      type: string;
+      rules: any;
+      is_published: boolean;
       created_at: Date;
       updated_at: Date;
     }>(
@@ -94,11 +98,11 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, handle, description, image_url, published_at, published_scope, sort_order } = body;
+    const { title, handle, description, image_url, published_at, published_scope, sort_order, parent_id, type, rules, is_published, productIds } = body;
 
     // Verify collection exists and belongs to store
-    const existing = await queryOne<{ id: number; store_id: number }>(
-      'SELECT id, store_id FROM product_collections WHERE id = $1',
+    const existing = await queryOne<{ id: number; store_id: number; type: string }>(
+      'SELECT id, store_id, type FROM product_collections WHERE id = $1',
       [collectionId]
     );
 
@@ -163,6 +167,39 @@ export async function PUT(
       updates.push(`sort_order = $${paramIndex++}`);
       values.push(sort_order);
     }
+    if (parent_id !== undefined) {
+      // בדיקה ש-parent_id שייך לאותו store
+      if (parent_id !== null) {
+        const parentExists = await queryOne<{ id: number }>(
+          'SELECT id FROM product_collections WHERE id = $1 AND store_id = $2',
+          [parent_id, storeId]
+        );
+        if (!parentExists) {
+          return NextResponse.json({ error: 'Parent collection not found' }, { status: 400 });
+        }
+        // בדיקה שלא יוצרים מעגל (קטגוריה לא יכולה להיות הורה של עצמה או של אביה)
+        if (parent_id === collectionId) {
+          return NextResponse.json({ error: 'Collection cannot be its own parent' }, { status: 400 });
+        }
+      }
+      updates.push(`parent_id = $${paramIndex++}`);
+      values.push(parent_id);
+    }
+    if (type !== undefined) {
+      if (!['MANUAL', 'AUTOMATIC'].includes(type)) {
+        return NextResponse.json({ error: 'Invalid type. Must be MANUAL or AUTOMATIC' }, { status: 400 });
+      }
+      updates.push(`type = $${paramIndex++}`);
+      values.push(type);
+    }
+    if (rules !== undefined) {
+      updates.push(`rules = $${paramIndex++}`);
+      values.push(rules ? JSON.stringify(rules) : null);
+    }
+    if (is_published !== undefined) {
+      updates.push(`is_published = $${paramIndex++}`);
+      values.push(is_published);
+    }
 
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
@@ -180,6 +217,10 @@ export async function PUT(
       published_at: Date | null;
       published_scope: string;
       sort_order: string;
+      parent_id: number | null;
+      type: string;
+      rules: any;
+      is_published: boolean;
       created_at: Date;
       updated_at: Date;
     }>(
@@ -189,6 +230,26 @@ export async function PUT(
        RETURNING *`,
       values
     );
+
+    // עדכון מוצרים - רק אם זה קטגוריה ידנית וסופקו productIds
+    const finalType = type ?? existing.type;
+    if (finalType === 'MANUAL' && productIds !== undefined) {
+      // מחיקת כל הקשרים הקיימים
+      await query(
+        'DELETE FROM product_collection_map WHERE collection_id = $1',
+        [collectionId]
+      );
+
+      // יצירת קשרים חדשים
+      if (productIds.length > 0) {
+        for (let i = 0; i < productIds.length; i++) {
+          await query(
+            'INSERT INTO product_collection_map (product_id, collection_id, position) VALUES ($1, $2, $3)',
+            [parseInt(productIds[i]), collectionId, i]
+          );
+        }
+      }
+    }
 
     // Emit event
     await eventBus.emitEvent('collection.updated', {

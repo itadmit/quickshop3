@@ -39,28 +39,25 @@ export async function GET(
       );
     }
 
-    // בדיקת מלאי מה-variant_inventory (הטבלה הנכונה)
-    const inventory = await queryOne<{ available: number; committed: number }>(
-      `SELECT available, committed 
-       FROM variant_inventory 
-       WHERE variant_id = $1 
-       LIMIT 1`,
+    // בדיקת מלאי מה-product_variants.inventory_quantity
+    const variant = await queryOne<{ inventory_quantity: number }>(
+      `SELECT inventory_quantity 
+       FROM product_variants 
+       WHERE id = $1`,
       [variantId]
     );
 
-    // אם אין רשומה ב-variant_inventory, מחזיר 0 (אין מלאי)
-    if (!inventory) {
-      return NextResponse.json({
-        variant_id: variantId,
-        available: 0,
-        committed: 0,
-      });
+    if (!variant) {
+      return NextResponse.json(
+        { error: 'Variant not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
       variant_id: variantId,
-      available: inventory.available || 0,
-      committed: inventory.committed || 0,
+      available: variant.inventory_quantity || 0,
+      committed: 0, // לא משתמשים ב-committed יותר
     });
   } catch (error: any) {
     console.error('Error fetching variant inventory:', error);

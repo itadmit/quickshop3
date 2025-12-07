@@ -335,10 +335,10 @@ export class SeedService {
         if (productData.variants && productData.variants.length > 0) {
           for (let i = 0; i < productData.variants.length; i++) {
             const variantData = productData.variants[i];
-            const variant = await queryOne<{ id: number }>(
+            await queryOne<{ id: number }>(
               `INSERT INTO product_variants (product_id, price, compare_at_price, sku, 
-               taxable, option1, option2, option3, weight, position, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+               taxable, inventory_quantity, option1, option2, option3, weight, position, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
                RETURNING id`,
               [
                 productId,
@@ -346,6 +346,7 @@ export class SeedService {
                 productData.compare_at_price || null,
                 variantData.sku || null,
                 productData.taxable ?? true,
+                variantData.inventory_quantity || productData.inventory_quantity || 0,
                 variantData.option1 || null,
                 ('option2' in variantData ? variantData.option2 : null) || null,
                 null, // option3
@@ -353,23 +354,13 @@ export class SeedService {
                 i + 1,
               ]
             );
-
-            if (variant) {
-              // יצירת variant_inventory
-              await query(
-                `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
-                 VALUES ($1, $2, 0, now(), now())`,
-                [variant.id, variantData.inventory_quantity || productData.inventory_quantity || 0]
-              );
-
-            }
           }
         } else {
           // אם אין variants, יוצר variant ברירת מחדל
-          const defaultVariant = await queryOne<{ id: number }>(
+          await queryOne<{ id: number }>(
             `INSERT INTO product_variants (product_id, price, compare_at_price, sku, 
-             taxable, weight, position, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, 1, now(), now())
+             taxable, inventory_quantity, weight, position, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 1, now(), now())
              RETURNING id`,
             [
               productId,
@@ -377,17 +368,10 @@ export class SeedService {
               productData.compare_at_price || null,
               productData.sku || null,
               productData.taxable ?? true,
+              productData.inventory_quantity || 0,
               productData.weight || null,
             ]
           );
-
-          if (defaultVariant) {
-            await query(
-              `INSERT INTO variant_inventory (variant_id, available, committed, created_at, updated_at)
-               VALUES ($1, $2, 0, now(), now())`,
-              [defaultVariant.id, productData.inventory_quantity || 0]
-            );
-          }
         }
       }
 
