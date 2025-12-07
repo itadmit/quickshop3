@@ -45,13 +45,15 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
   // SINGLE SOURCE OF TRUTH: מעביר את cartItems מ-useCart ל-useCartCalculator
   const {
     calculation,
+    discountCode,
     loading: calcLoading,
     getSubtotal,
     getDiscount,
     getTotal,
     getDiscounts,
-    recalculate,
+    applyDiscountCode,
     removeDiscountCode,
+    recalculate,
   } = useCartCalculator({
     storeId,
     cartItems, // ✅ מעביר את cartItems מ-useCart
@@ -344,26 +346,30 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold text-gray-900 truncate">{item.product_title}</h3>
-                              {/* הצגת אפשרויות שנבחרו (מידה, צבע וכו') */}
-                              {(() => {
-                                const properties = propertiesMap.get(item.variant_id) || item.properties;
-                                if (properties && properties.length > 0) {
-                                  return (
-                                    <div className="flex flex-wrap gap-2 mt-1">
-                                      {properties.map((prop, idx) => (
-                                        <span key={idx} className="text-xs text-gray-600">
-                                          <span className="font-medium">{prop.name}:</span> {prop.value}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  );
-                                } else if (item.variant_title && item.variant_title !== 'Default Title') {
-                                  return (
-                                    <p className="text-sm text-gray-500 mt-1">{item.variant_title}</p>
-                                  );
-                                }
-                                return null;
-                              })()}
+                              
+                              {/* מטא-דאטה מתחת לכותרת: אפשרויות, variant title, וכו' */}
+                              <div className="mt-1 space-y-1">
+                                {/* הצגת אפשרויות שנבחרו (מידה, צבע וכו') */}
+                                {(() => {
+                                  const properties = propertiesMap.get(item.variant_id) || item.properties;
+                                  if (properties && properties.length > 0) {
+                                    return (
+                                      <div className="flex flex-wrap gap-2">
+                                        {properties.map((prop, idx) => (
+                                          <span key={idx} className="text-xs text-gray-600">
+                                            <span className="font-medium">{prop.name}:</span> {prop.value}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    );
+                                  } else if (item.variant_title && item.variant_title !== 'Default Title') {
+                                    return (
+                                      <p className="text-xs text-gray-500">{item.variant_title}</p>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
                             </div>
                             {/* כפתור מחיקה */}
                             <button
@@ -375,14 +381,16 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                             </button>
                           </div>
 
-                          {/* כמות ומחיר - פשוט ללא חיווי הנחות */}
+                          {/* כמות ומחיר - המחיר מופיע רק כאן, ליד הכמות */}
                           <div className="flex items-center justify-between mt-3">
                             {/* שינוי כמות */}
                             <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
                               <button
                                 onClick={async () => {
-                                  await handleQuantityChange(item.variant_id, item.quantity - 1);
-                                  await recalculate(); // רענון חישוב אחרי שינוי כמות
+                                  const newQuantity = item.quantity - 1;
+                                  await handleQuantityChange(item.variant_id, newQuantity);
+                                  // ✅ החישוב יתעדכן אוטומטית דרך useEffect ב-useCartCalculator
+                                  // כי cartItems משתנה, אז לא צריך recalculate() ידני
                                 }}
                                 disabled={loadingInventory.has(item.variant_id)}
                                 className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
@@ -395,8 +403,10 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                               </span>
                               <button
                                 onClick={async () => {
-                                  await handleQuantityChange(item.variant_id, item.quantity + 1);
-                                  await recalculate(); // רענון חישוב אחרי שינוי כמות
+                                  const newQuantity = item.quantity + 1;
+                                  await handleQuantityChange(item.variant_id, newQuantity);
+                                  // ✅ החישוב יתעדכן אוטומטית דרך useEffect ב-useCartCalculator
+                                  // כי cartItems משתנה, אז לא צריך recalculate() ידני
                                 }}
                                 disabled={
                                   loadingInventory.has(item.variant_id) ||
@@ -410,11 +420,23 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                               </button>
                             </div>
 
-                            {/* מחיר - רק המחיר הסופי ללא חיווי הנחות */}
+                            {/* מחיר - מופיע רק כאן, ליד הכמות */}
+                            {/* מציג מחיר מקורי מחוק אם יש הנחה, ואת המחיר הסופי */}
                             <div className="flex flex-col items-end">
-                              <p className="text-sm font-semibold text-gray-900">
-                                ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                              </p>
+                              {calculatedItem.lineDiscount > 0 ? (
+                                <>
+                                  <p className="text-xs text-gray-400 line-through">
+                                    ₪{calculatedItem.lineTotal.toFixed(2)}
+                                  </p>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-sm font-semibold text-gray-900">
+                                  ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -432,6 +454,12 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                   storeId={storeId}
                   shippingRate={shippingRate}
                   isNavigatingToCheckout={isNavigatingToCheckout}
+                  cartItems={cartItems} // ✅ מעביר את cartItems המעודכנים
+                  calculation={calculation} // ✅ מעביר את ה-calculation מ-SideCart
+                  discountCode={discountCode} // ✅ מעביר את discountCode מ-SideCart
+                  applyDiscountCode={applyDiscountCode} // ✅ מעביר את applyDiscountCode מ-SideCart
+                  removeDiscountCode={removeDiscountCode} // ✅ מעביר את removeDiscountCode מ-SideCart
+                  recalculate={recalculate} // ✅ מעביר את recalculate מ-SideCart
                   onCheckout={async () => {
                     setIsNavigatingToCheckout(true);
                     // רענון אחרון של החישוב לפני מעבר לצ'ק אאוט

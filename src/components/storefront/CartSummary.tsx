@@ -1,8 +1,8 @@
 'use client';
 
 import { useCartCalculator } from '@/hooks/useCartCalculator';
-import { useCart } from '@/hooks/useCart';
-import { ShippingRate } from '@/lib/services/cartCalculator';
+import { useCart, type CartItem } from '@/hooks/useCart';
+import { ShippingRate, type CartCalculationResult } from '@/lib/services/cartCalculator';
 import { HiTag, HiX } from 'react-icons/hi';
 import { useState } from 'react';
 
@@ -11,6 +11,12 @@ interface CartSummaryProps {
   shippingRate?: ShippingRate;
   isNavigatingToCheckout?: boolean;
   onCheckout?: () => void;
+  cartItems?: CartItem[]; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
+  calculation?: CartCalculationResult | null; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
+  discountCode?: string; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
+  applyDiscountCode?: (code: string) => Promise<{ valid: boolean; error?: string }>; // ✅ Optional: אם מועבר מ-SideCart
+  removeDiscountCode?: () => Promise<void>; // ✅ Optional: אם מועבר מ-SideCart
+  recalculate?: () => Promise<void>; // ✅ Optional: אם מועבר מ-SideCart
 }
 
 /**
@@ -24,35 +30,52 @@ interface CartSummaryProps {
  * - סה"כ סופי
  * - קופון
  */
-export function CartSummary({ storeId, shippingRate, isNavigatingToCheckout = false, onCheckout }: CartSummaryProps) {
-  const { cartItems, isLoading: cartLoading } = useCart();
+export function CartSummary({ 
+  storeId, 
+  shippingRate, 
+  isNavigatingToCheckout = false, 
+  onCheckout,
+  cartItems: propsCartItems, // ✅ אם מועבר מ-SideCart, משתמש בו
+  calculation: propsCalculation, // ✅ אם מועבר מ-SideCart, משתמש בו
+  discountCode: propsDiscountCode, // ✅ אם מועבר מ-SideCart, משתמש בו
+  applyDiscountCode: propsApplyDiscountCode, // ✅ אם מועבר מ-SideCart, משתמש בו
+  removeDiscountCode: propsRemoveDiscountCode, // ✅ אם מועבר מ-SideCart, משתמש בו
+  recalculate: propsRecalculate, // ✅ אם מועבר מ-SideCart, משתמש בו
+}: CartSummaryProps) {
+  const cartFromHook = useCart();
+  const cartItems = propsCartItems ?? cartFromHook.cartItems; // ✅ משתמש ב-props אם קיים
   
-  // SINGLE SOURCE OF TRUTH: מעביר את cartItems ל-useCartCalculator
-  const {
-    calculation,
-    discountCode,
-    validatingCode,
-    loading: calcLoading,
-    applyDiscountCode,
-    removeDiscountCode,
-    recalculate,
-    getSubtotal,
-    getDiscount,
-    getShipping,
-    getTotal,
-    getDiscounts,
-    hasErrors,
-    hasWarnings,
-    getErrors,
-    getWarnings,
-  } = useCartCalculator({
+  // ✅ אם יש props מ-SideCart, משתמש בהם (סינכרון מלא)
+  // אחרת יוצר instance נפרד (רק אם CartSummary משמש לבד)
+  const isUsingProps = !!propsCalculation;
+  
+  const calculatorHook = useCartCalculator({
     storeId,
-    cartItems, // ✅ מעביר את cartItems
+    cartItems,
     shippingRate,
-    autoCalculate: true,
+    autoCalculate: !isUsingProps, // ✅ אם יש props, לא מחשב אוטומטית
   });
+  
+  // ✅ משתמש ב-props אם קיים, אחרת מה-hook
+  const calculation = propsCalculation ?? calculatorHook.calculation;
+  const discountCode = propsDiscountCode ?? calculatorHook.discountCode;
+  const validatingCode = calculatorHook.validatingCode;
+  const calcLoading = isUsingProps ? false : calculatorHook.loading; // ✅ אם יש props, לא טוען
+  const applyDiscountCode = propsApplyDiscountCode ?? calculatorHook.applyDiscountCode;
+  const removeDiscountCode = propsRemoveDiscountCode ?? calculatorHook.removeDiscountCode;
+  const recalculate = propsRecalculate ?? calculatorHook.recalculate;
+  
+  const getSubtotal = () => calculation?.subtotal || 0;
+  const getDiscount = () => calculation?.itemsDiscount || 0;
+  const getShipping = () => calculation?.shippingAfterDiscount || 0;
+  const getTotal = () => calculation?.total || 0;
+  const getDiscounts = () => calculation?.discounts || [];
+  const hasErrors = () => (calculation?.errors.length || 0) > 0;
+  const hasWarnings = () => (calculation?.warnings.length || 0) > 0;
+  const getErrors = () => calculation?.errors || [];
+  const getWarnings = () => calculation?.warnings || [];
 
-  const isLoading = cartLoading || calcLoading;
+  const isLoading = cartFromHook.isLoading || calcLoading;
 
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');

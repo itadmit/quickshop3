@@ -321,17 +321,19 @@ export function useCart() {
       i.variant_id === variantId ? { ...i, quantity } : i
     );
     
-    // === UPDATE BOTH LOCALSTORAGE AND STATE ===
+    // === UPDATE BOTH LOCALSTORAGE AND STATE IMMEDIATELY ===
+    // ✅ עדכון מידי של state כדי שה-UI יתעדכן מיד
     setCartToStorage(newItems, storeId);
     setCartItems(newItems);
     
-    // Save to server (await to ensure sync)
+    // Save to server (background, non-blocking)
+    // ✅ לא מחכים לשרת - העדכון המקומי הוא מיידי
     if (storeId) {
-      await saveCartToServer(newItems);
-      // רענון נוסף אחרי שמירה לשרת כדי לוודא שהכל מסונכרן
-      await loadCartFromServer();
+      saveCartToServer(newItems).catch(console.error);
+      // ✅ לא קוראים ל-loadCartFromServer() כי זה יוצר delay מיותר
+      // השרת כבר מקבל את העדכון דרך saveCartToServer
     }
-  }, [storeId, removeFromCart, saveCartToServer, loadCartFromServer]);
+  }, [storeId, removeFromCart, saveCartToServer]);
 
   const clearCart = useCallback(() => {
     // === CLEAR BOTH LOCALSTORAGE AND STATE ===
