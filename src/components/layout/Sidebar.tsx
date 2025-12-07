@@ -27,7 +27,7 @@ const menuItems: MenuItem[] = [
       { label: 'מוצרים', href: '/products', icon: MenuIcons.products },
       { label: 'קטגוריות', href: '/categories', icon: MenuIcons.categories },
       { label: 'הזמנות', href: '/orders', icon: MenuIcons.orders },
-      { label: 'אנשי קשר', href: '/customers', icon: MenuIcons.customers },
+      { label: 'אנשי קשר', href: '/contacts', icon: MenuIcons.customers },
       { label: 'מלאי', href: '/inventory', icon: MenuIcons.products },
       { label: 'עריכה קבוצתית', href: '/bulk-edit', icon: MenuIcons.bulkEdit },
     ],

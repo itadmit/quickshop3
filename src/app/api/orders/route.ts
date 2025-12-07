@@ -18,10 +18,13 @@ export async function GET(request: NextRequest) {
     const storeId = user.store_id;
     const financialStatus = searchParams.get('financial_status');
     const fulfillmentStatus = searchParams.get('fulfillment_status');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const cursor = searchParams.get('cursor'); // ID of last order seen
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
+    const cursor = searchParams.get('cursor'); // ID of last order seen (for backward compatibility)
     const search = searchParams.get('search'); // Search by order number, email, name
 
+    // Build WHERE clause
     let sql = `
       SELECT * FROM orders 
       WHERE store_id = $1
@@ -51,14 +54,52 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
+    // Support both cursor and page-based pagination
     if (cursor) {
       sql += ` AND id < $${paramIndex}`;
       params.push(cursor);
       paramIndex++;
     }
 
-    sql += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
-    params.push(limit);
+    // Get total count for pagination
+    let countSql = `SELECT COUNT(*) as total FROM orders WHERE store_id = $1`;
+    const countParams: any[] = [storeId];
+    let countParamIndex = 2;
+
+    if (financialStatus) {
+      countSql += ` AND financial_status = $${countParamIndex}`;
+      countParams.push(financialStatus);
+      countParamIndex++;
+    }
+
+    if (fulfillmentStatus) {
+      countSql += ` AND fulfillment_status = $${countParamIndex}`;
+      countParams.push(fulfillmentStatus);
+      countParamIndex++;
+    }
+
+    if (search) {
+      countSql += ` AND (
+        order_name ILIKE $${countParamIndex} OR 
+        email ILIKE $${countParamIndex} OR 
+        name ILIKE $${countParamIndex}
+      )`;
+      countParams.push(`%${search}%`);
+      countParamIndex++;
+    }
+
+    const totalResult = await queryOne<{ total: string }>(countSql, countParams);
+    const total = parseInt(totalResult?.total || '0');
+    const totalPages = Math.ceil(total / limit);
+
+    // Apply pagination
+    if (cursor) {
+      sql += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
+      params.push(limit);
+    } else {
+      sql += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limit, offset);
+    }
 
     const orders = await query<Order>(sql, params);
 
@@ -99,17 +140,31 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Determine if there are more orders
-    const hasNextPage = orders.length === limit;
-    const nextCursor = hasNextPage && orders.length > 0 ? orders[orders.length - 1].id.toString() : null;
+    // Return pagination info
+    if (cursor) {
+      // Cursor-based pagination (backward compatibility)
+      const hasNextPage = orders.length === limit;
+      const nextCursor = hasNextPage && orders.length > 0 ? orders[orders.length - 1].id.toString() : null;
 
-    return NextResponse.json({
-      orders: ordersWithDetails,
-      page_info: {
-        has_next_page: hasNextPage,
-        cursor: nextCursor,
-      },
-    });
+      return NextResponse.json({
+        orders: ordersWithDetails,
+        page_info: {
+          has_next_page: hasNextPage,
+          cursor: nextCursor,
+        },
+      });
+    } else {
+      // Page-based pagination
+      return NextResponse.json({
+        orders: ordersWithDetails,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      });
+    }
   } catch (error: any) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(

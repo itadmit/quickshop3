@@ -18,29 +18,92 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const storeId = user.store_id;
     const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const search = searchParams.get('search');
+    const categoryId = searchParams.get('categoryId');
+    const sortBy = searchParams.get('sortBy') || 'created_at';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
 
+    // Build WHERE clause
     let sql = `
-      SELECT * FROM products 
-      WHERE store_id = $1
+      SELECT p.* FROM products p
+      WHERE p.store_id = $1
     `;
     const params: any[] = [storeId];
+    let paramIndex = 2;
 
-    if (status) {
-      sql += ` AND status = $2`;
+    if (status && status !== 'all') {
+      sql += ` AND p.status = $${paramIndex}`;
       params.push(status);
+      paramIndex++;
     }
 
-    sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    if (search) {
+      sql += ` AND (p.title ILIKE $${paramIndex} OR p.handle ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (categoryId && categoryId !== 'all') {
+      sql += ` AND EXISTS (
+        SELECT 1 FROM product_collection_map pcm 
+        WHERE pcm.product_id = p.id AND pcm.collection_id = $${paramIndex}
+      )`;
+      params.push(parseInt(categoryId));
+      paramIndex++;
+    }
+
+    // Build ORDER BY clause
+    let orderBy = 'p.created_at';
+    if (sortBy === 'title') {
+      orderBy = 'p.title';
+    } else if (sortBy === 'price') {
+      orderBy = `(SELECT MIN(CAST(price AS DECIMAL)) FROM product_variants WHERE product_id = p.id)`;
+    } else if (sortBy === 'created_at') {
+      orderBy = 'p.created_at';
+    }
+
+    sql += ` ORDER BY ${orderBy} ${sortOrder.toUpperCase()} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const products = await query<Product>(sql, params);
 
-    // Get images and variants for each product
+    // Get total count for pagination
+    let countSql = `SELECT COUNT(*) as total FROM products p WHERE p.store_id = $1`;
+    const countParams: any[] = [storeId];
+    let countParamIndex = 2;
+
+    if (status && status !== 'all') {
+      countSql += ` AND p.status = $${countParamIndex}`;
+      countParams.push(status);
+      countParamIndex++;
+    }
+
+    if (search) {
+      countSql += ` AND (p.title ILIKE $${countParamIndex} OR p.handle ILIKE $${countParamIndex})`;
+      countParams.push(`%${search}%`);
+      countParamIndex++;
+    }
+
+    if (categoryId && categoryId !== 'all') {
+      countSql += ` AND EXISTS (
+        SELECT 1 FROM product_collection_map pcm 
+        WHERE pcm.product_id = p.id AND pcm.collection_id = $${countParamIndex}
+      )`;
+      countParams.push(parseInt(categoryId));
+      countParamIndex++;
+    }
+
+    const totalResult = await queryOne<{ total: string }>(countSql, countParams);
+    const total = parseInt(totalResult?.total || '0');
+    const totalPages = Math.ceil(total / limit);
+
+    // Get images, variants, options, and collections for each product
     const productsWithDetails: ProductWithDetails[] = await Promise.all(
       products.map(async (product) => {
-        const [images, variants, options] = await Promise.all([
+        const [images, variants, options, collections] = await Promise.all([
           query<ProductImage>(
             'SELECT * FROM product_images WHERE product_id = $1 ORDER BY position',
             [product.id]
@@ -53,6 +116,14 @@ export async function GET(request: NextRequest) {
             'SELECT * FROM product_options WHERE product_id = $1 ORDER BY position',
             [product.id]
           ),
+          query<{ id: number; title: string; handle: string }>(
+            `SELECT c.id, c.title, c.handle 
+             FROM product_collections c
+             INNER JOIN product_collection_map pcm ON pcm.collection_id = c.id
+             WHERE pcm.product_id = $1
+             ORDER BY pcm.position`,
+            [product.id]
+          ),
         ]);
 
         return {
@@ -60,11 +131,20 @@ export async function GET(request: NextRequest) {
           images,
           variants,
           options,
+          collections: collections as any,
         };
       })
     );
 
-    return NextResponse.json({ products: productsWithDetails });
+    return NextResponse.json({ 
+      products: productsWithDetails,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching products:', error);
     return NextResponse.json(

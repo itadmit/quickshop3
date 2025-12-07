@@ -4,6 +4,7 @@ import { queryOne } from '@/lib/db';
 import { eventBus } from '@/lib/events/eventBus';
 import { sendWelcomeEmail } from '@/lib/customer-email';
 import { sendOrderReceiptEmail } from '@/lib/order-email';
+import { syncCustomerToContact } from '@/lib/contacts/sync-customer-to-contact';
 import crypto from 'crypto';
 
 interface CreateOrderInput {
@@ -42,17 +43,17 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // Create customer or get existing
-  let customer = await queryOne<{ id: number }>(
-    'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+  let customer = await queryOne<{ id: number; first_name: string | null; last_name: string | null; phone: string | null; accepts_marketing: boolean; tags: string | null; note: string | null }>(
+    'SELECT id, first_name, last_name, phone, accepts_marketing, tags, note FROM customers WHERE store_id = $1 AND email = $2',
     [storeId, input.customer.email]
   );
 
   let isNewCustomer = false;
   if (!customer) {
-    const newCustomer = await queryOne<{ id: number }>(
+    const newCustomer = await queryOne<{ id: number; first_name: string | null; last_name: string | null; phone: string | null; accepts_marketing: boolean; tags: string | null; note: string | null }>(
       `INSERT INTO customers (store_id, first_name, last_name, email, phone, accepts_marketing, state)
        VALUES ($1, $2, $3, $4, $5, false, 'enabled')
-       RETURNING id`,
+       RETURNING id, first_name, last_name, phone, accepts_marketing, tags, note`,
       [
         storeId,
         input.customer.firstName,
@@ -63,6 +64,21 @@ export async function createOrder(input: CreateOrderInput) {
     );
     customer = newCustomer;
     isNewCustomer = true;
+    
+    // Sync customer to contact (async, don't block order creation)
+    if (customer) {
+      syncCustomerToContact(storeId, customer.id, {
+        email: input.customer.email,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        phone: customer.phone,
+        accepts_marketing: customer.accepts_marketing,
+        tags: customer.tags,
+        note: customer.note,
+      }).catch((error) => {
+        console.warn('Failed to sync customer to contact:', error);
+      });
+    }
     
     // Send welcome email to new customer (async, don't block order creation)
     sendWelcomeEmail(storeId, {

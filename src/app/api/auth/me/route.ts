@@ -35,12 +35,13 @@ export async function GET(req: NextRequest) {
     const store = await queryOne<{
       id: number;
       name: string;
+      slug: string;
       myshopify_domain: string;
       currency: string;
       locale: string;
       plan: string;
     }>(
-      'SELECT id, name, myshopify_domain, currency, locale, plan FROM stores WHERE id = $1',
+      'SELECT id, name, slug, myshopify_domain, currency, locale, plan FROM stores WHERE id = $1',
       [user.store_id]
     );
 
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
       store: store ? {
         id: store.id,
         name: store.name,
+        slug: store.slug,
         myshopify_domain: store.myshopify_domain,
         currency: store.currency,
         locale: store.locale,

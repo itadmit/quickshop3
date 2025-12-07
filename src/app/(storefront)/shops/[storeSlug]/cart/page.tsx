@@ -60,13 +60,13 @@ export default function CartPage() {
               t('cart.empty')
             )}
           </h1>
-          <p className="text-gray-600 mb-8">
+          <div className="text-gray-600 mb-8">
             {translationsLoading ? (
               <TextSkeleton width="w-48" height="h-4" className="mx-auto" />
             ) : (
-              t('cart.continue_shopping')
+              <p>{t('cart.continue_shopping')}</p>
             )}
-          </p>
+          </div>
           <Link
             href={`/shops/${storeSlug}/products`}
             className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
@@ -140,17 +140,19 @@ export default function CartPage() {
                       {/* Product Info */}
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900 mb-1">{item.product_title}</h3>
-                        {item.variant_title !== 'Default Title' && (
-                          <p className="text-sm text-gray-500 mb-2">{item.variant_title}</p>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {hasDiscount ? (
-                            <>
-                              <p className="text-sm text-gray-400 line-through">₪{calculatedItem.lineTotal.toFixed(2)}</p>
-                              <p className="text-lg font-bold text-gray-900">₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}</p>
-                            </>
-                          ) : (
-                            <p className="text-lg font-bold text-gray-900">₪{calculatedItem.lineTotal.toFixed(2)}</p>
+                        
+                        {/* מטא-דאטה מתחת לכותרת: אפשרויות, variant title, וכו' */}
+                        <div className="mt-1 space-y-1">
+                          {item.properties && item.properties.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {item.properties.map((prop, idx) => (
+                                <span key={idx} className="text-xs text-gray-600">
+                                  <span className="font-medium">{prop.name}:</span> {prop.value}
+                                </span>
+                              ))}
+                            </div>
+                          ) : item.variant_title !== 'Default Title' && (
+                            <p className="text-xs text-gray-500">{item.variant_title}</p>
                           )}
                         </div>
                       </div>
@@ -161,6 +163,7 @@ export default function CartPage() {
                           onClick={() => handleQuantityChange(item.variant_id, item.quantity - 1)}
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                           aria-label="הפחת כמות"
+                          disabled={item.quantity <= 1}
                         >
                           <HiMinus className="w-4 h-4" />
                         </button>
@@ -174,17 +177,15 @@ export default function CartPage() {
                         </button>
                       </div>
 
-                      {/* Item Total - SINGLE SOURCE OF TRUTH */}
-                      <div className="text-left min-w-[100px]">
+                      {/* Item Total - המחיר מופיע רק כאן, ליד הכמות */}
+                      <div className="text-left min-w-[100px] flex flex-col items-end">
                         {hasDiscount ? (
-                          <div>
+                          <>
                             <p className="text-sm text-gray-400 line-through">₪{calculatedItem.lineTotal.toFixed(2)}</p>
                             <p className="text-lg font-bold text-gray-900">₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}</p>
-                          </div>
+                          </>
                         ) : (
-                          <p className="text-lg font-bold text-gray-900">
-                            ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                          </p>
+                          <p className="text-lg font-bold text-gray-900">₪{calculatedItem.lineTotal.toFixed(2)}</p>
                         )}
                       </div>
 

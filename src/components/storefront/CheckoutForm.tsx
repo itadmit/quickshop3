@@ -240,9 +240,18 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
   // Redirect אם אין פריטים - רק ב-client אחרי mount
   // לא מפנים אם ההזמנה הושלמה (כדי לאפשר redirect לעמוד התודה)
+  // ✅ תיקון: מוסיף delay קצר כדי לאפשר טעינת העגלה מהשרת לפני redirect
   useEffect(() => {
     if (isMounted && cartItems.length === 0 && !orderCompleted) {
-      router.push(`/shops/${storeSlug}/cart`);
+      // ✅ delay קצר כדי לאפשר טעינת העגלה מהשרת (cookies-based)
+      const timeoutId = setTimeout(() => {
+        // בדיקה נוספת אחרי delay - אם עדיין אין פריטים, מפנה לעמוד עגלה
+        if (cartItems.length === 0 && !orderCompleted) {
+          router.push(`/shops/${storeSlug}/cart`);
+        }
+      }, 500); // 500ms delay כדי לאפשר טעינת העגלה מהשרת
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [isMounted, cartItems.length, router, storeSlug, orderCompleted]);
 

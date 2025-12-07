@@ -161,6 +161,26 @@ async function resetDatabase() {
       console.log(`   ... and ${tablesResult.rows.length - 20} more`);
     }
 
+    // Initialize contact categories for all stores
+    console.log('\n📦 Initializing contact categories...');
+    try {
+      const storesResult = await pool.query('SELECT id FROM stores');
+      for (const store of storesResult.rows) {
+        await pool.query(`
+          INSERT INTO contact_categories (store_id, type, name, color, created_at, updated_at)
+          VALUES 
+            ($1, 'CUSTOMER', 'לקוחות', '#10b981', now(), now()),
+            ($1, 'CLUB_MEMBER', 'חברי מועדון', '#3b82f6', now(), now()),
+            ($1, 'NEWSLETTER', 'דיוור', '#f97316', now(), now()),
+            ($1, 'CONTACT_FORM', 'יצירת קשר', '#a855f7', now(), now())
+          ON CONFLICT (store_id, type) DO NOTHING
+        `, [store.id]);
+      }
+      console.log('   ✓ Contact categories initialized');
+    } catch (error: any) {
+      console.log(`   ⚠️  Could not initialize contact categories: ${error.message}`);
+    }
+
     console.log('\n🎉 Database reset and schema loaded successfully!');
 
   } catch (error: any) {

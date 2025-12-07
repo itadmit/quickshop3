@@ -15,9 +15,13 @@ export async function GET(request: NextRequest) {
 
     const storeId = user.store_id;
     const searchParams = request.nextUrl.searchParams;
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
     const search = searchParams.get('search');
     const published = searchParams.get('published'); // 'true' or 'false'
 
+    // Build WHERE clause
     let sql = `SELECT id, title, handle, description, image_url, published_at, 
                       published_scope, sort_order, created_at, updated_at
                FROM product_collections
@@ -37,13 +41,41 @@ export async function GET(request: NextRequest) {
       sql += ` AND published_at IS NULL`;
     }
 
-    sql += ` ORDER BY title ASC`;
+    // Get total count for pagination
+    let countSql = `SELECT COUNT(*) as total FROM product_collections WHERE store_id = $1`;
+    const countParams: any[] = [storeId];
+    let countParamIndex = 2;
+
+    if (search) {
+      countSql += ` AND (title ILIKE $${countParamIndex} OR handle ILIKE $${countParamIndex})`;
+      countParams.push(`%${search}%`);
+      countParamIndex++;
+    }
+
+    if (published === 'true') {
+      countSql += ` AND published_at IS NOT NULL`;
+    } else if (published === 'false') {
+      countSql += ` AND published_at IS NULL`;
+    }
+
+    const totalResult = await queryOne<{ total: string }>(countSql, countParams);
+    const total = parseInt(totalResult?.total || '0');
+    const totalPages = Math.ceil(total / limit);
+
+    // Apply pagination
+    sql += ` ORDER BY title ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
 
     const collections = await query(sql, params);
 
     return NextResponse.json({ 
       collections,
-      total: collections.length 
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     });
   } catch (error: any) {
     console.error('Error fetching collections:', error);

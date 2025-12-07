@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { Customer, CustomerWithDetails, CustomerAddress, CustomerNote, UpdateCustomerRequest } from '@/types/customer';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { syncCustomerToContact } from '@/lib/contacts/sync-customer-to-contact';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -173,6 +174,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update customer' }, { status: 500 });
     }
 
+    // Sync customer to contact (async, don't block API response)
+    if (updatedCustomer.email) {
+      syncCustomerToContact(user.store_id, updatedCustomer.id, {
+        email: updatedCustomer.email,
+        first_name: updatedCustomer.first_name,
+        last_name: updatedCustomer.last_name,
+        phone: updatedCustomer.phone,
+        accepts_marketing: updatedCustomer.accepts_marketing,
+        tags: updatedCustomer.tags,
+        note: updatedCustomer.note,
+      }).catch((error) => {
+        console.warn('Failed to sync customer to contact:', error);
+      });
+    }
+
     // Emit customer.updated event
     await eventBus.emitEvent('customer.updated', {
       customer: {
@@ -193,6 +209,60 @@ export async function PUT(
     console.error('Error updating customer:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to update customer' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/customers/:id - Delete customer
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const customerId = parseInt(id);
+    if (isNaN(customerId)) {
+      return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 });
+    }
+
+    // Get customer before deletion for event
+    const customer = await queryOne<Customer>(
+      'SELECT * FROM customers WHERE id = $1 AND store_id = $2',
+      [customerId, user.store_id]
+    );
+
+    if (!customer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    // Delete customer (CASCADE will delete related records)
+    await query('DELETE FROM customers WHERE id = $1', [customerId]);
+
+    // Emit customer.deleted event
+    await eventBus.emitEvent('customer.deleted', {
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+      },
+    }, {
+      store_id: user.store_id,
+      source: 'api',
+      user_id: user.id,
+    });
+
+    return NextResponse.json({ success: true, message: 'Customer deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting customer:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete customer' },
       { status: 500 }
     );
   }

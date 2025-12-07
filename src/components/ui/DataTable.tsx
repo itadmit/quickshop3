@@ -66,6 +66,9 @@ export interface DataTableProps<T> {
   
   // Loading
   loading?: boolean;
+  
+  // Padding
+  noPadding?: boolean; // If true, don't add padding (useful when wrapped in Card)
 }
 
 export function DataTable<T>({
@@ -87,6 +90,7 @@ export function DataTable<T>({
   onRowClick,
   emptyState,
   loading = false,
+  noPadding = false,
 }: DataTableProps<T>) {
   const allSelected = data.length > 0 && data.every(item => selectedItems.has(keyExtractor(item)));
   
@@ -113,7 +117,7 @@ export function DataTable<T>({
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
+    <div className={`${noPadding ? '' : 'space-y-4 md:space-y-6 p-4 md:p-6'}`}>
       {/* Page Header with Actions */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>

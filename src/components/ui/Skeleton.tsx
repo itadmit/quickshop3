@@ -24,6 +24,7 @@ interface TextSkeletonProps {
 /**
  * TextSkeleton - סקלטון לטקסטים
  * משמש להצגת סקלטון במקום מפתחות תרגום בזמן טעינה
+ * ✅ משתמש ב-span במקום div כדי למנוע שגיאת hydration כשיש בתוך <p>
  */
 export function TextSkeleton({ 
   width = 'w-24', 
@@ -31,8 +32,9 @@ export function TextSkeleton({
   className = '' 
 }: TextSkeletonProps) {
   return (
-    <div
+    <span
       className={`
+        inline-block
         animate-pulse bg-gray-200 rounded
         ${width} ${height}
         ${className}

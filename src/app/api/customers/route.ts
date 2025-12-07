@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { Customer, CustomerWithDetails, CustomerAddress, CustomerNote, CreateCustomerRequest } from '@/types/customer';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { syncCustomerToContact } from '@/lib/contacts/sync-customer-to-contact';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -16,8 +17,10 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const storeId = user.store_id;
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const cursor = searchParams.get('cursor'); // ID of last customer seen
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
+    const cursor = searchParams.get('cursor'); // ID of last customer seen (for backward compatibility)
     const search = searchParams.get('search'); // Search by email, name, phone
     
     // Filters
@@ -134,15 +137,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Cursor pagination
+    // Get total count for pagination
+    let countSql = sql.replace(/SELECT c\.\*,.*?FROM/, 'SELECT COUNT(DISTINCT c.id) as total FROM');
+    // Remove GROUP BY and HAVING from count query
+    const countSqlParts = countSql.split('GROUP BY');
+    const baseCountSql = countSqlParts[0];
+    const countParams = [...params];
+    
+    // Execute count query
+    const totalResult = await queryOne<{ total: string }>(baseCountSql, countParams);
+    const total = parseInt(totalResult?.total || '0');
+    const totalPages = Math.ceil(total / limit);
+
+    // Cursor pagination (backward compatibility)
     if (cursor) {
       sql += ` AND c.id < $${paramIndex}`;
       params.push(cursor);
       paramIndex++;
+      sql += ` ORDER BY c.created_at DESC LIMIT $${paramIndex}`;
+      params.push(limit);
+    } else {
+      // Page-based pagination
+      sql += ` ORDER BY c.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limit, offset);
     }
-
-    sql += ` ORDER BY c.created_at DESC LIMIT $${paramIndex}`;
-    params.push(limit);
 
     const customers = await query<Customer & { orders_count: number; total_spent: string }>(sql, params);
 
@@ -170,17 +188,31 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Determine if there are more customers
-    const hasNextPage = customers.length === limit;
-    const nextCursor = hasNextPage && customers.length > 0 ? customers[customers.length - 1].id.toString() : null;
+    // Return pagination info
+    if (cursor) {
+      // Cursor-based pagination (backward compatibility)
+      const hasNextPage = customers.length === limit;
+      const nextCursor = hasNextPage && customers.length > 0 ? customers[customers.length - 1].id.toString() : null;
 
-    return NextResponse.json({
-      customers: customersWithDetails,
-      page_info: {
-        has_next_page: hasNextPage,
-        cursor: nextCursor,
-      },
-    });
+      return NextResponse.json({
+        customers: customersWithDetails,
+        page_info: {
+          has_next_page: hasNextPage,
+          cursor: nextCursor,
+        },
+      });
+    } else {
+      // Page-based pagination
+      return NextResponse.json({
+        customers: customersWithDetails,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      });
+    }
   } catch (error: any) {
     console.error('Error fetching customers:', error);
     return NextResponse.json(
@@ -240,6 +272,21 @@ export async function POST(request: NextRequest) {
 
     if (!customerResult) {
       throw new Error('Failed to create customer');
+    }
+
+    // Sync customer to contact (async, don't block API response)
+    if (customerResult.email) {
+      syncCustomerToContact(storeId, customerResult.id, {
+        email: customerResult.email,
+        first_name: customerResult.first_name,
+        last_name: customerResult.last_name,
+        phone: customerResult.phone,
+        accepts_marketing: customerResult.accepts_marketing,
+        tags: customerResult.tags,
+        note: customerResult.note,
+      }).catch((error) => {
+        console.warn('Failed to sync customer to contact:', error);
+      });
     }
 
     // Emit customer.created event

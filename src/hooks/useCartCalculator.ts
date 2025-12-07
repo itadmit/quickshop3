@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { type CartCalculationResult, type CartItem, type ShippingRate } from '@/lib/services/cartCalculator';
 
 // Local type for input (to avoid importing from cartCalculator which uses db)
