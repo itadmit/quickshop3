@@ -85,10 +85,33 @@ CREATE TABLE products (
   published_at TIMESTAMP WITHOUT TIME ZONE,
   published_scope VARCHAR(50) DEFAULT 'web',
   template_suffix VARCHAR(100),
+  -- Stock & Availability
+  availability VARCHAR(50) DEFAULT 'IN_STOCK', -- IN_STOCK, OUT_OF_STOCK, PRE_ORDER, BACKORDER, DISCONTINUED
+  available_date TIMESTAMP WITHOUT TIME ZONE, -- תאריך זמינות למוצרי PRE_ORDER / BACKORDER
+  track_inventory BOOLEAN DEFAULT true, -- האם לנהל מלאי
+  low_stock_alert INT, -- התראת מלאי נמוך
   sell_when_sold_out BOOLEAN DEFAULT false, -- המשך מכירה כשאין במלאי
+  -- Weight & Pricing options
   sold_by_weight BOOLEAN DEFAULT false, -- מוצר נמכר לפי משקל
   show_price_per_100ml BOOLEAN DEFAULT false, -- האם לרשום מחיר ל-100 מ"ל
   price_per_100ml NUMERIC(12,2), -- מחיר ל-100 מ"ל
+  -- SEO fields
+  seo_title VARCHAR(255), -- כותרת SEO
+  seo_description TEXT, -- תיאור SEO
+  -- Media
+  video_url TEXT, -- קישור לסרטון
+  -- Physical attributes
+  weight NUMERIC(10,2), -- משקל
+  length NUMERIC(10,2), -- אורך
+  width NUMERIC(10,2), -- רוחב
+  height NUMERIC(10,2), -- גובה
+  -- Default pricing (for simple products without variants)
+  price NUMERIC(12,2) DEFAULT 0, -- מחיר
+  compare_at_price NUMERIC(12,2), -- מחיר השוואה
+  cost_per_item NUMERIC(12,2), -- עלות פריט
+  sku VARCHAR(100), -- מק"ט
+  taxable BOOLEAN DEFAULT true, -- חייב מע"מ
+  -- Timestamps
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   UNIQUE(store_id, handle)
@@ -99,6 +122,8 @@ CREATE INDEX idx_products_handle ON products(handle);
 CREATE INDEX idx_products_status ON products(status);
 CREATE INDEX idx_products_vendor ON products(vendor);
 CREATE INDEX idx_products_product_type ON products(product_type);
+CREATE INDEX idx_products_availability ON products(availability);
+CREATE INDEX idx_products_sku ON products(sku);
 
 -- Product Images (Shopify-like: Product Images)
 CREATE TABLE product_images (
