@@ -151,7 +151,7 @@ export function VersionHistory({
       <div className="p-4 border-b border-gray-200">
         <button
           onClick={() => setShowCreateDialog(true)}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 flex items-center justify-center gap-2"
         >
           <HiSave className="w-4 h-4" />
           צור גרסה חדשה
@@ -212,7 +212,7 @@ export function VersionHistory({
                       <button
                         onClick={() => handleRestore(version.id)}
                         disabled={restoring === version.id}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                        className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
                       >
                         <HiRefresh className="w-4 h-4" />
                         {restoring === version.id ? 'משחזר...' : 'שחזר'}
@@ -257,7 +257,7 @@ export function VersionHistory({
               </button>
               <button
                 onClick={handleCreateSnapshot}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
               >
                 צור גרסה
               </button>

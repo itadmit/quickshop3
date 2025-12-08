@@ -161,7 +161,7 @@ export function AddSectionDialog({
                 onClick={() => setSelectedCategory(category)}
                 className={`px-3 py-1 rounded-md text-sm whitespace-nowrap ${
                   selectedCategory === category
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-green-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -184,7 +184,7 @@ export function AddSectionDialog({
                   key={section.type}
                   onClick={() => handleAddSection(section.type)}
                   disabled={adding}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-right disabled:opacity-50"
+                  className="p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-right disabled:opacity-50"
                 >
                   <div className="flex items-start gap-3">
                     {React.createElement(section.icon, { className: "w-8 h-8 text-gray-600 flex-shrink-0" })}

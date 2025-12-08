@@ -766,7 +766,6 @@ export class SeedService {
    */
   private async installNewYorkTemplate(): Promise<void> {
     try {
-      const { installNewYorkTemplate } = await import('@/lib/customizer/installNewYorkTemplate');
       await installNewYorkTemplate({ storeId: this.storeId });
     } catch (error: any) {
       console.error('Error installing New York template:', error);

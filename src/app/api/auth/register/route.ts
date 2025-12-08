@@ -108,12 +108,6 @@ export async function POST(req: NextRequest) {
 
       await client.query('COMMIT');
 
-      // Install New York template (async, don't block registration)
-      const { installNewYorkTemplate } = await import('@/lib/customizer/installNewYorkTemplate');
-      installNewYorkTemplate({ storeId: store.id }).catch((error) => {
-        console.error('Failed to install New York template:', error);
-        // Don't fail registration if template installation fails
-      });
 
       // Generate token
       const token = await generateToken({

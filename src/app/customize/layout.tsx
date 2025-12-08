@@ -1,10 +1,9 @@
-/**
- * Customizer Layout - Full Screen Layout
- * ללא Header/Sidebar של הדשבורד
- */
+import { Metadata } from 'next';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const metadata: Metadata = {
+  title: 'קסטומייזר - עיצוב החנות',
+  description: 'כלי עיצוב ויזואלי לחנות המקוונת',
+};
 
 export default function CustomizeLayout({
   children,
@@ -12,9 +11,8 @@ export default function CustomizeLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 bg-gray-50 overflow-hidden" dir="rtl" style={{ zIndex: 9999 }}>
+    <div className="min-h-screen bg-gray-50">
       {children}
     </div>
   );
 }
-

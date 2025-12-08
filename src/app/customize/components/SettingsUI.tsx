@@ -56,7 +56,7 @@ export function ModernInput({ fullWidth = true, className = '', ...props }: Base
     <input
       className={`
         block rounded-md border-gray-300 shadow-sm 
-        focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 px-3
+        focus:border-green-500 focus:ring-green-500 sm:text-sm py-2 px-3
         disabled:bg-gray-100 disabled:text-gray-500
         ${fullWidth ? 'w-full' : ''}
         ${className}
@@ -76,7 +76,7 @@ export function ModernTextArea({ fullWidth = true, className = '', rows = 3, ...
       rows={rows}
       className={`
         block rounded-md border-gray-300 shadow-sm 
-        focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 px-3
+        focus:border-green-500 focus:ring-green-500 sm:text-sm py-2 px-3
         disabled:bg-gray-100 disabled:text-gray-500
         ${fullWidth ? 'w-full' : ''}
         ${className}
@@ -97,7 +97,7 @@ export function ModernSelect({ options, fullWidth = true, className = '', ...pro
       <select
         className={`
           block rounded-md border-gray-300 shadow-sm 
-          focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 px-3 pr-8
+          focus:border-green-500 focus:ring-green-500 sm:text-sm py-2 px-3 pr-8
           disabled:bg-gray-100 disabled:text-gray-500 appearance-none
           ${fullWidth ? 'w-full' : ''}
           ${className}
@@ -132,7 +132,7 @@ export function ModernToggle({ checked, onChange, label }: ModernToggleProps) {
         onClick={() => onChange(!checked)}
         className={`
           relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-          ${checked ? 'bg-blue-600' : 'bg-gray-200'}
+          ${checked ? 'bg-green-600' : 'bg-gray-200'}
         `}
         role="switch"
         aria-checked={checked}
@@ -208,7 +208,7 @@ export function ModernColorPicker({ value, onChange }: ModernColorPickerProps) {
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="flex-1 uppercase font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+        className="flex-1 uppercase font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:border-green-500 focus:ring-green-500"
         placeholder="#000000"
       />
     </div>

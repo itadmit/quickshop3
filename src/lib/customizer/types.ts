@@ -1,416 +1,219 @@
 /**
- * Customizer Module - TypeScript Types
- * Quickshop3 Theme Customizer Types
+ * Customizer Types
+ * הגדרות טייפס למערכת הקסטומיזר
  */
 
-// ============================================
-// Base Types
-// ============================================
+// סוגי תבניות
+export type TemplateType = 'home' | 'product' | 'collection' | 'cart' | 'checkout';
 
-export type PageType = 
-  | 'home' 
-  | 'product' 
-  | 'collection' 
-  | 'cart' 
-  | 'checkout' 
-  | 'page' 
-  | 'blog';
-
-export type TemplateType = 'product' | 'collection' | 'blog_post' | 'page';
-
+// סוגי סקשנים
 export type SectionType =
-  | 'announcement_bar'
-  | 'header'
-  | 'slideshow'
-  | 'hero_banner'
-  | 'hero_video'
-  | 'collection_list'
-  | 'featured_collection'
-  | 'featured_product'
-  | 'product_grid'
-  | 'new_arrivals'
-  | 'best_sellers'
-  | 'recently_viewed'
+  | 'hero'
+  | 'featured_products'
+  | 'featured_collections'
   | 'image_with_text'
-  | 'image_with_text_overlay'
   | 'rich_text'
-  | 'video'
-  | 'before_after_slider'
-  | 'collapsible_tabs'
-  | 'testimonials'
-  | 'faq'
+  | 'slideshow'
+  | 'announcement_bar'
   | 'newsletter'
-  | 'promo_banner'
-  | 'countdown'
-  | 'instagram'
-  | 'trust_badges'
-  | 'popup'
   | 'footer'
-  | 'mobile_sticky_bar'
-  | 'mega_menu'
-  | 'custom_html'
-  | 'custom_liquid'
-  | 'custom_section'
-  | 'embed_code'
-  | 'api_section';
+  | 'header';
 
-export type BlockType =
-  | 'text'
-  | 'link'
-  | 'image_slide'
-  | 'video_slide'
-  | 'collection'
-  | 'tab'
-  | 'testimonial'
-  | 'question'
-  | 'badge'
-  | 'menu_item'
-  | 'column'
-  | 'button';
+// סוגי בלוקים בתוך סקשן
+export type BlockType = 'text' | 'image' | 'button' | 'product' | 'collection' | 'video';
 
-// ============================================
-// Database Types
-// ============================================
+// הגדרות צבעים
+export interface ColorSettings {
+  primary?: string;
+  secondary?: string;
+  background?: string;
+  text?: string;
+  accent?: string;
+}
 
-export interface ThemeTemplate {
-  id: number;
-  name: string;
-  display_name: string;
+// הגדרות טיפוגרפיה
+export interface TypographySettings {
+  font_family?: string;
+  font_size?: string;
+  font_weight?: string;
+  line_height?: string;
+  text_align?: 'left' | 'center' | 'right';
+}
+
+// הגדרות רווחים
+export interface SpacingSettings {
+  padding_top?: string;
+  padding_bottom?: string;
+  padding_left?: string;
+  padding_right?: string;
+  margin_top?: string;
+  margin_bottom?: string;
+}
+
+// הגדרות גבולות
+export interface BorderSettings {
+  border_width?: string;
+  border_color?: string;
+  border_radius?: string;
+  border_style?: string;
+}
+
+// הגדרות צללים
+export interface ShadowSettings {
+  shadow_color?: string;
+  shadow_offset_x?: string;
+  shadow_offset_y?: string;
+  shadow_blur?: string;
+  shadow_spread?: string;
+}
+
+// הגדרות כלליות לעיצוב
+export interface StyleSettings {
+  colors?: ColorSettings;
+  typography?: TypographySettings;
+  spacing?: SpacingSettings;
+  border?: BorderSettings;
+  shadow?: ShadowSettings;
+  background_image?: string;
+  background_color?: string;
+  background_position?: string;
+  background_size?: string;
+  background_repeat?: 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y';
+}
+
+// תוכן בלוק
+export interface BlockContent {
+  text?: string;
+  image_url?: string;
+  image_alt?: string;
+  button_text?: string;
+  button_url?: string;
+  product_ids?: number[];
+  collection_ids?: number[];
+  video_url?: string;
+  heading?: string;
+  subheading?: string;
   description?: string;
-  thumbnail_url?: string;
+  link_text?: string;
+  link_url?: string;
+}
+
+// הגדרות בלוק
+export interface BlockSettings {
+  id: string;
+  type: BlockType;
+  content: BlockContent;
+  style: StyleSettings;
+  settings: Record<string, any>; // הגדרות ספציפיות לבלוק
+}
+
+// הגדרות סקשן
+export interface SectionSettings {
+  id: string;
+  type: SectionType;
+  name: string;
+  visible: boolean;
+  order: number;
+  blocks: BlockSettings[];
+  style: StyleSettings;
+  settings: Record<string, any>; // הגדרות ספציפיות לסקשן
+  responsive?: {
+    desktop: Partial<SectionSettings>;
+    tablet: Partial<SectionSettings>;
+    mobile: Partial<SectionSettings>;
+  };
+}
+
+// תבנית עמוד
+export interface PageTemplate {
+  id: string;
+  store_id: number;
+  page_type: TemplateType;
+  name: string;
+  description?: string;
+  sections: SectionSettings[];
+  theme_settings: ThemeSettings;
   is_default: boolean;
-  is_premium: boolean;
-  price: number;
-  version: string;
-  available_sections: string[];
-  default_settings_schema: Record<string, any>;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface StoreThemeSettings {
-  id: number;
-  store_id: number;
-  template_id?: number;
-  published_settings_json: Record<string, any>;
-  draft_settings_json: Record<string, any>;
-  custom_css: string;
-  custom_js: string;
-  custom_head_code: string;
-  published_at?: Date;
-  edge_json_url?: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface PageLayout {
-  id: number;
-  store_id: number;
-  template_id?: number;
-  page_type: PageType;
-  page_handle?: string;
-  is_published: boolean;
-  published_at?: Date;
-  edge_json_url?: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface PageSection {
-  id: number;
-  page_layout_id: number;
-  section_type: SectionType;
-  section_id: string;
-  position: number;
-  is_visible: boolean;
-  is_locked: boolean;
-  settings_json: Record<string, any>;
-  custom_css: string;
-  custom_classes: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface SectionBlock {
-  id: number;
-  section_id: number;
-  block_type: BlockType;
-  block_id: string;
-  position: number;
-  is_visible: boolean;
-  settings_json: Record<string, any>;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface CustomSection {
-  id: number;
-  store_id: number;
-  name: string;
-  display_name: string;
-  description?: string;
-  settings_schema: SettingDefinition[];
-  blocks_schema?: BlockDefinition[];
-  template_code: string;
-  css_code: string;
-  preview_data: Record<string, any>;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+  version: number;
 }
 
-export interface PageTemplate {
-  id: number;
-  store_id: number;
-  template_type: TemplateType;
-  name: string;
-  is_default: boolean;
-  is_published: boolean;
-  published_at?: Date;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface TemplateWidget {
-  id: number;
-  template_id: number;
-  widget_type: string;
-  widget_id: string;
-  position: number;
-  is_visible: boolean;
-  is_dynamic: boolean;
-  settings_json: Record<string, any>;
-  custom_css: string;
-  custom_classes: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface TemplateOverride {
-  id: number;
-  template_id: number;
-  object_type: 'product' | 'collection';
-  object_id: number;
-  widget_overrides: Record<string, any>;
-  custom_widgets?: Record<string, any> | null;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface PageLayoutVersion {
-  id: number;
-  page_layout_id: number;
-  version_number: number;
-  snapshot_json: Record<string, any>;
-  created_by?: number;
-  created_at: Date;
-  notes?: string;
-  is_restorable: boolean;
-}
-
-// ============================================
-// Configuration Types
-// ============================================
-
-export interface PageConfig {
-  version: string;
-  generated_at: string;
-  page_type: PageType;
-  global_settings: ThemeGlobalSettings;
-  sections: Record<string, SectionConfig>;
-  section_order: string[];
-  custom_css?: string;
-  custom_js?: string;
-}
-
-export interface SectionConfig {
-  type: SectionType;
-  position: number;
-  settings: Record<string, any>;
-  blocks: BlockConfig[];
-  custom_classes?: string;
-}
-
-export interface BlockConfig {
-  id: string;
-  type: BlockType;
-  settings: Record<string, any>;
-}
-
-export interface ThemeGlobalSettings {
+// הגדרות תבנית כלליות
+export interface ThemeSettings {
   colors: {
     primary: string;
     secondary: string;
     accent: string;
     background: string;
-    surface?: string;
     text: string;
-    muted?: string;
-    border?: string;
-    error?: string;
-    success?: string;
+    text_light: string;
+    border: string;
   };
   typography: {
-    headingFont: string;
-    bodyFont: string;
-    baseFontSize: number;
-    lineHeight?: number;
-    headingWeight?: number;
-    bodyWeight?: number;
+    font_family_heading: string;
+    font_family_body: string;
+    font_size_base: string;
+    line_height_base: string;
   };
   layout: {
-    containerMaxWidth: number;
-    containerPadding: number;
-    sectionSpacing: number;
-    gridGap: number;
+    max_width: string;
+    container_padding: string;
+    border_radius: string;
   };
-  buttons?: {
-    borderRadius: number;
-    padding: string;
-    primaryStyle: string;
-    secondaryStyle: string;
-  };
-  cards?: {
-    borderRadius: number;
-    shadow: string;
-    hoverEffect: string;
-  };
-  animations?: {
+  animations: {
     enabled: boolean;
-    duration: number;
-    easing: string;
+    duration: string;
   };
 }
 
-// ============================================
-// Schema Definition Types
-// ============================================
-
-export interface SettingDefinition {
+// ווידג'ט לתבנית
+export interface TemplateWidget {
   id: string;
-  type: 'text' | 'textarea' | 'number' | 'range' | 'select' | 'radio' | 'checkbox' | 'color' | 'image' | 'url' | 'datetime';
-  label: string;
-  default?: any;
-  options?: Array<{ value: string; label: string }>;
-  min?: number;
-  max?: number;
-  step?: number;
-  placeholder?: string;
-  help?: string;
-}
-
-export interface BlockDefinition {
-  type: BlockType;
   name: string;
-  settings: SettingDefinition[];
+  description?: string;
+  category: string;
+  section_types: SectionType[];
+  default_settings: SectionSettings;
+  preview_image?: string;
+  is_premium: boolean;
 }
 
-// ============================================
-// Widget Types (for Template Pages)
-// ============================================
-
-export interface DynamicWidget {
-  name: string;
-  variable: string;
-  settings: SettingDefinition[];
+// מצב עריכה
+export interface EditorState {
+  selectedSectionId?: string;
+  selectedBlockId?: string;
+  device: 'desktop' | 'tablet' | 'mobile';
+  zoom: number;
+  showGrid: boolean;
+  showOutlines: boolean;
 }
 
-export interface StaticWidget {
-  name: string;
-  type: string;
+// פעולת עריכה
+export interface EditorAction {
+  type: 'add_section' | 'remove_section' | 'update_section' | 'move_section' |
+        'add_block' | 'remove_block' | 'update_block' | 'move_block' |
+        'update_theme' | 'save_template' | 'load_template';
+  payload: any;
+  timestamp: Date;
 }
 
-// ============================================
-// API Request/Response Types
-// ============================================
-
-export interface SavePageDraftRequest {
-  page_type: PageType;
-  page_handle?: string;
-  sections: Omit<PageSection, 'id' | 'page_layout_id' | 'created_at' | 'updated_at'>[];
-  section_order: string[];
-  custom_css?: string;
+// גרסת תבנית
+export interface TemplateVersion {
+  id: string;
+  template_id: string;
+  version: number;
+  data: PageTemplate;
+  created_at: Date;
+  created_by: number;
+  comment?: string;
 }
 
-export interface PublishPageRequest {
-  page_type: PageType;
-  page_handle?: string;
+// תגובה מ-API
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
 }
-
-export interface AddSectionRequest {
-  page_type: PageType;
-  page_handle?: string;
-  section_type: SectionType;
-  position: number;
-  settings_json?: Record<string, any>;
-}
-
-export interface UpdateSectionRequest {
-  section_id: number;
-  settings?: Record<string, any>;
-  custom_css?: string;
-  custom_classes?: string;
-  position?: number;
-  is_visible?: boolean;
-}
-
-export interface AddBlockRequest {
-  section_id: number;
-  block_type: BlockType;
-  position: number;
-  settings?: Record<string, any>;
-}
-
-export interface UpdateBlockRequest {
-  block_id: number;
-  settings?: Record<string, any>;
-  position?: number;
-  is_visible?: boolean;
-}
-
-// ============================================
-// Event Types
-// ============================================
-
-export interface CustomizerPagePublishedEvent {
-  store_id: number;
-  page_type: PageType;
-  page_handle?: string;
-  edge_json_url?: string;
-  version?: number;
-}
-
-export interface CustomizerSectionAddedEvent {
-  store_id: number;
-  page_type: PageType;
-  section_type: SectionType;
-  section_id: string;
-}
-
-export interface CustomizerSectionUpdatedEvent {
-  store_id: number;
-  section_id: number;
-  changes: Partial<PageSection>;
-}
-
-export interface CustomizerSectionDeletedEvent {
-  store_id: number;
-  section_id: number;
-}
-
-export interface CustomizerTemplateAppliedEvent {
-  store_id: number;
-  template_id: number;
-  template_name: string;
-}
-
-export interface CustomizerThemeSettingsUpdatedEvent {
-  store_id: number;
-  settings: Partial<ThemeGlobalSettings>;
-}
-
-export interface CustomizerCustomSectionCreatedEvent {
-  store_id: number;
-  section_name: string;
-}
-

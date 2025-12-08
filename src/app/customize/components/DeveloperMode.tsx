@@ -98,13 +98,6 @@ export function DeveloperMode({ pageType, pageHandle, onSave }: DeveloperModePro
           </h3>
           <p className="text-sm text-gray-400">עריכת קוד CSS, HTML, JavaScript</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm disabled:opacity-50"
-        >
-          {saving ? 'שומר...' : '💾 שמור'}
-        </button>
       </div>
 
       {/* Tabs */}
@@ -113,7 +106,7 @@ export function DeveloperMode({ pageType, pageHandle, onSave }: DeveloperModePro
           onClick={() => setActiveTab('css')}
           className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'css'
-              ? 'border-blue-500 text-blue-400'
+              ? 'border-green-500 text-green-400'
               : 'border-transparent text-gray-400 hover:text-gray-300'
           }`}
         >
@@ -123,7 +116,7 @@ export function DeveloperMode({ pageType, pageHandle, onSave }: DeveloperModePro
           onClick={() => setActiveTab('html')}
           className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'html'
-              ? 'border-blue-500 text-blue-400'
+              ? 'border-green-500 text-green-400'
               : 'border-transparent text-gray-400 hover:text-gray-300'
           }`}
         >
@@ -133,7 +126,7 @@ export function DeveloperMode({ pageType, pageHandle, onSave }: DeveloperModePro
           onClick={() => setActiveTab('js')}
           className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'js'
-              ? 'border-blue-500 text-blue-400'
+              ? 'border-green-500 text-green-400'
               : 'border-transparent text-gray-400 hover:text-gray-300'
           }`}
         >

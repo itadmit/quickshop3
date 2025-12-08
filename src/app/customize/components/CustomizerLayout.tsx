@@ -1,192 +1,216 @@
-/**
- * Customizer Module - Main Layout Component
- * Layout עם Sidebar + Preview Frame
- */
-
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Sidebar } from './Sidebar';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PreviewFrame } from './PreviewFrame';
-import { PageType } from '@/lib/customizer/types';
-import { savePageDraft, publishPage } from '../actions';
-import { HiDesktopComputer, HiDeviceMobile, HiDeviceTablet, HiEye, HiSave, HiPaperAirplane } from 'react-icons/hi';
+import { Sidebar } from './Sidebar';
+import { Header, DeviceType } from './Header';
+import { SettingsAndStylePanel } from './SettingsAndStylePanel';
+import { ElementsSidebar } from './ElementsSidebar';
+import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
+import { EditorState, SectionSettings } from '@/lib/customizer/types';
 
-interface CustomizerLayoutProps {
-  pageType: PageType;
-  pageHandle?: string;
-}
+export function CustomizerLayout() {
+  const [editorState, setEditorState] = useState<EditorState>({
+    device: 'desktop',
+    zoom: 100,
+    showGrid: false,
+    showOutlines: false
+  });
 
-export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps) {
+  const [pageSections, setPageSections] = useState<SectionSettings[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [mode, setMode] = useState<'visual' | 'developer'>('visual');
-  const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load initial page data
+  useEffect(() => {
+    loadPageData();
+  }, []);
+
+  const loadPageData = useCallback(async () => {
+    try {
+      const response = await fetch('/api/customizer/pages?pageType=home');
+      const data = await response.json();
+
+      if (data.sections && data.sections.length > 0) {
+        setPageSections(data.sections);
+      } else {
+        // Load default New York template
+        setPageSections(NEW_YORK_TEMPLATE.sections);
+      }
+    } catch (error) {
+      console.error('Error loading page data:', error);
+      // Fallback to default template
+      setPageSections(NEW_YORK_TEMPLATE.sections);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleDeviceChange = useCallback((device: DeviceType) => {
+    setEditorState(prev => ({ ...prev, device }));
+  }, []);
+
+  const handleSectionSelect = useCallback((sectionId: string | null) => {
+    setSelectedSectionId(sectionId);
+  }, []);
+
+  const handleSectionUpdate = useCallback((sectionId: string, updates: Partial<SectionSettings>) => {
+    setPageSections(prev =>
+      prev.map(section =>
+        section.id === sectionId
+          ? { ...section, ...updates }
+          : section
+      )
+    );
+  }, []);
+
+  const handleSectionAdd = useCallback((sectionType: string, position?: number) => {
+    const newSection: SectionSettings = {
+      id: `section-${Date.now()}`,
+      type: sectionType as any,
+      name: sectionType,
+      visible: true,
+      order: position ?? pageSections.length,
+      blocks: [],
+      style: {
+        background: {
+          background_color: '#F3F4F6'
+        },
+        spacing: {
+          padding_top: '60px',
+          padding_bottom: '60px'
+        }
+      },
+      settings: {}
+    };
+
+    setPageSections(prev => {
+      const updated = [...prev];
+      if (position !== undefined) {
+        updated.splice(position, 0, newSection);
+        // Update order for sections after the inserted one
+        updated.forEach((section, index) => {
+          section.order = index;
+        });
+      } else {
+        updated.push(newSection);
+      }
+      return updated;
+    });
+  }, [pageSections.length]);
+
+  const handleSectionDelete = useCallback((sectionId: string) => {
+    setPageSections(prev => prev.filter(section => section.id !== sectionId));
+    if (selectedSectionId === sectionId) {
+      setSelectedSectionId(null);
+    }
+  }, [selectedSectionId]);
+
+  const handleSectionMove = useCallback((sectionId: string, newPosition: number) => {
+    setPageSections(prev => {
+      const sectionIndex = prev.findIndex(s => s.id === sectionId);
+      if (sectionIndex === -1) return prev;
+
+      const updated = [...prev];
+      const [movedSection] = updated.splice(sectionIndex, 1);
+      updated.splice(newPosition, 0, movedSection);
+
+      // Update order for all sections
+      updated.forEach((section, index) => {
+        section.order = index;
+      });
+
+      return updated;
+    });
+  }, []);
 
   const handleSave = useCallback(async () => {
     try {
-      setSaving(true);
-      // TODO: Get current sections from Sidebar/state
-      // For now, just save empty draft
-      const result = await savePageDraft({
-        page_type: pageType,
-        page_handle: pageHandle,
-        sections: [],
-        section_order: [],
+      const response = await fetch('/api/customizer/pages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pageType: 'home',
+          sections: pageSections,
+          isPublished: false
+        }),
       });
-      
+
+      const result = await response.json();
       if (result.success) {
-        setLastSaved(new Date());
+        alert('השינויים נשמרו בהצלחה!');
+      } else {
+        alert('שגיאה בשמירה: ' + result.error);
       }
     } catch (error) {
       console.error('Error saving:', error);
       alert('שגיאה בשמירה');
-    } finally {
-      setSaving(false);
     }
-  }, [pageType, pageHandle]);
+  }, [pageSections]);
 
-  const handlePublish = useCallback(async () => {
-    if (!confirm('האם אתה בטוח שברצונך לפרסם את השינויים?')) {
-      return;
-    }
-
-    try {
-      setPublishing(true);
-      const result = await publishPage({
-        page_type: pageType,
-        page_handle: pageHandle,
-      });
-      
-      if (result.success) {
-        alert('העמוד פורסם בהצלחה!');
-        setLastSaved(new Date());
-      } else {
-        alert('שגיאה בפרסום: ' + (result.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error publishing:', error);
-      alert('שגיאה בפרסום');
-    } finally {
-      setPublishing(false);
-    }
-  }, [pageType, pageHandle]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען עמוד...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen w-screen">
-      {/* Sidebar */}
-      <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
-        <Sidebar
-          pageType={pageType}
-          pageHandle={pageHandle}
-          selectedSectionId={selectedSectionId}
-          onSectionSelect={setSelectedSectionId}
-          mode={mode}
-          onModeChange={setMode}
-        />
-      </div>
+    <div className="h-screen flex flex-col bg-gray-50" dir="rtl">
+      {/* Header */}
+      <Header
+        onSave={handleSave}
+        onPreview={() => {}}
+        onPublish={() => {}}
+        device={editorState.device}
+        onDeviceChange={handleDeviceChange}
+      />
 
-      {/* Preview Area */}
-      <div className="flex-1 flex flex-col bg-gray-100">
-        {/* Top Bar */}
-        <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <select
-              value={pageType}
-              onChange={(e) => {
-                const newPageType = e.target.value as PageType;
-                window.location.href = `/customize?page=${newPageType}`;
-              }}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="home">עמוד בית</option>
-              <option value="product">עמוד מוצר (Template)</option>
-              <option value="collection">עמוד קטגוריה (Template)</option>
-              <option value="cart">עגלה</option>
-              <option value="checkout">צ'ק אאוט</option>
-            </select>
-
-            {/* Device Selector */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDevice('desktop')}
-                className={`p-2 rounded ${
-                  device === 'desktop' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
-                }`}
-                title="Desktop"
-              >
-                <HiDesktopComputer className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setDevice('tablet')}
-                className={`p-2 rounded ${
-                  device === 'tablet' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
-                }`}
-                title="Tablet"
-              >
-                <HiDeviceTablet className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setDevice('mobile')}
-                className={`p-2 rounded ${
-                  device === 'mobile' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
-                }`}
-                title="Mobile"
-              >
-                <HiDeviceMobile className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {lastSaved && (
-              <span className="text-xs text-gray-500">
-                נשמר: {lastSaved.toLocaleTimeString('he-IL')}
-              </span>
-            )}
-            <button
-              onClick={() => {
-                // Open preview in new tab
-                window.open(`/shops/demo-store/preview?token=preview-token-placeholder&page=${pageType}`, '_blank');
-              }}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center gap-2"
-            >
-              <HiEye className="w-4 h-4" />
-              תצוגה מקדימה
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm disabled:opacity-50 flex items-center gap-2"
-            >
-              <HiSave className="w-4 h-4" />
-              {saving ? 'שומר...' : 'שמור'}
-            </button>
-            <button
-              onClick={handlePublish}
-              disabled={publishing || saving}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm disabled:opacity-50 flex items-center gap-2"
-            >
-              <HiPaperAirplane className="w-4 h-4" />
-              {publishing ? 'מפרסם...' : 'פרסם'}
-            </button>
-          </div>
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Elements Sidebar (Right Side - Start in RTL) */}
+        <div className="w-80 bg-white border-l border-gray-200">
+          <ElementsSidebar
+            sections={pageSections}
+            selectedSectionId={selectedSectionId}
+            onSectionSelect={handleSectionSelect}
+            onSectionAdd={handleSectionAdd}
+            onSectionDelete={handleSectionDelete}
+            onSectionMove={handleSectionMove}
+          />
         </div>
 
         {/* Preview Frame */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 bg-white">
           <PreviewFrame
-            pageType={pageType}
-            pageHandle={pageHandle}
-            device={device}
+            sections={pageSections}
             selectedSectionId={selectedSectionId}
-            onSectionSelect={setSelectedSectionId}
+            device={editorState.device}
+            zoom={editorState.zoom}
+            showGrid={editorState.showGrid}
+            showOutlines={editorState.showOutlines}
+            onSectionSelect={handleSectionSelect}
+            onSectionUpdate={handleSectionUpdate}
+            onSectionDelete={handleSectionDelete}
+          />
+        </div>
+
+        {/* Settings Panel (Left Side - End in RTL) */}
+        <div className="w-80 bg-white border-r border-gray-200">
+          <SettingsAndStylePanel
+            sections={pageSections}
+            selectedSectionId={selectedSectionId}
+            onSectionUpdate={handleSectionUpdate}
+            device={editorState.device}
           />
         </div>
       </div>
     </div>
   );
 }
-

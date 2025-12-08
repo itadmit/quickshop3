@@ -1,20 +1,29 @@
-/**
- * Customizer Module - Main Page
- * /dashboard/customize
- */
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import { CustomizerLayout } from './components/CustomizerLayout';
-import { PageType } from '@/lib/customizer/types';
+import { useStoreId } from '@/hooks/useStoreId';
 
 export default function CustomizePage() {
-  const searchParams = useSearchParams();
-  const pageType = (searchParams.get('page') || 'home') as PageType;
-  const pageHandle = searchParams.get('handle') || undefined;
+  const storeId = useStoreId();
+  const [isLoading, setIsLoading] = useState(true);
 
-  return <CustomizerLayout pageType={pageType} pageHandle={pageHandle} />;
+  useEffect(() => {
+    if (storeId) {
+      setIsLoading(false);
+    }
+  }, [storeId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען קסטומייזר...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <CustomizerLayout />;
 }
-

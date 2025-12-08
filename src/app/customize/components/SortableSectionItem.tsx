@@ -48,7 +48,7 @@ export function SortableSectionItem({
       onClick={() => onSelect(section.section_id)}
       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
         isSelected
-          ? 'border-blue-500 bg-blue-50'
+          ? 'border-green-500 bg-green-50'
           : 'border-gray-200 hover:border-gray-300'
       } ${isDragging ? 'shadow-lg' : ''}`}
     >

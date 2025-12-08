@@ -160,7 +160,7 @@ export function WidgetSettings({
                 type="checkbox"
                 checked={settings[setting.id] ?? setting.default ?? false}
                 onChange={(e) => updateSetting(setting.id, e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
               />
               <span className="text-sm font-medium text-gray-700">
                 {setting.label}
@@ -224,7 +224,7 @@ export function WidgetSettings({
           </h3>
           <p className="text-sm text-gray-500">עריכת הגדרות וידג'ט</p>
           {widget.is_dynamic && (
-            <p className="text-xs text-blue-600 mt-1">{widgetDef.variable}</p>
+            <p className="text-xs text-green-600 mt-1">{widgetDef.variable}</p>
           )}
         </div>
         <button
@@ -248,19 +248,12 @@ export function WidgetSettings({
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 flex gap-2">
+      <div className="p-4 border-t border-gray-200">
         <button
-          onClick={onClose}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+          onClick={handleClose}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
         >
-          ביטול
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
-        >
-          {saving ? 'שומר...' : 'שמור'}
+          סגור
         </button>
       </div>
     </div>

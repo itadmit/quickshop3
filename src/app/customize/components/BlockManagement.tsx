@@ -30,6 +30,7 @@ import { HiPlus, HiCog, HiTrash, HiEye, HiEyeOff, HiDotsVertical } from 'react-i
 
 interface BlockManagementProps {
   sectionId: number;
+  sectionIdString?: string; // section_id של הסקשן (מחרוזת)
   blocks: SectionBlock[];
   sectionType: string;
   onBlocksChange: () => void;
@@ -113,7 +114,7 @@ function SortableBlockItem({
           </div>
 
           <div className="flex-1 min-w-0" onClick={onSettings}>
-            <div className="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600">
+            <div className="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-green-600">
               {BLOCK_DISPLAY_NAMES[block.block_type] || block.block_type}
             </div>
             {block.settings_json && (block.settings_json.heading || block.settings_json.title) && (
@@ -158,6 +159,7 @@ function SortableBlockItem({
 
 export function BlockManagement({
   sectionId,
+  sectionIdString,
   blocks,
   sectionType,
   onBlocksChange,
@@ -313,7 +315,7 @@ export function BlockManagement({
           onClick={() => setShowAddDialog(true)}
           className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm flex items-center justify-center gap-2 group"
         >
-          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-green-100 group-hover:text-green-600 transition-colors">
             <HiPlus className="w-3 h-3" />
           </div>
           הוסף בלוק
@@ -332,7 +334,7 @@ export function BlockManagement({
                 <button
                   key={blockType}
                   onClick={() => handleAddBlock(blockType)}
-                  className="w-full px-4 py-3 text-right border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  className="w-full px-4 py-3 text-right border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
                 >
                   {BLOCK_DISPLAY_NAMES[blockType]}
                 </button>
@@ -353,6 +355,7 @@ export function BlockManagement({
         <div className="fixed inset-y-0 left-0 w-96 bg-white shadow-xl z-50">
           <BlockSettings
             block={selectedBlock}
+            sectionId={sectionIdString}
             onClose={handleBlockSettingsClose}
             onUpdate={handleBlockSettingsClose}
           />

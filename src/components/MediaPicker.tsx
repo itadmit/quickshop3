@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
-import { HiSearch, HiUpload, HiX, HiCheck, HiTrash, HiPhotograph } from 'react-icons/hi';
+import { HiSearch, HiUpload, HiCheck, HiTrash, HiPhotograph, HiFilter } from 'react-icons/hi';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface MediaFile {
   id: string;
@@ -31,11 +32,14 @@ interface MediaPickerProps {
   title?: string;
 }
 
+// Constant empty array for default prop to avoid infinite loop in useEffect
+const DEFAULT_SELECTED_FILES: string[] = [];
+
 export function MediaPicker({
   open,
   onOpenChange,
   onSelect,
-  selectedFiles = [],
+  selectedFiles = DEFAULT_SELECTED_FILES,
   shopId,
   entityType,
   entityId,
@@ -55,13 +59,34 @@ export function MediaPicker({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const prevSelectedFilesRef = useRef<string>('');
 
+  // Update selected state when open changes or selectedFiles prop changes
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    
+    // Create a stable string representation for comparison
+    const currentSelectedStr = JSON.stringify([...selectedFiles].sort());
+    
+    // Only update if the actual content changed, not just the reference
+    if (prevSelectedFilesRef.current !== currentSelectedStr) {
       setSelected(new Set(selectedFiles));
-      setSearchQuery('');
-      setPage(1);
-      fetchFiles(true);
+      prevSelectedFilesRef.current = currentSelectedStr;
+    }
+    
+    setSearchQuery('');
+    setPage(1);
+    fetchFiles(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, shopId]); // Only depend on open and shopId
+
+  // Separate effect to sync selectedFiles when they actually change
+  useEffect(() => {
+    if (!open) return;
+    const currentSelectedStr = JSON.stringify([...selectedFiles].sort());
+    if (prevSelectedFilesRef.current !== currentSelectedStr) {
+      setSelected(new Set(selectedFiles));
+      prevSelectedFilesRef.current = currentSelectedStr;
     }
   }, [open, selectedFiles]);
 
@@ -102,6 +127,7 @@ export function MediaPicker({
     }
   };
 
+  // Debounced search effect
   useEffect(() => {
     if (open && shopId) {
       const timeoutId = setTimeout(() => {
@@ -109,6 +135,7 @@ export function MediaPicker({
       }, 300);
       return () => clearTimeout(timeoutId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, open, shopId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +156,8 @@ export function MediaPicker({
     const errors: string[] = [];
     const fileArray = Array.from(files);
 
-    const tempFileIds = fileArray.map(() => `temp-${Date.now()}-${Math.random()}`);
+    // For overall progress tracking
+    const tempFileIds = fileArray.map((_, idx) => `temp-${Date.now()}-${idx}`);
     setUploadingFiles(tempFileIds);
 
     try {
@@ -262,60 +290,6 @@ export function MediaPicker({
     }
   };
 
-  const handleBulkDelete = async () => {
-    const selectedArray = Array.from(selected);
-    if (selectedArray.length === 0) {
-      toast({
-        title: 'שים לב',
-        description: 'לא נבחרו תמונות למחיקה',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!confirm(`האם אתה בטוח שברצונך למחוק ${selectedArray.length} תמונות?`)) return;
-
-    setDeleting(new Set(selectedArray));
-
-    try {
-      const deletePromises = selectedArray.map((filePath) =>
-        fetch(`/api/files/delete?path=${encodeURIComponent(filePath)}`, {
-          method: 'DELETE',
-        })
-      );
-
-      const results = await Promise.allSettled(deletePromises);
-
-      const successful = results.filter((r) => r.status === 'fulfilled').length;
-      const failed = results.length - successful;
-
-      if (successful > 0) {
-        toast({
-          title: 'הצלחה',
-          description: `${successful} תמונות נמחקו בהצלחה${failed > 0 ? `, ${failed} נכשלו` : ''}`,
-        });
-
-        setFiles((prev) => prev.filter((f) => !selectedArray.includes(f.path)));
-        setSelected(new Set());
-      } else {
-        toast({
-          title: 'שגיאה',
-          description: 'לא ניתן למחוק את התמונות',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error bulk deleting files:', error);
-      toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה במחיקת התמונות',
-        variant: 'destructive',
-      });
-    } finally {
-      setDeleting(new Set());
-    }
-  };
-
   const handleToggleSelect = (filePath: string) => {
     const newSelected = new Set(selected);
     if (newSelected.has(filePath)) {
@@ -369,7 +343,6 @@ export function MediaPicker({
 
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles.length > 0) {
-      // Create a fake event to pass to handleFileUpload
       const fakeEvent = {
         target: {
           files: droppedFiles,
@@ -382,222 +355,195 @@ export function MediaPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[1600px] max-h-[92vh] flex flex-col p-0" dir="rtl">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+      <DialogContent className="max-w-[90vw] w-[1100px] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden" dir="rtl">
+        <DialogHeader className="px-5 py-3.5 border-b bg-white">
+          <DialogTitle className="text-base font-semibold text-gray-900">{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Search and Upload Bar */}
-          <div className="px-6 py-3 border-b bg-gray-50">
-            <div className="flex gap-2 items-center">
-              <div className="flex-1 relative">
-                <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="חפש קבצים לפי שם..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pr-10 h-9 text-sm bg-white"
-                />
-              </div>
-
-              {selected.size > 0 && (
-                <Button
-                  onClick={handleBulkDelete}
-                  disabled={deleting.size > 0}
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1.5 h-9 px-3 text-sm"
-                >
-                  <HiTrash className="w-3.5 h-3.5" />
-                  <span>מחק ({selected.size})</span>
-                </Button>
-              )}
-
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                variant="default"
-                size="sm"
-                className="gap-1.5 h-9 px-3 text-sm font-medium whitespace-nowrap"
-              >
-                {uploading ? (
-                  <>
-                    <HiPhotograph className="w-4 h-4" />
-                    <span>מעלה...</span>
-                  </>
-                ) : (
-                  <>
-                    <HiUpload className="w-4 h-4" />
-                    <span>העלה קבצים</span>
-                  </>
-                )}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
+        <div className="flex-1 overflow-hidden flex flex-col bg-white">
+          {/* Search and Filter Bar */}
+          <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="חפש קבצים..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pr-9 h-9 text-sm bg-white border-gray-300 focus:border-blue-500 transition-all"
               />
             </div>
             
-            {selected.size > 0 && (
-              <div className="mt-2 text-xs text-gray-600 bg-green-50 border border-green-200 rounded px-3 py-1.5">
-                <span className="font-medium text-green-700">{selected.size}</span> קבצים נבחרו
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+                 <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    variant="default"
+                    size="sm"
+                    className="gap-2 h-9 px-4 font-medium"
+                  >
+                     <HiUpload className="w-4 h-4" />
+                     <span>העלה קבצים</span>
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+            </div>
           </div>
 
-          {/* Files Grid with Drag & Drop */}
+          {/* Files Grid */}
           <div 
-            className="flex-1 overflow-y-auto p-6 relative"
+            className="flex-1 overflow-y-auto p-4 relative bg-white"
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Drag overlay */}
-            {isDragging && (
-              <div className="absolute inset-0 bg-green-50/95 border-4 border-dashed border-green-500 rounded-lg z-50 flex flex-col items-center justify-center pointer-events-none">
-                <HiUpload className="w-16 h-16 text-green-500 mb-4 animate-bounce" />
-                <p className="text-xl font-semibold text-green-700">שחרר כדי להעלות</p>
-                <p className="text-sm text-green-600 mt-2">הקבצים יועלו אוטומטית</p>
+             {isDragging && (
+              <div className="absolute inset-0 bg-blue-50/90 border-2 border-dashed border-blue-400 z-50 flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm transition-all m-4 rounded-lg">
+                <HiUpload className="w-16 h-16 text-blue-500 mb-3 animate-bounce" />
+                <p className="text-lg font-semibold text-blue-700">שחרר קבצים להעלאה</p>
               </div>
             )}
-            {loading && files.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <HiPhotograph className="w-8 h-8 animate-spin text-gray-400" />
-              </div>
-            ) : files.length === 0 && uploadingFiles.length === 0 ? (
-              <div 
-                className="flex flex-col items-center justify-center h-96 text-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50/30 transition-all"
-                onClick={() => fileInputRef.current?.click()}
-                onDragEnter={handleDragEnter}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className="pointer-events-none">
-                  <HiPhotograph className="w-16 h-16 text-gray-300 mb-3 mx-auto" />
-                  <p className="text-base font-medium text-gray-700 mb-2">גרור תמונות לכאן</p>
-                  <p className="text-sm text-gray-500 mb-3">או</p>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="gap-2 pointer-events-auto h-9 px-4 text-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                  >
-                    <HiUpload className="w-4 h-4" />
-                    בחר קבצים מהמחשב
-                  </Button>
-                  <p className="text-xs text-gray-400 mt-3">תמיכה ב-JPG, PNG, GIF, WEBP</p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-4">
-                {uploadingFiles.map((tempId) => {
-                  const progress = uploadProgress[tempId] || 0;
-                  return (
-                    <div
-                      key={tempId}
-                      className="relative rounded-lg border-2 border-green-300 overflow-hidden"
-                    >
-                      <div className="aspect-square relative bg-gray-100">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <HiPhotograph className="w-8 h-8 text-green-500" />
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-200">
-                          <div
-                            className="h-full bg-green-500 transition-all duration-300"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="p-2 bg-white">
-                        <p className="text-xs text-gray-600 text-center font-medium">{progress}%</p>
-                      </div>
+
+            {uploading && files.length === 0 ? (
+               <div className="border-2 border-dashed border-gray-300 rounded-lg mb-4 bg-gray-50/30">
+                  <div className="flex flex-col items-center justify-center py-24">
+                    <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6 animate-pulse">
+                        <HiUpload className="w-8 h-8 text-blue-500" />
                     </div>
-                  );
-                })}
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">מעלה קבצים...</h3>
+                    <div className="w-full max-w-md px-8">
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${uploadingFiles.length > 0 
+                              ? Math.round(Object.values(uploadProgress).reduce((a, b) => a + b, 0) / uploadingFiles.length) 
+                              : 0}%` 
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 text-center">
+                        {uploadingFiles.length > 0 && `${Object.values(uploadProgress).filter(p => p === 100).length} מתוך ${uploadingFiles.length} קבצים`}
+                      </p>
+                    </div>
+                  </div>
+               </div>
+            ) : loading && files.length === 0 ? (
+               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4">
+                  <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+                    {[...Array(14)].map((_, i) => (
+                        <div key={i} className="aspect-square rounded-md border border-gray-200 bg-white overflow-hidden">
+                            <Skeleton className="w-full h-full" />
+                        </div>
+                    ))}
+                  </div>
+               </div>
+            ) : files.length === 0 && uploadingFiles.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg mb-4 bg-gray-50/30 cursor-pointer hover:border-gray-400 hover:bg-gray-50/50 transition-all" onClick={() => fileInputRef.current?.click()}>
+                  <div className="flex flex-col items-center justify-center text-center py-24">
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                        <HiPhotograph className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">אין תמונות עדיין</h3>
+                    <p className="text-sm text-gray-500 mb-4 max-w-md leading-relaxed">העלה תמונות מהמחשב שלך או גרור אותן לכאן כדי להתחיל</p>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>העלה תמונה</Button>
+                  </div>
+                </div>
+            ) : (
+              <>
+                {/* Upload Area - Always show when there are files */}
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4 bg-gray-50/30 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all text-center"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <div className="flex flex-col items-center justify-center pointer-events-none">
+                    <p className="text-sm text-gray-600 mb-3">
+                      העלה תמונות מהמחשב שלך או גרור אותן לכאן
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="pointer-events-auto"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      <HiUpload className="w-4 h-4 ml-2" />
+                      העלה קבצים
+                    </Button>
+                  </div>
+                </div>
 
-                {files.map((file) => {
+                {/* Files Grid */}
+                <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-white">
+                  <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+                    {/* Existing Files */}
+                    {files.map((file) => {
                   const isSelected = selected.has(file.path);
-                  const isDeleting = deleting.has(file.path);
-
                   return (
                     <div
                       key={file.id}
-                      className={cn(
-                        'relative group cursor-pointer rounded-lg border-2 transition-all shadow-sm hover:shadow-md',
-                        isSelected
-                          ? 'border-green-500 ring-2 ring-green-200 shadow-green-100'
-                          : 'border-gray-200 hover:border-green-300'
-                      )}
                       onClick={() => handleToggleSelect(file.path)}
+                      className={cn(
+                        "group relative aspect-square rounded-md border bg-white cursor-pointer transition-all overflow-hidden",
+                        isSelected 
+                            ? "border-blue-500 ring-2 ring-blue-200 shadow-sm" 
+                            : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                      )}
                     >
-                      <div className="aspect-square relative overflow-hidden rounded-t-lg bg-gray-100">
-                        <img
-                          src={file.path}
-                          alt={file.name}
-                          className="w-full h-full object-cover bg-gray-100"
-                        />
-                        {isDeleting && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <HiPhotograph className="w-6 h-6 animate-spin text-white" />
-                          </div>
-                        )}
-                      </div>
+                       <div className="absolute top-2 right-2 z-10">
+                           <div className={cn(
+                               "w-5 h-5 rounded border-2 bg-white flex items-center justify-center transition-all",
+                               isSelected 
+                                ? "bg-blue-500 border-blue-500" 
+                                : "border-gray-300 group-hover:border-gray-400"
+                           )}>
+                               {isSelected && <HiCheck className="w-3 h-3 text-white font-bold" />}
+                           </div>
+                       </div>
+                       
+                       <div className="w-full h-full p-1.5">
+                           <div className="w-full h-full relative rounded-sm overflow-hidden bg-gray-50">
+                                <img
+                                    src={file.path}
+                                    alt={file.name}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                />
+                           </div>
+                       </div>
 
-                      <div className="absolute top-2 right-2 z-10">
-                        <div
-                          className={cn(
-                            'w-7 h-7 rounded-md border-2 flex items-center justify-center transition-all shadow-sm',
-                            isSelected
-                              ? 'bg-green-500 border-green-500 scale-110'
-                              : 'bg-white/90 backdrop-blur-sm border-gray-300 group-hover:border-green-400 group-hover:scale-105'
-                          )}
-                        >
-                          {isSelected && <HiCheck className="w-5 h-5 text-white font-bold" />}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(file.path);
-                        }}
-                        disabled={isDeleting}
-                        className="absolute top-2 left-2 z-10 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md hover:scale-110"
-                        title="מחק מהשרת לצמיתות"
-                      >
-                        <HiTrash className="w-4 h-4" />
-                      </button>
-
-                      <div className="p-2 bg-white rounded-b-lg border-t">
-                        <p className="text-[11px] text-gray-700 truncate font-medium leading-tight" title={file.name}>
-                          {file.name}
-                        </p>
-                      </div>
+                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-2 pt-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <p className="text-white text-[10px] truncate font-medium">{file.name}</p>
+                       </div>
                     </div>
                   );
-                })}
-              </div>
+                    })}
+                  </div>
+                </div>
+              </>
             )}
-
-            {hasMore && !loading && (
-              <div className="mt-4 text-center">
+             {hasMore && !loading && files.length > 0 && (
+              <div className="mt-6 text-center pb-3">
                 <Button
                   onClick={() => {
                     setPage((p) => p + 1);
                     fetchFiles(false);
                   }}
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
+                  className="min-w-[100px]"
                 >
                   טען עוד
                 </Button>
@@ -606,41 +552,24 @@ export function MediaPicker({
           </div>
         </div>
 
-        <DialogFooter>
-          <div className="flex items-center justify-between w-full bg-gray-50 border-t px-6 py-3 -mx-6 -mb-6 mt-0">
-            <div className="text-xs font-medium text-gray-700">
-              {selected.size > 0 ? (
-                <span className="flex items-center gap-1.5">
-                  <HiCheck className="w-4 h-4 text-green-500" />
-                  <span>{selected.size} קבצים נבחרו</span>
-                </span>
-              ) : (
-                <span className="text-gray-400">לא נבחרו קבצים</span>
-              )}
+        <DialogFooter className="border-t bg-gray-50 px-5 py-3">
+            <div className="flex items-center justify-between w-full">
+                <div className="text-sm text-gray-600">
+                    {selected.size > 0 ? (
+                        <span className="font-medium text-gray-900">{selected.size} נבחרו</span>
+                    ) : (
+                        <span className="text-gray-500">לא נבחרו קבצים</span>
+                    )}
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>ביטול</Button>
+                    <Button size="sm" onClick={handleDone} disabled={selected.size === 0}>
+                        הוסף
+                    </Button>
+                </div>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                className="h-9 px-4 text-sm"
-              >
-                ביטול
-              </Button>
-              <Button 
-                onClick={handleDone} 
-                disabled={selected.size === 0}
-                size="sm"
-                className="h-9 px-4 gap-1.5 font-medium text-sm"
-              >
-                <HiCheck className="w-4 h-4" />
-                <span>הוסף ({selected.size})</span>
-              </Button>
-            </div>
-          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

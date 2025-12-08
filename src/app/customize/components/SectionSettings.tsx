@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { updateSection } from '../actions';
 import { PageSection, SectionBlock } from '@/lib/customizer/types';
 import { BlockManagement } from './BlockManagement';
@@ -24,26 +24,40 @@ import {
 
 interface SectionSettingsProps {
   section: PageSection | null;
+  initialBlocks?: any[]; // בלוקים שכבר נטענו
   onClose: () => void;
   onUpdate: () => void;
 }
 
-export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsProps) {
+export function SectionSettings({ section, initialBlocks, onClose, onUpdate }: SectionSettingsProps) {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [customCSS, setCustomCSS] = useState('');
   const [customClasses, setCustomClasses] = useState('');
   const [blocks, setBlocks] = useState<SectionBlock[]>([]);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [blocksLoaded, setBlocksLoaded] = useState(false);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (section) {
       setSettings(section.settings_json || {});
       setCustomCSS(section.custom_css || '');
       setCustomClasses(section.custom_classes || '');
-      loadBlocks();
+      
+      // אם יש initialBlocks, השתמש בהם מיד (לא חוסם)
+      if (initialBlocks && initialBlocks.length > 0) {
+        setBlocks(initialBlocks as SectionBlock[]);
+        setBlocksLoaded(true);
+        setLoadingBlocks(false);
+        // טען id נכון מה-API ברקע (לא חוסם את ה-UI)
+        loadBlocksInBackground();
+      } else {
+        // אחרת טען מה-API
+        loadBlocks();
+      }
     }
-  }, [section]);
+  }, [section?.id]); // רק כשהסקשן משתנה
 
   async function loadBlocks() {
     if (!section?.id) return;
@@ -54,6 +68,7 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
       if (response.ok) {
         const data = await response.json();
         setBlocks(data.blocks || []);
+        setBlocksLoaded(true);
       }
     } catch (error) {
       console.error('Error loading blocks:', error);
@@ -62,48 +77,97 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
       setLoadingBlocks(false);
     }
   }
+  
+  // טעינה ברקע - לא חוסמת את ה-UI
+  async function loadBlocksInBackground() {
+    if (!section?.id) return;
+    
+    try {
+      const response = await fetch(`/api/customizer/sections/${section.id}/blocks`);
+      if (response.ok) {
+        const data = await response.json();
+        // עדכן רק את ה-id של הבלוקים (אם צריך)
+        setBlocks((prevBlocks) => {
+          if (prevBlocks.length === data.blocks.length) {
+            return data.blocks; // עדכן עם id נכון
+          }
+          return prevBlocks; // השאר את הקודמים
+        });
+      }
+    } catch (error) {
+      console.error('Error loading blocks in background:', error);
+      // לא משנה כלום - נשארים עם initialBlocks
+    }
+  }
+  
+  // רענון בלוקים אחרי עדכון
+  const refreshBlocks = async () => {
+    if (section?.id) {
+      await loadBlocks();
+    }
+  };
 
   if (!section) {
     return null;
   }
 
-  async function handleSave() {
-    if (!section) return;
-    
-    try {
-      setSaving(true);
-      await updateSection({
+  // שמירה אוטומטית כשסוגרים את הפאנל
+  const handleClose = () => {
+    // שמור את השינויים לפני סגירה
+    if (section) {
+      updateSection({
         section_id: section.id,
         settings,
         custom_css: customCSS,
         custom_classes: customClasses,
+      }).then((result) => {
+        if (result.success && window.parent) {
+          window.parent.postMessage({
+            type: 'section-updated',
+            sectionId: section.section_id,
+            settings,
+          }, '*');
+        }
+        onUpdate();
+        onClose();
+      }).catch(err => {
+        console.error('Auto-save error:', err);
+        onClose(); // סגור גם אם יש שגיאה
       });
-      onUpdate();
+    } else {
       onClose();
-    } catch (error) {
-      console.error('Error updating section:', error);
-    } finally {
-      setSaving(false);
+    }
+  };
+
+  function updateSetting(key: string, value: any) {
+    const newSettings = {
+      ...settings,
+      [key]: value,
+    };
+    setSettings(newSettings);
+    
+    // עדכון בזמן אמת לתצוגה מקדימה (debounced)
+    if (section && window.parent) {
+      // נקה timeout קודם
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      
+      // שלח עדכון לתצוגה מקדימה אחרי debounce
+      updateTimeoutRef.current = setTimeout(() => {
+        window.parent?.postMessage({
+          type: 'section-settings-changed',
+          sectionId: section.section_id,
+          settings: newSettings,
+        }, '*');
+      }, 300); // debounce של 300ms
     }
   }
 
-  function updateSetting(key: string, value: any) {
-    setSettings((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  }
-
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white shadow-lg border-r border-gray-200" dir="rtl">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            {getSectionName(section.section_type)}
-          </h3>
-          <p className="text-sm text-gray-500">עריכת הגדרות סקשן</p>
-        </div>
         <button
           onClick={onClose}
           className="p-2 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-700 transition-colors"
@@ -111,6 +175,12 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
         >
           <HiX className="w-5 h-5" />
         </button>
+        <div className="text-right">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {getSectionName(section.section_type)}
+          </h3>
+          <p className="text-sm text-gray-500">עריכת הגדרות סקשן</p>
+        </div>
       </div>
 
       {/* Settings Content */}
@@ -151,7 +221,7 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
                     onClick={() => updateSetting('text_alignment', 'right')}
                     className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
                       settings.text_alignment === 'right'
-                        ? 'bg-white text-blue-600 shadow-sm'
+                        ? 'bg-white text-green-600 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -164,7 +234,7 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
                     onClick={() => updateSetting('text_alignment', 'center')}
                     className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
                       settings.text_alignment === 'center'
-                        ? 'bg-white text-blue-600 shadow-sm'
+                        ? 'bg-white text-green-600 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -177,7 +247,7 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
                     onClick={() => updateSetting('text_alignment', 'left')}
                     className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
                       settings.text_alignment === 'left'
-                        ? 'bg-white text-blue-600 shadow-sm'
+                        ? 'bg-white text-green-600 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -280,10 +350,11 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
             ) : (
               <BlockManagement
                 sectionId={section.id}
+                sectionIdString={section.section_id}
                 blocks={blocks}
                 sectionType={section.section_type}
                 onBlocksChange={() => {
-                  loadBlocks();
+                  refreshBlocks();
                   onUpdate();
                 }}
               />
@@ -316,19 +387,12 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 flex gap-3 bg-white sticky bottom-0 z-10">
+      <div className="p-4 border-t border-gray-200 bg-white sticky bottom-0 z-10">
         <button
-          onClick={onClose}
-          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
+          onClick={handleClose}
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
         >
-          ביטול
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? 'שומר...' : 'שמור'}
+          סגור
         </button>
       </div>
     </div>

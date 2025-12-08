@@ -55,6 +55,5 @@ export const MenuIcons = {
   shipping: HiTruck,
   loyalty: HiUserGroup,
   webhooks: HiGlobe,
-  customizer: HiViewGrid,
 };
 

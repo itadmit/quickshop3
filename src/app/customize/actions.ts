@@ -283,6 +283,53 @@ export async function discardDraft(pageType: PageType, pageHandle?: string) {
 }
 
 /**
+ * איפוס דף - מחיקת כל הסקשנים והבלוקים
+ */
+export async function resetPage(pageType: PageType, pageHandle?: string) {
+  try {
+    const { storeId } = await getAuthInfo();
+
+    // מחיקת בלוקים קודם
+    await query(
+      `DELETE FROM section_blocks
+       WHERE section_id IN (
+         SELECT id FROM page_sections
+         WHERE page_layout_id IN (
+           SELECT id FROM page_layouts
+           WHERE store_id = $1 AND page_type = $2
+           AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))
+         )
+       )`,
+      [storeId, pageType, pageHandle || null]
+    );
+
+    // מחיקת סקשנים
+    await query(
+      `DELETE FROM page_sections
+       WHERE page_layout_id IN (
+         SELECT id FROM page_layouts
+         WHERE store_id = $1 AND page_type = $2
+         AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))
+       )`,
+      [storeId, pageType, pageHandle || null]
+    );
+
+    // מחיקת layout
+    await query(
+      `DELETE FROM page_layouts
+       WHERE store_id = $1 AND page_type = $2
+       AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))`,
+      [storeId, pageType, pageHandle || null]
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error resetting page:', error);
+    return { success: false, error: 'Failed to reset page' };
+  }
+}
+
+/**
  * הוספת סקשן
  */
 export async function addSection(data: AddSectionRequest) {
@@ -339,6 +386,34 @@ export async function addSection(data: AddSectionRequest) {
       ]
     );
 
+    const dbSectionId = sectionResult[0]?.id;
+
+    // הוסף בלוקים ברירת מחדל לפי סוג הסקשן
+    if (data.section_type === 'slideshow') {
+      await query(
+        `
+        INSERT INTO section_blocks (
+          section_id, block_type, block_id, position,
+          is_visible, settings_json
+        )
+        VALUES ($1, $2, $3, $4, true, $5)
+        `,
+        [
+          dbSectionId,
+          'image_slide',
+          'slide_1',
+          0,
+          JSON.stringify({
+            image: '',
+            heading: 'ברוכים הבאים',
+            description: 'גלה את הקולקציה החדשה שלנו',
+            button_text: 'קנה עכשיו',
+            button_link: '/collections/all'
+          })
+        ]
+      );
+    }
+
     // ✅ פליטת אירוע
     await eventBus.emit(
       'customizer.section.added',
@@ -355,7 +430,7 @@ export async function addSection(data: AddSectionRequest) {
       }
     );
 
-    return { success: true, sectionId: sectionResult[0]?.id };
+    return { success: true, sectionId: dbSectionId };
   } catch (error) {
     console.error('Error adding section:', error);
     return { success: false, error: 'Failed to add section' };
@@ -363,7 +438,7 @@ export async function addSection(data: AddSectionRequest) {
 }
 
 /**
- * עדכון סקשן
+ * עדכון סקשן - אופטימיזציה לעדכון מהיר
  */
 export async function updateSection(data: UpdateSectionRequest) {
   try {
@@ -410,6 +485,7 @@ export async function updateSection(data: UpdateSectionRequest) {
     updates.push(`updated_at = now()`);
     values.push(data.section_id);
 
+    // עדכון מהיר - רק את הסקשן הספציפי
     await query(
       `
       UPDATE page_sections
@@ -419,8 +495,8 @@ export async function updateSection(data: UpdateSectionRequest) {
       values
     );
 
-    // ✅ פליטת אירוע
-    await eventBus.emit(
+    // ✅ פליטת אירוע (לא חוסם את התגובה)
+    eventBus.emit(
       'customizer.section.updated',
       {
         store_id: storeId,
@@ -432,7 +508,7 @@ export async function updateSection(data: UpdateSectionRequest) {
         source: 'dashboard',
         user_id: userId,
       }
-    );
+    ).catch(err => console.error('Event emission error:', err));
 
     return { success: true };
   } catch (error) {

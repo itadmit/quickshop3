@@ -1,7 +1,7 @@
 /**
  * Template Service - ניהול תבניות ותרגומיהן
  * 
- * מטפל בתבניות שנוצרות ב-Customizer ותרגומיהן
+ * מטפל בתבניות ותרגומיהן
  */
 
 import { query, queryOne } from '@/lib/db';

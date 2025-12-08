@@ -5,20 +5,22 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { updateBlock } from '../actions';
 import { SectionBlock } from '@/lib/customizer/types';
 import { HiX } from 'react-icons/hi';
 
 interface BlockSettingsProps {
   block: SectionBlock;
+  sectionId?: string; // section_id של הסקשן (מחרוזת)
   onClose: () => void;
   onUpdate: () => void;
 }
 
-export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) {
+export function BlockSettings({ block, sectionId, onClose, onUpdate }: BlockSettingsProps) {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (block) {
@@ -26,46 +28,86 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
     }
   }, [block]);
 
-  async function handleSave() {
+  // שמירה אוטומטית כשסוגרים את הפאנל
+  const handleClose = async () => {
     try {
-      setSaving(true);
+      console.log('BlockSettings: Saving block settings', { block_id: block.id, settings });
+
+      // שמור את השינויים לפני סגירה
       await updateBlock({
         block_id: block.id,
         settings,
       });
+
+      console.log('BlockSettings: Block saved successfully');
+
+      // עדכן את ה-preview עם הנתונים מה-DB
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'refresh-preview-data',
+          sectionId: block.section_id || `section_${block.section_id}`,
+        }, '*');
+      }
+
       onUpdate();
       onClose();
-    } catch (error) {
-      console.error('Error updating block:', error);
-    } finally {
-      setSaving(false);
+    } catch (err) {
+      console.error('Auto-save error:', err);
+      onClose(); // סגור גם אם יש שגיאה
     }
-  }
+  };
 
   function updateSetting(key: string, value: any) {
-    setSettings((prev) => ({
-      ...prev,
+    const newSettings = {
+      ...settings,
       [key]: value,
-    }));
+    };
+    setSettings(newSettings);
+    
+    // עדכון בזמן אמת לתצוגה מקדימה (debounced)
+    // נקה timeout קודם
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+    
+    // שלח PostMessage אחרי debounce
+    updateTimeoutRef.current = setTimeout(() => {
+      const message = {
+        type: 'block-settings-changed',
+        blockId: block.block_id,
+        sectionId: sectionId || block.section_id || `section_${block.section_id}`, // השתמש ב-sectionId אם קיים
+        settings: newSettings,
+      };
+      
+      console.log('BlockSettings: Sending block-settings-changed', message);
+      
+      // שלח ל-parent window (אם יש)
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, '*');
+      }
+      
+      // שלח גם ל-window הנוכחי (למקרה שה-preview באותו window)
+      window.postMessage(message, '*');
+    }, 100); // הקטנת debounce ל-100ms לעדכון מהיר יותר
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white shadow-lg border-r border-gray-200" dir="rtl">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 rounded-lg"
+          title="סגור"
+        >
+          <HiX className="w-5 h-5" />
+        </button>
+        <div className="text-right">
           <h3 className="text-lg font-semibold text-gray-900">
             {block.block_type}
           </h3>
           <p className="text-sm text-gray-500">עריכת הגדרות בלוק</p>
         </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-md"
-                title="סגור"
-              >
-                <HiX className="w-5 h-5" />
-              </button>
       </div>
 
       {/* Settings Content */}
@@ -81,7 +123,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="url"
                 value={settings.image || ''}
                 onChange={(e) => updateSetting('image', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="https://example.com/image.jpg"
               />
             </div>
@@ -93,7 +135,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="text"
                 value={settings.heading || ''}
                 onChange={(e) => updateSetting('heading', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="הכנס כותרת"
               />
             </div>
@@ -104,7 +146,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
               <textarea
                 value={settings.description || ''}
                 onChange={(e) => updateSetting('description', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 rows={3}
                 placeholder="הכנס תיאור"
               />
@@ -117,7 +159,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="text"
                 value={settings.button_text || ''}
                 onChange={(e) => updateSetting('button_text', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="קנה עכשיו"
               />
             </div>
@@ -129,7 +171,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="url"
                 value={settings.button_link || ''}
                 onChange={(e) => updateSetting('button_link', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="/collections/new"
               />
             </div>
@@ -140,9 +182,9 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
               <div className="flex gap-2">
                 <button
                   onClick={() => updateSetting('content_alignment', 'right')}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm ${
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${
                     settings.content_alignment === 'right'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-green-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -150,9 +192,9 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 </button>
                 <button
                   onClick={() => updateSetting('content_alignment', 'center')}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm ${
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${
                     settings.content_alignment === 'center'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-green-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -160,9 +202,9 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 </button>
                 <button
                   onClick={() => updateSetting('content_alignment', 'left')}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm ${
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${
                     settings.content_alignment === 'left'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-green-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -182,7 +224,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
               <select
                 value={settings.collection_id || ''}
                 onChange={(e) => updateSetting('collection_id', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
               >
                 <option value="">בחר קטגוריה</option>
                 {/* TODO: Load collections from API */}
@@ -196,7 +238,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="url"
                 value={settings.image || ''}
                 onChange={(e) => updateSetting('image', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="https://example.com/image.jpg"
               />
             </div>
@@ -213,7 +255,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="text"
                 value={settings.author || ''}
                 onChange={(e) => updateSetting('author', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="שם הכותב"
               />
             </div>
@@ -224,7 +266,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
               <textarea
                 value={settings.content || ''}
                 onChange={(e) => updateSetting('content', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 rows={4}
                 placeholder="תוכן הביקורת"
               />
@@ -253,7 +295,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="url"
                 value={settings.image || ''}
                 onChange={(e) => updateSetting('image', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="https://example.com/image.jpg"
               />
             </div>
@@ -270,7 +312,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="text"
                 value={settings.question || ''}
                 onChange={(e) => updateSetting('question', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="הכנס שאלה"
               />
             </div>
@@ -281,7 +323,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
               <textarea
                 value={settings.answer || ''}
                 onChange={(e) => updateSetting('answer', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 rows={4}
                 placeholder="הכנס תשובה"
               />
@@ -299,7 +341,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 type="text"
                 value={settings.title || ''}
                 onChange={(e) => updateSetting('title', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 placeholder="כותרת הטאב"
               />
             </div>
@@ -310,7 +352,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
               <textarea
                 value={settings.content || ''}
                 onChange={(e) => updateSetting('content', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm"
                 rows={6}
                 placeholder="תוכן הטאב"
               />
@@ -330,7 +372,7 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
                 onChange={(e) => {
                   // This will be handled by parent component
                 }}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                className="w-4 h-4 text-green-600 border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded"
                 disabled
               />
               <span className="text-sm text-gray-700">גלוי</span>
@@ -340,19 +382,12 @@ export function BlockSettings({ block, onClose, onUpdate }: BlockSettingsProps) 
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 flex gap-2">
+      <div className="p-4 border-t border-gray-200">
         <button
-          onClick={onClose}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+          onClick={handleClose}
+          className="w-full px-4 py-2 border border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
         >
-          ביטול
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
-        >
-          {saving ? 'שומר...' : 'שמור'}
+          סגור
         </button>
       </div>
     </div>

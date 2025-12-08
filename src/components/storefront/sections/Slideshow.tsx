@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 
 interface SlideshowProps {
@@ -30,7 +30,102 @@ interface SlideshowProps {
 
 export function Slideshow({ settings, blocks, globalSettings }: SlideshowProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const slides = settings.slides || blocks || [];
+  const [dynamicBlocks, setDynamicBlocks] = useState(blocks);
+  
+  // עדכן את ה-blocks כשהם משתנים
+  useEffect(() => {
+    setDynamicBlocks(blocks);
+  }, [blocks]);
+  
+  // האזן לעדכוני blocks בזמן אמת
+  useEffect(() => {
+    function handleBlockUpdate(event: CustomEvent) {
+      const { blockId, sectionId, settings: blockSettings } = event.detail;
+      
+      console.log('Block update received:', { blockId, sectionId, blockSettings });
+      
+      // עדכן את ה-blocks
+      setDynamicBlocks((prevBlocks: any) => {
+        if (!prevBlocks) return prevBlocks;
+        
+        const updated = prevBlocks.map((block: any) => {
+          // בדוק אם זה הבלוק הנכון - נסה כמה אפשרויות
+          const matches = 
+            block.block_id === blockId || 
+            block.id === blockId ||
+            String(block.block_id) === String(blockId) ||
+            String(block.id) === String(blockId);
+            
+          if (matches) {
+            console.log('Updating block:', block, 'with settings:', blockSettings);
+            return {
+              ...block,
+              settings_json: blockSettings,
+              settings: blockSettings,
+            };
+          }
+          return block;
+        });
+        
+        console.log('Updated blocks:', updated);
+        return updated;
+      });
+    }
+    
+    function handleBlocksUpdated() {
+      // רענון כללי של ה-blocks
+      console.log('Blocks updated event received, refreshing blocks');
+      setDynamicBlocks(blocks);
+    }
+    
+    window.addEventListener('block-settings-updated', handleBlockUpdate as EventListener);
+    document.addEventListener('blocks-updated', handleBlocksUpdated);
+    
+    return () => {
+      window.removeEventListener('block-settings-updated', handleBlockUpdate as EventListener);
+      document.removeEventListener('blocks-updated', handleBlocksUpdated);
+    };
+  }, [blocks]);
+  
+  // המרת blocks מ-DB לפורמט slides - עם useMemo לעדכון אוטומטי
+  const slidesFromBlocks = useMemo(() => {
+    const blocksToUse = dynamicBlocks || blocks || [];
+    console.log('Slideshow: Computing slides from blocks', { blocksToUse, dynamicBlocks, blocks });
+
+    if (blocksToUse.length === 0) {
+      console.log('Slideshow: No blocks found');
+      return [];
+    }
+
+    const computed = blocksToUse.map((block: any, index: number) => {
+      console.log(`Slideshow: Processing block ${index}`, block);
+      const image = block.settings?.image || block.settings_json?.image || '';
+      const heading = block.settings?.heading || block.settings_json?.heading || '';
+      const description = block.settings?.description || block.settings_json?.description || '';
+      const buttonText = block.settings?.button_text || block.settings_json?.button_text || '';
+      const buttonLink = block.settings?.button_link || block.settings_json?.button_link || '';
+
+      console.log(`Slideshow: Block ${index} values`, { image, heading, description, buttonText, buttonLink });
+
+      return {
+        image_url: image,
+        heading: heading,
+        subheading: description,
+        cta_text: buttonText,
+        cta_link: buttonLink,
+      };
+    }).filter((slide: any) => slide.image_url);
+
+    console.log('Slideshow: Computed slides', computed);
+    return computed;
+  }, [dynamicBlocks, blocks]);
+  
+  const slides = useMemo(() => {
+    // Prefer blocks over section settings - blocks are editable in customizer
+    return slidesFromBlocks.length > 0 ? slidesFromBlocks : (settings.slides || []);
+  }, [settings.slides, slidesFromBlocks]);
+  
+  console.log('Slideshow: Final slides', slides);
 
   useEffect(() => {
     if (!settings.auto_rotate || slides.length <= 1) return;
@@ -57,8 +152,6 @@ export function Slideshow({ settings, blocks, globalSettings }: SlideshowProps) 
   const prevSlide = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
-
-  const currentSlideData = slides[currentSlide];
 
   return (
     <section className="relative w-full h-[500px] md:h-[600px] overflow-hidden">
