@@ -8,6 +8,7 @@ import { SettingsAndStylePanel } from './SettingsAndStylePanel';
 import { ElementsSidebar } from './ElementsSidebar';
 import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
 import { EditorState, SectionSettings } from '@/lib/customizer/types';
+import { getSectionName } from '@/lib/customizer/sectionNames';
 
 export function CustomizerLayout() {
   const [editorState, setEditorState] = useState<EditorState>({
@@ -265,7 +266,7 @@ export function CustomizerLayout() {
     const newSection: SectionSettings = {
       id: `section-${Date.now()}`,
       type: sectionType as any,
-      name: sectionType,
+      name: getSectionName(sectionType),
       visible: true,
       order: position ?? pageSections.length,
       blocks: [],

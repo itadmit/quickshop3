@@ -5,6 +5,7 @@
 
 import { query } from '@/lib/db';
 import { PageTemplate, TemplateWidget } from './types';
+import { getSectionName } from './sectionNames';
 
 export async function getTemplateConfig(
   storeId: number,
@@ -182,7 +183,7 @@ export async function getPageLayout(storeId: number, pageType: string, pageHandl
       sections.push({
         id: sectionRow.section_id,
         type: sectionRow.section_type,
-        name: sectionRow.section_type,
+        name: getSectionName(sectionRow.section_type),
         visible: sectionRow.is_visible,
         order: sectionRow.position,
         locked: sectionRow.is_locked,

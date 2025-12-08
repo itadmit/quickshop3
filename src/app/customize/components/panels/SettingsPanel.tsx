@@ -258,19 +258,21 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     {section.style?.background?.background_image_mobile && (
                         <div className="space-y-2">
                             <p className="text-xs text-gray-500 font-medium">תמונת מובייל</p>
-                            <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-[9/16] max-w-[150px] group">
-                                <img 
-                                    src={section.style.background.background_image_mobile} 
-                                    alt="Mobile Background" 
-                                    className="w-full h-full object-cover"
-                                />
-                                <button
-                                    onClick={() => handleStyleChange('background.background_image_mobile', '')}
-                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="הסר תמונת מובייל"
-                                >
-                                    <HiTrash className="w-4 h-4" />
-                                </button>
+                            <div className="flex justify-center">
+                                <div className="relative rounded-lg overflow-hidden border border-gray-200 w-20 h-32 group">
+                                    <img 
+                                        src={section.style.background.background_image_mobile} 
+                                        alt="Mobile Background" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        onClick={() => handleStyleChange('background.background_image_mobile', '')}
+                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="הסר תמונת מובייל"
+                                    >
+                                        <HiTrash className="w-3 h-3" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

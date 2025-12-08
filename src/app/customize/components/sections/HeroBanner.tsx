@@ -129,7 +129,7 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
   };
 
   // Font family
-  const fontFamily = section.style?.typography?.font_family || 'system-ui';
+  const fontFamily = section.style?.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
 
   return (
     <div 

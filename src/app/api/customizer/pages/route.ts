@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { getSectionName } from '@/lib/customizer/sectionNames';
 
 export async function GET(request: NextRequest) {
   try {
@@ -151,7 +152,7 @@ export async function GET(request: NextRequest) {
       return {
         id: section.section_id,
         type: section.section_type,
-        name: section.section_type,
+        name: getSectionName(section.section_type),
         visible: section.is_visible,
         order: section.position,
         locked: section.is_locked,

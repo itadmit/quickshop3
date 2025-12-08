@@ -35,7 +35,7 @@ export function RichText({ section, onUpdate }: RichTextProps) {
      }
   };
 
-  const fontFamily = style.typography?.font_family || 'system-ui';
+  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   const textColor = style.typography?.color || '#111827';
 
   return (

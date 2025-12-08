@@ -33,7 +33,7 @@ export function Gallery({ section, onUpdate }: GalleryProps) {
   // Title alignment
   const titleAlignClass = settings.title_align === 'left' ? 'text-left' : settings.title_align === 'center' ? 'text-center' : 'text-right';
   
-  const fontFamily = style.typography?.font_family || 'system-ui';
+  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   const textColor = style.typography?.color || '#111827';
 
   return (

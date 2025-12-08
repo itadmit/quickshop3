@@ -90,7 +90,7 @@ export function ImageWithText({ section, onUpdate }: ImageWithTextProps) {
     return { className: `${baseClasses} ${styleClasses}`, style: inlineStyles };
   };
 
-  const fontFamily = style.typography?.font_family || 'system-ui';
+  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   const textColor = style.typography?.color || '#111827';
 
   return (
