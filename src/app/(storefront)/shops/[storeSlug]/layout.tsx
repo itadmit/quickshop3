@@ -4,11 +4,10 @@ import Script from 'next/script';
 import React from 'react';
 import { headers } from 'next/headers';
 import { PageViewTracker } from '@/components/storefront/PageViewTracker';
-import { ConditionalLayout } from '@/components/storefront/ConditionalLayout';
+import { CustomizerLayout } from '@/components/storefront/CustomizerLayout';
 import { LocaleSetter } from '@/components/storefront/LocaleSetter';
 import { getStoreBySlug } from '@/lib/utils/store';
 import { getActivePixels, getActiveTrackingCodes } from '@/lib/tracking/pixels';
-import { getNavigationCollections } from '@/lib/storefront/queries';
 
 export default async function StoreSlugLayout({
   children,
@@ -26,15 +25,14 @@ export default async function StoreSlugLayout({
     notFound();
   }
 
-  // טעינת פיקסלים וקודי מעקב + Collections לניווט
-  const [headPixels, headCodes, bodyPixels, bodyCodes, footerPixels, footerCodes, navigationCollections] = await Promise.all([
+  // טעינת פיקסלים וקודי מעקב
+  const [headPixels, headCodes, bodyPixels, bodyCodes, footerPixels, footerCodes] = await Promise.all([
     getActivePixels(store.id).then(p => p.filter(p => p.placement === 'head')),
     getActiveTrackingCodes(store.id).then(c => c.filter(c => c.placement === 'head')),
     getActivePixels(store.id).then(p => p.filter(p => p.placement === 'body')),
     getActiveTrackingCodes(store.id).then(c => c.filter(c => c.placement === 'body')),
     getActivePixels(store.id).then(p => p.filter(p => p.placement === 'footer')),
     getActiveTrackingCodes(store.id).then(c => c.filter(c => c.placement === 'footer')),
-    getNavigationCollections(store.id),
   ]);
 
   return (
@@ -143,16 +141,11 @@ export default async function StoreSlugLayout({
 
       <LocaleSetter locale={store.locale || 'he'} />
       
-      {/* Layout Structure: Header -> Content -> Footer (מותנה) */}
-      <div className="min-h-screen flex flex-col" dir="rtl">
-        <PageViewTracker />
-        <ConditionalLayout 
-          storeName={store.name} 
-          collections={navigationCollections.map(c => ({ id: c.id, title: c.name, handle: c.handle }))}
-        >
-          {children}
-        </ConditionalLayout>
-      </div>
+      {/* Layout Structure: Customizer Layout (Header + Content + Footer from Customizer) */}
+      <PageViewTracker />
+      <CustomizerLayout storeSlug={storeSlug}>
+        {children}
+      </CustomizerLayout>
 
       {/* Body Tracking Codes */}
       {bodyCodes

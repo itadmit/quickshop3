@@ -9,6 +9,7 @@ export type TemplateType = 'home' | 'product' | 'collection' | 'cart' | 'checkou
 // סוגי סקשנים
 export type SectionType =
   | 'hero'
+  | 'hero_banner'
   | 'featured_products'
   | 'featured_collections'
   | 'image_with_text'
@@ -16,6 +17,7 @@ export type SectionType =
   | 'slideshow'
   | 'announcement_bar'
   | 'newsletter'
+  | 'gallery'
   | 'footer'
   | 'header';
 
@@ -75,16 +77,32 @@ export interface StyleSettings {
   border?: BorderSettings;
   shadow?: ShadowSettings;
   background_image?: string;
+  background_image_mobile?: string; // תמונת רקע למובייל
   background_color?: string;
   background_position?: string;
   background_size?: string;
   background_repeat?: 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y';
+  background?: {
+    background_color?: string;
+    background_image?: string;
+    background_image_mobile?: string;
+    background_video?: string;
+    background_size?: string;
+    background_position?: string;
+    background_repeat?: string;
+    overlay_opacity?: string;
+    video_autoplay?: boolean;
+    video_muted?: boolean;
+    video_loop?: boolean;
+    video_object_fit?: string;
+  };
 }
 
 // תוכן בלוק
 export interface BlockContent {
   text?: string;
   image_url?: string;
+  image_url_mobile?: string; // תמונה למובייל
   image_alt?: string;
   button_text?: string;
   button_url?: string;
@@ -114,6 +132,7 @@ export interface SectionSettings {
   name: string;
   visible: boolean;
   order: number;
+  locked?: boolean; // סקשן קבוע שלא ניתן למחוק (כמו Header/Footer)
   blocks: BlockSettings[];
   style: StyleSettings;
   settings: Record<string, any>; // הגדרות ספציפיות לסקשן

@@ -12,7 +12,9 @@ import {
   HiEyeOff,
   HiTrash,
   HiPlus,
-  HiDotsVertical
+  HiDotsVertical,
+  HiMenu,
+  HiViewList
 } from 'react-icons/hi';
 
 interface ElementsSidebarProps {
@@ -22,6 +24,7 @@ interface ElementsSidebarProps {
   onSectionAdd: (sectionType: string, position?: number) => void;
   onSectionDelete: (sectionId: string) => void;
   onSectionMove: (sectionId: string, newPosition: number) => void;
+  onSectionUpdate?: (sectionId: string, updates: Partial<SectionSettings>) => void;
 }
 
 const AVAILABLE_SECTIONS: Array<{
@@ -74,7 +77,8 @@ export function ElementsSidebar({
   onSectionSelect,
   onSectionAdd,
   onSectionDelete,
-  onSectionMove
+  onSectionMove,
+  onSectionUpdate
 }: ElementsSidebarProps) {
   const [showAddMenu, setShowAddMenu] = useState(false);
 
@@ -88,6 +92,10 @@ export function ElementsSidebar({
   };
 
   const getSectionIcon = (type: SectionType) => {
+    // Special handling for fixed sections
+    if (type === 'header') return HiMenu;
+    if (type === 'footer') return HiViewList;
+    
     const section = AVAILABLE_SECTIONS.find(s => s.type === type);
     return section?.icon || HiCube;
   };
@@ -105,71 +113,88 @@ export function ElementsSidebar({
       {/* Sections List */}
       <div className="flex-1 overflow-y-auto">
         <div className="divide-y divide-gray-50">
-          {sections.map((section, index) => (
-            <div
-              key={section.id}
-              className={`group flex items-center justify-between p-3 cursor-pointer transition-all ${
-                selectedSectionId === section.id
-                  ? 'bg-blue-50 border-r-2 border-blue-600'
-                  : 'hover:bg-gray-50 border-r-2 border-transparent'
-              }`}
-              onClick={() => handleSectionClick(section.id)}
-            >
-              <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                 {/* Drag Handle (Visual only for now) */}
-                 <div className="text-gray-300 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-                   <HiDotsVertical className="w-4 h-4" />
-                 </div>
-                 
-                <div className={`p-1.5 rounded-md ${
-                  selectedSectionId === section.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {React.createElement(getSectionIcon(section.type), { className: "w-4 h-4" })}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${
-                    selectedSectionId === section.id ? 'text-blue-900' : 'text-gray-700'
+          {sections.map((section, index) => {
+            const isLocked = section.locked || section.type === 'header' || section.type === 'footer';
+            const isHeader = section.type === 'header';
+            const isFooter = section.type === 'footer';
+            
+            return (
+              <div
+                key={section.id}
+                className={`group flex items-center justify-between p-3 cursor-pointer transition-all ${
+                  selectedSectionId === section.id
+                    ? 'bg-blue-50 border-r-2 border-blue-600'
+                    : 'hover:bg-gray-50 border-r-2 border-transparent'
+                } ${isLocked ? 'bg-gray-50/50' : ''}`}
+                onClick={() => handleSectionClick(section.id)}
+              >
+                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                   {/* Drag Handle - hidden for locked sections */}
+                   {!isLocked && (
+                     <div className="text-gray-300 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
+                       <HiDotsVertical className="w-4 h-4" />
+                     </div>
+                   )}
+                   
+                  <div className={`p-1.5 rounded-md ${
+                    selectedSectionId === section.id ? 'bg-blue-100 text-blue-600' : isLocked ? 'bg-gray-200 text-gray-600' : 'bg-gray-100 text-gray-500'
                   }`}>
-                    {section.name}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate hidden group-hover:block">
-                    {AVAILABLE_SECTIONS.find(s => s.type === section.type)?.description || section.type}
-                  </p>
+                    {React.createElement(getSectionIcon(section.type), { className: "w-4 h-4" })}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-medium truncate ${
+                        selectedSectionId === section.id ? 'text-blue-900' : 'text-gray-700'
+                      }`}>
+                        {section.name}
+                      </p>
+                      {isLocked && (
+                        <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded-full" title="סקשן קבוע">
+                          קבוע
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 truncate hidden group-hover:block">
+                      {AVAILABLE_SECTIONS.find(s => s.type === section.type)?.description || section.type}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* Visibility Toggle */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Toggle visibility logic would go here
-                  }}
-                  className={`p-1.5 rounded-md hover:bg-gray-200 ${
-                    section.visible ? 'text-gray-600' : 'text-gray-400'
-                  }`}
-                  title={section.visible ? "הסתר" : "הצג"}
-                >
-                  {section.visible ? <HiEye className="w-4 h-4" /> : <HiEyeOff className="w-4 h-4" />}
-                </button>
-
-                {/* Delete Button */}
-                {!section.locked && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Visibility Toggle - always available */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSectionDelete(section.id);
+                      if (onSectionUpdate) {
+                        onSectionUpdate(section.id, { visible: !section.visible });
+                      }
                     }}
-                    className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-                    title="מחק"
+                    className={`p-1.5 rounded-md hover:bg-gray-200 ${
+                      section.visible ? 'text-gray-600' : 'text-gray-400'
+                    }`}
+                    title={section.visible ? "הסתר" : "הצג"}
                   >
-                    <HiTrash className="w-4 h-4" />
+                    {section.visible ? <HiEye className="w-4 h-4" /> : <HiEyeOff className="w-4 h-4" />}
                   </button>
-                )}
+
+                  {/* Delete Button - hidden for locked sections */}
+                  {!isLocked && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSectionDelete(section.id);
+                      }}
+                      className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                      title="מחק"
+                    >
+                      <HiTrash className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

@@ -78,7 +78,10 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       ],
       style: {
         background: {
-          background_color: '#F3F4F6'
+          background_color: '#FFFFFF'
+        },
+        typography: {
+          font_family: '"Noto Sans Hebrew", sans-serif'
         },
         spacing: {
           padding_top: '80px',
@@ -87,7 +90,10 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       },
       settings: {
         layout: 'center',
-        height: 'medium'
+        height: 'medium',
+        text_align: 'center',
+        content_position_vertical: 'center',
+        content_position_horizontal: 'center'
       }
     },
 
@@ -102,7 +108,10 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       blocks: [],
       style: {
         background: {
-          background_color: '#F3F4F6'
+          background_color: '#FFFFFF'
+        },
+        typography: {
+          font_family: '"Noto Sans Hebrew", sans-serif'
         },
         spacing: {
           padding_top: '60px',
@@ -111,10 +120,11 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       },
       settings: {
         title: 'קטגוריות פופולריות',
-        collections: [], // Will be populated with store collections
+        collections: [],
         display_type: 'grid',
         items_per_row: 3,
-        show_description: true
+        show_description: true,
+        text_align: 'right'
       }
     },
 
@@ -129,7 +139,10 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       blocks: [],
       style: {
         background: {
-          background_color: '#F3F4F6'
+          background_color: '#FFFFFF'
+        },
+        typography: {
+          font_family: '"Noto Sans Hebrew", sans-serif'
         },
         spacing: {
           padding_top: '60px',
@@ -138,12 +151,13 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       },
       settings: {
         title: 'מוצרים מומלצים',
-        products: [], // Will be populated with featured products
+        products: [],
         display_type: 'grid',
         items_per_row: 4,
         show_price: true,
         show_rating: true,
-        show_badges: true
+        show_badges: true,
+        text_align: 'right'
       }
     },
 
@@ -176,14 +190,17 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
             button_url: '/pages/about'
           },
           style: {
-            text_align: 'left'
+            text_align: 'right'
           },
           settings: {}
         }
       ],
       style: {
         background: {
-          background_color: '#F3F4F6'
+          background_color: '#FFFFFF'
+        },
+        typography: {
+          font_family: '"Noto Sans Hebrew", sans-serif'
         },
         spacing: {
           padding_top: '60px',
@@ -191,7 +208,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         }
       },
       settings: {
-        layout: 'image_left',
+        layout: 'image_right',
         spacing: 'medium'
       }
     },
@@ -221,7 +238,10 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       ],
       style: {
         background: {
-          background_color: '#F3F4F6'
+          background_color: '#FFFFFF'
+        },
+        typography: {
+          font_family: '"Noto Sans Hebrew", sans-serif'
         },
         spacing: {
           padding_top: '60px',
@@ -229,10 +249,9 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         }
       },
       settings: {
-        form_settings: {
-          email_placeholder: 'הכנס את כתובת המייל שלך',
-          success_message: 'תודה על ההרשמה!'
-        }
+        layout: 'center',
+        content_width: 'regular',
+        height: 'medium'
       }
     },
 

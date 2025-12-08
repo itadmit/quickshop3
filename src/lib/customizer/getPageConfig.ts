@@ -31,11 +31,11 @@ export async function getTemplateConfig(
 
     const templateResult = await query(templateQuery, [storeId, templateType, templateName]);
 
-    if (templateResult.rows.length === 0) {
+    if (templateResult.length === 0) {
       return { template: null, widgets: [] };
     }
 
-    const templateRow = templateResult.rows[0];
+    const templateRow = templateResult[0];
 
     // Get template widgets
     const widgetsQuery = `
@@ -89,7 +89,7 @@ export async function getTemplateConfig(
     };
 
     // Convert widgets to TemplateWidget format
-    const widgets: TemplateWidget[] = widgetsResult.rows.map(row => ({
+    const widgets: TemplateWidget[] = widgetsResult.map(row => ({
       id: row.widget_id,
       name: row.widget_type,
       description: row.widget_type,
@@ -117,6 +117,7 @@ export async function getTemplateConfig(
 
 export async function getPageLayout(storeId: number, pageType: string, pageHandle?: string): Promise<any> {
   try {
+    // Prefer published layouts, but also return drafts if no published layout exists
     const layoutQuery = `
       SELECT
         pl.*,
@@ -127,18 +128,19 @@ export async function getPageLayout(storeId: number, pageType: string, pageHandl
       WHERE pl.store_id = $1
         AND pl.page_type = $2
         AND ($3::text IS NULL OR pl.page_handle = $3)
-        AND pl.is_published = true
-      ORDER BY pl.created_at DESC
+      ORDER BY pl.is_published DESC, pl.created_at DESC
       LIMIT 1
     `;
 
     const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle]);
 
-    if (layoutResult.rows.length === 0) {
+    console.log('[getPageLayout] Store ID:', storeId, 'Page Type:', pageType, 'Found layouts:', layoutResult.length);
+
+    if (layoutResult.length === 0) {
       return null;
     }
 
-    const layout = layoutResult.rows[0];
+    const layout = layoutResult[0];
 
     // Get sections for this layout
     const sectionsQuery = `
@@ -151,7 +153,7 @@ export async function getPageLayout(storeId: number, pageType: string, pageHandl
 
     // Get blocks for each section
     const sections = [];
-    for (const sectionRow of sectionsResult.rows) {
+    for (const sectionRow of sectionsResult) {
       const blocksQuery = `
         SELECT * FROM section_blocks
         WHERE section_id = $1
@@ -160,6 +162,23 @@ export async function getPageLayout(storeId: number, pageType: string, pageHandl
 
       const blocksResult = await query(blocksQuery, [sectionRow.id]);
 
+      // Parse settings_json for blocks - it contains content, style, and settings
+      const parsedBlocks = blocksResult.map(block => {
+        const blockSettings = block.settings_json || {};
+        // settings_json can contain content, style, and settings properties
+        return {
+          id: block.block_id,
+          type: block.block_type,
+          content: blockSettings.content || {},
+          style: blockSettings.style || {},
+          settings: blockSettings.settings || blockSettings,
+          is_visible: block.is_visible !== false
+        };
+      });
+
+      // Parse settings_json for section - it contains style and settings
+      const sectionSettings = sectionRow.settings_json || {};
+      
       sections.push({
         id: sectionRow.section_id,
         type: sectionRow.section_type,
@@ -167,15 +186,9 @@ export async function getPageLayout(storeId: number, pageType: string, pageHandl
         visible: sectionRow.is_visible,
         order: sectionRow.position,
         locked: sectionRow.is_locked,
-        blocks: blocksResult.rows.map(block => ({
-          id: block.block_id,
-          type: block.block_type,
-          content: {},
-          style: {},
-          settings: block.settings_json || {}
-        })),
-        style: {},
-        settings: sectionRow.settings_json || {}
+        blocks: parsedBlocks,
+        style: sectionSettings.style || {},
+        settings: sectionSettings.settings || sectionSettings
       });
     }
 

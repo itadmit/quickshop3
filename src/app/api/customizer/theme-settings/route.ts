@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const settingsResult = await query(settingsQuery, [user.store_id]);
 
-    if (settingsResult.rows.length === 0) {
+    if (settingsResult.length === 0) {
       // Return default New York theme settings
       const defaultSettings = {
         theme: {
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(defaultSettings);
     }
 
-    const settings = settingsResult.rows[0];
+    const settings = settingsResult[0];
 
     return NextResponse.json({
       theme: {
@@ -139,14 +139,14 @@ export async function POST(request: NextRequest) {
       SELECT id FROM theme_templates WHERE name = 'new-york' LIMIT 1
     `);
 
-    const templateId = themeTemplate.rows[0]?.id || 1;
+    const templateId = themeTemplate[0]?.id || 1;
 
     // Check if theme settings exist
     const existingSettings = await query(`
       SELECT id FROM store_theme_settings WHERE store_id = $1
     `, [user.store_id]);
 
-    if (existingSettings.rows.length > 0) {
+    if (existingSettings.length > 0) {
       // Update existing settings
       await query(`
         UPDATE store_theme_settings

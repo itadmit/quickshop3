@@ -113,19 +113,15 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
           />
           <SettingSelect
             label="פונט"
-            value={getStyleValue('typography.font_family', 'system-ui')}
+            value={getStyleValue('typography.font_family', '"Noto Sans Hebrew", sans-serif')}
             onChange={(e) => handleStyleChange('typography.font_family', e.target.value)}
             options={[
-              { label: 'ברירת מחדל (System UI)', value: 'system-ui' },
-              { label: 'Arial', value: 'Arial, sans-serif' },
-              { label: 'Helvetica', value: 'Helvetica, sans-serif' },
-              { label: 'Times New Roman', value: '"Times New Roman", serif' },
-              { label: 'Georgia', value: 'Georgia, serif' },
-              { label: 'Courier New', value: '"Courier New", monospace' },
+              { label: 'Noto Sans Hebrew (מומלץ)', value: '"Noto Sans Hebrew", sans-serif' },
               { label: 'Assistant (עברית)', value: '"Assistant", sans-serif' },
               { label: 'Rubik (עברית)', value: '"Rubik", sans-serif' },
               { label: 'Heebo (עברית)', value: '"Heebo", sans-serif' },
-              { label: 'Open Sans', value: '"Open Sans", sans-serif' },
+              { label: 'Arial', value: 'Arial, sans-serif' },
+              { label: 'System UI', value: 'system-ui' },
             ]}
           />
         </div>

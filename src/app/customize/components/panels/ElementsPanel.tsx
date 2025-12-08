@@ -63,6 +63,12 @@ const AVAILABLE_SECTIONS: Array<{
     name: 'הרשמה לניוזלטר',
     description: 'טופס הרשמה לניוזלטר',
     icon: HiMail
+  },
+  {
+    type: 'gallery',
+    name: 'גלריה',
+    description: 'גלריית תמונות עם אפשרות רשת או קרוסלה',
+    icon: HiPhotograph
   }
 ];
 
@@ -256,6 +262,12 @@ const AVAILABLE_SECTIONS: Array<{
     name: 'הרשמה לניוזלטר',
     description: 'טופס הרשמה לניוזלטר',
     icon: HiMail
+  },
+  {
+    type: 'gallery',
+    name: 'גלריה',
+    description: 'גלריית תמונות עם אפשרות רשת או קרוסלה',
+    icon: HiPhotograph
   }
 ];
 

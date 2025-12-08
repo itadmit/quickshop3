@@ -13,6 +13,7 @@ import { FeaturedCollections } from './FeaturedCollections';
 import { ImageWithText } from './ImageWithText';
 import { RichText } from './RichText';
 import { Newsletter } from './Newsletter';
+import { Gallery } from './Gallery';
 import { Header } from './Header';
 import { Footer } from './Footer';
 
@@ -41,8 +42,13 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     };
 
     // If there is an image and NO video, use it as CSS background
-    if (style.background?.background_image && !style.background?.background_video) {
-        bgStyle.backgroundImage = `url(${style.background.background_image})`;
+    // Choose mobile image if device is mobile and mobile image exists
+    const backgroundImage = (device === 'mobile' && style.background?.background_image_mobile) 
+        ? style.background.background_image_mobile 
+        : style.background?.background_image;
+        
+    if (backgroundImage && !style.background?.background_video) {
+        bgStyle.backgroundImage = `url(${backgroundImage})`;
         bgStyle.backgroundSize = style.background?.background_size || 'cover';
         bgStyle.backgroundPosition = style.background?.background_position || 'center';
         bgStyle.backgroundRepeat = style.background?.background_repeat || 'no-repeat';
@@ -106,11 +112,8 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
 
   switch (section.type) {
     case 'header':
-      return (
-        <SectionWrapper>
-          <Header section={responsiveSection} onUpdate={onUpdate} />
-        </SectionWrapper>
-      );
+      // Header should not be wrapped with SectionWrapper padding/spacing - it's sticky
+      return <Header section={responsiveSection} onUpdate={onUpdate} />;
 
     case 'hero_banner':
       return (
@@ -154,12 +157,16 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
         </SectionWrapper>
       );
 
-    case 'footer':
+    case 'gallery':
       return (
         <SectionWrapper>
-          <Footer section={responsiveSection} onUpdate={onUpdate} />
+          <Gallery section={responsiveSection} onUpdate={onUpdate} />
         </SectionWrapper>
       );
+
+    case 'footer':
+      // Footer should not be wrapped with SectionWrapper padding/spacing
+      return <Footer section={responsiveSection} onUpdate={onUpdate} />;
 
     default:
       // Generic section for unknown types

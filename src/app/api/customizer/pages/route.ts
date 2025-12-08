@@ -29,6 +29,54 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get store information
+    const storeQuery = `
+      SELECT id, name, slug
+      FROM stores
+      WHERE id = $1
+    `;
+    const storeResult = await query(storeQuery, [user.store_id]);
+    let store = storeResult[0] || { name: 'החנות שלי', slug: '', logo: null };
+    
+    // Try to get logo from store_settings
+    try {
+      const settingsResult = await query(`
+        SELECT settings FROM store_settings WHERE store_id = $1
+      `, [user.store_id]);
+      
+      if (settingsResult.length > 0 && settingsResult[0].settings) {
+        const settings = typeof settingsResult[0].settings === 'string' 
+          ? JSON.parse(settingsResult[0].settings) 
+          : settingsResult[0].settings;
+        
+        if (settings?.logo) {
+          store.logo = settings.logo;
+        } else if (settings?.branding?.logo) {
+          store.logo = settings.branding.logo;
+        }
+      }
+    } catch (error: any) {
+      // Silently ignore if store_settings table doesn't exist
+      if (!error.message?.includes('does not exist')) {
+        console.warn('Error fetching store logo:', error);
+      }
+    }
+
+    // Get collections for navigation
+    const collectionsQuery = `
+      SELECT id, title as name, handle
+      FROM product_collections
+      WHERE store_id = $1 AND published_scope = 'web'
+      ORDER BY created_at DESC
+      LIMIT 20
+    `;
+    const collectionsResult = await query(collectionsQuery, [user.store_id]);
+    const collections = collectionsResult.map((col: any) => ({
+      id: col.id,
+      name: col.name,
+      handle: col.handle
+    }));
+
     // Get page layout
     const layoutQuery = `
       SELECT
@@ -46,14 +94,20 @@ export async function GET(request: NextRequest) {
 
     const layoutResult = await query(layoutQuery, [user.store_id, pageType, pageHandle]);
 
-    if (layoutResult.rows.length === 0) {
+    if (layoutResult.length === 0) {
       return NextResponse.json({
         layout: null,
-        sections: []
+        sections: [],
+        store: {
+          name: store.name,
+          slug: store.slug,
+          logo: store.logo
+        },
+        collections
       });
     }
 
-    const layout = layoutResult.rows[0];
+    const layout = layoutResult[0];
 
     // Get sections for this layout
     const sectionsQuery = `
@@ -77,19 +131,37 @@ export async function GET(request: NextRequest) {
 
     const sectionsResult = await query(sectionsQuery, [layout.id]);
 
-    const sections = sectionsResult.rows.map(section => ({
-      id: section.section_id,
-      type: section.section_type,
-      name: section.section_type,
-      visible: section.is_visible,
-      order: section.position,
-      locked: section.is_locked,
-      blocks: section.blocks || [],
-      style: {},
-      settings: section.settings_json || {},
-      custom_css: section.custom_css || '',
-      custom_classes: section.custom_classes || ''
-    }));
+    const sections = sectionsResult.map(section => {
+      // Parse settings_json for section - it contains style and settings
+      const sectionSettings = section.settings_json || {};
+      
+      // Parse blocks - settings_json contains content, style, and settings
+      const parsedBlocks = (section.blocks || []).map((block: any) => {
+        const blockSettings = block.settings || {};
+        return {
+          id: block.id,
+          type: block.type,
+          content: blockSettings.content || {},
+          style: blockSettings.style || {},
+          settings: blockSettings.settings || blockSettings,
+          is_visible: block.is_visible !== false
+        };
+      });
+      
+      return {
+        id: section.section_id,
+        type: section.section_type,
+        name: section.section_type,
+        visible: section.is_visible,
+        order: section.position,
+        locked: section.is_locked,
+        blocks: parsedBlocks,
+        style: sectionSettings.style || {},
+        settings: sectionSettings.settings || sectionSettings,
+        custom_css: section.custom_css || '',
+        custom_classes: section.custom_classes || ''
+      };
+    });
 
     return NextResponse.json({
       layout: {
@@ -102,7 +174,13 @@ export async function GET(request: NextRequest) {
         publishedAt: layout.published_at,
         edgeJsonUrl: layout.edge_json_url
       },
-      sections
+      sections,
+      store: {
+        name: store.name,
+        slug: store.slug,
+        logo: store.logo
+      },
+      collections
     });
   } catch (error) {
     console.error('Error getting page layout:', error);
@@ -134,12 +212,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('[Customizer Save] Store ID:', user.store_id, 'Page Type:', pageType, 'Is Published:', isPublished);
+
     // Get theme template ID (default to New York)
     const themeTemplate = await query(`
       SELECT id FROM theme_templates WHERE name = 'new-york' LIMIT 1
     `);
 
-    const templateId = themeTemplate.rows[0]?.id || 1;
+    const templateId = themeTemplate[0]?.id || 1;
 
     // Check if page layout exists
     const existingLayout = await query(`
@@ -149,9 +229,9 @@ export async function POST(request: NextRequest) {
 
     let layoutId;
 
-    if (existingLayout.rows.length > 0) {
+    if (existingLayout.length > 0) {
       // Update existing layout
-      layoutId = existingLayout.rows[0].id;
+      layoutId = existingLayout[0].id;
       await query(`
         UPDATE page_layouts
         SET is_published = $1, published_at = CASE WHEN $1 THEN now() ELSE published_at END, updated_at = now()
@@ -165,7 +245,7 @@ export async function POST(request: NextRequest) {
         RETURNING id
       `, [user.store_id, templateId, pageType, pageHandle, isPublished]);
 
-      layoutId = newLayout.rows[0].id;
+      layoutId = newLayout[0].id;
     }
 
     // Delete existing sections and blocks
@@ -176,6 +256,12 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
 
+      // Save the entire section structure (style and settings) in settings_json
+      const sectionData = {
+        style: section.style || {},
+        settings: section.settings || {}
+      };
+      
       const newSection = await query(`
         INSERT INTO page_sections (
           page_layout_id, section_type, section_id, position, is_visible, is_locked,
@@ -189,17 +275,23 @@ export async function POST(request: NextRequest) {
         i,
         section.visible !== false,
         section.locked || false,
-        JSON.stringify(section.settings || {}),
+        JSON.stringify(sectionData),
         section.custom_css || '',
         section.custom_classes || ''
       ]);
 
-      const sectionDbId = newSection.rows[0].id;
+      const sectionDbId = newSection[0].id;
 
       // Insert blocks for this section
       if (section.blocks && Array.isArray(section.blocks)) {
         for (let j = 0; j < section.blocks.length; j++) {
           const block = section.blocks[j];
+          // Save the entire block structure (content, style, settings) in settings_json
+          const blockData = {
+            content: block.content || {},
+            style: block.style || {},
+            settings: block.settings || {}
+          };
           await query(`
             INSERT INTO section_blocks (
               section_id, block_type, block_id, position, is_visible, settings_json
@@ -210,7 +302,7 @@ export async function POST(request: NextRequest) {
             block.id,
             j,
             block.is_visible !== false,
-            JSON.stringify(block.settings || {})
+            JSON.stringify(blockData)
           ]);
         }
       }

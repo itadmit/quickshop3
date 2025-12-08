@@ -10,27 +10,99 @@ interface FeaturedCollectionsProps {
 
 export function FeaturedCollections({ section, onUpdate }: FeaturedCollectionsProps) {
   const settings = section.settings || {};
+  const style = section.style || {};
+  
+  const itemsPerRow = settings.items_per_row || 3;
+
+  const getGridCols = () => {
+    switch (itemsPerRow) {
+      case 2: return 'md:grid-cols-2';
+      case 3: return 'md:grid-cols-3';
+      case 4: return 'md:grid-cols-4';
+      case 5: return 'md:grid-cols-5';
+      default: return 'md:grid-cols-3';
+    }
+  };
+
+  // Title alignment (separate from content)
+  const titleAlignClass = settings.title_align === 'left' ? 'text-left' : settings.title_align === 'center' ? 'text-center' : 'text-right';
+  
+  // Content alignment (for collection cards)
+  const contentAlignClass = settings.content_align === 'left' ? 'text-left' : settings.content_align === 'center' ? 'text-center' : 'text-right';
+  const flexAlignClass = settings.content_align === 'left' ? 'items-end' : settings.content_align === 'center' ? 'items-center' : 'items-start';
+
+  const fontFamily = style.typography?.font_family || 'system-ui';
+  const textColor = style.typography?.color || '#111827';
 
   return (
-    <div className="py-16 bg-gray-50">
+    <div className="w-full" style={{ fontFamily }}>
       <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-12">
+        <h2 
+            className={`text-3xl font-bold mb-12 ${titleAlignClass}`}
+            style={{ color: textColor }}
+        >
           {settings.title || 'קטגוריות פופולריות'}
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="aspect-video bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-400">קטגוריה {i}</span>
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-2">שם הקטגוריה {i}</h3>
-                <p className="text-gray-600">תיאור קצר של הקטגוריה</p>
-              </div>
+        {settings.display_type === 'carousel' ? (
+          <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex gap-8 pb-4" style={{ width: 'max-content' }}>
+              {[1, 2, 3].map((i) => {
+                const cardWidth = `calc((100vw - 2rem) / ${Math.min(itemsPerRow, 4)})`;
+                return (
+                  <div 
+                    key={i} 
+                    className="group cursor-pointer flex-shrink-0"
+                    style={{ 
+                      width: cardWidth,
+                      scrollSnapAlign: 'start'
+                    }}
+                  >
+                    <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
+                       <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
+                          <span>קטגוריה {i}</span>
+                       </div>
+                       {/* Hover Overlay */}
+                       <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    
+                    <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
+                      <h3 className="text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
+                          שם הקטגוריה {i}
+                      </h3>
+                      {settings.show_description !== false && (
+                          <p className="text-gray-500 text-sm">תיאור קצר של הקטגוריה</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className={`grid grid-cols-1 ${getGridCols()} gap-8`}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="group cursor-pointer">
+                <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
+                   <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
+                      <span>קטגוריה {i}</span>
+                   </div>
+                   {/* Hover Overlay */}
+                   <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                
+                <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
+                  <h3 className="text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
+                      שם הקטגוריה {i}
+                  </h3>
+                  {settings.show_description !== false && (
+                      <p className="text-gray-500 text-sm">תיאור קצר של הקטגוריה</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

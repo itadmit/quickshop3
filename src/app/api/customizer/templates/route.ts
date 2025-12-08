@@ -85,9 +85,9 @@ export async function POST(request: NextRequest) {
 
     let templateId;
 
-    if (existingTemplate.rows.length > 0) {
+    if (existingTemplate.length > 0) {
       // Update existing template
-      templateId = existingTemplate.rows[0].id;
+      templateId = existingTemplate[0].id;
       await query(`
         UPDATE page_templates
         SET updated_at = now()
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         RETURNING id
       `, [user.store_id, templateType, templateName]);
 
-      templateId = newTemplate.rows[0].id;
+      templateId = newTemplate[0].id;
     }
 
     // Save widgets (template_widgets table)
