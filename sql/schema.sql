@@ -83,6 +83,7 @@ CREATE TABLE products (
   product_type VARCHAR(150),
   status VARCHAR(50) DEFAULT 'draft', -- draft, active, archived
   published_at TIMESTAMP WITHOUT TIME ZONE,
+  archived_at TIMESTAMP WITHOUT TIME ZONE, -- תאריך להעברה אוטומטית לארכיון
   published_scope VARCHAR(50) DEFAULT 'web',
   template_suffix VARCHAR(100),
   -- Stock & Availability
@@ -104,6 +105,8 @@ CREATE TABLE products (
   length NUMERIC(10,2), -- אורך
   width NUMERIC(10,2), -- רוחב
   height NUMERIC(10,2), -- גובה
+  -- Premium Club exclusive tiers (JSONB array of tier slugs)
+  exclusive_to_tiers JSONB DEFAULT NULL, -- Array of tier slugs that have access to this product
   -- Timestamps
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -116,6 +119,7 @@ CREATE INDEX idx_products_status ON products(status);
 CREATE INDEX idx_products_vendor ON products(vendor);
 CREATE INDEX idx_products_product_type ON products(product_type);
 CREATE INDEX idx_products_availability ON products(availability);
+CREATE INDEX idx_products_archived_at ON products(archived_at) WHERE archived_at IS NOT NULL;
 
 -- Product Images (Shopify-like: Product Images)
 CREATE TABLE product_images (
@@ -279,6 +283,35 @@ CREATE TABLE product_meta_fields (
 CREATE INDEX idx_product_meta_fields_product_id ON product_meta_fields(product_id);
 CREATE INDEX idx_product_meta_fields_namespace_key ON product_meta_fields(namespace, key);
 
+-- Meta Field Definitions (templates for meta fields - managed in dashboard)
+CREATE TABLE meta_field_definitions (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  namespace VARCHAR(150) NOT NULL DEFAULT 'custom',
+  key VARCHAR(150) NOT NULL,
+  label VARCHAR(255) NOT NULL,
+  description TEXT,
+  value_type VARCHAR(50) DEFAULT 'string', -- string, integer, json, date, color, checkbox, number, url, file
+  required BOOLEAN DEFAULT false,
+  validations JSONB DEFAULT '{}',
+  scope VARCHAR(50) DEFAULT 'GLOBAL', -- GLOBAL, CATEGORY
+  category_ids INT[] DEFAULT '{}', -- Array of category IDs if scope is CATEGORY
+  show_in_storefront BOOLEAN DEFAULT false,
+  position INT DEFAULT 0,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id, namespace, key)
+);
+
+CREATE INDEX idx_meta_field_definitions_store_id ON meta_field_definitions(store_id);
+CREATE INDEX idx_meta_field_definitions_namespace_key ON meta_field_definitions(namespace, key);
+CREATE INDEX idx_meta_field_definitions_scope ON meta_field_definitions(scope);
+CREATE INDEX idx_meta_field_definitions_position ON meta_field_definitions(store_id, position);
+
+COMMENT ON TABLE meta_field_definitions IS 'Definitions/templates for meta fields that can be used across products';
+COMMENT ON COLUMN meta_field_definitions.scope IS 'GLOBAL = available for all products, CATEGORY = only for products in specific categories';
+COMMENT ON COLUMN meta_field_definitions.category_ids IS 'Array of category IDs when scope is CATEGORY';
+
 -- ============================================
 -- 3. CUSTOMERS (Shopify-like: Customers API)
 -- ============================================
@@ -301,6 +334,9 @@ CREATE TABLE customers (
   verified_email BOOLEAN DEFAULT false,
   multipass_identifier VARCHAR(255),
   tags TEXT, -- Comma-separated tags
+  premium_club_tier VARCHAR(50), -- רמת מועדון פרימיום (silver, gold, platinum, וכו')
+  total_spent NUMERIC(12,2) DEFAULT 0, -- סכום כולל שהוצא
+  orders_count INT DEFAULT 0, -- מספר הזמנות
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
@@ -308,6 +344,7 @@ CREATE TABLE customers (
 CREATE INDEX idx_customers_store_id ON customers(store_id);
 CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_customers_state ON customers(state);
+CREATE INDEX idx_customers_premium_club_tier ON customers(premium_club_tier);
 
 -- Customer Addresses (Shopify-like: Customer Addresses)
 CREATE TABLE customer_addresses (
@@ -608,11 +645,13 @@ CREATE TABLE shipping_rates (
   shipping_zone_id INT REFERENCES shipping_zones(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   price NUMERIC(12,2) DEFAULT 0,
-  min_order_subtotal NUMERIC(12,2),
-  max_order_subtotal NUMERIC(12,2),
+  min_order_subtotal NUMERIC(12,2), -- מינימום סכום הזמנה לתעריף זה
+  max_order_subtotal NUMERIC(12,2), -- מקסימום סכום הזמנה לתעריף זה
   min_weight NUMERIC(6,2),
   max_weight NUMERIC(6,2),
-  free_shipping_threshold NUMERIC(12,2),
+  free_shipping_threshold NUMERIC(12,2), -- משלוח חינם מעל סכום זה
+  min_shipping_amount NUMERIC(12,2), -- מינימום למשלוח (אם ההזמנה קטנה יותר, לא ניתן למשלוח)
+  is_pickup BOOLEAN DEFAULT false, -- איסוף עצמי
   delivery_days_min INT,
   delivery_days_max INT,
   carrier_service_id INT,
@@ -621,6 +660,22 @@ CREATE TABLE shipping_rates (
 );
 
 CREATE INDEX idx_shipping_rates_zone_id ON shipping_rates(shipping_zone_id);
+CREATE INDEX idx_shipping_rates_pickup ON shipping_rates(is_pickup);
+
+-- Shipping Rate Cities - מחירים שונים לפי עיר
+CREATE TABLE shipping_rate_cities (
+  id SERIAL PRIMARY KEY,
+  shipping_rate_id INT REFERENCES shipping_rates(id) ON DELETE CASCADE,
+  city_name VARCHAR(200) NOT NULL, -- שם העיר
+  price NUMERIC(12,2) NOT NULL, -- מחיר משלוח לעיר זו
+  free_shipping_threshold NUMERIC(12,2), -- משלוח חינם מעל סכום זה (אופציונלי, אם לא מוגדר משתמש בערך של התעריף)
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(shipping_rate_id, city_name)
+);
+
+CREATE INDEX idx_shipping_rate_cities_rate_id ON shipping_rate_cities(shipping_rate_id);
+CREATE INDEX idx_shipping_rate_cities_city ON shipping_rate_cities(city_name);
 
 -- ============================================
 -- 8. DISCOUNTS (Shopify-like: Discounts API)
@@ -1277,10 +1332,41 @@ CREATE INDEX idx_store_credit_transactions_store_credit_id ON store_credit_trans
 CREATE INDEX idx_store_credit_transactions_order_id ON store_credit_transactions(order_id);
 
 -- ============================================
+-- 18.5. RETURNS (החזרות והחלפות)
+-- ============================================
+
+-- Returns (החזרות והחלפות)
+CREATE TABLE returns (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+  customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
+  status VARCHAR(50) DEFAULT 'PENDING' NOT NULL, -- PENDING, APPROVED, REJECTED, PROCESSING, COMPLETED, CANCELLED
+  reason VARCHAR(500) NOT NULL,
+  items JSONB NOT NULL, -- Array of { orderItemId, quantity, reason? }
+  refund_amount NUMERIC(12,2),
+  refund_method VARCHAR(50), -- STORE_CREDIT, REFUND, EXCHANGE
+  notes TEXT,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_returns_store_id ON returns(store_id);
+CREATE INDEX idx_returns_order_id ON returns(order_id);
+CREATE INDEX idx_returns_customer_id ON returns(customer_id);
+CREATE INDEX idx_returns_status ON returns(status);
+CREATE INDEX idx_returns_created_at ON returns(created_at DESC);
+
+COMMENT ON TABLE returns IS 'Returns and exchanges from customers';
+COMMENT ON COLUMN returns.status IS 'PENDING, APPROVED, REJECTED, PROCESSING, COMPLETED, CANCELLED';
+COMMENT ON COLUMN returns.items IS 'Array of { orderItemId, quantity, reason? }';
+COMMENT ON COLUMN returns.refund_method IS 'STORE_CREDIT = credit to customer account, REFUND = refund to payment method, EXCHANGE = exchange for different product';
+
+-- ============================================
 -- 19. SIZE CHARTS (טבלת מידות)
 -- ============================================
 
--- Size Charts
+-- Size Charts (managed in dashboard, can be assigned to products)
 CREATE TABLE size_charts (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
@@ -1288,11 +1374,21 @@ CREATE TABLE size_charts (
   chart_type VARCHAR(50) DEFAULT 'clothing', -- clothing, shoes, accessories, etc.
   chart_data JSONB NOT NULL, -- נתוני הטבלה (מידות, מדידות, וכו')
   image_url TEXT,
+  description TEXT,
+  scope VARCHAR(50) DEFAULT 'GLOBAL', -- GLOBAL, CATEGORY
+  category_ids INT[] DEFAULT '{}', -- Array of category IDs if scope is CATEGORY
+  position INT DEFAULT 0,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
 
 CREATE INDEX idx_size_charts_store_id ON size_charts(store_id);
+CREATE INDEX idx_size_charts_scope ON size_charts(scope);
+CREATE INDEX idx_size_charts_position ON size_charts(store_id, position);
+
+COMMENT ON TABLE size_charts IS 'Size charts managed in dashboard, can be assigned to products';
+COMMENT ON COLUMN size_charts.scope IS 'GLOBAL = available for all products, CATEGORY = only for products in specific categories';
+COMMENT ON COLUMN size_charts.category_ids IS 'Array of category IDs when scope is CATEGORY';
 
 -- Product Size Chart Mapping
 CREATE TABLE product_size_chart_map (
@@ -1307,36 +1403,47 @@ CREATE INDEX idx_product_size_chart_map_product_id ON product_size_chart_map(pro
 -- 20. PRODUCT ADDONS (תוספות למוצרים)
 -- ============================================
 
--- Product Addons
+-- Product Addons (managed in dashboard, can be assigned to products)
 CREATE TABLE product_addons (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   description TEXT,
-  addon_type VARCHAR(50) NOT NULL, -- checkbox, radio, select, text_input, file_upload
+  addon_type VARCHAR(50) NOT NULL, -- SINGLE_CHOICE, MULTIPLE_CHOICE, TEXT_INPUT, CHECKBOX
   is_required BOOLEAN DEFAULT false,
-  price_modifier NUMERIC(12,2) DEFAULT 0, -- תוספת/הנחה למחיר
-  settings JSONB, -- הגדרות מותאמות לפי סוג התוספת
+  scope VARCHAR(50) DEFAULT 'GLOBAL', -- GLOBAL, PRODUCT, CATEGORY
+  product_ids INT[] DEFAULT '{}', -- Array of product IDs if scope is PRODUCT
+  category_ids INT[] DEFAULT '{}', -- Array of category IDs if scope is CATEGORY
+  position INT DEFAULT 0,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
 
 CREATE INDEX idx_product_addons_store_id ON product_addons(store_id);
+CREATE INDEX idx_product_addons_scope ON product_addons(scope);
+CREATE INDEX idx_product_addons_position ON product_addons(store_id, position);
 
--- Product Addon Options (עבור radio/select)
+COMMENT ON TABLE product_addons IS 'Product addons managed in dashboard, can be assigned to products';
+COMMENT ON COLUMN product_addons.scope IS 'GLOBAL = available for all products, PRODUCT = specific products, CATEGORY = products in specific categories';
+COMMENT ON COLUMN product_addons.product_ids IS 'Array of product IDs when scope is PRODUCT';
+COMMENT ON COLUMN product_addons.category_ids IS 'Array of category IDs when scope is CATEGORY';
+
+-- Product Addon Options (עבור SINGLE_CHOICE/MULTIPLE_CHOICE)
 CREATE TABLE product_addon_options (
   id SERIAL PRIMARY KEY,
   addon_id INT REFERENCES product_addons(id) ON DELETE CASCADE,
   label VARCHAR(255) NOT NULL,
   value VARCHAR(255),
-  price_modifier NUMERIC(12,2) DEFAULT 0,
+  price NUMERIC(12,2) DEFAULT 0, -- מחיר התוספת
   position INT DEFAULT 0,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
 
 CREATE INDEX idx_product_addon_options_addon_id ON product_addon_options(addon_id);
+CREATE INDEX idx_product_addon_options_position ON product_addon_options(addon_id, position);
 
--- Product Addon Mapping (איזה מוצרים יכולים להשתמש בתוספת)
+-- Product Addon Mapping (איזה מוצרים משתמשים בתוספת - נשמר רק אם scope הוא PRODUCT)
+-- הערה: אם scope הוא GLOBAL או CATEGORY, המיפוי נקבע אוטומטית לפי ה-scope
 CREATE TABLE product_addon_map (
   product_id INT REFERENCES products(id) ON DELETE CASCADE,
   addon_id INT REFERENCES product_addons(id) ON DELETE CASCADE,
@@ -1344,6 +1451,7 @@ CREATE TABLE product_addon_map (
 );
 
 CREATE INDEX idx_product_addon_map_product_id ON product_addon_map(product_id);
+CREATE INDEX idx_product_addon_map_addon_id ON product_addon_map(addon_id);
 
 -- Order Line Item Addons (תוספות שנבחרו בהזמנה)
 CREATE TABLE order_line_item_addons (
@@ -2221,6 +2329,27 @@ VALUES (
   }'::jsonb
 )
 ON CONFLICT DO NOTHING;
+
+-- ============================================
+-- 26. PREMIUM CLUB (מועדון פרימיום)
+-- ============================================
+
+-- Premium Club Configuration (הגדרות מועדון פרימיום)
+CREATE TABLE premium_club_config (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  enabled BOOLEAN DEFAULT false,
+  config JSONB NOT NULL DEFAULT '{}'::jsonb, -- הגדרות הרמות, הטבות והתראות
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id)
+);
+
+CREATE INDEX idx_premium_club_config_store_id ON premium_club_config(store_id);
+CREATE INDEX idx_premium_club_config_enabled ON premium_club_config(enabled);
+
+COMMENT ON TABLE premium_club_config IS 'הגדרות מועדון פרימיום - רמות (כסף, זהב, פלטינה), הנחות והטבות';
+COMMENT ON COLUMN premium_club_config.config IS 'JSON עם: tiers (רמות), benefits (הטבות כלליות), notifications (התראות)';
 
 -- ============================================
 -- END OF SCHEMA

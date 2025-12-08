@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { updates } = body; // Array of { inventory_id, available, reason }
+    const { updates } = body; // Array of { variant_id, available, reason }
 
     if (!updates || !Array.isArray(updates) || updates.length === 0) {
       return NextResponse.json({ error: 'updates array is required' }, { status: 400 });
@@ -24,41 +24,39 @@ export async function POST(request: NextRequest) {
     const results = [];
 
     for (const update of updates) {
-      const { inventory_id, available, reason } = update;
+      const { variant_id, available, reason } = update;
 
-      if (!inventory_id || available === undefined) {
+      if (!variant_id || available === undefined) {
         continue;
       }
 
-      // Verify inventory belongs to store
-      const existingInventory = await queryOne(
-        `SELECT vi.*, p.store_id 
-         FROM variant_inventory vi
-         INNER JOIN product_variants pv ON pv.id = vi.variant_id
+      // Verify variant belongs to store
+      const existingVariant = await queryOne(
+        `SELECT pv.*, p.store_id 
+         FROM product_variants pv
          INNER JOIN products p ON p.id = pv.product_id
-         WHERE vi.id = $1 AND p.store_id = $2`,
-        [inventory_id, user.store_id]
+         WHERE pv.id = $1 AND p.store_id = $2`,
+        [variant_id, user.store_id]
       );
 
-      if (!existingInventory) {
-        results.push({ inventory_id, success: false, error: 'Not found' });
+      if (!existingVariant) {
+        results.push({ variant_id, success: false, error: 'Not found' });
         continue;
       }
 
       try {
         const updated = await queryOne(
-          `UPDATE variant_inventory 
-           SET available = $1, updated_at = now()
+          `UPDATE product_variants 
+           SET inventory_quantity = $1, updated_at = now()
            WHERE id = $2
            RETURNING *`,
-          [available, inventory_id]
+          [available, variant_id]
         );
 
         // Emit event
         await eventBus.emitEvent('inventory.updated', {
-          inventory: updated,
-          variant_id: updated.variant_id,
-          available: updated.available,
+          variant_id: variant_id,
+          quantity: available,
           reason,
         }, {
           store_id: user.store_id,
@@ -66,9 +64,13 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
         });
 
-        results.push({ inventory_id, success: true, inventory: updated });
+        results.push({ variant_id, success: true, inventory: {
+          id: updated.id,
+          variant_id: updated.id,
+          available: updated.inventory_quantity || 0,
+        } });
       } catch (error: any) {
-        results.push({ inventory_id, success: false, error: error.message });
+        results.push({ variant_id, success: false, error: error.message });
       }
     }
 

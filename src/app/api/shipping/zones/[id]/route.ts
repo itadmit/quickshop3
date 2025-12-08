@@ -29,14 +29,48 @@ export async function GET(
     }
 
     const rates = await query<ShippingRate>(
-      'SELECT * FROM shipping_rates WHERE shipping_zone_id = $1 ORDER BY created_at DESC',
+      `SELECT 
+        id, shipping_zone_id, name, price, 
+        min_order_subtotal, max_order_subtotal,
+        min_weight, max_weight, free_shipping_threshold,
+        min_shipping_amount, is_pickup,
+        delivery_days_min, delivery_days_max, carrier_service_id,
+        created_at, updated_at
+       FROM shipping_rates 
+       WHERE shipping_zone_id = $1 
+       ORDER BY created_at DESC`,
       [zoneId]
+    );
+
+    // Load cities for each rate
+    const ratesWithCities = await Promise.all(
+      rates.map(async (rate) => {
+        const cities = await query<{ id: number; shipping_rate_id: number; city_name: string; price: string; free_shipping_threshold: string | null }>(
+          `SELECT id, shipping_rate_id, city_name, price, free_shipping_threshold 
+           FROM shipping_rate_cities 
+           WHERE shipping_rate_id = $1 
+           ORDER BY city_name`,
+          [rate.id]
+        );
+        return {
+          ...rate,
+          cities: cities.map(c => ({
+            id: c.id,
+            shipping_rate_id: c.shipping_rate_id,
+            city_name: c.city_name,
+            price: c.price,
+            free_shipping_threshold: c.free_shipping_threshold,
+            created_at: new Date(),
+            updated_at: new Date(),
+          })),
+        };
+      })
     );
 
     return NextResponse.json({
       zone: {
         ...zone,
-        rates,
+        rates: ratesWithCities,
       },
     });
   } catch (error: any) {

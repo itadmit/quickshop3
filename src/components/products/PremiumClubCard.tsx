@@ -30,20 +30,19 @@ export function PremiumClubCard({
     }
 
     try {
-      // TODO: Implement API endpoint for premium club tiers
-      // const response = await fetch(`/api/plugins/premium-club/config?shopId=${shopId}`);
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   if (data.config?.tiers) {
-      //     setAvailableTiers(data.config.tiers.map((tier: any) => ({
-      //       slug: tier.slug,
-      //       name: tier.name,
-      //     })));
-      //   }
-      // }
-      setLoading(false);
+      const response = await fetch(`/api/premium-club/config`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.config?.tiers) {
+          setAvailableTiers(data.config.tiers.map((tier: any) => ({
+            slug: tier.slug,
+            name: tier.name,
+          })));
+        }
+      }
     } catch (error) {
       console.error('Error fetching tiers:', error);
+    } finally {
       setLoading(false);
     }
   };

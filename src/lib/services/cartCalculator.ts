@@ -14,6 +14,7 @@
  */
 
 import { query, queryOne } from '@/lib/db';
+import { hasEarlyAccessToSales } from './premiumClub';
 
 // ============================================
 // Types
@@ -138,6 +139,7 @@ export interface CartCalculationInput {
   customerSegment?: 'vip' | 'new_customer' | 'returning_customer';
   customerOrdersCount?: number;
   customerLifetimeValue?: number;
+  customerTier?: string | null; // Premium club tier (silver, gold, platinum, etc.)
 }
 
 export interface AppliedDiscount {
@@ -197,6 +199,7 @@ export class CartCalculator {
   private customerSegment?: 'vip' | 'new_customer' | 'returning_customer';
   private customerOrdersCount?: number;
   private customerLifetimeValue?: number;
+  private customerTier?: string | null;
   private errors: string[] = [];
   private warnings: string[] = [];
 
@@ -210,6 +213,7 @@ export class CartCalculator {
     this.customerSegment = input.customerSegment;
     this.customerOrdersCount = input.customerOrdersCount;
     this.customerLifetimeValue = input.customerLifetimeValue;
+    this.customerTier = input.customerTier;
   }
 
   /**
@@ -404,6 +408,25 @@ export class CartCalculator {
       const currentDay = now.getDay();
       const currentHour = now.getHours();
 
+      // Check if customer has early access to sales
+      const hasEarlyAccess = this.customerTier 
+        ? await hasEarlyAccessToSales(this.storeId, this.customerTier)
+        : false;
+
+      // Build date filter - if customer has early access, include future discounts
+      let dateFilter = '';
+      let dateParams: any[] = [];
+      if (hasEarlyAccess) {
+        // With early access, only filter by end date (don't filter by start date)
+        dateFilter = `AND (ends_at IS NULL OR ends_at >= $2)`;
+        dateParams = [now];
+      } else {
+        // Without early access, filter by both start and end dates
+        dateFilter = `AND (starts_at IS NULL OR starts_at <= $2)
+          AND (ends_at IS NULL OR ends_at >= $2)`;
+        dateParams = [now];
+      }
+
       const discounts = await query<{
         id: number;
         name: string;
@@ -455,12 +478,11 @@ export class CartCalculator {
         FROM automatic_discounts
         WHERE store_id = $1 
           AND is_active = true
-          AND (starts_at IS NULL OR starts_at <= $2)
-          AND (ends_at IS NULL OR ends_at >= $2)
-          AND (day_of_week IS NULL OR $3 = ANY(day_of_week))
-          AND (hour_start IS NULL OR hour_end IS NULL OR ($4 >= hour_start AND $4 < hour_end))
+          ${dateFilter}
+          AND (day_of_week IS NULL OR $${dateParams.length + 1} = ANY(day_of_week))
+          AND (hour_start IS NULL OR hour_end IS NULL OR ($${dateParams.length + 2} >= hour_start AND $${dateParams.length + 2} < hour_end))
         ORDER BY priority DESC`,
-        [this.storeId, now, currentDay, currentHour]
+        [this.storeId, ...dateParams, currentDay, currentHour]
       );
 
       // בדיקת תנאי לקוח לכל הנחה
@@ -575,7 +597,18 @@ export class CartCalculator {
     const subtotal = itemsWithTotals.reduce((sum, item) => sum + item.lineTotal, 0);
     const totalQuantity = itemsWithTotals.reduce((sum, item) => sum + item.item.quantity, 0);
 
-    // 2. חישוב הנחות - עדיפות: אוטומטיות קודם, אז קופון
+    // טעינת premium club discount אם יש customer tier
+    let premiumClubDiscount = 0;
+    if (this.customerTier) {
+      const { calculatePremiumClubDiscount } = await import('./premiumClub');
+      premiumClubDiscount = await calculatePremiumClubDiscount(
+        this.storeId,
+        this.customerTier,
+        subtotal
+      );
+    }
+
+    // 2. חישוב הנחות - עדיפות: אוטומטיות קודם, אז premium club, אז קופון
     let itemsDiscount = 0;
     const allAppliedDiscounts: AppliedDiscount[] = [];
 
@@ -644,7 +677,41 @@ export class CartCalculator {
       }
     }
 
-    // 2.2 קופון (אחרי הנחות אוטומטיות)
+    // 2.2 Premium Club Discount (אחרי הנחות אוטומטיות, לפני קופון)
+    if (premiumClubDiscount > 0 && this.customerTier) {
+      // חישוב ההנחה על הפריטים (אחוזי מהמחיר המקורי)
+      const discountPerItem = premiumClubDiscount / subtotal;
+      
+      itemsWithTotals.forEach((itemTotal) => {
+        const itemDiscount = itemTotal.lineTotal * discountPerItem;
+        itemTotal.lineDiscount += itemDiscount;
+        itemTotal.lineTotalAfterDiscount -= itemDiscount;
+        itemTotal.appliedDiscounts.push({
+          id: 0,
+          name: `הנחת מועדון פרימיום`,
+          type: 'percentage',
+          amount: itemDiscount,
+          description: `הנחה לרמה ${this.customerTier}`,
+          source: 'automatic',
+          priority: 1000, // עדיפות גבוהה
+        });
+      });
+
+      itemsDiscount += premiumClubDiscount;
+      remainingSubtotal -= premiumClubDiscount;
+      
+      allAppliedDiscounts.push({
+        id: 0,
+        name: 'הנחת מועדון פרימיום',
+        type: 'percentage',
+        amount: premiumClubDiscount,
+        description: `הנחה לרמה ${this.customerTier}`,
+        source: 'automatic',
+        priority: 1000,
+      });
+    }
+
+    // 2.3 קופון (אחרי הנחות אוטומטיות ו-premium club)
     if (this.discountCode) {
       const currentSubtotal = remainingSubtotal;
       let canApplyCode = true;
@@ -757,7 +824,14 @@ export class CartCalculator {
         this.shippingRate.free_shipping_threshold && 
         subtotalAfterDiscount >= this.shippingRate.free_shipping_threshold;
 
-      if (hasFreeShippingFromDiscounts || hasFreeShippingThreshold) {
+      // בדיקת משלוח חינם לפי premium club tier
+      let hasFreeShippingFromTier = false;
+      if (this.customerTier) {
+        const { hasFreeShippingBenefit } = await import('./premiumClub');
+        hasFreeShippingFromTier = await hasFreeShippingBenefit(this.storeId, this.customerTier);
+      }
+
+      if (hasFreeShippingFromDiscounts || hasFreeShippingThreshold || hasFreeShippingFromTier) {
         shippingDiscount = this.shippingRate.price;
         if (hasFreeShippingFromDiscounts) {
           const freeShippingDiscount = allAppliedDiscounts.find(d => d.type === 'free_shipping');
@@ -765,6 +839,17 @@ export class CartCalculator {
             // עדכון תיאור
             freeShippingDiscount.description = `משלוח חינם - ${freeShippingDiscount.name}`;
           }
+        } else if (hasFreeShippingFromTier) {
+          // הוספת הנחת משלוח חינם לרשימת ההנחות
+          allAppliedDiscounts.push({
+            id: 0,
+            name: 'משלוח חינם - מועדון פרימיום',
+            type: 'free_shipping',
+            amount: this.shippingRate.price,
+            description: `משלוח חינם לרמה ${this.customerTier}`,
+            source: 'automatic',
+            priority: 1000,
+          });
         }
       } else {
         shipping = this.shippingRate.price;

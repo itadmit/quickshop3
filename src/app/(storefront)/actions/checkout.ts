@@ -30,7 +30,8 @@ interface CreateOrderInput {
   };
   total: number;
   deliveryMethod?: 'shipping' | 'pickup';
-  paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash';
+  paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash' | 'store_credit';
+  storeCreditAmount?: number; // סכום קרדיט לשימוש
   customFields?: Record<string, any>;
 }
 
@@ -94,6 +95,49 @@ export async function createOrder(input: CreateOrderInput) {
     throw new Error('Failed to create customer');
   }
 
+  // Handle store credit payment
+  let finalTotal = input.total;
+  if (input.paymentMethod === 'store_credit' && input.storeCreditAmount && input.storeCreditAmount > 0) {
+    // Get store credit
+    const storeCredit = await queryOne<{ id: number; balance: string }>(
+      `SELECT id, balance FROM store_credits WHERE store_id = $1 AND customer_id = $2`,
+      [storeId, customer.id]
+    );
+
+    if (!storeCredit) {
+      throw new Error('אין קרדיט בחנות זמין');
+    }
+
+    const creditBalance = parseFloat(storeCredit.balance);
+    const creditToUse = Math.min(input.storeCreditAmount, creditBalance, input.total);
+
+    if (creditToUse <= 0) {
+      throw new Error('סכום קרדיט לא תקין');
+    }
+
+    // Update store credit balance
+    const newBalance = creditBalance - creditToUse;
+    await queryOne(
+      `UPDATE store_credits SET balance = $1, updated_at = now() WHERE id = $2`,
+      [newBalance, storeCredit.id]
+    );
+
+    // Create transaction record
+    await queryOne(
+      `INSERT INTO store_credit_transactions (store_credit_id, order_id, amount, transaction_type, description)
+       VALUES ($1, NULL, $2, 'used', $3)
+       RETURNING id`,
+      [
+        storeCredit.id,
+        creditToUse,
+        `תשלום עבור הזמנה`,
+      ]
+    );
+
+    // Update final total
+    finalTotal = Math.max(0, input.total - creditToUse);
+  }
+
   // Get next order number - מתחיל מ-1000
   const lastOrder = await queryOne<{ order_number: number }>(
     'SELECT order_number FROM orders WHERE store_id = $1 ORDER BY order_number DESC LIMIT 1',
@@ -129,6 +173,19 @@ export async function createOrder(input: CreateOrderInput) {
     payment_method: input.paymentMethod || 'credit_card',
   };
   
+  // Set financial status based on payment method
+  let financialStatus = 'pending';
+  if (input.paymentMethod === 'store_credit' && finalTotal === 0) {
+    // אם שולם במלואו עם קרדיט, הסטטוס הוא paid
+    financialStatus = 'paid';
+  } else if (input.paymentMethod === 'cash') {
+    // מזומן - pending עד שההזמנה נמסרת
+    financialStatus = 'pending';
+  } else if (input.paymentMethod === 'bank_transfer') {
+    // העברה בנקאית - pending עד שהכסף מתקבל
+    financialStatus = 'pending';
+  }
+
   const order = await queryOne<{ id: number; order_number: number; order_handle: string }>(
     `INSERT INTO orders (
       store_id, customer_id, order_number, order_name, order_handle,
@@ -138,7 +195,7 @@ export async function createOrder(input: CreateOrderInput) {
     )
     VALUES (
       $1, $2, $7, $8, $12,
-      'pending', 'unfulfilled',
+      $14, 'unfulfilled',
       $3, $3, 'ILS',
       $4, $4, $5, $9, $10, $6, $11, $13
     )
@@ -146,7 +203,7 @@ export async function createOrder(input: CreateOrderInput) {
     [
       storeId,
       customer.id,
-      input.total,
+      finalTotal, // Use finalTotal instead of input.total
       JSON.stringify(addressObject),
       input.customer.email,
       input.customer.notes || null,
@@ -157,11 +214,30 @@ export async function createOrder(input: CreateOrderInput) {
       JSON.stringify(noteAttributes),
       orderHandle,
       input.paymentMethod || 'credit_card',
+      financialStatus,
     ]
   );
 
   if (!order) {
     throw new Error('Failed to create order');
+  }
+
+  // Update store credit transaction with order_id if store credit was used
+  if (input.paymentMethod === 'store_credit' && input.storeCreditAmount && input.storeCreditAmount > 0) {
+    const storeCredit = await queryOne<{ id: number }>(
+      `SELECT id FROM store_credits WHERE store_id = $1 AND customer_id = $2`,
+      [storeId, customer.id]
+    );
+
+    if (storeCredit) {
+      await queryOne(
+        `UPDATE store_credit_transactions 
+         SET order_id = $1 
+         WHERE store_credit_id = $2 AND order_id IS NULL AND transaction_type = 'used'
+         ORDER BY created_at DESC LIMIT 1`,
+        [order.id, storeCredit.id]
+      );
+    }
   }
 
   // Create line items with properties and image

@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { ProductVariant } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { getVariantTitle } from '@/lib/utils/variant-title';
 
 /**
  * PUT /api/variants/[id] - Update a specific variant
@@ -42,9 +43,31 @@ export async function PUT(
     const values: any[] = [];
     let paramIndex = 1;
 
-    if (body.title !== undefined) {
+    // אם יש options, עדכן את ה-title אוטומטית
+    const hasOptions = body.option1 !== undefined || body.option2 !== undefined || body.option3 !== undefined;
+    if (hasOptions) {
+      const newOption1 = body.option1 !== undefined ? body.option1 : variant.option1;
+      const newOption2 = body.option2 !== undefined ? body.option2 : variant.option2;
+      const newOption3 = body.option3 !== undefined ? body.option3 : variant.option3;
+      const newTitle = getVariantTitle(body.title || variant.title, newOption1, newOption2, newOption3);
+      updates.push(`title = $${paramIndex++}`);
+      values.push(newTitle);
+    } else if (body.title !== undefined) {
       updates.push(`title = $${paramIndex++}`);
       values.push(body.title);
+    }
+
+    if (body.option1 !== undefined) {
+      updates.push(`option1 = $${paramIndex++}`);
+      values.push(body.option1);
+    }
+    if (body.option2 !== undefined) {
+      updates.push(`option2 = $${paramIndex++}`);
+      values.push(body.option2);
+    }
+    if (body.option3 !== undefined) {
+      updates.push(`option3 = $${paramIndex++}`);
+      values.push(body.option3);
     }
     if (body.price !== undefined) {
       updates.push(`price = $${paramIndex++}`);

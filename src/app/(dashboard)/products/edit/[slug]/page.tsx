@@ -69,6 +69,7 @@ export default function EditProductPage() {
     },
     status: 'draft' as 'draft' | 'active' | 'archived',
     scheduledPublishDate: '',
+    scheduledArchiveDate: '',
     notifyOnPublish: false,
     sku: '',
     video: '',
@@ -126,6 +127,7 @@ export default function EditProductPage() {
         dimensions: { length: '', width: '', height: '' },
         status: 'draft',
         scheduledPublishDate: '',
+        scheduledArchiveDate: '',
         notifyOnPublish: false,
         sku: '',
         video: '',
@@ -185,6 +187,13 @@ export default function EditProductPage() {
         const date = new Date(prod.published_at);
         scheduledPublishFormatted = date.toISOString().slice(0, 16);
       }
+
+      // Format scheduled archive date
+      let scheduledArchiveFormatted = '';
+      if (prod.archived_at) {
+        const date = new Date(prod.archived_at);
+        scheduledArchiveFormatted = date.toISOString().slice(0, 16);
+      }
       
       setFormData({
         name: prod.title || '',
@@ -210,6 +219,7 @@ export default function EditProductPage() {
         },
         status: prod.status || 'draft',
         scheduledPublishDate: scheduledPublishFormatted,
+        scheduledArchiveDate: scheduledArchiveFormatted,
         notifyOnPublish: false,
         sku: prod.sku || firstVariant?.sku || '',
         video: prod.video_url || '',
@@ -219,7 +229,7 @@ export default function EditProductPage() {
         tags: Array.isArray(prod.tags) ? prod.tags.map((t: any) => (typeof t === 'string' ? t : t.name)) : [],
         categories: Array.isArray(prod.collections) ? prod.collections.map((c: any) => c.id).filter((id: any): id is number => typeof id === 'number') : [],
         badges: [],
-        exclusiveToTier: [],
+        exclusiveToTier: prod.exclusive_to_tiers ? (Array.isArray(prod.exclusive_to_tiers) ? prod.exclusive_to_tiers : JSON.parse(prod.exclusive_to_tiers || '[]')) : [],
       });
     } catch (error) {
       console.error('Error loading product:', error);
@@ -258,6 +268,7 @@ export default function EditProductPage() {
         product_type: product.product_type || null,
         status: formData.status,
         published_at: formData.scheduledPublishDate ? new Date(formData.scheduledPublishDate).toISOString() : null,
+        archived_at: formData.scheduledArchiveDate ? new Date(formData.scheduledArchiveDate).toISOString() : null,
         // Product-level fields
         track_inventory: formData.inventoryEnabled,
         low_stock_alert: formData.lowStockAlert ? parseInt(formData.lowStockAlert) : null,
@@ -298,20 +309,39 @@ export default function EditProductPage() {
       const finalProductId = finalProduct.id;
       const finalSlug = finalProduct.handle;
 
-      // Sync options and variants if they exist
-      if (hasVariants && product.options && product.options.length > 0) {
+      // Sync options and variants אם יש וריאציות
+      if (hasVariants) {
+        const validOptions = (product.options || []).filter(
+          (opt) => opt.name?.trim() && opt.values && opt.values.length > 0
+        );
+        const variantsToSync = Array.from(
+          new Map(
+            (product.variants || [])
+              .filter((v) => v.title && v.title.trim().length > 0)
+              .map((v) => [v.title, v])
+          ).values()
+        );
+
+        if (validOptions.length === 0 || variantsToSync.length === 0) {
+          toast({
+            title: 'שגיאה',
+            description: 'דרושה לפחות אפשרות אחת עם ערכים כדי לשמור וריאציות',
+            variant: 'destructive',
+          });
+          setSaving(false);
+          return;
+        }
+
         await fetch(`/api/products/${finalProductId}/options/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ options: product.options }),
+          body: JSON.stringify({ options: validOptions }),
         });
-      }
 
-      if (hasVariants && product.variants && product.variants.length > 0) {
         await fetch(`/api/products/${finalProductId}/variants/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ variants: product.variants }),
+          body: JSON.stringify({ variants: variantsToSync }),
         });
       }
 
@@ -593,8 +623,8 @@ export default function EditProductPage() {
           <ProductAddonsCard
             productId={product.id || undefined}
             shopId={product.store_id}
-            categoryIds={formData.categories.map(String)}
-            onChange={setProductAddonIds}
+            categoryIds={formData.categories}
+            onChange={(ids) => setProductAddonIds(ids.map(String))}
           />
 
           {/* Custom Fields */}
@@ -610,6 +640,7 @@ export default function EditProductPage() {
           <MetaFieldsCard
             productId={product.id || undefined}
             shopId={product.store_id}
+            categoryIds={formData.categories}
             values={customFieldValues}
             onChange={setCustomFieldValues}
           />
@@ -618,6 +649,7 @@ export default function EditProductPage() {
           <SizeChartsCard
             productId={product.id || undefined}
             shopId={product.store_id}
+            categoryIds={formData.categories}
             selectedChartId={selectedSizeChartId}
             onChange={setSelectedSizeChartId}
           />
@@ -634,6 +666,8 @@ export default function EditProductPage() {
             }}
             scheduledPublishDate={formData.scheduledPublishDate}
             onScheduledPublishDateChange={(date) => setFormData(prev => ({ ...prev, scheduledPublishDate: date }))}
+            scheduledArchiveDate={formData.scheduledArchiveDate}
+            onScheduledArchiveDateChange={(date) => setFormData(prev => ({ ...prev, scheduledArchiveDate: date }))}
             notifyOnPublish={formData.notifyOnPublish}
             onNotifyOnPublishChange={(notify) => setFormData(prev => ({ ...prev, notifyOnPublish: notify }))}
           />

@@ -293,10 +293,23 @@ export async function POST(request: NextRequest) {
       refunds: [],
     };
 
+    // Update customer statistics (total_spent and orders_count)
+    if (body.customer_id) {
+      await query(
+        `UPDATE customers 
+         SET total_spent = COALESCE(total_spent, 0) + $1,
+             orders_count = COALESCE(orders_count, 0) + 1,
+             updated_at = now()
+         WHERE id = $2 AND store_id = $3`,
+        [totalPrice, body.customer_id, storeId]
+      );
+    }
+
     // Emit order.created event
     await eventBus.emitEvent('order.created', {
       order: {
         id: orderResult.id,
+        customer_id: body.customer_id || null,
         order_number: orderNumber,
         order_name: orderName,
         total_price: totalPrice.toString(),

@@ -131,24 +131,34 @@ export async function PUT(
         product_type = $5,
         status = $6,
         published_at = $7,
-        sell_when_sold_out = $8,
-        sold_by_weight = $9,
-        show_price_per_100ml = $10,
-        price_per_100ml = $11,
-        availability = $12,
-        available_date = $13,
-        track_inventory = $14,
-        low_stock_alert = $15,
-        seo_title = $16,
-        seo_description = $17,
-        video_url = $18,
-        length = $19,
-        width = $20,
-        height = $21,
+        archived_at = $8,
+        sell_when_sold_out = $9,
+        sold_by_weight = $10,
+        show_price_per_100ml = $11,
+        price_per_100ml = $12,
+        availability = $13,
+        available_date = $14,
+        track_inventory = $15,
+        low_stock_alert = $16,
+        seo_title = $17,
+        seo_description = $18,
+        video_url = $19,
+        length = $20,
+        width = $21,
+        height = $22,
+        exclusive_to_tiers = $23,
         updated_at = now()
-      WHERE id = $22 AND store_id = $23
+      WHERE id = $24 AND store_id = $25
       RETURNING *
     `;
+
+    // Handle exclusive_to_tiers - convert array to JSONB or null
+    let exclusiveToTiers = null;
+    if (body.exclusive_to_tier && Array.isArray(body.exclusive_to_tier) && body.exclusive_to_tier.length > 0) {
+      exclusiveToTiers = JSON.stringify(body.exclusive_to_tier);
+    } else if (body.exclusive_to_tier === null || body.exclusive_to_tier === undefined) {
+      exclusiveToTiers = (oldProduct as any).exclusive_to_tiers || null;
+    }
 
     const product = await queryOne<Product>(sql, [
       body.title || oldProduct.title,
@@ -158,6 +168,7 @@ export async function PUT(
       body.product_type !== undefined ? body.product_type : oldProduct.product_type,
       body.status || oldProduct.status,
       body.published_at !== undefined ? body.published_at : oldProduct.published_at,
+      body.archived_at !== undefined ? body.archived_at : (oldProduct as any).archived_at || null,
       body.sell_when_sold_out !== undefined ? body.sell_when_sold_out : (oldProduct as any).sell_when_sold_out || false,
       body.sold_by_weight !== undefined ? body.sold_by_weight : (oldProduct as any).sold_by_weight || false,
       body.show_price_per_100ml !== undefined ? body.show_price_per_100ml : (oldProduct as any).show_price_per_100ml || false,
@@ -172,6 +183,7 @@ export async function PUT(
       body.length !== undefined ? body.length : (oldProduct as any).length || null,
       body.width !== undefined ? body.width : (oldProduct as any).width || null,
       body.height !== undefined ? body.height : (oldProduct as any).height || null,
+      exclusiveToTiers,
       productId,
       user.store_id,
     ]);

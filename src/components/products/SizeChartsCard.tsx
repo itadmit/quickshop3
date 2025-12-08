@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Label } from '@/components/ui/Label';
-import { Input } from '@/components/ui/Input';
-import { HiTable, HiPlus, HiX, HiTrash } from 'react-icons/hi';
+import { HiTable, HiPlus, HiX } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface SizeChart {
@@ -19,6 +18,7 @@ interface SizeChart {
 interface SizeChartsCardProps {
   productId?: number;
   shopId: number;
+  categoryIds?: number[];
   selectedChartId?: number | null;
   onChange?: (chartId: number | null) => void;
 }
@@ -26,33 +26,49 @@ interface SizeChartsCardProps {
 export function SizeChartsCard({
   productId,
   shopId,
+  categoryIds = [],
   selectedChartId,
   onChange,
 }: SizeChartsCardProps) {
   const { toast } = useOptimisticToast();
   const [loading, setLoading] = useState(false);
-  const [sizeCharts, setSizeCharts] = useState<SizeChart[]>([]);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newChart, setNewChart] = useState({
-    name: '',
-    chart_type: 'clothing',
-    chart_data: { rows: [], columns: [] },
-  });
+  const [allCharts, setAllCharts] = useState<SizeChart[]>([]);
+  const [availableCharts, setAvailableCharts] = useState<SizeChart[]>([]);
 
   useEffect(() => {
     loadSizeCharts();
     if (productId) {
       loadProductSizeChart();
     }
-  }, [productId, shopId]);
+  }, [productId, shopId, categoryIds]);
+
+  // Filter charts based on scope and categories
+  useEffect(() => {
+    if (allCharts.length === 0) {
+      setAvailableCharts([]);
+      return;
+    }
+
+    const available = allCharts.filter((chart: any) => {
+      if (chart.scope === 'GLOBAL') {
+        return true;
+      }
+      if (chart.scope === 'CATEGORY' && categoryIds.length > 0) {
+        return chart.category_ids?.some((catId: number) => categoryIds.includes(catId));
+      }
+      return false;
+    });
+
+    setAvailableCharts(available);
+  }, [allCharts, categoryIds]);
 
   const loadSizeCharts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products/size-charts`);
+      const response = await fetch(`/api/size-charts`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        setSizeCharts(data.size_charts || []);
+        setAllCharts(data || []);
       }
     } catch (error) {
       console.error('Error loading size charts:', error);
@@ -162,61 +178,6 @@ export function SizeChartsCard({
     }
   };
 
-  const handleCreateChart = async () => {
-    if (!newChart.name.trim()) {
-      toast({
-        title: 'שגיאה',
-        description: 'יש להזין שם לטבלת המידות',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/products/size-charts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newChart),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSizeCharts([...sizeCharts, data.size_chart]);
-        
-        // Auto-select the new chart
-        if (productId) {
-          await handleSelectChart(data.size_chart.id);
-        } else if (onChange) {
-          onChange(data.size_chart.id);
-        }
-
-        toast({
-          title: 'הצלחה',
-          description: 'טבלת המידות נוצרה בהצלחה',
-        });
-
-        setNewChart({ name: '', chart_type: 'clothing', chart_data: { rows: [], columns: [] } });
-        setShowCreateForm(false);
-      } else {
-        const error = await response.json();
-        toast({
-          title: 'שגיאה',
-          description: error.error || 'אירעה שגיאה ביצירת טבלת המידות',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error creating size chart:', error);
-      toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה ביצירת טבלת המידות',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Card>
@@ -226,87 +187,34 @@ export function SizeChartsCard({
             <HiTable className="w-5 h-5" />
             <span>טבלת מידות</span>
           </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="gap-1"
+          <Link
+            href="/settings/size-charts"
+            className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
           >
+            <span>נהל טבלאות</span>
             <HiPlus className="w-4 h-4" />
-            <span className="text-sm">חדש</span>
-          </Button>
+          </Link>
         </div>
 
-        {showCreateForm && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
-            <div>
-              <Label htmlFor="chart-name">שם טבלת המידות</Label>
-              <Input
-                id="chart-name"
-                value={newChart.name}
-                onChange={(e) => setNewChart({ ...newChart, name: e.target.value })}
-                placeholder="לדוגמה: מידות בגדים, מידות נעליים"
-              />
-            </div>
-            <div>
-              <Label htmlFor="chart-type">סוג טבלה</Label>
-              <select
-                id="chart-type"
-                value={newChart.chart_type}
-                onChange={(e) => setNewChart({ ...newChart, chart_type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="clothing">בגדים</option>
-                <option value="shoes">נעליים</option>
-                <option value="accessories">אביזרים</option>
-                <option value="other">אחר</option>
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={handleCreateChart}
-                size="sm"
-                disabled={loading || !newChart.name.trim()}
-              >
-                צור טבלה
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setNewChart({ name: '', chart_type: 'clothing', chart_data: { rows: [], columns: [] } });
-                }}
-              >
-                ביטול
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {loading && sizeCharts.length === 0 ? (
+        {loading && availableCharts.length === 0 ? (
           <div className="text-center text-gray-500 py-4">טוען טבלאות מידות...</div>
-        ) : sizeCharts.length === 0 ? (
+        ) : availableCharts.length === 0 ? (
           <div className="text-center py-6">
             <HiTable className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-3">אין טבלאות מידות עדיין</p>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowCreateForm(true)}
-              className="gap-2"
+            <p className="text-gray-500 mb-3">אין טבלאות מידות מוגדרות</p>
+            <p className="text-sm text-gray-400 mb-3">
+              צור טבלאות מידות בהגדרות כדי שיופיעו כאן
+            </p>
+            <Link
+              href="/settings/size-charts"
+              className="text-green-600 hover:text-green-700 font-medium text-sm"
             >
-              <HiPlus className="w-4 h-4" />
-              צור טבלה ראשונה
-            </Button>
+              צור טבלת מידות
+            </Link>
           </div>
         ) : (
           <div className="space-y-2">
-            {sizeCharts.map((chart) => (
+            {availableCharts.map((chart) => (
               <div
                 key={chart.id}
                 className={`flex items-center justify-between p-3 border rounded-lg ${

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { HiPlus, HiPencil, HiTrash, HiTruck } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiTruck, HiGlobe, HiLocationMarker } from 'react-icons/hi';
 import { ShippingZoneWithRates } from '@/types/payment';
 
 export default function ShippingPage() {
@@ -49,10 +49,13 @@ export default function ShippingPage() {
   return (
     <div className="p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">משלוחים</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <HiTruck className="w-6 h-6 text-gray-600" />
+          משלוחים
+        </h1>
         <Button onClick={() => router.push('/shipping/new')} className="flex items-center gap-2">
-          הוסף אזור משלוח
           <HiPlus className="w-4 h-4" />
+          הוסף אזור משלוח
         </Button>
       </div>
 
@@ -67,10 +70,12 @@ export default function ShippingPage() {
           <div className="p-12 text-center">
             <HiTruck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500 mb-4">אין אזורי משלוח מוגדרים</p>
-            <Button onClick={() => router.push('/shipping/new')} className="flex items-center gap-2">
-              הוסף אזור משלוח ראשון
-              <HiPlus className="w-4 h-4" />
-            </Button>
+            <div className="flex justify-center">
+              <Button onClick={() => router.push('/shipping/new')} className="flex items-center gap-2">
+                <HiPlus className="w-4 h-4" />
+                הוסף אזור משלוח ראשון
+              </Button>
+            </div>
           </div>
         </Card>
       ) : (
@@ -79,11 +84,17 @@ export default function ShippingPage() {
             <Card key={zone.id}>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{zone.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      מדינות: {zone.countries.join(', ') || 'כל המדינות'}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <HiGlobe className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{zone.name}</h3>
+                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                        <HiLocationMarker className="w-4 h-4" />
+                        {zone.countries.join(', ') || 'כל המדינות'}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -121,13 +132,23 @@ export default function ShippingPage() {
                 </div>
                 {zone.rates && zone.rates.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">תעריפי משלוח:</h4>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <HiTruck className="w-4 h-4" />
+                      תעריפי משלוח:
+                    </h4>
                     <div className="space-y-2">
                       {zone.rates.map((rate) => (
                         <div key={rate.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-900">{rate.name}</span>
+                          <span className="text-sm text-gray-900 flex items-center gap-2">
+                            {rate.is_pickup ? (
+                              <HiLocationMarker className="w-4 h-4 text-blue-600" />
+                            ) : (
+                              <HiTruck className="w-4 h-4 text-gray-400" />
+                            )}
+                            {rate.name}
+                          </span>
                           <span className="text-sm font-semibold text-gray-900">
-                            ₪{parseFloat(rate.price).toLocaleString('he-IL')}
+                            {rate.is_pickup ? 'איסוף עצמי' : `₪${parseFloat(rate.price).toLocaleString('he-IL')}`}
                           </span>
                         </div>
                       ))}

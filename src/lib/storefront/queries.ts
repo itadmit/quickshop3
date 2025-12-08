@@ -80,9 +80,10 @@ export async function getProductsList(
     offset?: number;
     collectionId?: number;
     search?: string;
+    customerTier?: string | null;
   } = {}
 ): Promise<ProductListItem[]> {
-  const { limit = 20, offset = 0, collectionId, search } = options;
+  const { limit = 20, offset = 0, collectionId, search, customerTier } = options;
 
   let whereClause = 'p.store_id = $1 AND p.status = \'active\'';
   const params: any[] = [storeId];
@@ -101,6 +102,28 @@ export async function getProductsList(
     whereClause += ` AND (p.title ILIKE $${paramIndex} OR p.body_html ILIKE $${paramIndex})`;
     params.push(`%${search}%`);
     paramIndex++;
+  }
+
+  // Filter exclusive products by customer tier
+  // If product has exclusive_to_tiers, only show if customer tier is in the list
+  // If product has no exclusive_to_tiers (NULL or empty), show to everyone
+  if (customerTier) {
+    // Customer has a tier - show products that are either:
+    // 1. Not exclusive (exclusive_to_tiers IS NULL or empty array)
+    // 2. Exclusive to this tier (customerTier is in exclusive_to_tiers array)
+    whereClause += ` AND (
+      p.exclusive_to_tiers IS NULL 
+      OR p.exclusive_to_tiers = '[]'::jsonb
+      OR p.exclusive_to_tiers @> $${paramIndex}::jsonb
+    )`;
+    params.push(JSON.stringify([customerTier]));
+    paramIndex++;
+  } else {
+    // Customer has no tier - only show products that are not exclusive
+    whereClause += ` AND (
+      p.exclusive_to_tiers IS NULL 
+      OR p.exclusive_to_tiers = '[]'::jsonb
+    )`;
   }
 
   const products = await query<ProductListItem & { inventory_quantity?: number }>(
@@ -147,10 +170,32 @@ export async function getProductsList(
  */
 export async function getProductByHandle(
   handle: string,
-  storeId: number
+  storeId: number,
+  customerTier?: string | null
 ): Promise<ProductDetails | null> {
   // Decode URL-encoded handle (for Hebrew slugs)
   const decodedHandle = decodeURIComponent(handle);
+  
+  // Build WHERE clause with tier filtering
+  let whereClause = 'p.store_id = $1 AND p.handle = $2 AND p.status = \'active\'';
+  const params: any[] = [storeId, decodedHandle];
+  let paramIndex = 3;
+
+  // Filter exclusive products by customer tier
+  if (customerTier) {
+    whereClause += ` AND (
+      p.exclusive_to_tiers IS NULL 
+      OR p.exclusive_to_tiers = '[]'::jsonb
+      OR p.exclusive_to_tiers @> $${paramIndex}::jsonb
+    )`;
+    params.push(JSON.stringify([customerTier]));
+    paramIndex++;
+  } else {
+    whereClause += ` AND (
+      p.exclusive_to_tiers IS NULL 
+      OR p.exclusive_to_tiers = '[]'::jsonb
+    )`;
+  }
   
   // Query ראשי עם JOINs
   const product = await queryOne<{
@@ -193,8 +238,8 @@ export async function getProductByHandle(
       ORDER BY position 
       LIMIT 1
     ) pv ON true
-    WHERE p.store_id = $1 AND p.handle = $2 AND p.status = 'active'`,
-    [storeId, decodedHandle]
+    WHERE ${whereClause}`,
+    params
   );
 
   if (!product) return null;

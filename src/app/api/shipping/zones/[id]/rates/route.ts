@@ -34,9 +34,9 @@ export async function POST(
     const rate = await queryOne<ShippingRate>(
       `INSERT INTO shipping_rates (
         shipping_zone_id, name, price, min_order_subtotal, max_order_subtotal,
-        min_weight, max_weight, free_shipping_threshold,
-        delivery_days_min, delivery_days_max, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+        min_weight, max_weight, free_shipping_threshold, min_shipping_amount,
+        is_pickup, delivery_days_min, delivery_days_max, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
       RETURNING *`,
       [
         zoneId,
@@ -47,6 +47,8 @@ export async function POST(
         body.min_weight || null,
         body.max_weight || null,
         body.free_shipping_threshold || null,
+        body.min_shipping_amount || null,
+        body.is_pickup || false,
         body.delivery_days_min || null,
         body.delivery_days_max || null,
       ]
@@ -54,6 +56,27 @@ export async function POST(
 
     if (!rate) {
       throw new Error('Failed to create shipping rate');
+    }
+
+    // Add cities if provided
+    if (body.cities && body.cities.length > 0) {
+      for (const city of body.cities) {
+        await query(
+          `INSERT INTO shipping_rate_cities (
+            shipping_rate_id, city_name, price, free_shipping_threshold, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, now(), now())
+          ON CONFLICT (shipping_rate_id, city_name) DO UPDATE SET
+            price = EXCLUDED.price,
+            free_shipping_threshold = EXCLUDED.free_shipping_threshold,
+            updated_at = now()`,
+          [
+            rate.id,
+            city.city_name,
+            city.price,
+            city.free_shipping_threshold || null,
+          ]
+        );
+      }
     }
 
     // Emit event

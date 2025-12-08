@@ -10,6 +10,7 @@ export interface Product {
   product_type: string | null;
   status: 'draft' | 'active' | 'archived';
   published_at: Date | null;
+  archived_at: Date | null;
   published_scope: string;
   template_suffix: string | null;
   created_at: Date;
@@ -37,6 +38,9 @@ export interface ProductVariant {
   sku: string | null;
   barcode: string | null;
   position: number;
+  option1?: string | null;
+  option2?: string | null;
+  option3?: string | null;
   inventory_quantity: number;
   inventory_policy: string;
   inventory_management: string | null;

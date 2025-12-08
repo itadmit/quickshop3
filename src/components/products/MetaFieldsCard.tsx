@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
-import { HiAdjustments, HiPlus, HiX, HiTrash } from 'react-icons/hi';
+import { HiAdjustments, HiPlus, HiX, HiTrash, HiExternalLink } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
+import { useRouter } from 'next/navigation';
 
 interface MetaField {
   id?: number;
@@ -16,9 +17,23 @@ interface MetaField {
   value_type: string;
 }
 
+interface MetaFieldDefinition {
+  id: number;
+  namespace: string;
+  key: string;
+  label: string;
+  description: string | null;
+  value_type: string;
+  required: boolean;
+  scope: string;
+  category_ids: number[];
+  show_in_storefront: boolean;
+}
+
 interface MetaFieldsCardProps {
   productId?: number;
   shopId: number;
+  categoryIds?: number[];
   values?: Record<string, any>;
   onChange?: (values: Record<string, any>) => void;
 }
@@ -26,25 +41,84 @@ interface MetaFieldsCardProps {
 export function MetaFieldsCard({
   productId,
   shopId,
+  categoryIds = [],
   values = {},
   onChange,
 }: MetaFieldsCardProps) {
   const { toast } = useOptimisticToast();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [definitions, setDefinitions] = useState<MetaFieldDefinition[]>([]);
   const [metaFields, setMetaFields] = useState<MetaField[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newField, setNewField] = useState<MetaField>({
-    namespace: 'custom',
-    key: '',
-    value: '',
-    value_type: 'string',
-  });
+  const [availableDefinitions, setAvailableDefinitions] = useState<MetaFieldDefinition[]>([]);
 
   useEffect(() => {
+    loadDefinitions();
     if (productId) {
       loadMetaFields();
     }
-  }, [productId]);
+  }, [productId, categoryIds]);
+
+  // Filter definitions based on scope and categories
+  useEffect(() => {
+    if (definitions.length === 0) {
+      setAvailableDefinitions([]);
+      return;
+    }
+
+    const available = definitions.filter((def) => {
+      if (def.scope === 'GLOBAL') {
+        return true;
+      }
+      if (def.scope === 'CATEGORY' && categoryIds.length > 0) {
+        return def.category_ids.some((catId) => categoryIds.includes(catId));
+      }
+      return false;
+    });
+
+    setAvailableDefinitions(available);
+
+    // Initialize meta fields from definitions
+    const initialFields: MetaField[] = available.map((def) => {
+      const fullKey = `${def.namespace}.${def.key}`;
+      const existingValue = metaFields.find(
+        (f) => f.namespace === def.namespace && f.key === def.key
+      );
+      return {
+        namespace: def.namespace,
+        key: def.key,
+        value: existingValue?.value || values[fullKey] || '',
+        value_type: def.value_type,
+      };
+    });
+
+    // Add any existing meta fields that aren't in definitions
+    metaFields.forEach((field) => {
+      const exists = initialFields.some(
+        (f) => f.namespace === field.namespace && f.key === field.key
+      );
+      if (!exists) {
+        initialFields.push(field);
+      }
+    });
+
+    setMetaFields(initialFields);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [definitions, categoryIds]);
+
+  const loadDefinitions = async () => {
+    try {
+      const response = await fetch('/api/meta-field-definitions', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDefinitions(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading meta field definitions:', error);
+    }
+  };
 
   const loadMetaFields = async () => {
     if (!productId) return;
@@ -73,72 +147,6 @@ export function MetaFieldsCard({
     }
   };
 
-  const handleAddField = async () => {
-    if (!newField.key.trim()) {
-      toast({
-        title: 'שגיאה',
-        description: 'יש להזין שם שדה',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!productId) {
-      // Just add to local state if no product ID yet
-      const field: MetaField = { ...newField };
-      setMetaFields([...metaFields, field]);
-      if (onChange) {
-        const fullKey = `${newField.namespace}.${newField.key}`;
-        onChange({ ...values, [fullKey]: newField.value });
-      }
-      setNewField({ namespace: 'custom', key: '', value: '', value_type: 'string' });
-      setShowAddForm(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/products/${productId}/meta-fields`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newField),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMetaFields([...metaFields, data.meta_field]);
-        
-        if (onChange) {
-          const fullKey = `${newField.namespace}.${newField.key}`;
-          onChange({ ...values, [fullKey]: newField.value });
-        }
-
-        toast({
-          title: 'הצלחה',
-          description: 'השדה נוסף בהצלחה',
-        });
-
-        setNewField({ namespace: 'custom', key: '', value: '', value_type: 'string' });
-        setShowAddForm(false);
-      } else {
-        const error = await response.json();
-        toast({
-          title: 'שגיאה',
-          description: error.error || 'אירעה שגיאה בהוספת השדה',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error adding meta field:', error);
-      toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה בהוספת השדה',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteField = async (namespace: string, key: string) => {
     if (!productId) {
@@ -241,6 +249,11 @@ export function MetaFieldsCard({
     );
   }
 
+  // Get definition for a field
+  const getDefinition = (namespace: string, key: string): MetaFieldDefinition | undefined => {
+    return definitions.find((d) => d.namespace === namespace && d.key === key);
+  };
+
   return (
     <Card>
       <div className="p-6">
@@ -253,127 +266,72 @@ export function MetaFieldsCard({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => router.push('/settings/meta-fields')}
             className="gap-1"
           >
-            <HiPlus className="w-4 h-4" />
-            <span className="text-sm">הוסף שדה</span>
+            <HiExternalLink className="w-4 h-4" />
+            <span className="text-sm">נהל שדות</span>
           </Button>
         </div>
 
-        {showAddForm && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="meta-namespace">Namespace</Label>
-                <Input
-                  id="meta-namespace"
-                  value={newField.namespace}
-                  onChange={(e) => setNewField({ ...newField, namespace: e.target.value })}
-                  placeholder="custom"
-                />
-              </div>
-              <div>
-                <Label htmlFor="meta-key">שם השדה (Key)</Label>
-                <Input
-                  id="meta-key"
-                  value={newField.key}
-                  onChange={(e) => setNewField({ ...newField, key: e.target.value })}
-                  placeholder="field_name"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="meta-value">ערך</Label>
-              <Input
-                id="meta-value"
-                value={newField.value}
-                onChange={(e) => setNewField({ ...newField, value: e.target.value })}
-                placeholder="ערך השדה"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={handleAddField}
-                size="sm"
-                disabled={loading || !newField.key.trim()}
-              >
-                הוסף
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowAddForm(false);
-                  setNewField({ namespace: 'custom', key: '', value: '', value_type: 'string' });
-                }}
-              >
-                ביטול
-              </Button>
-            </div>
+        {loading && metaFields.length === 0 ? (
+          <div className="text-center py-6">
+            <div className="text-gray-500">טוען שדות מטא...</div>
           </div>
-        )}
-
-        {metaFields.length === 0 ? (
+        ) : availableDefinitions.length === 0 ? (
           <div className="text-center py-6">
             <HiAdjustments className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-3">אין שדות מטא עדיין</p>
+            <p className="text-gray-500 mb-3">אין שדות מטא מוגדרים</p>
+            <p className="text-sm text-gray-400 mb-3">
+              צור שדות מטא בהגדרות כדי שיופיעו כאן
+            </p>
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => setShowAddForm(true)}
+              onClick={() => router.push('/settings/meta-fields')}
               className="gap-2"
             >
               <HiPlus className="w-4 h-4" />
-              הוסף שדה ראשון
+              צור שדה מטא
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {metaFields.map((field, index) => (
-              <div key={`${field.namespace}.${field.key}`} className="flex gap-2 items-start">
-                <div className="flex-1 grid grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-xs text-gray-500">Namespace</Label>
-                    <Input
-                      value={field.namespace}
-                      readOnly
-                      className="text-sm"
-                    />
+          <div className="space-y-4">
+            {availableDefinitions.map((def) => {
+              const field = metaFields.find(
+                (f) => f.namespace === def.namespace && f.key === def.key
+              );
+              const fullKey = `${def.namespace}.${def.key}`;
+              const currentValue = field?.value || values[fullKey] || '';
+
+              return (
+                <div key={`${def.namespace}.${def.key}`} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={fullKey} className="text-sm font-medium text-gray-700">
+                      {def.label}
+                      {def.required && <span className="text-red-500 mr-1">*</span>}
+                    </Label>
+                    <span className="text-xs text-gray-400 font-mono">
+                      {def.namespace}.{def.key}
+                    </span>
                   </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">Key</Label>
-                    <Input
-                      value={field.key}
-                      readOnly
-                      className="text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">ערך</Label>
-                    <Input
-                      value={field.value || ''}
-                      onChange={(e) =>
-                        handleUpdateField(field.namespace, field.key, e.target.value)
-                      }
-                      className="text-sm"
-                    />
-                  </div>
+                  {def.description && (
+                    <p className="text-xs text-gray-500">{def.description}</p>
+                  )}
+                  <Input
+                    id={fullKey}
+                    value={currentValue}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      handleUpdateField(def.namespace, def.key, newValue);
+                    }}
+                    placeholder={`הזן ${def.label.toLowerCase()}`}
+                    required={def.required}
+                  />
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteField(field.namespace, field.key)}
-                  className="text-red-500 hover:text-red-700 mt-6"
-                >
-                  <HiTrash className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

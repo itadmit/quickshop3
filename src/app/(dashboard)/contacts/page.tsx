@@ -29,6 +29,9 @@ import { ContactWithDetails, ContactCategory } from '@/types/contact';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ContactFilters, ContactFilters as ContactFiltersType } from '@/components/contacts/ContactFilters';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
+import { Label } from '@/components/ui/Label';
+import { Textarea } from '@/components/ui/Textarea';
 
 interface Pagination {
   page: number;
@@ -59,6 +62,20 @@ export default function ContactsPage() {
   const [filters, setFilters] = useState<ContactFiltersType>({});
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<ContactCategory[]>([]);
+  const [formData, setFormData] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    company: '',
+    notes: '',
+    tags: [] as string[],
+    category_types: [] as string[],
+    email_marketing_consent: false,
+  });
   
   // Pagination
   const [pagination, setPagination] = useState<Pagination>({
@@ -72,7 +89,81 @@ export default function ContactsPage() {
   useEffect(() => {
     fetch('/api/contacts/categories/init', { method: 'POST', credentials: 'include' })
       .catch(() => {}); // Ignore errors
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/contacts/categories', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  const handleCreateNew = () => {
+    setFormData({
+      email: '',
+      first_name: '',
+      last_name: '',
+      phone: '',
+      company: '',
+      notes: '',
+      tags: [],
+      category_types: [],
+      email_marketing_consent: false,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSaveContact = async () => {
+    if (!formData.email.trim()) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להזין כתובת אימייל',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'הצלחה',
+          description: 'איש הקשר נוצר בהצלחה',
+        });
+        setDialogOpen(false);
+        setPagination((prev) => ({ ...prev, page: 1 }));
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'שגיאה',
+          description: error.error || 'אירעה שגיאה ביצירת איש הקשר',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving contact:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה ביצירת איש הקשר',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Load contacts when filters change
   useEffect(() => {
@@ -350,6 +441,13 @@ export default function ContactsPage() {
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={handleCreateNew}
+            className="flex items-center gap-2"
+          >
+            <HiPlus className="w-4 h-4" />
+            הוסף איש קשר
+          </Button>
           {selectedContacts.size > 0 && (
             <Button
               onClick={handleBulkDelete}
@@ -548,6 +646,184 @@ export default function ContactsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Create Contact Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>הוסף איש קשר חדש</DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-4 space-y-4">
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email">אימייל *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, email: e.target.value }))
+                }
+                placeholder="example@email.com"
+              />
+            </div>
+
+            {/* First Name & Last Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">שם פרטי</Label>
+                <Input
+                  id="first_name"
+                  value={formData.first_name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, first_name: e.target.value }))
+                  }
+                  placeholder="שם פרטי"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">שם משפחה</Label>
+                <Input
+                  id="last_name"
+                  value={formData.last_name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, last_name: e.target.value }))
+                  }
+                  placeholder="שם משפחה"
+                />
+              </div>
+            </div>
+
+            {/* Phone & Company */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">טלפון</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  placeholder="050-1234567"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="company">חברה</Label>
+                <Input
+                  id="company"
+                  value={formData.company}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, company: e.target.value }))
+                  }
+                  placeholder="שם החברה"
+                />
+              </div>
+            </div>
+
+            {/* Categories */}
+            <div className="space-y-2">
+              <Label>קטגוריות</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {categories.map((category) => (
+                  <label
+                    key={category.id}
+                    className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.category_types.includes(category.type)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            category_types: [...prev.category_types, category.type],
+                          }));
+                        } else {
+                          setFormData((prev) => ({
+                            ...prev,
+                            category_types: prev.category_types.filter(
+                              (t) => t !== category.type
+                            ),
+                          }));
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm">{category.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2">
+              <Label htmlFor="tags">תגיות (מופרדות בפסיק)</Label>
+              <Input
+                id="tags"
+                value={formData.tags.join(', ')}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tags: e.target.value
+                      .split(',')
+                      .map((t) => t.trim())
+                      .filter((t) => t.length > 0),
+                  }))
+                }
+                placeholder="תגית1, תגית2, תגית3"
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">הערות</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="הערות נוספות על איש הקשר..."
+                rows={3}
+              />
+            </div>
+
+            {/* Email Marketing Consent */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="email_marketing_consent"
+                checked={formData.email_marketing_consent}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    email_marketing_consent: e.target.checked,
+                  }))
+                }
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="email_marketing_consent" className="cursor-pointer">
+                אישור דיוור שיווקי
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={saving}
+            >
+              ביטול
+            </Button>
+            <Button onClick={handleSaveContact} disabled={saving}>
+              {saving ? 'שומר...' : 'שמור'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,6 +10,8 @@ interface StatusCardProps {
   onChange: (status: 'draft' | 'active' | 'archived') => void;
   scheduledPublishDate?: string;
   onScheduledPublishDateChange?: (date: string) => void;
+  scheduledArchiveDate?: string;
+  onScheduledArchiveDateChange?: (date: string) => void;
   notifyOnPublish?: boolean;
   onNotifyOnPublishChange?: (notify: boolean) => void;
 }
@@ -19,6 +21,8 @@ export function StatusCard({
   onChange,
   scheduledPublishDate,
   onScheduledPublishDateChange,
+  scheduledArchiveDate,
+  onScheduledArchiveDateChange,
   notifyOnPublish,
   onNotifyOnPublishChange,
 }: StatusCardProps) {
@@ -43,7 +47,7 @@ export function StatusCard({
 
           <div className="border-t pt-4 space-y-4">
             <div>
-              <Label htmlFor="scheduledPublishDate">תזמון פרסום</Label>
+              <Label htmlFor="scheduledPublishDate">תאריך פרסום</Label>
               <Input
                 id="scheduledPublishDate"
                 type="datetime-local"
@@ -67,6 +71,19 @@ export function StatusCard({
                 </Label>
               </div>
             )}
+
+            <div className="border-t pt-4">
+              <div>
+                <Label htmlFor="scheduledArchiveDate">תאריך הסתרה</Label>
+                <Input
+                  id="scheduledArchiveDate"
+                  type="datetime-local"
+                  value={scheduledArchiveDate || ''}
+                  onChange={(e) => onScheduledArchiveDateChange?.(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">תאריך אוטומטי להסתרת המוצר</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

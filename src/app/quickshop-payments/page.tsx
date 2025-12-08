@@ -17,7 +17,7 @@ import {
   HiArrowLeft
 } from 'react-icons/hi';
 
-function BlackFridayBanner() {
+function LaunchPriceBanner() {
   const bannerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -46,10 +46,10 @@ function BlackFridayBanner() {
   }, []);
 
   const bannerItems = [
-    { en: "SALE BLACK FRIDAY", he: "מחירי השקה בלעדיים - לזמן מוגבל בלבד" },
+    { en: "LAUNCH PRICE", he: "מחירי השקה בלעדיים - לזמן מוגבל בלבד" },
     { en: "LIMITED TIME OFFER", he: "הזדמנות חד פעמית - רק עכשיו" },
     { en: "EXCLUSIVE LAUNCH PRICES", he: "מחירי השקה בלעדיים - לזמן מוגבל בלבד" },
-    { en: "SALE BLACK FRIDAY", he: "הזדמנות חד פעמית - רק עכשיו" },
+    { en: "GRAND OPENING", he: "הזדמנות חד פעמית - רק עכשיו" },
   ];
 
   const renderBannerItem = (item: typeof bannerItems[0], key: string) => (
@@ -139,7 +139,7 @@ export default function QuickShopPaymentsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <Link href="/" className="flex flex-col overflow-visible">
-              <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap overflow-visible" style={{ letterSpacing: '2px', lineHeight: '1.5' }}>
+              <h1 className="text-2xl font-logo text-gray-900 whitespace-nowrap overflow-visible" style={{ lineHeight: '1.5' }}>
                 Quick Shop
               </h1>
               <p className="text-xs text-green-600 font-bold tracking-wider whitespace-nowrap">PAYMENTS</p>
@@ -319,11 +319,11 @@ export default function QuickShopPaymentsPage() {
         </div>
       </section>
 
-      {/* Black Friday Banner */}
-      <BlackFridayBanner />
+      {/* Launch Price Banner */}
+      <LaunchPriceBanner />
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-gray-900 text-white relative overflow-hidden">
+      <section id="pricing" className="py-24 bg-[#0B1120] text-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
            <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[100px]" />
            <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-[100px]" />
@@ -337,7 +337,7 @@ export default function QuickShopPaymentsPage() {
             <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">
               שקיפות מלאה. <span className="text-green-400">בלי הפתעות.</span>
             </h2>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
               בחרו את המסלול שמתאים לגודל העסק שלכם.
               <br/>
               העמלות מחליפות את חברת האשראי והמסוף.
@@ -346,111 +346,117 @@ export default function QuickShopPaymentsPage() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
             {/* Tier 1 */}
-            <Card className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-3xl p-8 flex flex-col hover:bg-gray-800/60 transition-all duration-300">
+            <Card className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 flex flex-col hover:bg-slate-800/60 transition-all duration-300 group">
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-white mb-2">לא סלקת לא שילמת</h3>
-                <p className="text-gray-400 text-sm">ללא התחייבות חודשית</p>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">לא סלקת לא שילמת</h3>
+                <p className="text-slate-400 text-sm">ללא התחייבות חודשית</p>
               </div>
               
-              <div className="mb-8 pb-8 border-b border-gray-700/50">
+              <div className="mb-8 pb-8 border-b border-slate-700/50">
                 <div className="flex items-baseline mb-3">
                   <span className="text-5xl font-bold text-white tracking-tight">₪0</span>
-                  <span className="text-gray-400 mr-2 font-medium">/ חודש + מע״מ</span>
+                  <span className="text-slate-400 mr-2 font-medium">/ חודש + מע״מ</span>
                 </div>
-                <div className="inline-flex items-center gap-2 bg-gray-700/30 px-3 py-1.5 rounded-lg border border-gray-600/30">
+                <div className="inline-flex items-center gap-2 bg-slate-700/30 px-3 py-1.5 rounded-lg border border-slate-600/30">
                    <span className="text-white font-bold">₪299</span>
-                   <span className="text-gray-400 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
+                   <span className="text-slate-400 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
                 </div>
               </div>
               
-              <div className="mb-8 bg-gray-900/50 p-4 rounded-2xl border border-gray-700/50 text-center">
-                <span className="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-medium">עמלת סליקה</span>
+              <div className="mb-8 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                <span className="block text-xs text-slate-400 mb-1 uppercase tracking-wider font-medium">עמלת סליקה</span>
                 <span className="text-3xl font-bold text-white">3.4% <span className="text-sm">+ מע״מ</span></span>
               </div>
               
-              <ul className="space-y-4 text-sm text-gray-300 flex-grow">
+              <ul className="space-y-4 text-sm text-slate-300 flex-grow">
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   לא סלקת - לא שילמת
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   הקמה מיידית 24-48 שעות !
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   סליקת כל כרטיסי האשראי
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   תשלום ב-Bit, Apple Pay, Google Pay
                 </li>
               </ul>
               
-              <Button className="w-full mt-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl h-12 font-medium transition-all">
+              <Button 
+                onClick={() => document.getElementById('register')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full mt-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl h-12 font-medium transition-all"
+              >
                 בחר מסלול זה
               </Button>
             </Card>
 
             {/* Tier 2 */}
-            <Card className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-3xl p-8 flex flex-col hover:bg-gray-800/60 transition-all duration-300">
+            <Card className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 flex flex-col hover:bg-slate-800/60 transition-all duration-300 group">
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-white mb-2">רק סליקה</h3>
-                <p className="text-gray-400 text-sm">ללקוחות עם מסוף קיים</p>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">רק סליקה</h3>
+                <p className="text-slate-400 text-sm">ללקוחות עם מסוף קיים</p>
               </div>
               
-              <div className="mb-8 pb-8 border-b border-gray-700/50">
+              <div className="mb-8 pb-8 border-b border-slate-700/50">
                 <div className="flex items-baseline mb-3">
                   <span className="text-5xl font-bold text-white tracking-tight">₪129</span>
-                  <span className="text-gray-400 mr-2 font-medium">/ חודש + מע״מ</span>
+                  <span className="text-slate-400 mr-2 font-medium">/ חודש + מע״מ</span>
                 </div>
-                <div className="inline-flex items-center gap-2 bg-gray-700/30 px-3 py-1.5 rounded-lg border border-gray-600/30">
+                <div className="inline-flex items-center gap-2 bg-slate-700/30 px-3 py-1.5 rounded-lg border border-slate-600/30">
                    <span className="text-white font-bold">₪249</span>
-                   <span className="text-gray-400 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
+                   <span className="text-slate-400 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
                 </div>
               </div>
               
-              <div className="mb-8 bg-gray-900/50 p-4 rounded-2xl border border-gray-700/50 text-center">
-                <span className="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-medium">עמלת סליקה</span>
+              <div className="mb-8 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                <span className="block text-xs text-slate-400 mb-1 uppercase tracking-wider font-medium">עמלת סליקה</span>
                 <span className="text-xl font-bold text-white">לפי המסוף שלך</span>
               </div>
               
-              <ul className="space-y-4 text-sm text-gray-300 flex-grow">
+              <ul className="space-y-4 text-sm text-slate-300 flex-grow">
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   חיבור למסוף קיים
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   סליקת כל כרטיסי האשראי
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500/10">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <HiCheckCircle className="w-4 h-4 text-green-400" />
                   </div>
                   תשלום ב-Bit, Apple Pay, Google Pay
                 </li>
               </ul>
 
-              <Button className="w-full mt-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl h-12 font-medium transition-all">
+              <Button 
+                onClick={() => document.getElementById('register')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full mt-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl h-12 font-medium transition-all"
+              >
                 בחר מסלול זה
               </Button>
             </Card>
 
             {/* Tier 3 - PRO */}
-            <Card className="bg-gray-900 border border-green-500/50 rounded-3xl p-8 flex flex-col relative transform md:-translate-y-6 shadow-2xl shadow-green-500/10 z-10">
+            <Card className="bg-slate-900 border border-green-500/50 rounded-3xl p-8 flex flex-col relative transform md:-translate-y-6 shadow-2xl shadow-green-500/10 z-10">
               <div className="absolute top-4 left-4">
                 <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
                   <HiLightningBolt className="w-3 h-3" /> מומלץ
@@ -462,14 +468,22 @@ export default function QuickShopPaymentsPage() {
                 <p className="text-green-200/80 text-sm">הפתרון המלא לעסקים</p>
               </div>
               
-              <div className="mb-8 pb-8 border-b border-gray-800">
+              <div className="mb-8 pb-8 border-b border-slate-800">
                 <div className="flex items-baseline mb-3">
                    <span className="text-5xl font-bold text-white tracking-tight">₪59</span>
-                   <span className="text-gray-400 mr-2 font-medium text-lg">/ חודש + מע״מ</span>
+                   <span className="text-slate-400 mr-2 font-medium text-lg">/ חודש + מע״מ</span>
                 </div>
-                <div className="inline-flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20">
+                <div className="inline-flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20 mb-3">
                    <span className="text-green-300 font-bold">₪199</span>
                    <span className="text-green-200/60 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
+                </div>
+                <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-xl p-3 text-center">
+                  <p className="text-yellow-300 text-xs font-bold leading-tight">
+                    ⚡ מחיר השקה בלעדי ל-50 הנרשמים הראשונים
+                  </p>
+                  <p className="text-yellow-200/80 text-[10px] mt-1">
+                    הזדמנות חד פעמית - המחיר יעלה בקרוב
+                  </p>
                 </div>
               </div>
               
@@ -480,34 +494,37 @@ export default function QuickShopPaymentsPage() {
                 <span className="block text-xs text-green-200/50 mt-2 relative z-10">הכי משתלם בישראל</span>
               </div>
               
-              <ul className="space-y-4 text-sm text-gray-200 flex-grow">
+              <ul className="space-y-4 text-sm text-slate-200 flex-grow">
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500 text-gray-900">
-                    <HiCheckCircle className="w-4 h-4" />
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <HiCheckCircle className="w-4 h-4 text-slate-900" />
                   </div>
                   <span className="font-medium">הקמת מסוף חדש</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500 text-gray-900">
-                    <HiCheckCircle className="w-4 h-4" />
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <HiCheckCircle className="w-4 h-4 text-slate-900" />
                   </div>
                   <span className="font-medium">סליקת כל כרטיסי האשראי</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500 text-gray-900">
-                    <HiCheckCircle className="w-4 h-4" />
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <HiCheckCircle className="w-4 h-4 text-slate-900" />
                   </div>
                   תשלום ב-Bit, Apple Pay, Google Pay
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-1 rounded-full bg-green-500 text-gray-900">
-                    <HiCheckCircle className="w-4 h-4" />
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <HiCheckCircle className="w-4 h-4 text-slate-900" />
                   </div>
                   <span className="font-medium">הקמה מיידית 24-48 שעות !</span>
                 </li>
               </ul>
 
-              <Button className="w-full mt-4 bg-green-500 hover:bg-green-400 text-white rounded-xl h-14 font-bold text-lg shadow-lg shadow-green-500/25 transition-all">
+              <Button 
+                onClick={() => document.getElementById('register')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full mt-4 bg-green-500 hover:bg-green-400 text-white rounded-xl h-14 font-bold text-lg shadow-lg shadow-green-500/25 transition-all"
+              >
                 אני רוצה את המסלול הזה
               </Button>
             </Card>

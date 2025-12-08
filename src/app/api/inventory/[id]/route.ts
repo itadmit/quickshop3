@@ -18,68 +18,87 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const inventoryId = parseInt(id);
+    const variantId = parseInt(id);
     const storeId = user.store_id;
     const body = await request.json();
-    const { available, committed, location_id } = body;
+    const { available } = body;
 
-    // Get existing inventory
-    const existingInventory = await queryOne(
-      `SELECT vi.*, p.store_id 
-       FROM variant_inventory vi
-       INNER JOIN product_variants pv ON pv.id = vi.variant_id
+    // Get existing variant and verify it belongs to the store
+    const existingVariant = await queryOne<{
+      id: number;
+      product_id: number;
+      sku: string | null;
+      title: string;
+      option1: string | null;
+      option2: string | null;
+      option3: string | null;
+      inventory_quantity: number;
+      store_id: number;
+      product_title: string;
+    }>(
+      `SELECT pv.*, p.store_id, p.title as product_title
+       FROM product_variants pv
        INNER JOIN products p ON p.id = pv.product_id
-       WHERE vi.id = $1 AND p.store_id = $2`,
-      [inventoryId, storeId]
+       WHERE pv.id = $1 AND p.store_id = $2`,
+      [variantId, storeId]
     );
 
-    if (!existingInventory) {
-      return NextResponse.json({ error: 'Inventory not found' }, { status: 404 });
+    if (!existingVariant) {
+      return NextResponse.json({ error: 'Variant not found' }, { status: 404 });
     }
 
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (available !== undefined) {
-      updates.push(`available = $${paramIndex}`);
-      values.push(available);
-      paramIndex++;
+    if (available === undefined) {
+      return NextResponse.json(quickshopItem('inventory', {
+        id: existingVariant.id,
+        variant_id: existingVariant.id,
+        product_id: existingVariant.product_id,
+        sku: existingVariant.sku,
+        product_title: existingVariant.product_title,
+        variant_title: existingVariant.title,
+        option1: existingVariant.option1,
+        option2: existingVariant.option2,
+        option3: existingVariant.option3,
+        available: existingVariant.inventory_quantity || 0,
+        committed: 0,
+        incoming: 0,
+      }));
     }
 
-    if (committed !== undefined) {
-      updates.push(`committed = $${paramIndex}`);
-      values.push(committed);
-      paramIndex++;
-    }
-
-    if (location_id !== undefined) {
-      updates.push(`location_id = $${paramIndex}`);
-      values.push(location_id);
-      paramIndex++;
-    }
-
-    if (updates.length === 0) {
-      return NextResponse.json(quickshopItem('inventory', existingInventory));
-    }
-
-    updates.push(`updated_at = now()`);
-    values.push(inventoryId);
-
-    const inventory = await queryOne(
-      `UPDATE variant_inventory 
-       SET ${updates.join(', ')}
-       WHERE id = $${paramIndex}
+    // Update inventory quantity on the variant
+    const updatedVariant = await queryOne(
+      `UPDATE product_variants 
+       SET inventory_quantity = $1, updated_at = now()
+       WHERE id = $2
        RETURNING *`,
-      values
+      [available, variantId]
     );
+
+    // Get product title for response
+    const product = await queryOne(
+      `SELECT title FROM products WHERE id = $1`,
+      [updatedVariant.product_id]
+    );
+
+    const inventory = {
+      id: updatedVariant.id,
+      variant_id: updatedVariant.id,
+      product_id: updatedVariant.product_id,
+      sku: updatedVariant.sku,
+      product_title: product?.title || '',
+      variant_title: updatedVariant.title,
+      option1: updatedVariant.option1,
+      option2: updatedVariant.option2,
+      option3: updatedVariant.option3,
+      available: updatedVariant.inventory_quantity || 0,
+      committed: 0,
+      incoming: 0,
+    };
 
     // Check for low stock
-    if (available !== undefined && available < 10) {
+    if (available < 10) {
       await eventBus.emitEvent('inventory.low_stock', {
-        inventory: inventory,
-        variant_id: inventory.variant_id,
-        available: available,
+        variant_id: variantId,
+        quantity: available,
       }, {
         store_id: storeId,
         source: 'api',
@@ -88,9 +107,8 @@ export async function PUT(
     }
 
     await eventBus.emitEvent('inventory.updated', {
-      inventory: inventory,
-      variant_id: inventory.variant_id,
-      available: inventory.available,
+      variant_id: variantId,
+      quantity: available,
     }, {
       store_id: storeId,
       source: 'api',

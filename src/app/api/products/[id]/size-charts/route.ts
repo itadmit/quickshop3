@@ -5,6 +5,64 @@ import { eventBus } from '@/lib/events/eventBus';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
+// GET /api/products/:id/size-charts - List size charts linked to a product
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const productId = parseInt(id);
+    if (isNaN(productId)) {
+      return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
+    }
+
+    const storeId = user.store_id;
+
+    // Verify product belongs to store
+    const product = await queryOne<{ id: number; store_id: number }>(
+      'SELECT id, store_id FROM products WHERE id = $1',
+      [productId]
+    );
+
+    if (!product || product.store_id !== storeId) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Fetch linked size charts
+    const sizeCharts = await query(
+      `SELECT sc.*
+       FROM product_size_chart_map pscm
+       INNER JOIN size_charts sc ON sc.id = pscm.size_chart_id
+       WHERE pscm.product_id = $1 AND sc.store_id = $2
+       ORDER BY sc.name ASC`,
+      [productId, storeId]
+    );
+
+    // Parse chart_data if needed
+    const parsedCharts = sizeCharts.map((chart: any) => ({
+      ...chart,
+      chart_data:
+        typeof chart.chart_data === 'string'
+          ? JSON.parse(chart.chart_data)
+          : chart.chart_data,
+    }));
+
+    return NextResponse.json({ size_charts: parsedCharts });
+  } catch (error: any) {
+    console.error('Error fetching product size charts:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch product size charts' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/products/:id/size-charts - Link product to size chart
 export async function POST(
   request: NextRequest,
@@ -107,9 +165,12 @@ export async function DELETE(
     const { id } = await params;
     const productId = parseInt(id);
     
-    // Get chart ID from query string or body
+    // Get chart ID from query string or body (support both chart_id and size_chart_id for compatibility)
     const url = new URL(request.url);
-    const chartIdParam = url.searchParams.get('chart_id') || (await request.json()).chart_id;
+    const queryChartId = url.searchParams.get('chart_id') || url.searchParams.get('size_chart_id');
+    const body = request.method === 'DELETE' ? await request.json().catch(() => null) : null;
+    const bodyChartId = body?.chart_id ?? body?.size_chart_id;
+    const chartIdParam = queryChartId ?? bodyChartId;
     const chartId = chartIdParam ? parseInt(chartIdParam) : NaN;
 
     if (isNaN(productId) || isNaN(chartId)) {

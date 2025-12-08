@@ -6,7 +6,7 @@ const VISITOR_SESSION_COOKIE_NAME = 'quickshop3_visitor_session';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    let { storeId, items, discountCode, shippingRate, customerId, customerSegment, customerOrdersCount, customerLifetimeValue } = body;
+    let { storeId, items, discountCode, shippingRate, customerId, customerSegment, customerOrdersCount, customerLifetimeValue, customerTier } = body;
     
     // אם לא נשלח discountCode, נטען אותו מהשרת (session)
     if (!discountCode) {
@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
       customerLifetimeValue: customerLifetimeValue 
         ? (typeof customerLifetimeValue === 'string' ? parseFloat(customerLifetimeValue) : Number(customerLifetimeValue))
         : undefined,
+      customerTier: customerTier || undefined,
     });
 
     // Load discount code if provided (before calculation)

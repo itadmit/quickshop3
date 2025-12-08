@@ -105,18 +105,58 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     newsletter: true,
     createAccount: false,
     saveDetails: false,
-    paymentMethod: 'credit_card' as 'credit_card' | 'bank_transfer' | 'cash',
+    paymentMethod: 'credit_card' as 'credit_card' | 'bank_transfer' | 'cash' | 'store_credit',
     deliveryMethod: 'shipping' as 'shipping' | 'pickup',
     customFields: {} as Record<string, any>,
+    storeCreditAmount: 0, // סכום קרדיט לשימוש
   });
 
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
+  const [storeCredit, setStoreCredit] = useState<{ balance: number; id: number } | null>(null);
+  const [loadingStoreCredit, setLoadingStoreCredit] = useState(false);
 
   // Prevent hydration mismatch
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Load store credit if customer is logged in
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    const token = localStorage.getItem(`storefront_token_${storeSlug}`);
+    if (token) {
+      loadStoreCredit();
+    }
+  }, [isMounted, storeSlug]);
+
+  const loadStoreCredit = async () => {
+    try {
+      setLoadingStoreCredit(true);
+      const token = localStorage.getItem(`storefront_token_${storeSlug}`);
+      if (!token) return;
+
+      const response = await fetch(`/api/storefront/${storeSlug}/store-credit`, {
+        headers: {
+          'x-customer-id': token,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.balance > 0) {
+          setStoreCredit({ balance: data.balance, id: data.id });
+        } else {
+          setStoreCredit(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading store credit:', error);
+    } finally {
+      setLoadingStoreCredit(false);
+    }
+  };
 
   // Track InitiateCheckout on mount - רק פעם אחת
   const hasTrackedCheckout = useRef(false);
@@ -172,6 +212,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
       }
 
       const total = getTotal();
+      const storeCreditAmount = formData.paymentMethod === 'store_credit' ? formData.storeCreditAmount : 0;
+      const finalTotal = Math.max(0, total - storeCreditAmount);
+      
       const order = await createOrder({
         storeId, // ✅ מעביר את storeId מה-prop
         lineItems: cartItems.map((item) => ({
@@ -193,9 +236,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           country: 'ישראל',
           notes: formData.orderNotes,
         },
-        total: total,
+        total: finalTotal > 0 ? finalTotal : 0, // אם הקרדיט מכסה הכל, הסכום הוא 0
         deliveryMethod: formData.deliveryMethod,
         paymentMethod: formData.paymentMethod,
+        storeCreditAmount: storeCreditAmount,
         customFields: formData.customFields,
       });
 
@@ -1052,7 +1096,60 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         </div>                                                                      
                       </Label>
                     </div>
+                    {storeCredit && storeCredit.balance > 0 && (
+                      <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">
+                        <RadioGroupItem value="store_credit" id="store_credit" />
+                        <Label htmlFor="store_credit" className="cursor-pointer flex-1">
+                          <div className="font-medium flex items-center gap-2">
+                            <Coins className="w-5 h-5 text-yellow-600" />
+                            {translationsLoading ? (
+                              <TextSkeleton width="w-32" height="h-5" />
+                            ) : (
+                              'קרדיט בחנות'
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {translationsLoading ? (
+                              <TextSkeleton width="w-40" height="h-4" />
+                            ) : (
+                              `יתרה זמינה: ₪${storeCredit.balance.toFixed(2)}`
+                            )}
+                          </div>
+                        </Label>
+                      </div>
+                    )}
                   </RadioGroup>
+                  
+                  {/* Store Credit Amount Input */}
+                  {formData.paymentMethod === 'store_credit' && storeCredit && storeCredit.balance > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="storeCreditAmount" className="text-sm font-medium text-gray-700">
+                        סכום קרדיט לשימוש (₪)
+                      </Label>
+                      <Input
+                        id="storeCreditAmount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={Math.min(storeCredit.balance, getTotal())}
+                        value={formData.storeCreditAmount || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          const maxAmount = Math.min(storeCredit.balance, getTotal());
+                          setFormData((prev) => ({
+                            ...prev,
+                            storeCreditAmount: Math.min(value, maxAmount),
+                          }));
+                        }}
+                        className="mt-1"
+                        placeholder={`0.00 (מקסימום: ₪${Math.min(storeCredit.balance, getTotal()).toFixed(2)})`}
+                      />
+                      <p className="text-xs text-gray-500">
+                        יתרה זמינה: ₪{storeCredit.balance.toFixed(2)} | 
+                        סכום הזמנה: ₪{getTotal().toFixed(2)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1296,6 +1393,20 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       </div>
                     )}
                     
+                    {/* Store Credit Applied */}
+                    {formData.paymentMethod === 'store_credit' && formData.storeCreditAmount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>
+                          {translationsLoading ? (
+                            <TextSkeleton width="w-24" height="h-4" />
+                          ) : (
+                            'קרדיט בחנות'
+                          )}
+                        </span>
+                        <span>-₪{formData.storeCreditAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    
                     <div 
                       className="pt-2 flex justify-between font-bold text-lg border-t"
                       style={{ 
@@ -1306,10 +1417,16 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         {translationsLoading ? (
                           <TextSkeleton width="w-16" height="h-6" />
                         ) : (
-                          'סה"כ'
+                          formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal
+                            ? 'סה"כ לתשלום'
+                            : 'סה"כ'
                         )}
                       </span>
-                      <span>₪{finalTotal.toFixed(2)}</span>
+                      <span>
+                        {formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal
+                          ? '₪0.00'
+                          : `₪${Math.max(0, finalTotal - (formData.storeCreditAmount || 0)).toFixed(2)}`}
+                      </span>
                     </div>
                   </div>
 
@@ -1329,8 +1446,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       )
                     ) : translationsLoading ? (
                       <TextSkeleton width="w-32" height="h-5" />
+                    ) : formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal ? (
+                      'אישור הזמנה'
                     ) : (
-                      `שלם ₪${finalTotal.toFixed(2)}`
+                      `שלם ₪${Math.max(0, finalTotal - (formData.storeCreditAmount || 0)).toFixed(2)}`
                     )}
                   </Button>
                   

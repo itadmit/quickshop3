@@ -168,16 +168,22 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO products (
         store_id, title, handle, body_html, vendor, product_type,
-        status, published_scope, sell_when_sold_out, sold_by_weight,
+        status, published_at, archived_at, published_scope, sell_when_sold_out, sold_by_weight,
         show_price_per_100ml, price_per_100ml, availability, available_date,
         track_inventory, low_stock_alert, seo_title, seo_description,
-        video_url, length, width, height, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, now(), now())
+        video_url, length, width, height, exclusive_to_tiers, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, now(), now())
       RETURNING *
     `;
 
     // Generate unique slug if not provided
     const handle = body.handle || await generateUniqueSlug(body.title, 'products', storeId);
+
+    // Handle exclusive_to_tiers - convert array to JSONB or null
+    let exclusiveToTiers = null;
+    if (body.exclusive_to_tier && Array.isArray(body.exclusive_to_tier) && body.exclusive_to_tier.length > 0) {
+      exclusiveToTiers = JSON.stringify(body.exclusive_to_tier);
+    }
 
     const product = await queryOne<Product>(sql, [
       storeId,
@@ -187,6 +193,8 @@ export async function POST(request: NextRequest) {
       body.vendor || null,
       body.product_type || null,
       body.status || 'draft',
+      body.published_at || null,
+      body.archived_at || null,
       body.published_scope || 'web',
       body.sell_when_sold_out || false,
       body.sold_by_weight || false,
@@ -202,6 +210,7 @@ export async function POST(request: NextRequest) {
       body.length || null,
       body.width || null,
       body.height || null,
+      exclusiveToTiers,
     ]);
 
     if (!product) {

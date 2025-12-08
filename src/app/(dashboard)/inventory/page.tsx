@@ -9,11 +9,15 @@ import { Label } from '@/components/ui/Label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { HiCube, HiExclamationCircle, HiPencil, HiPlus, HiClock, HiDownload } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
+import { getVariantDisplayName } from '@/lib/utils/variant-display';
 
 interface InventoryItem {
   id: number;
   product_title: string;
   variant_title: string | null;
+  option1: string | null;
+  option2: string | null;
+  option3: string | null;
   sku: string | null;
   available: number;
   committed: number;
@@ -57,6 +61,9 @@ export default function InventoryPage() {
         id: item.id,
         product_title: item.product_title || 'מוצר לא נמצא',
         variant_title: item.variant_title || null,
+        option1: item.option1 || null,
+        option2: item.option2 || null,
+        option3: item.option3 || null,
         sku: item.sku || null,
         available: item.available || 0,
         committed: item.committed || 0,
@@ -73,6 +80,9 @@ export default function InventoryPage() {
           id: item.id,
           product_title: item.product_title || 'מוצר לא נמצא',
           variant_title: item.variant_title || null,
+          option1: item.option1 || null,
+          option2: item.option2 || null,
+          option3: item.option3 || null,
           sku: item.sku || null,
           available: item.available || 0,
           committed: item.committed || 0,
@@ -166,17 +176,26 @@ export default function InventoryPage() {
     {
       key: 'product',
       label: 'מוצר',
-      render: (item) => (
-        <div>
-          <div className="font-medium text-gray-900">{item.product_title}</div>
-          {item.variant_title && (
-            <div className="text-sm text-gray-500">{item.variant_title}</div>
-          )}
-          {item.sku && (
-            <div className="text-xs text-gray-400">SKU: {item.sku}</div>
-          )}
-        </div>
-      ),
+      render: (item) => {
+        const variantDisplay = getVariantDisplayName(
+          item.variant_title,
+          item.option1,
+          item.option2,
+          item.option3
+        );
+
+        return (
+          <div>
+            <div className="font-medium text-gray-900">{item.product_title}</div>
+            {variantDisplay && (
+              <div className="text-sm text-gray-500">{variantDisplay}</div>
+            )}
+            {item.sku && (
+              <div className="text-xs text-gray-400">SKU: {item.sku}</div>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'available',
@@ -275,9 +294,17 @@ export default function InventoryPage() {
                 >
                   <div>
                     <div className="font-medium text-gray-900">{item.product_title}</div>
-                    {item.variant_title && (
-                      <div className="text-sm text-gray-500">{item.variant_title}</div>
-                    )}
+                    {(() => {
+                      const variantDisplay = getVariantDisplayName(
+                        item.variant_title,
+                        item.option1,
+                        item.option2,
+                        item.option3
+                      );
+                      return variantDisplay && (
+                        <div className="text-sm text-gray-500">{variantDisplay}</div>
+                      );
+                    })()}
                     {item.sku && (
                       <div className="text-xs text-gray-400">SKU: {item.sku}</div>
                     )}
@@ -336,9 +363,17 @@ export default function InventoryPage() {
                   <Label>מוצר</Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded">
                     <div className="font-medium">{selectedItem.product_title}</div>
-                    {selectedItem.variant_title && (
-                      <div className="text-sm text-gray-500">{selectedItem.variant_title}</div>
-                    )}
+                    {(() => {
+                      const variantDisplay = getVariantDisplayName(
+                        selectedItem.variant_title,
+                        selectedItem.option1,
+                        selectedItem.option2,
+                        selectedItem.option3
+                      );
+                      return variantDisplay && (
+                        <div className="text-sm text-gray-500">{variantDisplay}</div>
+                      );
+                    })()}
                     <div className="text-sm text-gray-500 mt-1">
                       מלאי נוכחי: <span className="font-semibold">{selectedItem.available}</span>
                     </div>

@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { ProductVariant } from '@/types/product';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { getVariantTitle } from '@/lib/utils/variant-title';
 
 // POST /api/products/[id]/variants/sync - Sync product variants
 export async function POST(
@@ -47,23 +48,35 @@ export async function POST(
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
       
+      // בנה title מ-options אם יש, אחרת השתמש ב-title הקיים
+      const variantTitle = getVariantTitle(
+        variant.title || variant.name,
+        variant.option1,
+        variant.option2,
+        variant.option3
+      );
+
       const sql = `
         INSERT INTO product_variants (
           product_id, title, price, compare_at_price, sku, barcode,
+          option1, option2, option3,
           position, inventory_quantity, inventory_policy, inventory_management,
           weight, weight_unit, requires_shipping, taxable,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now())
         RETURNING *
       `;
 
       const insertedVariant = await queryOne<ProductVariant>(sql, [
         productId,
-        variant.title || variant.name || 'Default Title',
+        variantTitle,
         variant.price || '0.00',
         variant.compare_at_price || null,
         variant.sku || null,
         variant.barcode || null,
+        variant.option1 || null,
+        variant.option2 || null,
+        variant.option3 || null,
         i + 1,
         variant.inventory_quantity || 0,  // הוספת inventory_quantity
         variant.inventory_policy || 'deny',

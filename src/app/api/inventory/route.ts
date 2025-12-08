@@ -24,13 +24,20 @@ export async function GET(request: NextRequest) {
 
     let sql = `
       SELECT 
-        vi.*,
+        pv.id as id,
         pv.id as variant_id,
         pv.product_id,
         pv.sku,
-        p.title as product_title
-      FROM variant_inventory vi
-      INNER JOIN product_variants pv ON pv.id = vi.variant_id
+        pv.title as variant_title,
+        pv.option1,
+        pv.option2,
+        pv.option3,
+        p.title as product_title,
+        COALESCE(pv.inventory_quantity, 0) as available,
+        0 as committed,
+        0 as incoming,
+        pv.updated_at
+      FROM product_variants pv
       INNER JOIN products p ON p.id = pv.product_id
       WHERE p.store_id = $1
     `;
@@ -38,7 +45,7 @@ export async function GET(request: NextRequest) {
     let paramIndex = 2;
 
     if (variantId) {
-      sql += ` AND vi.variant_id = $${paramIndex}`;
+      sql += ` AND pv.id = $${paramIndex}`;
       params.push(parseInt(variantId));
       paramIndex++;
     }
@@ -49,17 +56,18 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
-    if (locationId) {
-      sql += ` AND vi.location_id = $${paramIndex}`;
-      params.push(parseInt(locationId));
-      paramIndex++;
-    }
+    // locationId לא רלוונטי יותר כי המלאי על ה-variant עצמו
+    // if (locationId) {
+    //   sql += ` AND vi.location_id = $${paramIndex}`;
+    //   params.push(parseInt(locationId));
+    //   paramIndex++;
+    // }
 
     if (lowStock === 'true') {
-      sql += ` AND vi.available < 10`; // Low stock threshold
+      sql += ` AND COALESCE(pv.inventory_quantity, 0) < 10`; // Low stock threshold
     }
 
-    sql += ` ORDER BY vi.updated_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    sql += ` ORDER BY pv.updated_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const inventory = await query(sql, params);

@@ -26,7 +26,7 @@ interface Store {
   plan: string;
 }
 
-type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced';
+type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced' | 'meta-fields' | 'size-charts' | 'product-addons' | 'premium-club' | 'cron-status';
 
 export default function SettingsPage() {
   const { toast } = useOptimisticToast();
@@ -268,7 +268,7 @@ export default function SettingsPage() {
     }
   };
 
-  const tabs: { id: SettingsTab; label: string }[] = [
+  const tabs: { id: SettingsTab; label: string; href?: string }[] = [
     { id: 'general', label: 'כללי' },
     { id: 'domain', label: 'דומיין' },
     { id: 'payments', label: 'תשלומים' },
@@ -278,6 +278,11 @@ export default function SettingsPage() {
     { id: 'users', label: 'משתמשים' },
     { id: 'api', label: 'API' },
     { id: 'advanced', label: 'מתקדם' },
+    { id: 'meta-fields', label: 'שדות מטא', href: '/settings/meta-fields' },
+    { id: 'size-charts', label: 'טבלאות מידות', href: '/settings/size-charts' },
+    { id: 'product-addons', label: 'תוספות למוצרים', href: '/settings/product-addons' },
+    { id: 'premium-club', label: 'מועדון פרימיום', href: '/settings/premium-club' },
+    { id: 'cron-status', label: 'סטטוס CRON', href: '/settings/cron-status' },
   ];
 
   if (loading) {
@@ -344,18 +349,27 @@ export default function SettingsPage() {
               <ul className="space-y-1">
                 {tabs.map((tab) => (
                   <li key={tab.id}>
-                    <button
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`
-                        w-full text-right px-4 py-2 text-sm rounded-lg transition-colors
-                        ${activeTab === tab.id
-                          ? 'bg-green-50 text-green-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {tab.label}
-                    </button>
+                    {tab.href ? (
+                      <a
+                        href={tab.href}
+                        className="w-full text-right px-4 py-2 text-sm rounded-lg transition-colors text-gray-700 hover:bg-gray-50 block"
+                      >
+                        {tab.label}
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`
+                          w-full text-right px-4 py-2 text-sm rounded-lg transition-colors
+                          ${activeTab === tab.id
+                            ? 'bg-green-50 text-green-700 font-medium'
+                            : 'text-gray-700 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {tab.label}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

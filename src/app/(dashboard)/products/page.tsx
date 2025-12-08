@@ -81,23 +81,21 @@ export default function ProductsPage() {
     fetchCategories();
   }, []);
 
+  // Unified effect with debounced search
   useEffect(() => {
-    loadProducts();
-  }, [pagination.page, statusFilter, categoryFilter, sortBy, sortOrder]);
-
-  // Debounced search
-  useEffect(() => {
-    if (search === '') {
+    // Show searching indicator when user types
+    if (search) {
+      setIsSearching(true);
+    }
+    
+    // Debounce search - wait 600ms after user stops typing
+    const timer = setTimeout(() => {
       setIsSearching(false);
       loadProducts();
-      return;
-    }
-    setIsSearching(true);
-    const timer = setTimeout(() => {
-      loadProducts();
-    }, 600);
+    }, search ? 600 : 0); // No delay if search is empty
+
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [pagination.page, statusFilter, categoryFilter, sortBy, sortOrder, search]);
 
   const fetchCategories = async () => {
     try {

@@ -34,9 +34,22 @@ export interface ShippingRate {
   min_weight: string | null;
   max_weight: string | null;
   free_shipping_threshold: string | null;
+  min_shipping_amount: string | null; // מינימום למשלוח
+  is_pickup: boolean; // איסוף עצמי
   delivery_days_min: number | null;
   delivery_days_max: number | null;
   carrier_service_id: number | null;
+  created_at: Date;
+  updated_at: Date;
+  cities?: ShippingRateCity[]; // מחירים לפי עיר
+}
+
+export interface ShippingRateCity {
+  id: number;
+  shipping_rate_id: number;
+  city_name: string;
+  price: string;
+  free_shipping_threshold: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -70,7 +83,14 @@ export interface CreateShippingRateRequest {
   min_weight?: string;
   max_weight?: string;
   free_shipping_threshold?: string;
+  min_shipping_amount?: string;
+  is_pickup?: boolean;
   delivery_days_min?: number;
   delivery_days_max?: number;
+  cities?: Array<{
+    city_name: string;
+    price: string;
+    free_shipping_threshold?: string | null;
+  }>;
 }
 
