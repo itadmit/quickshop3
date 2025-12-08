@@ -114,16 +114,19 @@ export function ThemeSettings({ onClose, onUpdate }: ThemeSettingsProps) {
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">⚙️ הגדרות תבנית</h3>
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <HiCog className="w-5 h-5" />
+            הגדרות תבנית
+          </h3>
           <p className="text-sm text-gray-500">הגדרות גלובליות לכל העמודים</p>
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-md"
-          title="סגור"
-        >
-          ✕
-        </button>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-md"
+                title="סגור"
+              >
+                <HiX className="w-5 h-5" />
+              </button>
       </div>
 
       {/* Settings Content */}

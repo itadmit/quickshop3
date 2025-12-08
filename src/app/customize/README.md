@@ -37,10 +37,11 @@
 ### ✅ Phase 4: Advanced Features (הושלם חלקית)
 - [x] Developer Mode (Code Editor) - עורך קוד למתכנתים (CSS, HTML, JS)
 - [x] Theme Settings Panel - הגדרות תבנית גלובליות (צבעים, טיפוגרפיה, פריסה)
-- [ ] Block Management - ניהול בלוקים בתוך סקשנים
-- [ ] Edge Storage Integration - העלאה ל-Vercel Blob/R2
-- [ ] Version History UI - תצוגת היסטוריית גרסאות
-- [ ] Template Widgets - וידג'טים לעמודי לופ (product/collection)
+- [x] Block Management - ניהול בלוקים בתוך סקשנים (הוספה, עריכה, מחיקה, שינוי סדר)
+- [x] Block Settings Panel - פאנל עריכת הגדרות בלוק
+- [x] Edge Storage Integration - העלאה ל-AWS S3 (JSON files)
+- [x] Version History UI - תצוגת היסטוריית גרסאות ושחזור גרסאות קודמות
+- [x] Template Widgets - וידג'טים לעמודי לופ (product/collection) עם דינמיות
 
 ## Events | אירועים
 
@@ -185,10 +186,12 @@ await publishPage({
 
 ## TODO
 
-- [ ] Block Management UI - ניהול בלוקים בתוך סקשנים
-- [ ] Edge Storage Integration - העלאה ל-Vercel Blob/R2
-- [ ] Version History UI - תצוגת היסטוריית גרסאות
-- [ ] Template Widgets - וידג'טים לעמודי לופ
-- [ ] אינטגרציה עם מוצרים וקטגוריות אמיתיים
+- [x] Block Management UI - ניהול בלוקים בתוך סקשנים ✅
+- [x] Edge Storage Integration - העלאה ל-AWS S3 ✅
+- [x] Version History UI - תצוגת היסטוריית גרסאות ✅
+- [x] Template Widgets - וידג'טים לעמודי לופ ✅
+- [ ] אינטגרציה עם מוצרים וקטגוריות אמיתיים ב-Preview
 - [ ] שיפור עורך הקוד (Syntax highlighting, Auto-complete)
+- [x] Widget Settings Panel - פאנל עריכת הגדרות וידג'טים מלא ✅
+- [ ] Preview עם מוצר/קטגוריה אמיתיים ב-Template Editor
 

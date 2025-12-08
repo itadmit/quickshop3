@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { PageType } from '@/lib/customizer/types';
+import { HiCode } from 'react-icons/hi';
 
 interface DeveloperModeProps {
   pageType: PageType;
@@ -91,7 +92,10 @@ export function DeveloperMode({ pageType, pageHandle, onSave }: DeveloperModePro
       {/* Header */}
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">💻 מצב מפתח</h3>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <HiCode className="w-5 h-5" />
+            מצב מפתח
+          </h3>
           <p className="text-sm text-gray-400">עריכת קוד CSS, HTML, JavaScript</p>
         </div>
         <button

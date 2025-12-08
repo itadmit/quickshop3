@@ -14,21 +14,99 @@ export interface InstallTemplateOptions {
  */
 export async function installNewYorkTemplate({ storeId }: InstallTemplateOptions) {
   try {
-    // 1. צור theme template
-    const templateResult = await query(
-      `
-      INSERT INTO theme_templates (name, display_name, description, is_default, is_active)
-      VALUES ('new_york', 'New York', 'תבנית ברירת מחדל נקייה ומינימליסטית', true, true)
-      ON CONFLICT (name) DO NOTHING
-      RETURNING id
-      `
+    // 1. מצא או צור theme template (התבנית כבר נוצרת בסיד)
+    const templateResult = await query<{ id: number }>(
+      `SELECT id FROM theme_templates WHERE name = 'new-york' LIMIT 1`
     );
 
-    const templateId = templateResult[0]?.id || (
-      await query<{ id: number }>(
-        `SELECT id FROM theme_templates WHERE name = 'new_york'`
-      )
-    )[0]?.id;
+    let templateId = templateResult[0]?.id;
+
+    // אם התבנית לא קיימת, צור אותה
+    if (!templateId) {
+      const insertResult = await query<{ id: number }>(
+        `
+        INSERT INTO theme_templates (
+          name, display_name, description, is_default, 
+          available_sections, default_settings_schema
+        )
+        VALUES (
+          'new-york',
+          'ניו יורק',
+          'תבנית מודרנית ומינימליסטית בהשראת עיצוב נקי',
+          true,
+          '[
+            "announcement_bar",
+            "header",
+            "slideshow",
+            "hero_banner",
+            "collection_list",
+            "featured_collection",
+            "featured_product",
+            "product_grid",
+            "new_arrivals",
+            "best_sellers",
+            "image_with_text",
+            "image_with_text_overlay",
+            "rich_text",
+            "video",
+            "testimonials",
+            "faq",
+            "newsletter",
+            "trust_badges",
+            "footer",
+            "mobile_sticky_bar",
+            "custom_html"
+          ]'::jsonb,
+          '{
+            "colors": {
+              "primary": "#000000",
+              "secondary": "#666666",
+              "accent": "#10B981",
+              "background": "#FFFFFF",
+              "surface": "#F9FAFB",
+              "text": "#000000",
+              "muted": "#6B7280",
+              "border": "#E5E7EB",
+              "error": "#EF4444",
+              "success": "#10B981"
+            },
+            "typography": {
+              "headingFont": "Heebo",
+              "bodyFont": "Heebo",
+              "baseFontSize": 16,
+              "lineHeight": 1.6,
+              "headingWeight": 700,
+              "bodyWeight": 400
+            },
+            "layout": {
+              "containerMaxWidth": 1200,
+              "containerPadding": 24,
+              "sectionSpacing": 64,
+              "gridGap": 24
+            },
+            "buttons": {
+              "borderRadius": 4,
+              "padding": "12px 24px",
+              "primaryStyle": "solid",
+              "secondaryStyle": "outline"
+            },
+            "cards": {
+              "borderRadius": 8,
+              "shadow": "sm",
+              "hoverEffect": "lift"
+            },
+            "animations": {
+              "enabled": true,
+              "duration": 300,
+              "easing": "ease-out"
+            }
+          }'::jsonb
+        )
+        RETURNING id
+        `
+      );
+      templateId = insertResult[0]?.id;
+    }
 
     if (!templateId) {
       throw new Error('Failed to create or find New York template');

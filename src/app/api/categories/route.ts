@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
 import { quickshopList, quickshopItem } from '@/lib/utils/apiFormatter';
+import { generateSlugFromHebrew } from '@/lib/utils/hebrewSlug';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -17,20 +18,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
-    let sql = `SELECT id, title as name, handle, description, image_url, published_at, 
-                      parent_id, type, rules, is_published
-               FROM product_collections
-               WHERE store_id = $1`;
+    let sql = `SELECT c.id, c.title, c.handle, c.description, c.image_url, c.published_at, 
+                      c.parent_id, c.type, c.rules, c.is_published,
+                      p.title as parent_title
+               FROM product_collections c
+               LEFT JOIN product_collections p ON c.parent_id = p.id
+               WHERE c.store_id = $1`;
     const params: any[] = [user.store_id];
     let paramIndex = 2;
 
     if (search) {
-      sql += ` AND (title ILIKE $${paramIndex} OR handle ILIKE $${paramIndex})`;
+      sql += ` AND (c.title ILIKE $${paramIndex} OR c.handle ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    sql += ` ORDER BY title ASC`;
+    sql += ` ORDER BY COALESCE(c.parent_id, c.id), c.id, c.title ASC`;
 
     const collections = await query(sql, params);
 
@@ -62,29 +65,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate handle from name
-    const handle = name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^\u0590-\u05ffa-z0-9-]/g, '')
-      .substring(0, 200);
+    // Generate handle from name using Hebrew transliteration
+    let baseHandle = generateSlugFromHebrew(name);
+    
+    // Limit length
+    if (baseHandle.length > 200) {
+      baseHandle = baseHandle.substring(0, 200);
+    }
 
     // Check if handle exists
-    const existingResult = await query(
-      'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2',
-      [user.store_id, handle]
-    );
+    let finalHandle = baseHandle;
+    let counter = 1;
+    
+    while (true) {
+      const existingResult = await query(
+        'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2',
+        [user.store_id, finalHandle]
+      );
 
-    let finalHandle = handle;
-    if (existingResult.length > 0) {
-      // Add random suffix if handle exists
-      finalHandle = `${handle}-${Math.random().toString(36).substr(2, 6)}`;
+      if (existingResult.length === 0) {
+        break; // Handle is unique
+      }
+
+      // Add counter suffix if handle exists
+      finalHandle = `${baseHandle}-${counter}`;
+      counter++;
     }
 
     const result = await query(
       `INSERT INTO product_collections (store_id, title, handle, description, image_url, published_at, published_scope, sort_order, type, is_published)
        VALUES ($1, $2, $3, $4, $5, NOW(), 'web', 'manual', 'MANUAL', true)
-       RETURNING id, title as name, handle, description, image_url`,
+       RETURNING id, title, handle, description, image_url`,
       [user.store_id, name, finalHandle, description, imageUrl]
     );
 
@@ -94,7 +105,7 @@ export async function POST(request: NextRequest) {
     await eventBus.emitEvent('category.created', {
       category: {
         id: category.id,
-        name: category.name,
+        title: category.title,
         handle: category.handle,
       },
     }, {

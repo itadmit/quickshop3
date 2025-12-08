@@ -6,8 +6,31 @@
 'use client';
 
 import { useState } from 'react';
+import React from 'react';
 import { addSection } from '../actions';
 import { SectionType } from '@/lib/customizer/types';
+import {
+  HiX,
+  HiBell,
+  HiClipboardList,
+  HiPhotograph,
+  HiShoppingBag,
+  HiCollection,
+  HiStar,
+  HiChartBar,
+  HiSparkles,
+  HiFire,
+  HiPencil,
+  HiVideoCamera,
+  HiChatAlt,
+  HiQuestionMarkCircle,
+  HiMail,
+  HiTag,
+  HiShieldCheck,
+  HiArrowDown,
+  HiDeviceMobile,
+  HiCode,
+} from 'react-icons/hi';
 
 interface AddSectionDialogProps {
   open: boolean;
@@ -20,42 +43,42 @@ const AVAILABLE_SECTIONS: Array<{
   type: SectionType;
   name: string;
   description: string;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
   category: string;
 }> = [
   // Hero & Header
-  { type: 'announcement_bar', name: 'בר הודעות', description: 'בר הודעות עליון', icon: '📢', category: 'Hero & Header' },
-  { type: 'header', name: 'Header', description: 'Header עם תפריט', icon: '📋', category: 'Hero & Header' },
-  { type: 'slideshow', name: 'סליידשו', description: 'סליידשו Hero', icon: '🎠', category: 'Hero & Header' },
-  { type: 'hero_banner', name: 'באנר Hero', description: 'באנר Hero בודד', icon: '🖼️', category: 'Hero & Header' },
+  { type: 'announcement_bar', name: 'בר הודעות', description: 'בר הודעות עליון', icon: HiBell, category: 'Hero & Header' },
+  { type: 'header', name: 'כותרת עליונה', description: 'כותרת עליונה עם תפריט', icon: HiClipboardList, category: 'Hero & Header' },
+  { type: 'slideshow', name: 'סליידשו', description: 'סליידשו Hero', icon: HiPhotograph, category: 'Hero & Header' },
+  { type: 'hero_banner', name: 'באנר Hero', description: 'באנר Hero בודד', icon: HiPhotograph, category: 'Hero & Header' },
   
   // Collections & Products
-  { type: 'collection_list', name: 'רשימת קטגוריות', description: 'רשימת קטגוריות', icon: '📦', category: 'Collections & Products' },
-  { type: 'featured_collection', name: 'קטגוריה מוצגת', description: 'קטגוריה מוצגת', icon: '⭐', category: 'Collections & Products' },
-  { type: 'featured_product', name: 'מוצר מוצג', description: 'מוצר מוצג', icon: '🛍️', category: 'Collections & Products' },
-  { type: 'product_grid', name: 'גריד מוצרים', description: 'גריד מוצרים', icon: '📊', category: 'Collections & Products' },
-  { type: 'new_arrivals', name: 'מוצרים חדשים', description: 'מוצרים חדשים', icon: '🆕', category: 'Collections & Products' },
-  { type: 'best_sellers', name: 'מוצרים נמכרים', description: 'מוצרים נמכרים', icon: '🔥', category: 'Collections & Products' },
+  { type: 'collection_list', name: 'רשימת קטגוריות', description: 'רשימת קטגוריות', icon: HiCollection, category: 'Collections & Products' },
+  { type: 'featured_collection', name: 'קטגוריה מוצגת', description: 'קטגוריה מוצגת', icon: HiStar, category: 'Collections & Products' },
+  { type: 'featured_product', name: 'מוצר מוצג', description: 'מוצר מוצג', icon: HiShoppingBag, category: 'Collections & Products' },
+  { type: 'product_grid', name: 'גריד מוצרים', description: 'גריד מוצרים', icon: HiChartBar, category: 'Collections & Products' },
+  { type: 'new_arrivals', name: 'מוצרים חדשים', description: 'מוצרים חדשים', icon: HiSparkles, category: 'Collections & Products' },
+  { type: 'best_sellers', name: 'מוצרים נמכרים', description: 'מוצרים נמכרים', icon: HiFire, category: 'Collections & Products' },
   
   // Content
-  { type: 'image_with_text', name: 'תמונה עם טקסט', description: 'תמונה עם טקסט', icon: '🖼️', category: 'Content' },
-  { type: 'image_with_text_overlay', name: 'תמונה עם שכבת טקסט', description: 'תמונה עם שכבת טקסט', icon: '🎨', category: 'Content' },
-  { type: 'rich_text', name: 'טקסט עשיר', description: 'טקסט עשיר', icon: '📝', category: 'Content' },
-  { type: 'video', name: 'וידאו', description: 'וידאו', icon: '🎥', category: 'Content' },
-  { type: 'testimonials', name: 'ביקורות', description: 'ביקורות לקוחות', icon: '💬', category: 'Content' },
-  { type: 'faq', name: 'שאלות נפוצות', description: 'שאלות נפוצות', icon: '❓', category: 'Content' },
+  { type: 'image_with_text', name: 'תמונה עם טקסט', description: 'תמונה עם טקסט', icon: HiPhotograph, category: 'Content' },
+  { type: 'image_with_text_overlay', name: 'תמונה עם שכבת טקסט', description: 'תמונה עם שכבת טקסט', icon: HiPhotograph, category: 'Content' },
+  { type: 'rich_text', name: 'טקסט עשיר', description: 'טקסט עשיר', icon: HiPencil, category: 'Content' },
+  { type: 'video', name: 'וידאו', description: 'וידאו', icon: HiVideoCamera, category: 'Content' },
+  { type: 'testimonials', name: 'ביקורות', description: 'ביקורות לקוחות', icon: HiChatAlt, category: 'Content' },
+  { type: 'faq', name: 'שאלות נפוצות', description: 'שאלות נפוצות', icon: HiQuestionMarkCircle, category: 'Content' },
   
   // Marketing
-  { type: 'newsletter', name: 'הרשמה לניוזלטר', description: 'הרשמה לניוזלטר', icon: '📧', category: 'Marketing' },
-  { type: 'promo_banner', name: 'באנר פרסומי', description: 'באנר פרסומי', icon: '🎯', category: 'Marketing' },
-  { type: 'trust_badges', name: 'תגי אמון', description: 'תגי אמון', icon: '🛡️', category: 'Marketing' },
+  { type: 'newsletter', name: 'הרשמה לניוזלטר', description: 'הרשמה לניוזלטר', icon: HiMail, category: 'Marketing' },
+  { type: 'promo_banner', name: 'באנר פרסומי', description: 'באנר פרסומי', icon: HiTag, category: 'Marketing' },
+  { type: 'trust_badges', name: 'תגי אמון', description: 'תגי אמון', icon: HiShieldCheck, category: 'Marketing' },
   
   // Navigation & Footer
-  { type: 'footer', name: 'Footer', description: 'Footer', icon: '⬇️', category: 'Navigation & Footer' },
-  { type: 'mobile_sticky_bar', name: 'בר תחתון למובייל', description: 'בר תחתון למובייל', icon: '📱', category: 'Navigation & Footer' },
+  { type: 'footer', name: 'כותרת תחתונה', description: 'כותרת תחתונה', icon: HiArrowDown, category: 'Navigation & Footer' },
+  { type: 'mobile_sticky_bar', name: 'בר תחתון למובייל', description: 'בר תחתון למובייל', icon: HiDeviceMobile, category: 'Navigation & Footer' },
   
   // Advanced
-  { type: 'custom_html', name: 'HTML מותאם', description: 'HTML מותאם', icon: '💻', category: 'Advanced' },
+  { type: 'custom_html', name: 'HTML מותאם', description: 'HTML מותאם', icon: HiCode, category: 'Advanced' },
 ];
 
 export function AddSectionDialog({
@@ -115,7 +138,7 @@ export function AddSectionDialog({
             onClick={() => onOpenChange(false)}
             className="p-2 hover:bg-gray-100 rounded-md"
           >
-            ✕
+            <HiX className="w-5 h-5" />
           </button>
         </div>
 
@@ -164,7 +187,7 @@ export function AddSectionDialog({
                   className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-right disabled:opacity-50"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl">{section.icon}</span>
+                    {React.createElement(section.icon, { className: "w-8 h-8 text-gray-600 flex-shrink-0" })}
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">{section.name}</div>
                       <div className="text-sm text-gray-500 mt-1">{section.description}</div>

@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
 import { generateUniqueSlug } from '@/lib/utils/slug';
+import { generateSlugFromHebrew } from '@/lib/utils/hebrewSlug';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -101,8 +102,8 @@ export async function PUT(
     const { title, handle, description, image_url, published_at, published_scope, sort_order, parent_id, type, rules, is_published, productIds } = body;
 
     // Verify collection exists and belongs to store
-    const existing = await queryOne<{ id: number; store_id: number; type: string }>(
-      'SELECT id, store_id, type FROM product_collections WHERE id = $1',
+    const existing = await queryOne<{ id: number; store_id: number; type: string; title: string }>(
+      'SELECT id, store_id, type, title FROM product_collections WHERE id = $1',
       [collectionId]
     );
 
@@ -113,17 +114,48 @@ export async function PUT(
       );
     }
 
-    // Get existing handle
+    // Get existing handle for comparison
     const existingCollection = await queryOne<{ handle: string }>(
       'SELECT handle FROM product_collections WHERE id = $1',
       [collectionId]
     );
 
-    // Check handle uniqueness if changed
-    if (handle && existingCollection && handle !== existingCollection.handle) {
+    // Generate handle from title if not provided and title is being updated
+    let finalHandle = handle;
+    if (!finalHandle && title !== undefined) {
+      let baseHandle = generateSlugFromHebrew(title);
+      
+      // Limit length
+      if (baseHandle.length > 200) {
+        baseHandle = baseHandle.substring(0, 200);
+      }
+
+      // Check uniqueness
+      let counter = 1;
+      finalHandle = baseHandle;
+      
+      while (true) {
+        const handleExists = await queryOne<{ id: number }>(
+          'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2 AND id != $3',
+          [storeId, finalHandle, collectionId]
+        );
+
+        if (!handleExists) {
+          break; // Handle is unique
+        }
+
+        // Add counter suffix if handle exists
+        finalHandle = `${baseHandle}-${counter}`;
+        counter++;
+      }
+    } else if (!finalHandle) {
+      // If handle not provided and title not updated, use existing handle
+      finalHandle = existingCollection?.handle || '';
+    } else if (finalHandle && existingCollection && finalHandle !== existingCollection.handle) {
+      // If handle is provided and changed, check uniqueness
       const handleExists = await queryOne<{ id: number }>(
         'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2 AND id != $3',
-        [storeId, handle, collectionId]
+        [storeId, finalHandle, collectionId]
       );
 
       if (handleExists) {
@@ -143,9 +175,9 @@ export async function PUT(
       updates.push(`title = $${paramIndex++}`);
       values.push(title.trim());
     }
-    if (handle !== undefined) {
+    if (finalHandle !== undefined && finalHandle !== existingCollection?.handle) {
       updates.push(`handle = $${paramIndex++}`);
-      values.push(handle);
+      values.push(finalHandle);
     }
     if (description !== undefined) {
       updates.push(`description = $${paramIndex++}`);

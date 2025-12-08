@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { HiTag, HiPlus, HiTrash } from 'react-icons/hi';
+import { HiTag, HiPlus, HiTrash, HiPencil } from 'react-icons/hi';
 
 interface ProductBadge {
   id: string;
@@ -30,6 +30,7 @@ const PRESET_COLORS = [
 
 export function BadgesCard({ badges, onChange }: BadgesCardProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingBadgeId, setEditingBadgeId] = useState<string | null>(null);
   const [newBadge, setNewBadge] = useState<ProductBadge>({
     id: '',
     text: '',
@@ -55,8 +56,43 @@ export function BadgesCard({ badges, onChange }: BadgesCardProps) {
     setShowAddForm(false);
   };
 
+  const startEdit = (badge: ProductBadge) => {
+    setEditingBadgeId(badge.id);
+    setNewBadge({ ...badge });
+    setShowAddForm(false);
+  };
+
+  const updateBadge = () => {
+    if (!newBadge.text.trim() || !editingBadgeId) return;
+
+    onChange(badges.map(b => 
+      b.id === editingBadgeId ? { ...newBadge, id: editingBadgeId } : b
+    ));
+    
+    setNewBadge({
+      id: '',
+      text: '',
+      color: '#EF4444',
+      position: 'top-right',
+    });
+    setEditingBadgeId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingBadgeId(null);
+    setNewBadge({
+      id: '',
+      text: '',
+      color: '#EF4444',
+      position: 'top-right',
+    });
+  };
+
   const removeBadge = (id: string) => {
     onChange(badges.filter(b => b.id !== id));
+    if (editingBadgeId === id) {
+      cancelEdit();
+    }
   };
 
   return (
@@ -91,19 +127,30 @@ export function BadgesCard({ badges, onChange }: BadgesCardProps) {
                     {badge.position === 'bottom-right' && 'ימין למטה'}
                     {badge.position === 'bottom-left' && 'שמאל למטה'}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeBadge(badge.id)}
-                  >
-                    <HiTrash className="w-4 h-4 text-red-500" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEdit(badge)}
+                      title="ערוך מדבקה"
+                    >
+                      <HiPencil className="w-4 h-4 text-gray-600" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeBadge(badge.id)}
+                      title="מחק מדבקה"
+                    >
+                      <HiTrash className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {showAddForm ? (
+          {(showAddForm || editingBadgeId) ? (
             <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
               <div>
                 <Label htmlFor="badge-text">טקסט</Label>
@@ -113,6 +160,20 @@ export function BadgesCard({ badges, onChange }: BadgesCardProps) {
                   onChange={(e) => setNewBadge({ ...newBadge, text: e.target.value })}
                   placeholder="לדוגמה: חדש, מבצע"
                 />
+              </div>
+
+              <div>
+                <Label>מיקום</Label>
+                <select
+                  value={newBadge.position}
+                  onChange={(e) => setNewBadge({ ...newBadge, position: e.target.value as ProductBadge['position'] })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                >
+                  <option value="top-right">ימין למעלה</option>
+                  <option value="top-left">שמאל למעלה</option>
+                  <option value="bottom-right">ימין למטה</option>
+                  <option value="bottom-left">שמאל למטה</option>
+                </select>
               </div>
 
               <div>
@@ -149,12 +210,21 @@ export function BadgesCard({ badges, onChange }: BadgesCardProps) {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={addBadge} className="flex-1">
-                  הוסף מדבקה
+                <Button 
+                  onClick={editingBadgeId ? updateBadge : addBadge} 
+                  className="flex-1"
+                >
+                  {editingBadgeId ? 'שמור שינויים' : 'הוסף מדבקה'}
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => setShowAddForm(false)}
+                  onClick={() => {
+                    if (editingBadgeId) {
+                      cancelEdit();
+                    } else {
+                      setShowAddForm(false);
+                    }
+                  }}
                 >
                   ביטול
                 </Button>

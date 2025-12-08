@@ -19,6 +19,7 @@ import {
   PageType,
   SectionType,
   BlockType,
+  PageConfig,
 } from '@/lib/customizer/types';
 import { generateConfigJSON } from '@/lib/customizer/generateJSON';
 import { uploadToEdge } from '@/lib/customizer/edgeStorage';
@@ -477,7 +478,9 @@ async function createVersionSnapshot(
   storeId: number,
   pageType: PageType,
   pageHandle: string | undefined,
-  config: any
+  config: any,
+  userId?: number,
+  notes?: string
 ) {
   try {
     const layoutResult = await query<{ id: number }>(
@@ -510,14 +513,275 @@ async function createVersionSnapshot(
     await query(
       `
       INSERT INTO page_layout_versions (
-        page_layout_id, version_number, snapshot_json
+        page_layout_id, version_number, snapshot_json, created_by, notes
       )
-      VALUES ($1, $2, $3)
+      VALUES ($1, $2, $3, $4, $5)
       `,
-      [layoutId, nextVersion, JSON.stringify(config)]
+      [layoutId, nextVersion, JSON.stringify(config), userId || null, notes || null]
     );
   } catch (error) {
     console.error('Error creating version snapshot:', error);
+  }
+}
+
+/**
+ * הוספת בלוק לסקשן
+ */
+export async function addBlock(data: AddBlockRequest) {
+  try {
+    const { storeId, userId } = await getAuthInfo();
+
+    const blockId = `block_${Date.now()}`;
+
+    // הוסף בלוק
+    const blockResult = await query(
+      `
+      INSERT INTO section_blocks (
+        section_id, block_type, block_id, position,
+        is_visible, settings_json
+      )
+      VALUES ($1, $2, $3, $4, true, $5)
+      RETURNING id
+      `,
+      [
+        data.section_id,
+        data.block_type,
+        blockId,
+        data.position,
+        JSON.stringify(data.settings || {}),
+      ]
+    );
+
+    // ✅ פליטת אירוע (אם יש)
+    // TODO: Add block.added event if needed
+
+    return { success: true, blockId: blockResult[0]?.id };
+  } catch (error) {
+    console.error('Error adding block:', error);
+    return { success: false, error: 'Failed to add block' };
+  }
+}
+
+/**
+ * עדכון בלוק
+ */
+export async function updateBlock(data: UpdateBlockRequest) {
+  try {
+    const { storeId, userId } = await getAuthInfo();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (data.settings !== undefined) {
+      updates.push(`settings_json = $${paramIndex}`);
+      values.push(JSON.stringify(data.settings));
+      paramIndex++;
+    }
+
+    if (data.position !== undefined) {
+      updates.push(`position = $${paramIndex}`);
+      values.push(data.position);
+      paramIndex++;
+    }
+
+    if (data.is_visible !== undefined) {
+      updates.push(`is_visible = $${paramIndex}`);
+      values.push(data.is_visible);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      return { success: false, error: 'No updates provided' };
+    }
+
+    updates.push(`updated_at = now()`);
+    values.push(data.block_id);
+
+    await query(
+      `
+      UPDATE section_blocks
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      `,
+      values
+    );
+
+    // ✅ פליטת אירוע (אם יש)
+    // TODO: Add block.updated event if needed
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating block:', error);
+    return { success: false, error: 'Failed to update block' };
+  }
+}
+
+/**
+ * מחיקת בלוק
+ */
+export async function deleteBlock(blockId: number) {
+  try {
+    const { storeId, userId } = await getAuthInfo();
+
+    await query(`DELETE FROM section_blocks WHERE id = $1`, [blockId]);
+
+    // ✅ פליטת אירוע (אם יש)
+    // TODO: Add block.deleted event if needed
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting block:', error);
+    return { success: false, error: 'Failed to delete block' };
+  }
+}
+
+/**
+ * שחזור גרסה קודמת
+ */
+export async function restoreVersion(
+  pageType: PageType,
+  versionId: number,
+  pageHandle?: string
+) {
+  try {
+    const { storeId, userId } = await getAuthInfo();
+
+    // 1. מצא את ה-version
+    const versionResult = await query<{
+      page_layout_id: number;
+      snapshot_json: any;
+    }>(
+      `
+      SELECT plv.page_layout_id, plv.snapshot_json
+      FROM page_layout_versions plv
+      JOIN page_layouts pl ON pl.id = plv.page_layout_id
+      WHERE plv.id = $1 
+        AND pl.store_id = $2
+        AND pl.page_type = $3
+        AND plv.is_restorable = true
+      `,
+      [versionId, storeId, pageType]
+    );
+
+    if (versionResult.length === 0) {
+      return { success: false, error: 'Version not found or not restorable' };
+    }
+
+    const { page_layout_id, snapshot_json } = versionResult[0];
+
+    // 2. שחזר את הסקשנים מה-snapshot
+    const config = snapshot_json as PageConfig;
+
+    // 3. מחק סקשנים קיימים
+    await query(
+      `DELETE FROM page_sections WHERE page_layout_id = $1`,
+      [page_layout_id]
+    );
+
+    // 4. שחזר סקשנים חדשים מה-snapshot
+    for (let i = 0; i < config.section_order.length; i++) {
+      const sectionId = config.section_order[i];
+      const sectionData = config.sections[sectionId];
+
+      if (!sectionData) continue;
+
+      const sectionResult = await query(
+        `
+        INSERT INTO page_sections (
+          page_layout_id, section_type, section_id, position,
+          is_visible, is_locked, settings_json, custom_css, custom_classes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+        `,
+        [
+          page_layout_id,
+          sectionData.type,
+          sectionId,
+          sectionData.position || i,
+          true,
+          sectionData.is_locked || false,
+          JSON.stringify(sectionData.settings || {}),
+          sectionData.custom_css || '',
+          sectionData.custom_classes || '',
+        ]
+      );
+
+      const newSectionId = sectionResult[0]?.id;
+      if (!newSectionId || !sectionData.blocks) continue;
+
+      // שחזר בלוקים
+      for (let j = 0; j < sectionData.blocks.length; j++) {
+        const block = sectionData.blocks[j];
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [
+            newSectionId,
+            block.type,
+            block.id,
+            block.position || j,
+            true,
+            JSON.stringify(block.settings || {}),
+          ]
+        );
+      }
+    }
+
+    // ✅ פליטת אירוע
+    await eventBus.emit(
+      'customizer.version.restored',
+      {
+        store_id: storeId,
+        page_type: pageType,
+        version_id: versionId,
+      },
+      {
+        store_id: storeId,
+        source: 'dashboard',
+        user_id: userId,
+      }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error restoring version:', error);
+    return { success: false, error: 'Failed to restore version' };
+  }
+}
+
+/**
+ * יצירת snapshot ידני
+ */
+export async function createManualSnapshot(
+  pageType: PageType,
+  notes: string,
+  pageHandle?: string
+) {
+  try {
+    const { storeId, userId } = await getAuthInfo();
+
+    // קרא את ה-draft config
+    const { getPageConfig } = await import('@/lib/customizer/getPageConfig');
+    const draftConfig = await getPageConfig(storeId, pageType, pageHandle, true);
+
+    if (!draftConfig) {
+      return { success: false, error: 'No draft found' };
+    }
+
+    // צור snapshot
+    await createVersionSnapshot(storeId, pageType, pageHandle, draftConfig, userId, notes);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating manual snapshot:', error);
+    return { success: false, error: 'Failed to create snapshot' };
   }
 }
 

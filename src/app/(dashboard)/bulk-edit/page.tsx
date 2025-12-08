@@ -182,19 +182,16 @@ export default function BulkEditPage() {
           const productImage = product.images && product.images.length > 0 ? product.images[0] : null;
           const variants = product.variants || [];
           
-          // בדיקה אם יש וריאציות "אמיתיות" (לא Default Title)
-          const realVariants = variants.filter((v: any) => 
-            v.name !== 'Default Title' && v.name !== product.name
-          );
-          const hasMultipleVariants = realVariants.length > 0 || variants.length > 1;
-          
-          // אם יש רק וריאציה אחת (או וריאציה עם Default Title) - נציג כשורה אחת
-          const isSingleVariantProduct = variants.length <= 1 || 
-            (variants.length === 1 && (variants[0].name === 'Default Title' || variants[0].name === product.name));
+          // לפי האפיון: כל מוצר חייב לפחות variant אחד
+          // מוצר רגיל = variant אחד (בדרך כלל "Default Title")
+          // מוצר עם variants = יותר מ-variant אחד או יש options
+          const hasOptions = (product.options?.length || 0) > 0;
+          const hasMultipleVariants = variants.length > 1;
+          const isSingleVariantProduct = !hasOptions && !hasMultipleVariants;
           
           if (isSingleVariantProduct) {
-            // מוצר פשוט (וריאציה אחת או בלי וריאציות) - שורה אחת בלבד
-            const singleVariant = variants[0];
+            // מוצר פשוט - variant אחד בלבד (לפי האפיון תמיד יש לפחות אחד)
+            const singleVariant = variants[0] || null;
             const variantPrice = singleVariant?.price ?? product.price;
             const variantComparePrice = singleVariant?.comparePrice ?? variantPrice;
             const variantInventory = singleVariant?.inventoryQty ?? product.inventoryQty ?? 0;

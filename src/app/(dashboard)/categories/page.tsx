@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable, TableColumn } from '@/components/ui/DataTable';
-import { HiPlus, HiPencil, HiTrash, HiFolder } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiFolder, HiCheckCircle, HiXCircle } from 'react-icons/hi';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface Collection {
@@ -13,6 +13,9 @@ interface Collection {
   description: string | null;
   image_url: string | null;
   published_at: Date | null;
+  parent_id: number | null;
+  parent_title: string | null;
+  is_published: boolean;
 }
 
 export default function CategoriesPage() {
@@ -75,7 +78,17 @@ export default function CategoriesPage() {
       key: 'title',
       label: 'שם',
       render: (collection) => (
-        <div className="font-medium text-gray-900">{collection.title}</div>
+        <div className="flex items-center gap-2">
+          {collection.parent_id && (
+            <span className="text-gray-400 text-xs">└─</span>
+          )}
+          <div className="font-medium text-gray-900">{collection.title}</div>
+          {collection.parent_title && (
+            <span className="text-xs text-gray-400">
+              ({collection.parent_title})
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -83,6 +96,25 @@ export default function CategoriesPage() {
       label: 'Handle',
       render: (collection) => (
         <div className="text-sm text-gray-500 font-mono">{collection.handle}</div>
+      ),
+    },
+    {
+      key: 'is_published',
+      label: 'סטטוס',
+      render: (collection) => (
+        <div className="flex items-center gap-2">
+          {collection.is_published ? (
+            <>
+              <HiCheckCircle className="w-5 h-5 text-green-500" />
+              <span className="text-sm text-green-600">פורסם</span>
+            </>
+          ) : (
+            <>
+              <HiXCircle className="w-5 h-5 text-gray-400" />
+              <span className="text-sm text-gray-500">לא פורסם</span>
+            </>
+          )}
+        </div>
       ),
     },
     {

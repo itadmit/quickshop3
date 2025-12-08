@@ -360,8 +360,8 @@ export async function PUT(
       }
     }
 
-    // Handle tags if provided
-    if (body.tags && Array.isArray(body.tags)) {
+    // Handle tags - always update if tags field is present in body
+    if (body.tags !== undefined) {
       // Get current tags
       const currentTags = await query<{ tag_id: number; name: string }>(
         `SELECT ptm.tag_id, pt.name
@@ -370,11 +370,19 @@ export async function PUT(
          WHERE ptm.product_id = $1`,
         [productId]
       );
-      const currentTagNames = currentTags.map(t => t.name.toLowerCase());
-      const newTagNames = body.tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+      
+      // Normalize new tags - keep original case for display
+      const newTags = Array.isArray(body.tags) 
+        ? body.tags
+            .map((t: any) => typeof t === 'string' ? t.trim() : (typeof t === 'object' && t?.name ? t.name.trim() : ''))
+            .filter(Boolean)
+        : [];
+      
+      const currentTagNamesLower = currentTags.map(t => t.name.toLowerCase());
+      const newTagNamesLower = newTags.map((t: string) => t.toLowerCase());
 
       // Remove tags that are no longer selected
-      const toRemove = currentTags.filter(t => !newTagNames.includes(t.name.toLowerCase()));
+      const toRemove = currentTags.filter(t => !newTagNamesLower.includes(t.name.toLowerCase()));
       for (const tag of toRemove) {
         await query(
           'DELETE FROM product_tag_map WHERE product_id = $1 AND tag_id = $2',
@@ -383,16 +391,22 @@ export async function PUT(
       }
 
       // Add new tags
-      const toAdd = newTagNames.filter((name: string) => !currentTagNames.includes(name));
+      const toAdd = newTags.filter((tagName: string) => {
+        const tagNameLower = tagName.toLowerCase();
+        return !currentTagNamesLower.includes(tagNameLower);
+      });
+      
       for (const tagName of toAdd) {
-        // Find or create tag
+        const tagNameLower = tagName.toLowerCase();
+        
+        // Find or create tag - use original case from body.tags
         let tag = await queryOne<{ id: number }>(
           'SELECT id FROM product_tags WHERE store_id = $1 AND LOWER(name) = $2',
-          [product.store_id, tagName]
+          [product.store_id, tagNameLower]
         );
 
         if (!tag) {
-          // Create new tag
+          // Create new tag with original case
           const newTag = await queryOne<{ id: number }>(
             `INSERT INTO product_tags (store_id, name, created_at)
              VALUES ($1, $2, now())

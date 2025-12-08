@@ -178,7 +178,8 @@ export default function EditProductPage() {
       }
 
       // טעינת נתוני המוצר לטופס
-      const firstVariant = data.product.variants?.[0];
+      // לפי האפיון: כל מוצר חייב לפחות variant אחד
+      const firstVariant = data.product.variants?.[0] || null;
       const prod = data.product as any;
       
       // Format scheduled publish date
@@ -348,6 +349,7 @@ export default function EditProductPage() {
       // עבור מוצר רגיל (ללא hasVariants), עדכן את ה-variant הראשון עם כל הנתונים
       if (!hasVariants) {
         // שלוף את ה-variant הראשון ועדכן אותו ישירות
+        // לפי האפיון: כל מוצר חייב לפחות variant אחד
         const variantsResponse = await fetch(`/api/products/${finalProductId}/variants`);
         if (variantsResponse.ok) {
           const variantsData = await variantsResponse.json();
@@ -583,7 +585,8 @@ export default function EditProductPage() {
               onChange={(data) => {
                 setFormData(prev => ({ ...prev, ...data as any }));
                 // עדכון גם את ה-variant הראשון
-                if (data.inventoryQty !== undefined && product.variants && product.variants[0]) {
+                // לפי האפיון: כל מוצר חייב לפחות variant אחד
+                if (data.inventoryQty !== undefined && product.variants && product.variants.length > 0) {
                   const updatedVariants = [...product.variants];
                   updatedVariants[0] = {
                     ...updatedVariants[0],

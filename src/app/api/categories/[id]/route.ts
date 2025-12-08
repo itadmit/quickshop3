@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
 import { quickshopItem } from '@/lib/utils/apiFormatter';
+import { generateSlugFromHebrew } from '@/lib/utils/hebrewSlug';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -36,7 +37,7 @@ export async function GET(
 
     return NextResponse.json(quickshopItem('category', {
       id: category.id,
-      name: category.title,
+      title: category.title,
       handle: category.handle,
       description: category.description,
       image_url: category.image_url,
@@ -64,41 +65,69 @@ export async function PUT(
     const { id } = await params;
     const categoryId = parseInt(id);
     const body = await request.json();
-    const { name, description = null, imageUrl = null } = body;
+    const { title, name, handle: providedHandle, description = null, imageUrl = null, image_url = null } = body;
 
-    if (!name) {
+    // Support both 'name' and 'title' for backward compatibility
+    const categoryTitle = title || name;
+    
+    if (!categoryTitle) {
       return NextResponse.json(
-        { error: 'name is required' },
+        { error: 'title is required' },
         { status: 400 }
       );
     }
 
-    // Generate handle from name if not provided
-    let handle = body.handle;
-    if (!handle) {
-      handle = name
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^\u0590-\u05ffa-z0-9-]/g, '')
-        .substring(0, 200);
+    // Generate handle from title if not provided using Hebrew transliteration
+    let finalHandle = providedHandle;
+    if (!finalHandle) {
+      let baseHandle = generateSlugFromHebrew(categoryTitle);
+      
+      // Limit length
+      if (baseHandle.length > 200) {
+        baseHandle = baseHandle.substring(0, 200);
+      }
+
+      // Check if handle exists (excluding current category)
+      let counter = 1;
+      finalHandle = baseHandle;
+      
+      while (true) {
+        const existingResult = await query(
+          'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2 AND id != $3',
+          [user.store_id, finalHandle, categoryId]
+        );
+
+        if (existingResult.length === 0) {
+          break; // Handle is unique
+        }
+
+        // Add counter suffix if handle exists
+        finalHandle = `${baseHandle}-${counter}`;
+        counter++;
+      }
+    } else {
+      // If handle is provided, check uniqueness
+      const existingResult = await query(
+        'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2 AND id != $3',
+        [user.store_id, finalHandle, categoryId]
+      );
+
+      if (existingResult.length > 0) {
+        return NextResponse.json(
+          { error: 'Handle already exists' },
+          { status: 400 }
+        );
+      }
     }
 
-    // Check if handle exists (excluding current category)
-    const existingResult = await query(
-      'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2 AND id != $3',
-      [user.store_id, handle, categoryId]
-    );
-
-    if (existingResult.length > 0) {
-      handle = `${handle}-${Math.random().toString(36).substr(2, 6)}`;
-    }
+    const finalImageUrl = imageUrl || image_url;
 
     const result = await query(
       `UPDATE product_collections 
        SET title = $1, handle = $2, description = $3, image_url = $4, updated_at = NOW()
        WHERE id = $5 AND store_id = $6
-       RETURNING id, title as name, handle, description, image_url`,
-      [name, handle, description, imageUrl, categoryId, user.store_id]
+       RETURNING id, title, handle, description, image_url`,
+      [categoryTitle, finalHandle, description, finalImageUrl, categoryId, user.store_id]
     );
 
     if (result.length === 0) {
@@ -111,7 +140,7 @@ export async function PUT(
     await eventBus.emitEvent('category.updated', {
       category: {
         id: category.id,
-        name: category.name,
+        title: category.title,
         handle: category.handle,
       },
     }, {

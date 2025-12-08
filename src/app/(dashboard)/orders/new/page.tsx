@@ -475,7 +475,9 @@ export default function NewOrderPage() {
               <div className="space-y-4">
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="font-medium text-gray-900">{selectedProduct.title}</div>
-                  {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                  {/* לפי האפיון: כל מוצר חייב לפחות variant אחד */}
+                  {/* הצג selector רק אם יש יותר מ-variant אחד או יש options */}
+                  {selectedProduct.variants && selectedProduct.variants.length > 1 && (
                     <div className="mt-4">
                       <Label>בחר וריאציה:</Label>
                       <Select
@@ -515,7 +517,7 @@ export default function NewOrderPage() {
                   <Button
                     type="button"
                     onClick={handleAddProduct}
-                    disabled={selectedProduct.variants && selectedProduct.variants.length > 0 && !selectedVariant}
+                    disabled={selectedProduct.variants && selectedProduct.variants.length > 1 && !selectedVariant}
                   >
                     הוסף להזמנה
                   </Button>
@@ -529,16 +531,23 @@ export default function NewOrderPage() {
                       key={product.id}
                       onClick={() => {
                         setSelectedProduct(product);
+                        // לפי האפיון: כל מוצר חייב לפחות variant אחד
+                        // אם יש רק variant אחד, בחר אותו אוטומטית
                         if (product.variants && product.variants.length === 1) {
                           setSelectedVariant(product.variants[0]);
+                        } else if (product.variants && product.variants.length > 1) {
+                          // אם יש יותר מ-variant אחד, צריך לבחור ידנית
+                          setSelectedVariant(null);
                         } else {
+                          // fallback - לא אמור לקרות לפי האפיון
                           setSelectedVariant(null);
                         }
                       }}
                       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                     >
                       <div className="font-medium text-gray-900">{product.title}</div>
-                      {product.variants && product.variants.length > 0 && (
+                      {/* הצג מידע רק אם יש יותר מ-variant אחד */}
+                      {product.variants && product.variants.length > 1 && (
                         <div className="text-sm text-gray-500">
                           {product.variants.length} וריאציות זמינות
                         </div>

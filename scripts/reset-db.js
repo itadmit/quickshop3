@@ -64,11 +64,11 @@ async function resetDatabase() {
     // Insert initial data
     console.log('📦 Inserting initial data...');
     
-    // Create store owner
+    // Create store owner with password '123456'
     const ownerResult = await client.query(`
       INSERT INTO store_owners (email, name, password_hash, email_verified)
-      VALUES ('admin@nike.com', 'Nike Admin', '$2a$10$dummyhash', true)
-      ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+      VALUES ('admin@nike.com', 'Nike Admin', '$2b$10$tRKKFQHSdYajlT0AhsfPAuhCrLnnJOH0V1vgobV5PBJFuk6UXiUbq', true)
+      ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash
       RETURNING id;
     `);
     const ownerId = ownerResult.rows[0].id;

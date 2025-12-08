@@ -8,6 +8,8 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { PageSection } from '@/lib/customizer/types';
+import { HiDotsVertical, HiCog, HiEye, HiEyeOff, HiTrash } from 'react-icons/hi';
+import { getSectionName } from '@/lib/customizer/sectionNames';
 
 interface SortableSectionItemProps {
   section: PageSection;
@@ -59,12 +61,12 @@ export function SortableSectionItem({
             className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
             onClick={(e) => e.stopPropagation()}
           >
-            ⋮⋮
+            <HiDotsVertical className="w-5 h-5" />
           </div>
           
           <div className="flex-1">
             <div className="text-sm font-medium text-gray-900">
-              {section.section_type}
+              {getSectionName(section.section_type)}
             </div>
             {section.custom_classes && (
               <div className="text-xs text-gray-500 mt-1">
@@ -83,7 +85,7 @@ export function SortableSectionItem({
             className="p-1 hover:bg-gray-200 rounded"
             title="הגדרות"
           >
-            ⚙️
+            <HiCog className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => {
@@ -93,7 +95,11 @@ export function SortableSectionItem({
             className="p-1 hover:bg-gray-200 rounded"
             title="הצג/הסתר"
           >
-            👁️
+            {section.is_visible ? (
+              <HiEye className="w-4 h-4" />
+            ) : (
+              <HiEyeOff className="w-4 h-4" />
+            )}
           </button>
           {!section.is_locked && onDelete && (
             <button
@@ -104,7 +110,7 @@ export function SortableSectionItem({
               className="p-1 hover:bg-red-100 rounded text-red-600"
               title="מחק"
             >
-              🗑️
+              <HiTrash className="w-4 h-4" />
             </button>
           )}
         </div>

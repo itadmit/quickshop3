@@ -122,6 +122,11 @@ export class SeedService {
       await this.seedPages();
       console.log(`✅ Created ${pagesCount} pages`);
 
+      // 10. Install New York Template
+      console.log('🎨 Installing New York template...');
+      await this.installNewYorkTemplate();
+      console.log('✅ New York template installed');
+
       console.log('🎉 Seed process completed successfully!');
 
       return {
@@ -753,6 +758,19 @@ export class SeedService {
     } catch (error: any) {
       console.error('Error resetting store:', error);
       throw new Error(`שגיאה באיפוס נתונים: ${error.message}`);
+    }
+  }
+
+  /**
+   * מתקין את תבנית New York לחנות
+   */
+  private async installNewYorkTemplate(): Promise<void> {
+    try {
+      const { installNewYorkTemplate } = await import('@/lib/customizer/installNewYorkTemplate');
+      await installNewYorkTemplate({ storeId: this.storeId });
+    } catch (error: any) {
+      console.error('Error installing New York template:', error);
+      // Don't fail seed if template installation fails
     }
   }
 }

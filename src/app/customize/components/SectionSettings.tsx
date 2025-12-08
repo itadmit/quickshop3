@@ -7,7 +7,20 @@
 
 import { useState, useEffect } from 'react';
 import { updateSection } from '../actions';
-import { PageSection } from '@/lib/customizer/types';
+import { PageSection, SectionBlock } from '@/lib/customizer/types';
+import { BlockManagement } from './BlockManagement';
+import { HiX, HiArrowRight, HiArrowLeft, HiMenuAlt2 } from 'react-icons/hi';
+import { getSectionName } from '@/lib/customizer/sectionNames';
+import {
+  SettingGroup,
+  SettingRow,
+  ModernInput,
+  ModernTextArea,
+  ModernSelect,
+  ModernToggle,
+  ModernSlider,
+  ModernColorPicker
+} from './SettingsUI';
 
 interface SectionSettingsProps {
   section: PageSection | null;
@@ -19,6 +32,8 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [customCSS, setCustomCSS] = useState('');
   const [customClasses, setCustomClasses] = useState('');
+  const [blocks, setBlocks] = useState<SectionBlock[]>([]);
+  const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -26,8 +41,27 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
       setSettings(section.settings_json || {});
       setCustomCSS(section.custom_css || '');
       setCustomClasses(section.custom_classes || '');
+      loadBlocks();
     }
   }, [section]);
+
+  async function loadBlocks() {
+    if (!section?.id) return;
+    
+    try {
+      setLoadingBlocks(true);
+      const response = await fetch(`/api/customizer/sections/${section.id}/blocks`);
+      if (response.ok) {
+        const data = await response.json();
+        setBlocks(data.blocks || []);
+      }
+    } catch (error) {
+      console.error('Error loading blocks:', error);
+      setBlocks([]);
+    } finally {
+      setLoadingBlocks(false);
+    }
+  }
 
   if (!section) {
     return null;
@@ -63,272 +97,236 @@ export function SectionSettings({ section, onClose, onUpdate }: SectionSettingsP
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {section.section_type}
+            {getSectionName(section.section_type)}
           </h3>
           <p className="text-sm text-gray-500">עריכת הגדרות סקשן</p>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-md"
+          className="p-2 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-700 transition-colors"
           title="סגור"
         >
-          ✕
+          <HiX className="w-5 h-5" />
         </button>
       </div>
 
       {/* Settings Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Basic Settings */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">הגדרות בסיסיות</h4>
+      <div className="flex-1 overflow-y-auto bg-white">
+        <div className="divide-y divide-gray-200 bg-white">
           
-          {/* Heading */}
-          {section.section_type.includes('collection') || section.section_type.includes('featured') ? (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                כותרת
-              </label>
-              <input
-                type="text"
-                value={settings.heading || ''}
-                onChange={(e) => updateSetting('heading', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                placeholder="הכנס כותרת"
-              />
-            </div>
-          ) : null}
-
-          {/* Subheading */}
-          {section.section_type.includes('collection') || section.section_type.includes('featured') ? (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                תת כותרת
-              </label>
-              <input
-                type="text"
-                value={settings.subheading || ''}
-                onChange={(e) => updateSetting('subheading', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                placeholder="הכנס תת כותרת"
-              />
-            </div>
-          ) : null}
-
-          {/* Text Alignment */}
-          {section.section_type.includes('text') || section.section_type.includes('collection') ? (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                יישור טקסט
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => updateSetting('text_alignment', 'right')}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm ${
-                    settings.text_alignment === 'right'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  ימין
-                </button>
-                <button
-                  onClick={() => updateSetting('text_alignment', 'center')}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm ${
-                    settings.text_alignment === 'center'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  מרכז
-                </button>
-                <button
-                  onClick={() => updateSetting('text_alignment', 'left')}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm ${
-                    settings.text_alignment === 'left'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  שמאל
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Layout Settings */}
-        {section.section_type.includes('collection') || section.section_type.includes('grid') ? (
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">הגדרות פריסה</h4>
-            
-            {/* Container Type */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                סוג קונטיינר
-              </label>
-              <select
-                value={settings.container_type || 'container_box'}
-                onChange={(e) => updateSetting('container_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="container_box">קונטיינר מוגבל</option>
-                <option value="full_width">רוחב מלא</option>
-              </select>
-            </div>
-
-            {/* Background Color */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                צבע רקע
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={settings.background_color || '#FFFFFF'}
-                  onChange={(e) => updateSetting('background_color', e.target.value)}
-                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
-                />
-                <input
+          {/* Basic Settings Group */}
+          <SettingGroup title="הגדרות בסיסיות">
+            {/* Heading */}
+            {(section.section_type.includes('collection') || section.section_type.includes('featured')) && (
+              <SettingRow label="כותרת">
+                <ModernInput
                   type="text"
-                  value={settings.background_color || '#FFFFFF'}
-                  onChange={(e) => updateSetting('background_color', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  placeholder="#FFFFFF"
+                  value={settings.heading || ''}
+                  onChange={(e) => updateSetting('heading', e.target.value)}
+                  placeholder="הכנס כותרת"
                 />
-              </div>
-            </div>
-
-            {/* Columns per row */}
-            {section.section_type.includes('grid') || section.section_type.includes('collection') ? (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  עמודות בשורה: {settings.collections_per_row || settings.columns_per_row || 3}
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="6"
-                  value={settings.collections_per_row || settings.columns_per_row || 3}
-                  onChange={(e) => updateSetting(
-                    section.section_type.includes('collection') ? 'collections_per_row' : 'columns_per_row',
-                    parseInt(e.target.value)
-                  )}
-                  className="w-full"
-                />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {/* Slider Settings */}
-        {section.section_type.includes('slideshow') || section.section_type.includes('slider') ? (
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">הגדרות סליידר</h4>
-            
-            {/* Auto Rotate */}
-            <div className="mb-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={settings.auto_rotate || settings.auto_slide || false}
-                  onChange={(e) => updateSetting(
-                    section.section_type === 'slideshow' ? 'auto_rotate' : 'auto_slide',
-                    e.target.checked
-                  )}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                />
-                <span className="text-sm text-gray-700">סיבוב אוטומטי</span>
-              </label>
-            </div>
-
-            {/* Interval */}
-            {(settings.auto_rotate || settings.auto_slide) && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  מרווח זמן (שניות): {settings.auto_rotate_interval || settings.auto_slide_interval || 5}
-                </label>
-                <input
-                  type="range"
-                  min="2"
-                  max="10"
-                  value={settings.auto_rotate_interval || settings.auto_slide_interval || 5}
-                  onChange={(e) => updateSetting(
-                    section.section_type === 'slideshow' ? 'auto_rotate_interval' : 'auto_slide_interval',
-                    parseInt(e.target.value)
-                  )}
-                  className="w-full"
-                />
-              </div>
+              </SettingRow>
             )}
 
-            {/* Show Pagination */}
-            <div className="mb-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+            {/* Subheading */}
+            {(section.section_type.includes('collection') || section.section_type.includes('featured')) && (
+              <SettingRow label="תת כותרת">
+                <ModernInput
+                  type="text"
+                  value={settings.subheading || ''}
+                  onChange={(e) => updateSetting('subheading', e.target.value)}
+                  placeholder="הכנס תת כותרת"
+                />
+              </SettingRow>
+            )}
+
+            {/* Text Alignment - Custom Segmented Control */}
+            {(section.section_type.includes('text') || section.section_type.includes('collection')) && (
+              <SettingRow label="יישור טקסט">
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => updateSetting('text_alignment', 'right')}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
+                      settings.text_alignment === 'right'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <HiArrowRight className="w-4 h-4" />
+                      <span>ימין</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => updateSetting('text_alignment', 'center')}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
+                      settings.text_alignment === 'center'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <HiMenuAlt2 className="w-4 h-4 transform rotate-90" />
+                      <span>מרכז</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => updateSetting('text_alignment', 'left')}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
+                      settings.text_alignment === 'left'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <HiArrowLeft className="w-4 h-4" />
+                      <span>שמאל</span>
+                    </div>
+                  </button>
+                </div>
+              </SettingRow>
+            )}
+          </SettingGroup>
+
+          {/* Layout Settings Group */}
+          {(section.section_type.includes('collection') || section.section_type.includes('grid')) && (
+            <SettingGroup title="הגדרות פריסה">
+              <SettingRow label="סוג קונטיינר">
+                <ModernSelect
+                  value={settings.container_type || 'container_box'}
+                  onChange={(e) => updateSetting('container_type', e.target.value)}
+                  options={[
+                    { value: 'container_box', label: 'קונטיינר מוגבל' },
+                    { value: 'full_width', label: 'רוחב מלא' }
+                  ]}
+                />
+              </SettingRow>
+
+              <SettingRow label="צבע רקע">
+                <ModernColorPicker
+                  value={settings.background_color || '#FFFFFF'}
+                  onChange={(value) => updateSetting('background_color', value)}
+                />
+              </SettingRow>
+
+              <SettingRow label="עמודות בשורה">
+                <ModernSlider
+                  min={1}
+                  max={6}
+                  value={settings.collections_per_row || settings.columns_per_row || 3}
+                  onChange={(value) => updateSetting(
+                    section.section_type.includes('collection') ? 'collections_per_row' : 'columns_per_row',
+                    value
+                  )}
+                />
+              </SettingRow>
+            </SettingGroup>
+          )}
+
+          {/* Slider Settings Group */}
+          {(section.section_type.includes('slideshow') || section.section_type.includes('slider')) && (
+            <SettingGroup title="הגדרות סליידר">
+              <SettingRow>
+                <ModernToggle
+                  checked={settings.auto_rotate || settings.auto_slide || false}
+                  onChange={(checked) => updateSetting(
+                    section.section_type === 'slideshow' ? 'auto_rotate' : 'auto_slide',
+                    checked
+                  )}
+                  label="סיבוב אוטומטי"
+                />
+              </SettingRow>
+
+              {(settings.auto_rotate || settings.auto_slide) && (
+                <SettingRow label="מרווח זמן (שניות)">
+                  <ModernSlider
+                    min={2}
+                    max={10}
+                    value={settings.auto_rotate_interval || settings.auto_slide_interval || 5}
+                    onChange={(value) => updateSetting(
+                      section.section_type === 'slideshow' ? 'auto_rotate_interval' : 'auto_slide_interval',
+                      value
+                    )}
+                    unit="שניות"
+                  />
+                </SettingRow>
+              )}
+
+              <SettingRow>
+                <ModernToggle
                   checked={settings.show_pagination !== false}
-                  onChange={(e) => updateSetting('show_pagination', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  onChange={(checked) => updateSetting('show_pagination', checked)}
+                  label="הצג נקודות ניווט"
                 />
-                <span className="text-sm text-gray-700">הצג נקודות ניווט</span>
-              </label>
-            </div>
+              </SettingRow>
 
-            {/* Show Navigation */}
-            <div className="mb-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+              <SettingRow>
+                <ModernToggle
                   checked={settings.show_navigation || false}
-                  onChange={(e) => updateSetting('show_navigation', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  onChange={(checked) => updateSetting('show_navigation', checked)}
+                  label="הצג כפתורי ניווט"
                 />
-                <span className="text-sm text-gray-700">הצג כפתורי ניווט</span>
-              </label>
-            </div>
-          </div>
-        ) : null}
+              </SettingRow>
+            </SettingGroup>
+          )}
 
-        {/* Custom CSS */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">CSS מותאם</h4>
-          <textarea
-            value={customCSS}
-            onChange={(e) => setCustomCSS(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono"
-            rows={6}
-            placeholder=".my-custom-class { ... }"
-          />
-        </div>
+          {/* Block Management Group */}
+          <SettingGroup title="ניהול בלוקים" defaultOpen={true}>
+            {loadingBlocks ? (
+              <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-lg">טוען בלוקים...</div>
+            ) : (
+              <BlockManagement
+                sectionId={section.id}
+                blocks={blocks}
+                sectionType={section.section_type}
+                onBlocksChange={() => {
+                  loadBlocks();
+                  onUpdate();
+                }}
+              />
+            )}
+          </SettingGroup>
 
-        {/* Custom Classes */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">Classes מותאמים</h4>
-          <input
-            type="text"
-            value={customClasses}
-            onChange={(e) => setCustomClasses(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            placeholder="class1 class2 class3"
-          />
+          {/* Advanced Settings Group */}
+          <SettingGroup title="מתקדם" defaultOpen={false}>
+            <SettingRow label="CSS מותאם" helpText="הוסף CSS מותאם אישית לסקשן זה בלבד.">
+              <ModernTextArea
+                value={customCSS}
+                onChange={(e) => setCustomCSS(e.target.value)}
+                rows={6}
+                className="font-mono text-xs"
+                placeholder=".my-custom-class { ... }"
+              />
+            </SettingRow>
+
+            <SettingRow label="Classes מותאמים" helpText="הפרד מחלקות באמצעות רווחים.">
+              <ModernInput
+                type="text"
+                value={customClasses}
+                onChange={(e) => setCustomClasses(e.target.value)}
+                placeholder="class1 class2 class3"
+              />
+            </SettingRow>
+          </SettingGroup>
+
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 flex gap-2">
+      <div className="p-4 border-t border-gray-200 flex gap-3 bg-white sticky bottom-0 z-10">
         <button
           onClick={onClose}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
         >
           ביטול
         </button>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+          className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? 'שומר...' : 'שמור'}
         </button>

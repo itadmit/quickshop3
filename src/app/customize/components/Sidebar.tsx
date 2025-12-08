@@ -28,10 +28,12 @@ import { SectionSettings } from './SectionSettings';
 import { AddSectionDialog } from './AddSectionDialog';
 import { DeveloperMode } from './DeveloperMode';
 import { ThemeSettings } from './ThemeSettings';
+import { VersionHistory } from './VersionHistory';
+import { TemplateEditor } from './TemplateEditor';
 import { updateSection, deleteSection, addSection } from '../actions';
 import { SortableSectionItem } from './SortableSectionItem';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { HiColorSwatch, HiCode, HiCog, HiSave } from 'react-icons/hi';
+import { HiColorSwatch, HiCode, HiCog, HiSave, HiClock, HiTemplate } from 'react-icons/hi';
 
 interface SidebarProps {
   pageType: PageType;
@@ -55,6 +57,8 @@ export function Sidebar({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
 
   // Auto-save hook
   const { lastSaved } = useAutoSave({
@@ -313,14 +317,21 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Theme Settings */}
-      <div className="p-4 border-t border-gray-200">
+      {/* Theme Settings & Version History */}
+      <div className="p-4 border-t border-gray-200 space-y-2">
         <button
           onClick={() => setShowThemeSettings(true)}
           className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-700 flex items-center justify-center gap-2"
         >
           <HiCog className="w-4 h-4" />
           הגדרות תבנית
+        </button>
+        <button
+          onClick={() => setShowVersionHistory(true)}
+          className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-700 flex items-center justify-center gap-2"
+        >
+          <HiClock className="w-4 h-4" />
+          היסטוריית גרסאות
         </button>
       </div>
 
@@ -352,6 +363,28 @@ export function Sidebar({
           <ThemeSettings
             onClose={() => setShowThemeSettings(false)}
             onUpdate={loadSections}
+          />
+        </div>
+      )}
+
+      {/* Version History Panel */}
+      {showVersionHistory && (
+        <div className="fixed inset-y-0 left-0 w-96 bg-white border-r border-gray-200 z-50 shadow-xl">
+          <VersionHistory
+            pageType={pageType}
+            pageHandle={pageHandle}
+            onVersionRestored={loadSections}
+            onClose={() => setShowVersionHistory(false)}
+          />
+        </div>
+      )}
+
+      {/* Template Editor Panel */}
+      {showTemplateEditor && (pageType === 'product' || pageType === 'collection') && (
+        <div className="fixed inset-y-0 left-0 w-96 bg-white border-r border-gray-200 z-50 shadow-xl">
+          <TemplateEditor
+            templateType={pageType === 'product' ? 'product' : 'collection'}
+            onClose={() => setShowTemplateEditor(false)}
           />
         </div>
       )}

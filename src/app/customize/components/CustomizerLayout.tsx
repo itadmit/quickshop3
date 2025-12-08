@@ -102,8 +102,8 @@ export function CustomizerLayout({ pageType, pageHandle }: CustomizerLayoutProps
               className="px-3 py-1 border border-gray-300 rounded-md text-sm"
             >
               <option value="home">עמוד בית</option>
-              <option value="product">עמוד מוצר</option>
-              <option value="collection">עמוד קטגוריה</option>
+              <option value="product">עמוד מוצר (Template)</option>
+              <option value="collection">עמוד קטגוריה (Template)</option>
               <option value="cart">עגלה</option>
               <option value="checkout">צ'ק אאוט</option>
             </select>

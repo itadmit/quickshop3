@@ -430,12 +430,9 @@ export default function ProductsPage() {
       key: 'price',
       label: 'מחיר',
       render: (product) => {
-        const price = product.variants && product.variants.length > 0
-          ? product.variants[0].price
-          : '0.00';
-        const comparePrice = product.variants && product.variants.length > 0
-          ? product.variants[0].compare_at_price
-          : null;
+        // לפי האפיון: כל מוצר חייב לפחות variant אחד
+        const price = product.variants?.[0]?.price || '0.00';
+        const comparePrice = product.variants?.[0]?.compare_at_price || null;
         return (
           <div>
             <div className="font-medium text-gray-900">₪{parseFloat(price).toFixed(2)}</div>
@@ -450,9 +447,8 @@ export default function ProductsPage() {
       key: 'sku',
       label: 'מקט',
       render: (product) => {
-        const sku = product.variants && product.variants.length > 0
-          ? product.variants[0].sku
-          : '-';
+        // לפי האפיון: כל מוצר חייב לפחות variant אחד
+        const sku = product.variants?.[0]?.sku || null;
         return <span className="text-gray-600">{sku || '-'}</span>;
       },
     },
@@ -460,9 +456,12 @@ export default function ProductsPage() {
       key: 'options',
       label: 'אפשרויות',
       render: (product) => {
+        // לפי האפיון: מוצר עם variants = יש options או יותר מ-variant אחד
+        const hasVariants = (product.options?.length || 0) > 0 || (product.variants?.length || 0) > 1;
+        
         if (!product.options || product.options.length === 0) {
-          return product.variants && product.variants.length > 1 ? (
-            <span className="text-blue-600">{product.variants.length} אפשרויות</span>
+          return hasVariants ? (
+            <span className="text-blue-600">{product.variants?.length || 0} אפשרויות</span>
           ) : (
             <span className="text-gray-400">-</span>
           );
@@ -525,6 +524,7 @@ export default function ProductsPage() {
       key: 'stock',
       label: 'מלאי',
       render: (product) => {
+        // לפי האפיון: כל מוצר חייב לפחות variant אחד
         // חישוב מלאי כולל מכל הווריאנטים
         let stock = 0;
         if (product.variants && product.variants.length > 0) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
+import { generateSlugFromHebrew } from '@/lib/utils/hebrewSlug';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -104,25 +105,24 @@ export async function POST(request: NextRequest) {
 
     const storeId = user.store_id;
     
-    // Generate handle from title if not provided
-    let finalHandle = handle;
-    if (!finalHandle) {
-      finalHandle = title
-        .toLowerCase()
-        .trim()
-        .replace(/[\u0590-\u05FF]/g, '') // Remove Hebrew characters
-        .replace(/[^\w\s-]/g, '') // Remove special characters
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    // Generate handle from title if not provided using Hebrew transliteration
+    let baseHandle = handle;
+    if (!baseHandle) {
+      baseHandle = generateSlugFromHebrew(title);
       
-      if (!finalHandle) {
-        finalHandle = 'collection';
+      // Limit length
+      if (baseHandle.length > 200) {
+        baseHandle = baseHandle.substring(0, 200);
+      }
+      
+      // If handle is empty after processing, use a fallback
+      if (!baseHandle) {
+        baseHandle = 'collection';
       }
     }
 
     // Check if handle already exists and make it unique
-    let uniqueHandle = finalHandle;
+    let uniqueHandle = baseHandle;
     let counter = 1;
     while (true) {
       const existing = await queryOne<{ id: number }>(
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         break; // Handle is unique
       }
 
-      uniqueHandle = `${finalHandle}-${counter}`;
+      uniqueHandle = `${baseHandle}-${counter}`;
       counter++;
     }
 

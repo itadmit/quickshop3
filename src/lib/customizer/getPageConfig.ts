@@ -30,33 +30,49 @@ export async function getPageConfig(
 }
 
 /**
- * קריאה מ-Edge JSON (Production)
+ * קריאה מ-Edge JSON (Production) - מ-AWS S3
  */
 async function getPageConfigFromEdge(
   storeId: number,
   pageType: PageType,
   pageHandle?: string
 ): Promise<PageConfig | null> {
-  if (!EDGE_BASE_URL) {
-    return null;
-  }
-
   const fileName = pageHandle ? `${pageType}-${pageHandle}.json` : `${pageType}.json`;
-  const edgeUrl = `${EDGE_BASE_URL}/config/${storeId}/${fileName}`;
-
+  
+  // נסה לקרוא מ-S3 ישירות
+  const s3Url = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/config/${storeId}/${fileName}`;
+  
   try {
-    const response = await fetch(edgeUrl, {
+    const response = await fetch(s3Url, {
       next: { revalidate: 60 }, // ISR - revalidate every 60 seconds
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate',
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=3600',
       },
     });
 
     if (response.ok) {
-      return await response.json();
+      const config = await response.json();
+      return config as PageConfig;
     }
   } catch (error) {
     console.log('Edge cache miss, falling back to DB:', error);
+  }
+
+  // Fallback - נסה דרך API route
+  if (EDGE_BASE_URL) {
+    try {
+      const apiUrl = `${EDGE_BASE_URL}/api/customizer/config/${storeId}/${fileName}`;
+      const response = await fetch(apiUrl, {
+        next: { revalidate: 60 },
+      });
+
+      if (response.ok) {
+        const config = await response.json();
+        return config as PageConfig;
+      }
+    } catch (error) {
+      console.log('API route fallback failed:', error);
+    }
   }
 
   return null;

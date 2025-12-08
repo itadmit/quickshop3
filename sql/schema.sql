@@ -2032,7 +2032,7 @@ CREATE INDEX idx_contact_category_assignments_category_id ON contact_category_as
 -- תבניות (Templates)
 CREATE TABLE theme_templates (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,           -- 'new-york'
+  name VARCHAR(100) NOT NULL UNIQUE,   -- 'new-york' (UNIQUE to prevent duplicates)
   display_name VARCHAR(255) NOT NULL,   -- 'ניו יורק'
   description TEXT,
   thumbnail_url TEXT,

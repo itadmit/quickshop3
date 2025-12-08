@@ -106,7 +106,7 @@ export function PreviewFrame({
           src={previewUrl}
           className="w-full h-full border-0"
           title="Preview"
-          sandbox="allow-scripts allow-forms allow-popups allow-modals"
+          sandbox="allow-scripts allow-forms allow-popups allow-modals allow-same-origin"
         />
       )}
     </div>
