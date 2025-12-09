@@ -381,209 +381,182 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       case 'hero_banner':
         return (
           <div className="space-y-1">
-            <SettingGroup title="מדיה ורקע">
+            {/* Mobile + Tablet Section */}
+            <SettingGroup title="📱 מובייל + טאבלט">
                 <div className="space-y-4">
-                    {/* Desktop & Mobile Image Buttons */}
-                    <div className="space-y-3">
-                        <p className="text-xs text-gray-500 font-medium">תמונות רקע</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => {
-                                    setMediaType('image');
-                                    setImageDeviceTarget('desktop');
-                                    setTargetBlockId(null);
-                                    setIsMediaPickerOpen(true);
-                                }}
-                                className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
-                            >
-                                <HiPhotograph className="w-5 h-5 text-gray-400" />
-                                <span className="text-xs font-medium text-gray-700">תמונת דסקטופ</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setMediaType('image');
-                                    setImageDeviceTarget('mobile');
-                                    setTargetBlockId(null);
-                                    setIsMediaPickerOpen(true);
-                                }}
-                                className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
-                            >
-                                <HiPhotograph className="w-5 h-5 text-gray-400" />
-                                <span className="text-xs font-medium text-gray-700">תמונת מובייל</span>
-                            </button>
-                        </div>
-                        
-                        {/* Video Button */}
+                    <div className="grid grid-cols-2 gap-2">
                         <button
-                             onClick={() => {
-                                setMediaType('video');
+                            onClick={() => {
+                                setMediaType('image');
+                                setImageDeviceTarget('mobile');
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="w-full flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                        >
+                            <HiPhotograph className="w-5 h-5 text-gray-400" />
+                            <span className="text-xs font-medium text-gray-700">תמונה</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                setMediaType('video');
+                                setImageDeviceTarget('mobile');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
                         >
                             <HiVideoCamera className="w-5 h-5 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-700">וידאו רקע</span>
+                            <span className="text-xs font-medium text-gray-700">סרטון</span>
+                        </button>
+                    </div>
+
+                    {/* Preview Mobile Image */}
+                    {section.style?.background?.background_image_mobile && (
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-[9/16] max-w-[120px] mx-auto group">
+                            <img 
+                                src={section.style.background.background_image_mobile} 
+                                alt="Mobile Background" 
+                                className="w-full h-full object-cover"
+                            />
+                            <button
+                                onClick={() => handleStyleChange('background.background_image_mobile', '')}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="הסר תמונה"
+                            >
+                                <HiTrash className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Preview Mobile Video */}
+                    {section.style?.background?.background_video_mobile && (
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-[9/16] max-w-[120px] mx-auto group">
+                            <video 
+                                src={section.style.background.background_video_mobile} 
+                                className="w-full h-full object-cover"
+                                autoPlay muted loop
+                            />
+                            <button
+                                onClick={() => handleStyleChange('background.background_video_mobile', '')}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="הסר סרטון"
+                            >
+                                <HiTrash className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </SettingGroup>
+
+            {/* Desktop Section */}
+            <SettingGroup title="🖥️ מחשב">
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => {
+                                setMediaType('image');
+                                setImageDeviceTarget('desktop');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                        >
+                            <HiPhotograph className="w-5 h-5 text-gray-400" />
+                            <span className="text-xs font-medium text-gray-700">תמונה</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                setMediaType('video');
+                                setImageDeviceTarget('desktop');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                        >
+                            <HiVideoCamera className="w-5 h-5 text-gray-400" />
+                            <span className="text-xs font-medium text-gray-700">סרטון</span>
                         </button>
                     </div>
 
                     {/* Preview Desktop Image */}
                     {section.style?.background?.background_image && (
-                        <div className="space-y-2">
-                            <p className="text-xs text-gray-500 font-medium">תמונת דסקטופ</p>
-                            <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-video group">
-                                <img 
-                                    src={section.style.background.background_image} 
-                                    alt="Desktop Background" 
-                                    className="w-full h-full object-cover"
-                                />
-                                <button
-                                    onClick={() => handleStyleChange('background.background_image', '')}
-                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="הסר תמונת דסקטופ"
-                                >
-                                    <HiTrash className="w-4 h-4" />
-                                </button>
-                            </div>
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-video group">
+                            <img 
+                                src={section.style.background.background_image} 
+                                alt="Desktop Background" 
+                                className="w-full h-full object-cover"
+                            />
+                            <button
+                                onClick={() => handleStyleChange('background.background_image', '')}
+                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="הסר תמונה"
+                            >
+                                <HiTrash className="w-4 h-4" />
+                            </button>
                         </div>
                     )}
 
-                    {/* Preview Mobile Image */}
-                    {section.style?.background?.background_image_mobile && (
-                        <div className="space-y-2">
-                            <p className="text-xs text-gray-500 font-medium">תמונת מובייל</p>
-                            <div className="flex justify-center">
-                                <div className="relative rounded-lg overflow-hidden border border-gray-200 w-20 h-32 group">
-                                    <img 
-                                        src={section.style.background.background_image_mobile} 
-                                        alt="Mobile Background" 
-                                        className="w-full h-full object-cover"
-                                    />
-                                    <button
-                                        onClick={() => handleStyleChange('background.background_image_mobile', '')}
-                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="הסר תמונת מובייל"
-                                    >
-                                        <HiTrash className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Preview Video */}
+                    {/* Preview Desktop Video */}
                     {section.style?.background?.background_video && (
-                        <div className="space-y-2">
-                            <p className="text-xs text-gray-500 font-medium">וידאו רקע</p>
-                            <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-video group">
-                                <video 
-                                    src={section.style.background.background_video} 
-                                    className="w-full h-full object-cover"
-                                    autoPlay
-                                    muted
-                                    loop
-                                />
-                                <button
-                                    onClick={() => handleStyleChange('background.background_video', '')}
-                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="הסר וידאו"
-                                >
-                                    <HiTrash className="w-4 h-4" />
-                                </button>
-                            </div>
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-video group">
+                            <video 
+                                src={section.style.background.background_video} 
+                                className="w-full h-full object-cover"
+                                autoPlay muted loop
+                            />
+                            <button
+                                onClick={() => handleStyleChange('background.background_video', '')}
+                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="הסר סרטון"
+                            >
+                                <HiTrash className="w-4 h-4" />
+                            </button>
                         </div>
                     )}
 
-                    {/* Image/Video Settings */}
-                    {(section.style?.background?.background_image || section.style?.background?.background_image_mobile || section.style?.background?.background_video) && (
-                        <div className="space-y-4">
+                    {/* Image Settings */}
+                    {section.style?.background?.background_image && (
+                        <div className="space-y-3 pt-2 border-t border-gray-100">
+                            <SettingSelect
+                                label="גודל תמונה"
+                                value={section.style?.background?.background_size || 'cover'}
+                                onChange={(e) => handleStyleChange('background.background_size', e.target.value)}
+                                options={[
+                                    { label: 'כיסוי (Cover)', value: 'cover' },
+                                    { label: 'הכל (Contain)', value: 'contain' },
+                                    { label: 'אוטומטי', value: 'auto' },
+                                    { label: 'מתיחה (100%)', value: '100% 100%' },
+                                ]}
+                            />
+                            <SettingSelect
+                                label="מיקום תמונה"
+                                value={section.style?.background?.background_position || 'center'}
+                                onChange={(e) => handleStyleChange('background.background_position', e.target.value)}
+                                options={[
+                                    { label: 'מרכז', value: 'center' },
+                                    { label: 'למעלה', value: 'top' },
+                                    { label: 'למטה', value: 'bottom' },
+                                    { label: 'שמאל', value: 'left' },
+                                    { label: 'ימין', value: 'right' },
+                                ]}
+                            />
+                        </div>
+                    )}
 
-                            {/* Image Settings */}
-                            {section.style?.background?.background_image && (
-                                <>
-                                    <SettingSelect
-                                        label="גודל תמונה"
-                                        value={section.style?.background?.background_size || 'cover'}
-                                        onChange={(e) => handleStyleChange('background.background_size', e.target.value)}
-                                        options={[
-                                            { label: 'כיסוי (Cover)', value: 'cover' },
-                                            { label: 'הכל (Contain)', value: 'contain' },
-                                            { label: 'אוטומטי', value: 'auto' },
-                                            { label: 'מתיחה (100%)', value: '100% 100%' },
-                                        ]}
-                                    />
-                                    <SettingSelect
-                                        label="מיקום תמונה"
-                                        value={section.style?.background?.background_position || 'center'}
-                                        onChange={(e) => handleStyleChange('background.background_position', e.target.value)}
-                                        options={[
-                                            { label: 'מרכז', value: 'center' },
-                                            { label: 'למעלה', value: 'top' },
-                                            { label: 'למטה', value: 'bottom' },
-                                            { label: 'שמאל', value: 'left' },
-                                            { label: 'ימין', value: 'right' },
-                                            { label: 'למעלה שמאל', value: 'top left' },
-                                            { label: 'למעלה ימין', value: 'top right' },
-                                            { label: 'למטה שמאל', value: 'bottom left' },
-                                            { label: 'למטה ימין', value: 'bottom right' },
-                                        ]}
-                                    />
-                                    <SettingSelect
-                                        label="חזרה"
-                                        value={section.style?.background?.background_repeat || 'no-repeat'}
-                                        onChange={(e) => handleStyleChange('background.background_repeat', e.target.value)}
-                                        options={[
-                                            { label: 'ללא חזרה', value: 'no-repeat' },
-                                            { label: 'חזרה', value: 'repeat' },
-                                            { label: 'חזרה אופקית', value: 'repeat-x' },
-                                            { label: 'חזרה אנכית', value: 'repeat-y' },
-                                        ]}
-                                    />
-                                </>
-                            )}
-
-                            {/* Video Settings */}
-                            {section.style?.background?.background_video && (
-                                <>
-                                    <SettingSelect
-                                        label="הפעלה אוטומטית"
-                                        value={section.style?.background?.video_autoplay !== false ? 'true' : 'false'}
-                                        onChange={(e) => handleStyleChange('background.video_autoplay', e.target.value === 'true')}
-                                        options={[
-                                            { label: 'מופעל', value: 'true' },
-                                            { label: 'כבוי', value: 'false' },
-                                        ]}
-                                    />
-                                    <SettingSelect
-                                        label="השתק"
-                                        value={section.style?.background?.video_muted !== false ? 'true' : 'false'}
-                                        onChange={(e) => handleStyleChange('background.video_muted', e.target.value === 'true')}
-                                        options={[
-                                            { label: 'מושתק', value: 'true' },
-                                            { label: 'עם קול', value: 'false' },
-                                        ]}
-                                    />
-                                    <SettingSelect
-                                        label="לולאה"
-                                        value={section.style?.background?.video_loop !== false ? 'true' : 'false'}
-                                        onChange={(e) => handleStyleChange('background.video_loop', e.target.value === 'true')}
-                                        options={[
-                                            { label: 'מופעל', value: 'true' },
-                                            { label: 'כבוי', value: 'false' },
-                                        ]}
-                                    />
-                                    <SettingSelect
-                                        label="התאמת גודל וידאו"
-                                        value={section.style?.background?.video_object_fit || 'cover'}
-                                        onChange={(e) => handleStyleChange('background.video_object_fit', e.target.value)}
-                                        options={[
-                                            { label: 'כיסוי (Cover)', value: 'cover' },
-                                            { label: 'הכל (Contain)', value: 'contain' },
-                                            { label: 'מילוי (Fill)', value: 'fill' },
-                                        ]}
-                                    />
-                                </>
-                            )}
+                    {/* Video Settings */}
+                    {section.style?.background?.background_video && (
+                        <div className="space-y-3 pt-2 border-t border-gray-100">
+                            <SettingSelect
+                                label="התאמת גודל"
+                                value={section.style?.background?.video_object_fit || 'cover'}
+                                onChange={(e) => handleStyleChange('background.video_object_fit', e.target.value)}
+                                options={[
+                                    { label: 'כיסוי (Cover)', value: 'cover' },
+                                    { label: 'הכל (Contain)', value: 'contain' },
+                                    { label: 'מילוי (Fill)', value: 'fill' },
+                                ]}
+                            />
                         </div>
                     )}
                 </div>
@@ -1086,16 +1059,57 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 <SettingGroup title="הגדרות מצגת">
                     <div className="space-y-4">
                         {renderSelect('גובה', 'height', [
-                            { label: 'קטן', value: 'small' },
-                            { label: 'בינוני', value: 'medium' },
-                            { label: 'גדול', value: 'large' },
-                            { label: 'מסך מלא', value: 'full' },
+                            { label: 'קטן (40vh)', value: 'small' },
+                            { label: 'בינוני (60vh)', value: 'medium' },
+                            { label: 'גדול (80vh)', value: 'large' },
+                            { label: 'מסך מלא (100vh)', value: 'full' },
                         ])}
                         {renderSelect('ניגון אוטומטי', 'autoplay', [
                             { label: 'כן', value: true },
                             { label: 'לא', value: false },
                         ])}
                         {getValue('autoplay') && renderInput('מהירות (שניות)', 'autoplay_speed', '5', 'number')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="הגדרות תמונה">
+                    <div className="space-y-4">
+                        {renderSelect('גודל תמונה', 'image_fit', [
+                            { label: 'כיסוי (Cover)', value: 'cover' },
+                            { label: 'הכל (Contain)', value: 'contain' },
+                            { label: 'מילוי (Fill)', value: 'fill' },
+                        ])}
+                        {renderSelect('מיקום תמונה', 'image_position', [
+                            { label: 'מרכז', value: 'center' },
+                            { label: 'למעלה', value: 'top' },
+                            { label: 'למטה', value: 'bottom' },
+                            { label: 'שמאל', value: 'left' },
+                            { label: 'ימין', value: 'right' },
+                            { label: 'למעלה שמאל', value: 'top left' },
+                            { label: 'למעלה ימין', value: 'top right' },
+                            { label: 'למטה שמאל', value: 'bottom left' },
+                            { label: 'למטה ימין', value: 'bottom right' },
+                        ])}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="מיקום תוכן">
+                    <div className="space-y-4">
+                        {renderSelect('מיקום אנכי', 'content_position_vertical', [
+                            { label: 'למעלה', value: 'top' },
+                            { label: 'מרכז', value: 'center' },
+                            { label: 'למטה', value: 'bottom' },
+                        ])}
+                        {renderSelect('מיקום אופקי', 'content_position_horizontal', [
+                            { label: 'ימין', value: 'right' },
+                            { label: 'מרכז', value: 'center' },
+                            { label: 'שמאל', value: 'left' },
+                        ])}
+                        {renderSelect('יישור טקסט', 'text_align', [
+                            { label: 'ימין', value: 'right' },
+                            { label: 'מרכז', value: 'center' },
+                            { label: 'שמאל', value: 'left' },
+                        ])}
                     </div>
                 </SettingGroup>
 
@@ -1112,29 +1126,63 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         <div className="space-y-3">
                             {slides.map((slide, index) => (
                                 <div key={slide.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        {/* Clickable image thumbnail */}
-                                        <button
-                                            onClick={() => openSlideImagePicker(slide.id)}
-                                            className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-blue-400 transition-all group relative"
-                                            title="לחץ להחלפת תמונה"
-                                        >
-                                            {slide.content?.image_url ? (
-                                                <img src={slide.content.image_url} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <HiPhotograph className="w-6 h-6 text-gray-400" />
-                                                </div>
-                                            )}
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <HiRefresh className="w-4 h-4 text-white" />
-                                            </div>
-                                        </button>
-                                        <div className="flex-1 font-medium text-sm">שקופית {index + 1}</div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="font-medium text-sm">שקופית {index + 1}</div>
                                         <button onClick={() => removeSlide(slide.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
                                             <HiTrash className="w-4 h-4" />
                                         </button>
                                     </div>
+                                    
+                                    {/* Mobile + Desktop Images */}
+                                    <div className="space-y-3 mb-3">
+                                        <div className="text-xs text-gray-500 font-medium">📱 מובייל + טאבלט</div>
+                                        <button
+                                            onClick={() => {
+                                                setMediaType('image');
+                                                setTargetBlockId(slide.id);
+                                                setImageDeviceTarget('mobile');
+                                                setIsMediaPickerOpen(true);
+                                            }}
+                                            className="w-full h-16 bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 transition-all group relative flex items-center justify-center"
+                                            title="לחץ להחלפת תמונת מובייל"
+                                        >
+                                            {slide.content?.image_url_mobile ? (
+                                                <img src={slide.content.image_url_mobile} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-gray-400">
+                                                    <HiPhotograph className="w-5 h-5" />
+                                                    <span className="text-xs">הוסף תמונה</span>
+                                                </div>
+                                            )}
+                                            {slide.content?.image_url_mobile && (
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <HiRefresh className="w-5 h-5 text-white" />
+                                                </div>
+                                            )}
+                                        </button>
+
+                                        <div className="text-xs text-gray-500 font-medium">🖥️ מחשב</div>
+                                        <button
+                                            onClick={() => openSlideImagePicker(slide.id)}
+                                            className="w-full h-20 bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 transition-all group relative flex items-center justify-center"
+                                            title="לחץ להחלפת תמונת מחשב"
+                                        >
+                                            {slide.content?.image_url ? (
+                                                <img src={slide.content.image_url} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-gray-400">
+                                                    <HiPhotograph className="w-5 h-5" />
+                                                    <span className="text-xs">הוסף תמונה</span>
+                                                </div>
+                                            )}
+                                            {slide.content?.image_url && (
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <HiRefresh className="w-5 h-5 text-white" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    </div>
+
                                     <div className="space-y-2">
                                         <input 
                                             className="w-full text-xs p-2 border rounded" 

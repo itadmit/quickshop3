@@ -40,9 +40,46 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
     );
   }
 
+  // Height class
   const heightClass = settings.height === 'small' ? 'h-[40vh]' : 
                      settings.height === 'large' ? 'h-[80vh]' : 
                      settings.height === 'full' ? 'h-screen' : 'h-[60vh]';
+
+  // Image fit (object-fit)
+  const imageFit = settings.image_fit || 'cover';
+  
+  // Image position (object-position)
+  const imagePosition = settings.image_position || 'center';
+
+  // Content position - vertical
+  const getVerticalPositionClass = () => {
+    switch (settings.content_position_vertical) {
+      case 'top': return 'items-start pt-16';
+      case 'bottom': return 'items-end pb-16';
+      case 'center':
+      default: return 'items-center';
+    }
+  };
+
+  // Content position - horizontal
+  const getHorizontalPositionClass = () => {
+    switch (settings.content_position_horizontal) {
+      case 'left': return 'justify-start';
+      case 'right': return 'justify-end';
+      case 'center':
+      default: return 'justify-center';
+    }
+  };
+
+  // Text alignment
+  const getTextAlignClass = () => {
+    switch (settings.text_align) {
+      case 'left': return 'text-left items-start';
+      case 'right': return 'text-right items-end';
+      case 'center':
+      default: return 'text-center items-center';
+    }
+  };
 
   return (
     <div className={`relative w-full overflow-hidden group ${heightClass}`}>
@@ -51,14 +88,30 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
         className="absolute inset-0 flex transition-transform duration-500 ease-in-out h-full"
         style={{ transform: `translateX(-${currentSlide * 100}%)`, direction: 'ltr' }}
       >
-        {slides.map((slide, index) => (
+        {slides.map((slide, index) => {
+          const desktopImage = slide.content?.image_url;
+          const mobileImage = slide.content?.image_url_mobile || desktopImage;
+          const hasImage = desktopImage || mobileImage;
+
+          return (
           <div key={slide.id} className="relative min-w-full h-full">
-            {slide.content?.image_url ? (
-              <img 
-                src={slide.content.image_url} 
-                alt={slide.content.alt_text || ''} 
-                className="w-full h-full object-cover"
-              />
+            {hasImage ? (
+              <picture className="w-full h-full block">
+                {/* Mobile image (up to 768px) */}
+                {mobileImage && (
+                  <source media="(max-width: 768px)" srcSet={mobileImage} />
+                )}
+                {/* Desktop image */}
+                <img 
+                  src={desktopImage || mobileImage} 
+                  alt={slide.content?.alt_text || ''} 
+                  className="w-full h-full"
+                  style={{ 
+                    objectFit: imageFit as 'cover' | 'contain' | 'fill',
+                    objectPosition: imagePosition
+                  }}
+                />
+              </picture>
             ) : (
               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-400">תמונה חסרה</span>
@@ -69,8 +122,8 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
             <div className="absolute inset-0 bg-black/30" />
 
             {/* Content */}
-            <div className="absolute inset-0 flex items-center justify-center text-center px-4">
-              <div className="max-w-4xl space-y-6">
+            <div className={`absolute inset-0 flex ${getVerticalPositionClass()} ${getHorizontalPositionClass()} px-8`}>
+              <div className={`max-w-4xl space-y-6 flex flex-col ${getTextAlignClass()}`}>
                 {slide.content?.heading && (
                   <h2 className="text-4xl md:text-6xl font-bold text-white drop-shadow-md">
                     {slide.content.heading}
@@ -92,7 +145,7 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
               </div>
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Navigation Arrows */}
