@@ -49,7 +49,7 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
       {/* Slides */}
       <div 
         className="absolute inset-0 flex transition-transform duration-500 ease-in-out h-full"
-        style={{ transform: `translateX(${currentSlide * 100}%)`, direction: 'ltr' }} // Force LTR for transform logic to be simple
+        style={{ transform: `translateX(-${currentSlide * 100}%)`, direction: 'ltr' }}
       >
         {slides.map((slide, index) => (
           <div key={slide.id} className="relative min-w-full h-full">
