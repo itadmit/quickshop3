@@ -18,6 +18,11 @@ import { RichText } from '@/app/customize/components/sections/RichText';
 import { Newsletter } from '@/app/customize/components/sections/Newsletter';
 import { Gallery } from '@/app/customize/components/sections/Gallery';
 import { Footer } from '@/app/customize/components/sections/Footer';
+import { Slideshow } from '@/app/customize/components/sections/Slideshow';
+import { Testimonials } from '@/app/customize/components/sections/Testimonials';
+import { FAQ } from '@/app/customize/components/sections/FAQ';
+import { VideoSection } from '@/app/customize/components/sections/VideoSection';
+import { ContactForm } from '@/app/customize/components/sections/ContactForm';
 // Unified Header for storefront with real SideCart
 import { UnifiedHeader } from './UnifiedHeader';
 import { useStoreId } from '@/hooks/useStoreId';
@@ -180,6 +185,41 @@ export function StorefrontSectionRenderer({ section }: StorefrontSectionRenderer
       return (
         <SectionWrapper>
           <Gallery section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'slideshow':
+      return (
+        <SectionWrapper>
+          <Slideshow section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'testimonials':
+      return (
+        <SectionWrapper>
+          <Testimonials section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'faq':
+      return (
+        <SectionWrapper>
+          <FAQ section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'video':
+      return (
+        <SectionWrapper>
+          <VideoSection section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'contact_form':
+      return (
+        <SectionWrapper>
+          <ContactForm section={responsiveSection} onUpdate={noopUpdate} />
         </SectionWrapper>
       );
 

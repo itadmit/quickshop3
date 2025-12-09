@@ -11,9 +11,10 @@ interface HeaderProps {
   onPublish: () => void;
   device: DeviceType;
   onDeviceChange: (device: DeviceType) => void;
+  isPublishing?: boolean;
 }
 
-export function Header({ onPreview, onPublish, device, onDeviceChange }: HeaderProps) {
+export function Header({ onPreview, onPublish, device, onDeviceChange, isPublishing = false }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10 relative">
       <div className="flex items-center gap-3">
@@ -82,10 +83,25 @@ export function Header({ onPreview, onPublish, device, onDeviceChange }: HeaderP
 
         <button
           onClick={onPublish}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+          disabled={isPublishing}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-sm min-w-[100px] justify-center",
+            isPublishing 
+              ? "bg-gray-400 cursor-not-allowed" 
+              : "bg-gray-900 hover:bg-gray-800"
+          )}
         >
-          <HiUpload className="w-4 h-4" />
-          <span>פרסם</span>
+          {isPublishing ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>שומר...</span>
+            </>
+          ) : (
+            <>
+              <HiUpload className="w-4 h-4" />
+              <span>פרסם</span>
+            </>
+          )}
         </button>
       </div>
     </header>

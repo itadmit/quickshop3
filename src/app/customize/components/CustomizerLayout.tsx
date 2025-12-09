@@ -9,6 +9,32 @@ import { ElementsSidebar } from './ElementsSidebar';
 import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
 import { EditorState, SectionSettings } from '@/lib/customizer/types';
 import { getSectionName } from '@/lib/customizer/sectionNames';
+import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
+
+// Toast Component
+function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 2000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
+        type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+      }`}>
+        {type === 'success' ? (
+          <HiCheckCircle className="w-5 h-5 text-green-500" />
+        ) : (
+          <HiXCircle className="w-5 h-5 text-red-500" />
+        )}
+        <span className={`text-sm font-medium ${type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+          {message}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function CustomizerLayout() {
   const [editorState, setEditorState] = useState<EditorState>({
@@ -22,6 +48,8 @@ export function CustomizerLayout() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Load initial page data
   useEffect(() => {
@@ -602,44 +630,59 @@ export function CustomizerLayout() {
     );
   }
 
+  const handlePublish = useCallback(async () => {
+    setIsPublishing(true);
+    try {
+      const response = await fetch('/api/customizer/pages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pageType: 'home',
+          sections: pageSections,
+          isPublished: true
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setToast({ message: 'השינויים פורסמו בהצלחה!', type: 'success' });
+      } else {
+        setToast({ message: 'שגיאה בפרסום: ' + result.error, type: 'error' });
+      }
+    } catch (error) {
+      console.error('Error publishing:', error);
+      setToast({ message: 'שגיאה בפרסום', type: 'error' });
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [pageSections]);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50" dir="rtl">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+
       {/* Header */}
       <Header
         onPreview={() => {
           if (storeSlug) {
             window.open(`/shops/${storeSlug}`, '_blank');
           } else {
-            alert('לא נמצא slug של החנות');
+            setToast({ message: 'לא נמצא slug של החנות', type: 'error' });
           }
         }}
-        onPublish={async () => {
-          try {
-            const response = await fetch('/api/customizer/pages', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                pageType: 'home',
-                sections: pageSections,
-                isPublished: true
-              }),
-            });
-
-            const result = await response.json();
-            if (result.success) {
-              alert('השינויים נשמרו ופורסמו בהצלחה!');
-            } else {
-              alert('שגיאה בפרסום: ' + result.error);
-            }
-          } catch (error) {
-            console.error('Error publishing:', error);
-            alert('שגיאה בפרסום');
-          }
-        }}
+        onPublish={handlePublish}
         device={editorState.device}
         onDeviceChange={handleDeviceChange}
+        isPublishing={isPublishing}
       />
 
       {/* Main Content */}
