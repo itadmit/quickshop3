@@ -1571,10 +1571,27 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'קונטיינר (מרכז)', value: 'container' },
                             { label: 'רוחב מלא', value: 'full' },
                         ])}
-                        {renderInput('לוגואים בשורה (מחשב)', 'items_per_row_desktop', '6', 'number')}
-                        {renderInput('לוגואים בשורה (מובייל)', 'items_per_row_mobile', '2', 'number')}
-                        {renderInput('רוחב לוגו (px)', 'logo_width', '150', 'number')}
-                        {renderInput('גובה מקסימלי (px)', 'logo_height', '80', 'number')}
+                        {renderSelect('לוגואים בשורה (מחשב)', 'items_per_row_desktop', [
+                            { label: '1', value: 1 },
+                            { label: '2', value: 2 },
+                            { label: '3', value: 3 },
+                            { label: '4', value: 4 },
+                            { label: '5', value: 5 },
+                            { label: '6', value: 6 },
+                            { label: '7', value: 7 },
+                            { label: '8', value: 8 },
+                            { label: '9', value: 9 },
+                            { label: '10', value: 10 },
+                            { label: '11', value: 11 },
+                            { label: '12', value: 12 },
+                        ])}
+                        {renderSelect('לוגואים בשורה (מובייל)', 'items_per_row_mobile', [
+                            { label: '1', value: 1 },
+                            { label: '2', value: 2 },
+                            { label: '3', value: 3 },
+                            { label: '4', value: 4 },
+                        ])}
+                        {renderInput('גובה לוגו (px)', 'logo_height', '80', 'number')}
                         {renderSelect('אפקט גווני אפור', 'grayscale_enabled', [
                             { label: 'מופעל (צבע בהובר)', value: true },
                             { label: 'כבוי', value: false },

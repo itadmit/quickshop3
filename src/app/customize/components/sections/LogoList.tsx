@@ -27,21 +27,15 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
     };
   };
 
-  // Mobile: horizontal scroll
-  const getMobileItemWidth = () => {
-    const itemsPerRow = settings.items_per_row_mobile || 2;
-    return `${100 / itemsPerRow}%`;
-  };
-
-  // Logo width
-  const getLogoWidth = () => {
-    const width = settings.logo_width || 150;
-    return `${width}px`;
-  };
-
-  // Logo height
+  // Logo height - scales based on number of items
   const getLogoHeight = () => {
-    return settings.logo_height || 80;
+    const baseHeight = settings.logo_height || 80;
+    const cols = settings.items_per_row_desktop || 6;
+    // If more than 6 items, reduce height proportionally
+    if (cols > 6) {
+      return Math.round(baseHeight * (6 / cols));
+    }
+    return baseHeight;
   };
 
   // Grayscale effect
@@ -92,19 +86,19 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
               href={logo.content?.link_url || '#'}
               target={logo.content?.link_url ? '_blank' : undefined}
               rel={logo.content?.link_url ? 'noopener noreferrer' : undefined}
-              className={`transition-all duration-300 ${getGrayscaleClass()} hover:scale-110 w-full flex items-center justify-center`}
+              className={`transition-all duration-300 ${getGrayscaleClass()} hover:scale-105 w-full flex items-center justify-center p-2`}
             >
               {logo.content?.image_url ? (
                 <img
                   src={logo.content.image_url}
                   alt={logo.content.title || 'לוגו'}
                   className="w-full h-auto object-contain"
-                  style={{ maxHeight: `${getLogoHeight()}px`, maxWidth: `${settings.logo_width || 150}px` }}
+                  style={{ maxHeight: `${getLogoHeight()}px` }}
                 />
               ) : (
                 <div 
-                  className="bg-gray-200 rounded-md"
-                  style={{ height: `${getLogoHeight()}px`, width: `${Math.min(settings.logo_width || 150, 100)}px` }}
+                  className="bg-gray-200 rounded-md w-full"
+                  style={{ height: `${getLogoHeight()}px` }}
                 />
               )}
             </a>
@@ -113,7 +107,7 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
 
         {/* Mobile Horizontal Scroll */}
         <div className="md:hidden overflow-x-auto scrollbar-hide -mx-4">
-          <div className="flex gap-6 px-4 py-2" style={{ width: 'max-content' }}>
+          <div className="flex gap-4 px-4 py-2" style={{ width: 'max-content' }}>
             {logos.map((logo) => (
               <a
                 key={logo.id}
@@ -121,23 +115,20 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
                 target={logo.content?.link_url ? '_blank' : undefined}
                 rel={logo.content?.link_url ? 'noopener noreferrer' : undefined}
                 className={`flex-shrink-0 transition-all duration-300 ${getGrayscaleClass()}`}
-                style={{ width: getMobileItemWidth(), maxWidth: getLogoWidth() }}
+                style={{ width: `${100 / (settings.items_per_row_mobile || 2)}vw`, maxWidth: '150px' }}
               >
                 {logo.content?.image_url ? (
                   <img
                     src={logo.content.image_url}
                     alt={logo.content.title || 'לוגו'}
                     className="w-full h-auto object-contain"
-                    style={{ maxHeight: `${getLogoHeight()}px` }}
+                    style={{ maxHeight: `${settings.logo_height || 60}px` }}
                   />
                 ) : (
                   <div 
                     className="w-full bg-gray-200 rounded-md"
-                    style={{ height: `${getLogoHeight()}px` }}
+                    style={{ height: `${settings.logo_height || 60}px` }}
                   />
-                )}
-                {logo.content?.title && (
-                  <p className="text-center text-xs mt-2 text-gray-600">{logo.content.title}</p>
                 )}
               </a>
             ))}
