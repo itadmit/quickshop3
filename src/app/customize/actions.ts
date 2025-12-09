@@ -367,6 +367,22 @@ export async function addSection(data: AddSectionRequest) {
 
     const sectionId = `section_${Date.now()}`;
 
+    // הגדרות ברירת מחדל לפי סוג הסקשן
+    let defaultSettings = data.settings_json || {};
+    
+    if (data.section_type === 'logo_list') {
+      defaultSettings = {
+        heading: 'המותגים שלנו',
+        subheading: 'אנחנו עובדים עם המותגים המובילים בעולם',
+        items_per_row_desktop: 4,
+        items_per_row_mobile: 2,
+        logo_width: 150,
+        logo_height: 80,
+        grayscale_enabled: false,
+        ...defaultSettings
+      };
+    }
+
     // הוסף סקשן
     const sectionResult = await query(
       `
@@ -382,7 +398,7 @@ export async function addSection(data: AddSectionRequest) {
         data.section_type,
         sectionId,
         data.position,
-        JSON.stringify(data.settings_json || {}),
+        JSON.stringify(defaultSettings),
       ]
     );
 
