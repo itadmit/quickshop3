@@ -1567,6 +1567,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
                 <SettingGroup title="פריסה">
                     <div className="space-y-4">
+                        {renderSelect('רוחב סקשן', 'section_width', [
+                            { label: 'קונטיינר (מרכז)', value: 'container' },
+                            { label: 'רוחב מלא', value: 'full' },
+                        ])}
                         {renderInput('לוגואים בשורה (מחשב)', 'items_per_row_desktop', '6', 'number')}
                         {renderInput('לוגואים בשורה (מובייל)', 'items_per_row_mobile', '2', 'number')}
                         {renderInput('רוחב לוגו (px)', 'logo_width', '150', 'number')}
