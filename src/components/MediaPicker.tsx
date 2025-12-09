@@ -30,6 +30,7 @@ interface MediaPickerProps {
   entityId?: string;
   multiple?: boolean;
   title?: string;
+  accept?: 'image' | 'video' | 'all';
 }
 
 // Constant empty array for default prop to avoid infinite loop in useEffect
@@ -45,7 +46,26 @@ export function MediaPicker({
   entityId,
   multiple = true,
   title = 'בחר תמונות',
+  accept = 'all',
 }: MediaPickerProps) {
+  // Determine the accept attribute for the file input
+  const getAcceptAttribute = () => {
+    switch (accept) {
+      case 'image':
+        return 'image/*';
+      case 'video':
+        return 'video/*';
+      case 'all':
+      default:
+        return 'image/*,video/*';
+    }
+  };
+
+  // Check if a file is a video
+  const isVideo = (file: MediaFile) => {
+    return file.mimeType?.startsWith('video/') || 
+           file.path.match(/\.(mp4|webm|ogg|mov|avi)$/i);
+  };
   const { toast } = useOptimisticToast();
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,6 +123,13 @@ export function MediaPicker({
 
       if (searchQuery) {
         params.append('search', searchQuery);
+      }
+
+      // Filter by file type
+      if (accept === 'image') {
+        params.append('type', 'image');
+      } else if (accept === 'video') {
+        params.append('type', 'video');
       }
 
       const response = await fetch(`/api/files?${params}`);
@@ -209,16 +236,29 @@ export function MediaPicker({
           description: `${uploadedFiles.length} תמונות הועלו בהצלחה${errors.length > 0 ? `, ${errors.length} נכשלו` : ''}`,
         });
         setFiles((prev) => [
-          ...uploadedFiles.map((path: string) => ({
-            id: `new-${Date.now()}-${Math.random()}`,
-            name: path.split('/').pop() || 'תמונה',
-            path,
-            size: 0,
-            mimeType: 'image/jpeg',
-            createdAt: new Date().toISOString(),
-            entityType: entityType || null,
-            entityId: entityId || null,
-          })),
+          ...uploadedFiles.map((path: string) => {
+            // Determine mimeType based on file extension
+            const ext = path.split('.').pop()?.toLowerCase();
+            let mimeType = 'image/jpeg';
+            if (ext === 'mp4') mimeType = 'video/mp4';
+            else if (ext === 'webm') mimeType = 'video/webm';
+            else if (ext === 'mov') mimeType = 'video/quicktime';
+            else if (ext === 'avi') mimeType = 'video/x-msvideo';
+            else if (ext === 'png') mimeType = 'image/png';
+            else if (ext === 'gif') mimeType = 'image/gif';
+            else if (ext === 'webp') mimeType = 'image/webp';
+            
+            return {
+              id: `new-${Date.now()}-${Math.random()}`,
+              name: path.split('/').pop() || 'קובץ',
+              path,
+              size: 0,
+              mimeType,
+              createdAt: new Date().toISOString(),
+              entityType: entityType || null,
+              entityId: entityId || null,
+            };
+          }),
           ...prev,
         ]);
         
@@ -396,7 +436,7 @@ export function MediaPicker({
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept={getAcceptAttribute()}
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -557,12 +597,30 @@ export function MediaPicker({
                        
                        <div className="w-full h-full p-1.5">
                            <div className="w-full h-full relative rounded-sm overflow-hidden bg-gray-50">
-                                <img
+                                {isVideo(file) ? (
+                                  <div className="relative w-full h-full">
+                                    <video
+                                      src={file.path}
+                                      className="w-full h-full object-cover"
+                                      muted
+                                      preload="metadata"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                      <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                        <svg className="w-5 h-5 text-gray-700 mr-[-2px]" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M8 5v14l11-7z" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <img
                                     src={file.path}
                                     alt={file.name}
                                     className="w-full h-full object-cover"
                                     loading="lazy"
-                                />
+                                  />
+                                )}
                            </div>
                        </div>
 

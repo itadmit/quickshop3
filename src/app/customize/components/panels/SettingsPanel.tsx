@@ -1774,6 +1774,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         shopId={storeId || undefined}
         title={mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') : 'בחר וידאו'}
         multiple={section.type === 'gallery'}
+        accept={mediaType}
       />
     </div>
   );

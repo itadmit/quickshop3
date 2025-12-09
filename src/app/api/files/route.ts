@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search');
+    const type = searchParams.get('type'); // 'image' or 'video'
 
     if (!shopId) {
       return NextResponse.json(
@@ -35,6 +36,13 @@ export async function GET(request: NextRequest) {
       query += ` AND name ILIKE $${params.length + 1}`;
       params.push(`%${search}%`);
     }
+
+    // Filter by file type
+    if (type === 'image') {
+      query += ` AND (mime_type LIKE 'image/%' OR path ~* '\\.(jpg|jpeg|png|gif|webp|svg)$')`;
+    } else if (type === 'video') {
+      query += ` AND (mime_type LIKE 'video/%' OR path ~* '\\.(mp4|webm|ogg|mov|avi)$')`;
+    }
     
     query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
@@ -46,8 +54,14 @@ export async function GET(request: NextRequest) {
     const countParams: any[] = [shopId];
     
     if (search) {
-      countQuery += ' AND name ILIKE $2';
+      countQuery += ` AND name ILIKE $${countParams.length + 1}`;
       countParams.push(`%${search}%`);
+    }
+
+    if (type === 'image') {
+      countQuery += ` AND (mime_type LIKE 'image/%' OR path ~* '\\.(jpg|jpeg|png|gif|webp|svg)$')`;
+    } else if (type === 'video') {
+      countQuery += ` AND (mime_type LIKE 'video/%' OR path ~* '\\.(mp4|webm|ogg|mov|avi)$')`;
     }
     
     const countResult = await pool.query(countQuery, countParams);
