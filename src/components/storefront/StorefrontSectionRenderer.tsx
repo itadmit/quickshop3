@@ -23,6 +23,7 @@ import { Testimonials } from '@/app/customize/components/sections/Testimonials';
 import { FAQ } from '@/app/customize/components/sections/FAQ';
 import { VideoSection } from '@/app/customize/components/sections/VideoSection';
 import { ContactForm } from '@/app/customize/components/sections/ContactForm';
+import { LogoList } from '@/app/customize/components/sections/LogoList';
 // Unified Header for storefront with real SideCart
 import { UnifiedHeader } from './UnifiedHeader';
 import { useStoreId } from '@/hooks/useStoreId';
@@ -220,6 +221,13 @@ export function StorefrontSectionRenderer({ section }: StorefrontSectionRenderer
       return (
         <SectionWrapper>
           <ContactForm section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'logo_list':
+      return (
+        <SectionWrapper>
+          <LogoList section={responsiveSection} onUpdate={noopUpdate} />
         </SectionWrapper>
       );
 

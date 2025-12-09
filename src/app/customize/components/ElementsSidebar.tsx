@@ -119,6 +119,13 @@ const AVAILABLE_SECTIONS: Array<{
     category: 'content'
   },
   {
+    type: 'logo_list',
+    name: 'רשימת לוגואים',
+    description: 'הצגת לוגואי מותגים',
+    icon: HiPhotograph,
+    category: 'content'
+  },
+  {
     type: 'testimonials',
     name: 'המלצות',
     description: 'חוות דעת של לקוחות',

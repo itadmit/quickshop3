@@ -67,6 +67,7 @@ const AVAILABLE_SECTIONS: Array<{
   { type: 'video', name: 'וידאו', description: 'וידאו', icon: HiVideoCamera, category: 'Content' },
   { type: 'testimonials', name: 'ביקורות', description: 'ביקורות לקוחות', icon: HiChatAlt, category: 'Content' },
   { type: 'faq', name: 'שאלות נפוצות', description: 'שאלות נפוצות', icon: HiQuestionMarkCircle, category: 'Content' },
+  { type: 'logo_list', name: 'רשימת לוגואים', description: 'הצגת לוגואי מותגים', icon: HiPhotograph, category: 'Content' },
   
   // Marketing
   { type: 'newsletter', name: 'הרשמה לניוזלטר', description: 'הרשמה לניוזלטר', icon: HiMail, category: 'Marketing' },

@@ -5,6 +5,7 @@ import { SectionSettings } from '@/lib/customizer/types';
 import { SettingGroup } from '../ui/SettingGroup';
 import { SettingInput } from '../ui/SettingInput';
 import { SettingSelect } from '../ui/SettingSelect';
+import { ModernColorPicker } from '../SettingsUI';
 import { MediaPicker } from '@/components/MediaPicker';
 import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
@@ -169,22 +170,35 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
     </div>
   );
 
-   const renderSelect = (label: string, key: string, options: { label: string; value: any }[]) => {
-     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-       const selectedOption = options.find(opt => String(opt.value) === e.target.value);
-       const value = selectedOption ? selectedOption.value : e.target.value;
-       handleSettingChange(key, value);
-     };
-     
-     return (
-       <div className="relative">
-          <SettingSelect
-             label={label}
-             value={String(getValue(key) ?? '')}
-             onChange={handleChange}
-             options={options}
-           />
-           {isOverridden(key) && (
+  const renderColorPicker = (label: string, key: string) => (
+    <div className="relative">
+       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+       <ModernColorPicker
+          value={getValue(key) || '#000000'}
+          onChange={(value) => handleSettingChange(key, value)}
+        />
+        {isOverridden(key) && (
+          <div className="absolute top-0 left-0 w-2 h-2 bg-green-500 rounded-full" title="מוגדר ספציפית למכשיר זה" />
+        )}
+    </div>
+  );
+
+  const renderSelect = (label: string, key: string, options: { label: string; value: any }[]) => {
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedOption = options.find(opt => String(opt.value) === e.target.value);
+      const value = selectedOption ? selectedOption.value : e.target.value;
+      handleSettingChange(key, value);
+    };
+    
+    return (
+      <div className="relative">
+         <SettingSelect
+            label={label}
+            value={String(getValue(key) ?? '')}
+            onChange={handleChange}
+            options={options}
+          />
+          {isOverridden(key) && (
              <div className="absolute top-0 left-0 w-2 h-2 bg-green-500 rounded-full" title="מוגדר ספציפית למכשיר זה" />
            )}
        </div>
@@ -1495,6 +1509,161 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         {renderInput('כותרת', 'title', 'צור קשר')}
                         {renderInput('תת כותרת', 'subtitle', 'נשמח לשמוע מכם')}
                         {renderInput('טקסט כפתור שליחה', 'submit_text', 'שלח הודעה')}
+                    </div>
+                </SettingGroup>
+            </div>
+          );
+
+      case 'logo_list':
+          const logoBlocks = section.blocks?.filter(b => b.type === 'image') || [];
+          
+          const addLogo = (imageUrl?: string) => {
+              const newBlock = {
+                  id: `logo-${Date.now()}`,
+                  type: 'image' as const,
+                  content: {
+                      image_url: imageUrl || '',
+                      title: '',
+                      description: '',
+                      link_url: ''
+                  },
+                  style: {},
+                  settings: {}
+              };
+              onUpdate({
+                  blocks: [...(section.blocks || []), newBlock]
+              });
+          };
+          
+          const removeLogo = (blockId: string) => {
+              const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+              onUpdate({ blocks: newBlocks });
+          };
+
+          const updateLogo = (blockId: string, updates: any) => {
+             const newBlocks = [...(section.blocks || [])];
+             const index = newBlocks.findIndex(b => b.id === blockId);
+             if (index >= 0) {
+                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 onUpdate({ blocks: newBlocks });
+             }
+          };
+
+          const openLogoImagePicker = (logoId: string) => {
+              setMediaType('image');
+              setTargetBlockId(logoId);
+              setImageDeviceTarget('desktop');
+              setIsMediaPickerOpen(true);
+          };
+
+          return (
+            <div className="space-y-1">
+                <SettingGroup title="כותרות">
+                    <div className="space-y-4">
+                        {renderInput('כותרת ראשית', 'heading', 'המותגים שלנו')}
+                        {renderInput('תת כותרת', 'subheading', 'אנחנו עובדים עם המותגים המובילים בעולם')}
+                        {renderColorPicker('צבע כותרת', 'heading_color')}
+                        {renderColorPicker('צבע תת כותרת', 'subheading_color')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="פריסה">
+                    <div className="space-y-4">
+                        {renderInput('לוגואים בשורה (מחשב)', 'items_per_row_desktop', '6', 'number')}
+                        {renderInput('לוגואים בשורה (מובייל)', 'items_per_row_mobile', '2', 'number')}
+                        {renderInput('רוחב לוגו (px)', 'logo_width', '150', 'number')}
+                        {renderInput('גובה מקסימלי (px)', 'logo_height', '80', 'number')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="עיצוב לוגואים">
+                    <div className="space-y-4">
+                        {renderSelect('אפקט גווני אפור', 'grayscale_enabled', [
+                            { label: 'מופעל (צבע בהובר)', value: true },
+                            { label: 'כבוי', value: false },
+                        ])}
+                        {renderInput('מרווח בין לוגואים (px)', 'gap', '32', 'number')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="כפתור פעולה">
+                    <div className="space-y-4">
+                        {renderInput('טקסט כפתור', 'button_text', 'כל המותגים')}
+                        {renderInput('קישור כפתור', 'button_url', '#', 'text', undefined, 'ltr')}
+                        {renderColorPicker('צבע רקע כפתור', 'button_background')}
+                        {renderColorPicker('צבע טקסט כפתור', 'button_text_color')}
+                        {renderInput('עיגול פינות (px)', 'button_border_radius', '6', 'number')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="לוגואים">
+                    <div className="space-y-4">
+                        <button
+                            onClick={() => addLogo()}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                        >
+                            <HiPlus className="w-5 h-5" />
+                            הוסף לוגו
+                        </button>
+
+                        <div className="space-y-3">
+                            {logoBlocks.map((logo, index) => (
+                                <div key={logo.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="font-medium text-sm">לוגו {index + 1}</div>
+                                        <button onClick={() => removeLogo(logo.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
+                                            <HiTrash className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Logo Image */}
+                                    <div className="mb-3">
+                                        {logo.content?.image_url ? (
+                                            <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden bg-white p-4" style={{ height: '100px' }}>
+                                                <img src={logo.content.image_url} className="w-full h-full object-contain" />
+                                                <button
+                                                    onClick={() => openLogoImagePicker(logo.id)}
+                                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                >
+                                                    <HiRefresh className="w-5 h-5 text-white" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => openLogoImagePicker(logo.id)}
+                                                className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all flex items-center justify-center"
+                                                style={{ height: '100px' }}
+                                            >
+                                                <HiPhotograph className="w-8 h-8 text-gray-400" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <input 
+                                            className="w-full text-xs p-2 border rounded" 
+                                            placeholder="כותרת (אופציונלי)"
+                                            value={logo.content?.title || ''}
+                                            onChange={(e) => updateLogo(logo.id, { title: e.target.value })}
+                                        />
+                                        <textarea 
+                                            className="w-full text-xs p-2 border rounded" 
+                                            placeholder="תוכן (אופציונלי)"
+                                            rows={2}
+                                            value={logo.content?.description || ''}
+                                            onChange={(e) => updateLogo(logo.id, { description: e.target.value })}
+                                        />
+                                        <input 
+                                            className="w-full text-xs p-2 border rounded" 
+                                            placeholder="קישור (אופציונלי)"
+                                            dir="ltr"
+                                            value={logo.content?.link_url || ''}
+                                            onChange={(e) => updateLogo(logo.id, { link_url: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </SettingGroup>
             </div>

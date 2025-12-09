@@ -20,6 +20,7 @@ import { Testimonials } from './Testimonials';
 import { FAQ } from './FAQ';
 import { VideoSection } from './VideoSection';
 import { ContactForm } from './ContactForm';
+import { LogoList } from './LogoList';
 
 interface SectionRendererProps {
   section: SectionSettings;
@@ -201,6 +202,13 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
       return (
         <SectionWrapper>
           <ContactForm section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'logo_list':
+      return (
+        <SectionWrapper>
+          <LogoList section={responsiveSection} onUpdate={onUpdate} />
         </SectionWrapper>
       );
 
