@@ -1,20 +1,19 @@
 'use client';
 
 import React from 'react';
-import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiSave, HiUpload } from 'react-icons/hi';
+import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiUpload } from 'react-icons/hi';
 import { cn } from '@/lib/utils';
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
 interface HeaderProps {
-  onSave: () => void;
   onPreview: () => void;
   onPublish: () => void;
   device: DeviceType;
   onDeviceChange: (device: DeviceType) => void;
 }
 
-export function Header({ onSave, onPreview, onPublish, device, onDeviceChange }: HeaderProps) {
+export function Header({ onPreview, onPublish, device, onDeviceChange }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10 relative">
       <div className="flex items-center gap-3">
@@ -78,15 +77,7 @@ export function Header({ onSave, onPreview, onPublish, device, onDeviceChange }:
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
         >
           <HiEye className="w-4 h-4" />
-          <span className="hidden sm:inline">תצוגה</span>
-        </button>
-
-        <button
-          onClick={onSave}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
-        >
-          <HiSave className="w-4 h-4" />
-          <span className="hidden sm:inline">שמור</span>
+          <span className="hidden sm:inline">תצוגה מקדימה</span>
         </button>
 
         <button

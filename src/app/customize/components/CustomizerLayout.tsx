@@ -591,32 +591,6 @@ export function CustomizerLayout() {
     });
   }, []);
 
-  const handleSave = useCallback(async () => {
-    try {
-      const response = await fetch('/api/customizer/pages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          pageType: 'home',
-          sections: pageSections,
-          isPublished: false
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        alert('השינויים נשמרו בהצלחה!');
-      } else {
-        alert('שגיאה בשמירה: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error saving:', error);
-      alert('שגיאה בשמירה');
-    }
-  }, [pageSections]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -632,7 +606,6 @@ export function CustomizerLayout() {
     <div className="h-screen flex flex-col bg-gray-50" dir="rtl">
       {/* Header */}
       <Header
-        onSave={handleSave}
         onPreview={() => {
           if (storeSlug) {
             window.open(`/shops/${storeSlug}`, '_blank');
@@ -656,7 +629,7 @@ export function CustomizerLayout() {
 
             const result = await response.json();
             if (result.success) {
-              alert('העמוד פורסם בהצלחה!');
+              alert('השינויים נשמרו ופורסמו בהצלחה!');
             } else {
               alert('שגיאה בפרסום: ' + result.error);
             }

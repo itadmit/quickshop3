@@ -1039,12 +1039,13 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       case 'slideshow':
           const slides = section.blocks?.filter(b => b.type === 'image') || [];
           
-          const addSlide = (imageUrl: string) => {
+          // Add a new slide with optional image
+          const addSlide = (imageUrl?: string) => {
               const newBlock = {
                   id: `slide-${Date.now()}`,
                   type: 'image' as const,
                   content: {
-                      image_url: imageUrl,
+                      image_url: imageUrl || '',
                       heading: 'כותרת חדשה',
                       subheading: 'תת כותרת',
                       button_text: 'כפתור',
@@ -1072,6 +1073,14 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
              }
           };
 
+          // Open media picker for specific slide image
+          const openSlideImagePicker = (slideId: string) => {
+              setMediaType('image');
+              setTargetBlockId(slideId);
+              setImageDeviceTarget('desktop');
+              setIsMediaPickerOpen(true);
+          };
+
           return (
             <div className="space-y-1">
                 <SettingGroup title="הגדרות מצגת">
@@ -1093,12 +1102,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 <SettingGroup title="שקופיות">
                     <div className="space-y-4">
                         <button
-                            onClick={() => {
-                                setMediaType('image');
-                                setTargetBlockId(null);
-                                setIsMediaPickerOpen(true);
-                                (window as any).__slideshowAddImage = addSlide;
-                            }}
+                            onClick={() => addSlide()}
                             className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
@@ -1109,11 +1113,23 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             {slides.map((slide, index) => (
                                 <div key={slide.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                                            {slide.content?.image_url && (
+                                        {/* Clickable image thumbnail */}
+                                        <button
+                                            onClick={() => openSlideImagePicker(slide.id)}
+                                            className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-blue-400 transition-all group relative"
+                                            title="לחץ להחלפת תמונה"
+                                        >
+                                            {slide.content?.image_url ? (
                                                 <img src={slide.content.image_url} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <HiPhotograph className="w-6 h-6 text-gray-400" />
+                                                </div>
                                             )}
-                                        </div>
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <HiRefresh className="w-4 h-4 text-white" />
+                                            </div>
+                                        </button>
                                         <div className="flex-1 font-medium text-sm">שקופית {index + 1}</div>
                                         <button onClick={() => removeSlide(slide.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
                                             <HiTrash className="w-4 h-4" />
