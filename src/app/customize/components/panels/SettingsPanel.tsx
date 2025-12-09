@@ -6,7 +6,7 @@ import { SettingGroup } from '../ui/SettingGroup';
 import { SettingInput } from '../ui/SettingInput';
 import { SettingSelect } from '../ui/SettingSelect';
 import { MediaPicker } from '@/components/MediaPicker';
-import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus } from 'react-icons/hi';
+import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
 
@@ -379,10 +379,76 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'hero_banner':
+        // Phone Mockup Component
+        const PhoneMockup = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
+          <div className="flex justify-center group">
+            <div className="relative">
+              {/* Phone frame */}
+              <div className="bg-gray-800 rounded-[1.5rem] p-1.5 shadow-lg" style={{ width: '90px' }}>
+                {/* Notch */}
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-2 bg-gray-900 rounded-full z-10" />
+                {/* Screen */}
+                <div className="bg-white rounded-[1.2rem] overflow-hidden" style={{ height: '130px' }}>
+                  {children}
+                </div>
+                {/* Home indicator */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-6 h-1 bg-gray-600 rounded-full" />
+              </div>
+              {/* Delete button */}
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 z-20"
+                  title="הסר"
+                >
+                  <HiTrash className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        );
+
+        // Desktop Mockup Component  
+        const DesktopMockup = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
+          <div className="flex justify-center group">
+            <div className="relative">
+              {/* Monitor frame */}
+              <div className="bg-gray-800 rounded-lg p-1 shadow-lg">
+                {/* Screen bezel */}
+                <div className="bg-gray-900 rounded p-0.5">
+                  {/* Screen */}
+                  <div className="bg-white rounded-sm overflow-hidden" style={{ width: '180px', height: '110px' }}>
+                    {children}
+                  </div>
+                </div>
+                {/* Bottom bezel */}
+                <div className="h-2 bg-gray-900 rounded-b flex items-center justify-center">
+                  <div className="w-1 h-1 bg-gray-700 rounded-full" />
+                </div>
+              </div>
+              {/* Stand */}
+              <div className="flex flex-col items-center">
+                <div className="w-4 h-2 bg-gray-700" />
+                <div className="w-10 h-1 bg-gray-600 rounded-b" />
+              </div>
+              {/* Delete button */}
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 z-20"
+                  title="הסר"
+                >
+                  <HiTrash className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        );
+
         return (
           <div className="space-y-1">
             {/* Mobile + Tablet Section */}
-            <SettingGroup title="📱 מובייל + טאבלט">
+            <SettingGroup title={<span className="flex items-center gap-2"><HiDeviceMobile className="w-4 h-4" /> מובייל + טאבלט</span>}>
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-2">
                         <button
@@ -411,46 +477,32 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </button>
                     </div>
 
-                    {/* Preview Mobile Image */}
+                    {/* Preview Mobile Image in Phone Mockup */}
                     {section.style?.background?.background_image_mobile && (
-                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-[9/16] max-w-[120px] mx-auto group">
+                        <PhoneMockup onDelete={() => handleStyleChange('background.background_image_mobile', '')}>
                             <img 
                                 src={section.style.background.background_image_mobile} 
                                 alt="Mobile Background" 
                                 className="w-full h-full object-cover"
                             />
-                            <button
-                                onClick={() => handleStyleChange('background.background_image_mobile', '')}
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="הסר תמונה"
-                            >
-                                <HiTrash className="w-3 h-3" />
-                            </button>
-                        </div>
+                        </PhoneMockup>
                     )}
 
-                    {/* Preview Mobile Video */}
+                    {/* Preview Mobile Video in Phone Mockup */}
                     {section.style?.background?.background_video_mobile && (
-                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-[9/16] max-w-[120px] mx-auto group">
+                        <PhoneMockup onDelete={() => handleStyleChange('background.background_video_mobile', '')}>
                             <video 
                                 src={section.style.background.background_video_mobile} 
                                 className="w-full h-full object-cover"
                                 autoPlay muted loop
                             />
-                            <button
-                                onClick={() => handleStyleChange('background.background_video_mobile', '')}
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="הסר סרטון"
-                            >
-                                <HiTrash className="w-3 h-3" />
-                            </button>
-                        </div>
+                        </PhoneMockup>
                     )}
                 </div>
             </SettingGroup>
 
             {/* Desktop Section */}
-            <SettingGroup title="🖥️ מחשב">
+            <SettingGroup title={<span className="flex items-center gap-2"><HiDesktopComputer className="w-4 h-4" /> מחשב</span>}>
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-2">
                         <button
@@ -479,40 +531,26 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </button>
                     </div>
 
-                    {/* Preview Desktop Image */}
+                    {/* Preview Desktop Image in Monitor Mockup */}
                     {section.style?.background?.background_image && (
-                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-video group">
+                        <DesktopMockup onDelete={() => handleStyleChange('background.background_image', '')}>
                             <img 
                                 src={section.style.background.background_image} 
                                 alt="Desktop Background" 
                                 className="w-full h-full object-cover"
                             />
-                            <button
-                                onClick={() => handleStyleChange('background.background_image', '')}
-                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="הסר תמונה"
-                            >
-                                <HiTrash className="w-4 h-4" />
-                            </button>
-                        </div>
+                        </DesktopMockup>
                     )}
 
-                    {/* Preview Desktop Video */}
+                    {/* Preview Desktop Video in Monitor Mockup */}
                     {section.style?.background?.background_video && (
-                        <div className="relative rounded-lg overflow-hidden border border-gray-200 aspect-video group">
+                        <DesktopMockup onDelete={() => handleStyleChange('background.background_video', '')}>
                             <video 
                                 src={section.style.background.background_video} 
                                 className="w-full h-full object-cover"
                                 autoPlay muted loop
                             />
-                            <button
-                                onClick={() => handleStyleChange('background.background_video', '')}
-                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="הסר סרטון"
-                            >
-                                <HiTrash className="w-4 h-4" />
-                            </button>
-                        </div>
+                        </DesktopMockup>
                     )}
 
                     {/* Image Settings */}
@@ -1135,7 +1173,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                     
                                     {/* Mobile + Desktop Images */}
                                     <div className="space-y-3 mb-3">
-                                        <div className="text-xs text-gray-500 font-medium">📱 מובייל + טאבלט</div>
+                                        <div className="text-xs text-gray-500 font-medium flex items-center gap-1"><HiDeviceMobile className="w-3 h-3" /> מובייל + טאבלט</div>
                                         <button
                                             onClick={() => {
                                                 setMediaType('image');
@@ -1161,10 +1199,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                             )}
                                         </button>
 
-                                        <div className="text-xs text-gray-500 font-medium">🖥️ מחשב</div>
+                                        <div className="text-xs text-gray-500 font-medium flex items-center gap-1"><HiDesktopComputer className="w-3 h-3" /> מחשב</div>
                                         <button
                                             onClick={() => openSlideImagePicker(slide.id)}
-                                            className="w-full h-20 bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 transition-all group relative flex items-center justify-center"
+                                            className="w-full h-16 bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 transition-all group relative flex items-center justify-center"
                                             title="לחץ להחלפת תמונת מחשב"
                                         >
                                             {slide.content?.image_url ? (
