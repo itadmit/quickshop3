@@ -3,6 +3,23 @@
 import React, { useState } from 'react';
 import { SectionSettings, SectionType } from '@/lib/customizer/types';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   HiPhotograph,
   HiCube,
   HiFolder,
@@ -150,6 +167,127 @@ const AVAILABLE_SECTIONS: Array<{
   }
 ];
 
+// Sortable Section Item Component
+interface SortableSectionItemProps {
+  section: SectionSettings;
+  isSelected: boolean;
+  isLocked: boolean;
+  onSelect: () => void;
+  onToggleVisibility: () => void;
+  onDelete: () => void;
+  getSectionIcon: (type: SectionType) => React.ComponentType<any>;
+}
+
+function SortableSectionItem({ 
+  section, 
+  isSelected, 
+  isLocked, 
+  onSelect, 
+  onToggleVisibility, 
+  onDelete,
+  getSectionIcon 
+}: SortableSectionItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: section.id,
+    disabled: isLocked 
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style as React.CSSProperties}
+      className={`group flex items-center justify-between p-3 cursor-pointer transition-all ${
+        isSelected
+          ? 'bg-blue-50 border-r-2 border-blue-600'
+          : 'hover:bg-gray-50 border-r-2 border-transparent'
+      } ${isLocked ? 'bg-gray-50/50' : ''} ${isDragging ? 'shadow-lg bg-white rounded-lg' : ''}`}
+      onClick={onSelect}
+    >
+      <div className="flex items-center gap-3 flex-1 overflow-hidden">
+        {/* Drag Handle - hidden for locked sections */}
+        {!isLocked && (
+          <div 
+            {...attributes}
+            {...listeners}
+            className="text-gray-300 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <HiDotsVertical className="w-4 h-4" />
+          </div>
+        )}
+        
+        <div className={`p-1.5 rounded-md ${
+          isSelected ? 'bg-blue-100 text-blue-600' : isLocked ? 'bg-gray-200 text-gray-600' : 'bg-gray-100 text-gray-500'
+        }`}>
+          {React.createElement(getSectionIcon(section.type), { className: "w-4 h-4" })}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`text-sm font-medium truncate ${
+              isSelected ? 'text-blue-900' : 'text-gray-700'
+            }`}>
+              {section.name}
+            </p>
+            {isLocked && (
+              <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded-full" title="סקשן קבוע">
+                קבוע
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 truncate hidden group-hover:block">
+            {AVAILABLE_SECTIONS.find(s => s.type === section.type)?.description || section.type}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Visibility Toggle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleVisibility();
+          }}
+          className={`p-1.5 rounded-md hover:bg-gray-200 ${
+            section.visible ? 'text-gray-600' : 'text-gray-400'
+          }`}
+          title={section.visible ? "הסתר" : "הצג"}
+        >
+          {section.visible ? <HiEye className="w-4 h-4" /> : <HiEyeOff className="w-4 h-4" />}
+        </button>
+
+        {/* Delete Button */}
+        {!isLocked && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+            title="מחק"
+          >
+            <HiTrash className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ElementsSidebar({
   sections,
   selectedSectionId,
@@ -161,6 +299,31 @@ export function ElementsSidebar({
 }: ElementsSidebarProps) {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryType>('media');
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = sections.findIndex(s => s.id === active.id);
+      const newIndex = sections.findIndex(s => s.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onSectionMove(active.id as string, newIndex);
+      }
+    }
+  };
 
   const handleSectionClick = (sectionId: string) => {
     onSectionSelect(selectedSectionId === sectionId ? null : sectionId);
@@ -190,90 +353,41 @@ export function ElementsSidebar({
         </button>
       </div>
 
-      {/* Sections List */}
+      {/* Sections List with Drag and Drop */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="divide-y divide-gray-50">
-          {sections.map((section, index) => {
-            const isLocked = section.locked || section.type === 'header' || section.type === 'footer';
-            
-            return (
-              <div
-                key={section.id}
-                className={`group flex items-center justify-between p-3 cursor-pointer transition-all ${
-                  selectedSectionId === section.id
-                    ? 'bg-blue-50 border-r-2 border-blue-600'
-                    : 'hover:bg-gray-50 border-r-2 border-transparent'
-                } ${isLocked ? 'bg-gray-50/50' : ''}`}
-                onClick={() => handleSectionClick(section.id)}
-              >
-                <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                   {/* Drag Handle - hidden for locked sections */}
-                   {!isLocked && (
-                     <div className="text-gray-300 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-                       <HiDotsVertical className="w-4 h-4" />
-                     </div>
-                   )}
-                   
-                  <div className={`p-1.5 rounded-md ${
-                    selectedSectionId === section.id ? 'bg-blue-100 text-blue-600' : isLocked ? 'bg-gray-200 text-gray-600' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {React.createElement(getSectionIcon(section.type), { className: "w-4 h-4" })}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`text-sm font-medium truncate ${
-                        selectedSectionId === section.id ? 'text-blue-900' : 'text-gray-700'
-                      }`}>
-                        {section.name}
-                      </p>
-                      {isLocked && (
-                        <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded-full" title="סקשן קבוע">
-                          קבוע
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 truncate hidden group-hover:block">
-                      {AVAILABLE_SECTIONS.find(s => s.type === section.type)?.description || section.type}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Visibility Toggle */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={sections.map(s => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="divide-y divide-gray-50">
+              {sections.map((section) => {
+                const isLocked = section.locked || section.type === 'header' || section.type === 'footer';
+                
+                return (
+                  <SortableSectionItem
+                    key={section.id}
+                    section={section}
+                    isSelected={selectedSectionId === section.id}
+                    isLocked={isLocked}
+                    onSelect={() => handleSectionClick(section.id)}
+                    onToggleVisibility={() => {
                       if (onSectionUpdate) {
                         onSectionUpdate(section.id, { visible: !section.visible });
                       }
                     }}
-                    className={`p-1.5 rounded-md hover:bg-gray-200 ${
-                      section.visible ? 'text-gray-600' : 'text-gray-400'
-                    }`}
-                    title={section.visible ? "הסתר" : "הצג"}
-                  >
-                    {section.visible ? <HiEye className="w-4 h-4" /> : <HiEyeOff className="w-4 h-4" />}
-                  </button>
-
-                  {/* Delete Button */}
-                  {!isLocked && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSectionDelete(section.id);
-                      }}
-                      className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-                      title="מחק"
-                    >
-                      <HiTrash className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    onDelete={() => onSectionDelete(section.id)}
+                    getSectionIcon={getSectionIcon}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Add Section Button */}
