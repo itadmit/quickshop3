@@ -506,6 +506,16 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     ])}
                 </div>
              </SettingGroup>
+             <SettingGroup title="קישור 'ראה עוד'">
+                <div className="space-y-4">
+                   {renderSelect('הצג קישור', 'show_view_all', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                   {renderInput('טקסט הקישור', 'view_all_text', 'לכל המוצרים')}
+                   {renderInput('כתובת הקישור', 'view_all_url', '/collections/all')}
+                </div>
+             </SettingGroup>
           </div>
         );
 
@@ -539,6 +549,16 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'מרכז', value: 'center' },
                             { label: 'שמאל', value: 'left' },
                         ])}
+                    </div>
+                </SettingGroup>
+                <SettingGroup title="קישור 'ראה עוד'">
+                    <div className="space-y-4">
+                       {renderSelect('הצג קישור', 'show_view_all', [
+                          { label: 'כן', value: true },
+                          { label: 'לא', value: false },
+                        ])}
+                       {renderInput('טקסט הקישור', 'view_all_text', 'לכל הקטגוריות')}
+                       {renderInput('כתובת הקישור', 'view_all_url', '/collections')}
                     </div>
                 </SettingGroup>
             </div>

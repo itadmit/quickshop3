@@ -162,6 +162,15 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
             value={getStyleValue('button.hover_text_color', '#FFFFFF')}
             onChange={(val) => handleStyleChange('button.hover_text_color', val)}
           />
+          <RangeSlider
+            label="רדיוס פינות כפתור"
+            value={parseInt(getStyleValue('button.border_radius', '8'))}
+            min={0}
+            max={50}
+            step={2}
+            unit="px"
+            onChange={(val) => handleStyleChange('button.border_radius', `${val}px`)}
+          />
         </div>
       </SettingGroup>
 

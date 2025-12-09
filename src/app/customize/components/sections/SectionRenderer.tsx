@@ -3,7 +3,7 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiCube } from 'react-icons/hi';
-import { DeviceType } from './Header'; // Import DeviceType
+import type { DeviceType } from './Header'; // Import DeviceType
 import { getResponsiveSettings, getResponsiveStyle } from '@/lib/customizer/utils'; // Import utils
 
 // Import section components
@@ -113,7 +113,7 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
   switch (section.type) {
     case 'header':
       // Header should not be wrapped with SectionWrapper padding/spacing - it's sticky
-      return <Header section={responsiveSection} onUpdate={onUpdate} />;
+      return <Header section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />;
 
     case 'hero_banner':
       return (
@@ -166,7 +166,7 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
 
     case 'footer':
       // Footer should not be wrapped with SectionWrapper padding/spacing
-      return <Footer section={responsiveSection} onUpdate={onUpdate} />;
+      return <Footer section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />;
 
     default:
       // Generic section for unknown types

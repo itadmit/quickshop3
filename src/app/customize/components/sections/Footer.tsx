@@ -4,18 +4,22 @@ import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { FaFacebook, FaInstagram, FaTwitter } from 'react-icons/fa';
 
+type DeviceType = 'desktop' | 'tablet' | 'mobile';
+
 interface FooterProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
+  editorDevice?: DeviceType;
 }
 
-export function Footer({ section, onUpdate }: FooterProps) {
+export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterProps) {
   const settings = section.settings || {};
+  const isMobileView = editorDevice === 'mobile' || editorDevice === 'tablet';
 
   return (
     <footer className="bg-gray-900 text-gray-300 mt-auto" dir="rtl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <div className={`grid gap-8 ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-4'}`}>
           {settings.columns?.map((column: any, index: number) => (
             <div key={index}>
               <h3 className="text-white font-semibold mb-4">{column.title}</h3>

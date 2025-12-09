@@ -30,20 +30,24 @@ export function Newsletter({ section, onUpdate }: NewsletterProps) {
     }
   };
   
-  // Button Styles (Duplicated from HeroBanner)
+  // Button Styles
   const getButtonStyles = () => {
     const buttonStyleObj = style.button || {};
     const buttonStyle = buttonStyleObj.style || 'solid';
+    const borderRadius = buttonStyleObj.border_radius || '8px';
 
-    const baseClasses = 'px-6 py-3 rounded-lg transition-all font-medium whitespace-nowrap';
+    const baseClasses = 'px-6 py-3 transition-all font-medium whitespace-nowrap';
 
     let styleClasses = '';
-    let inlineStyles: React.CSSProperties = {};
+    let inlineStyles: React.CSSProperties = {
+      borderRadius: buttonStyle === 'underline' ? '0' : borderRadius,
+    };
 
     switch (buttonStyle) {
       case 'outline':
         styleClasses = 'border-2';
         inlineStyles = {
+          ...inlineStyles,
           borderColor: buttonStyleObj.background_color || '#2563EB',
           color: buttonStyleObj.text_color || '#2563EB',
           backgroundColor: 'transparent',
@@ -52,6 +56,7 @@ export function Newsletter({ section, onUpdate }: NewsletterProps) {
       case 'white':
         styleClasses = 'border border-white shadow-sm';
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: '#FFFFFF',
           color: '#000000',
         };
@@ -59,13 +64,16 @@ export function Newsletter({ section, onUpdate }: NewsletterProps) {
       case 'black':
         styleClasses = 'border border-black';
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: '#000000',
           color: '#FFFFFF',
         };
         break;
       case 'underline':
-        styleClasses = 'border-b-2 rounded-none px-0 py-2';
+        styleClasses = 'border-b-2 px-0 py-2';
         inlineStyles = {
+          ...inlineStyles,
+          borderRadius: '0',
           borderColor: buttonStyleObj.background_color || '#2563EB',
           color: buttonStyleObj.text_color || '#2563EB',
           backgroundColor: 'transparent',
@@ -74,6 +82,7 @@ export function Newsletter({ section, onUpdate }: NewsletterProps) {
       case 'solid':
       default:
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: buttonStyleObj.background_color || '#2563EB',
           color: buttonStyleObj.text_color || '#FFFFFF',
         };

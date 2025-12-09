@@ -83,7 +83,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
           background_image_mobile: '/images/library/New_york_mobile_image.jpeg',
           background_size: 'cover',
           background_position: 'center',
-          overlay_opacity: '0.3'
+          overlay_opacity: '0.5'
         },
         typography: {
           font_family: '"Noto Sans Hebrew", sans-serif',
@@ -92,6 +92,13 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         spacing: {
           padding_top: '0',
           padding_bottom: '0'
+        },
+        button: {
+          style: 'outline',
+          background_color: '#FFFFFF',
+          text_color: '#FFFFFF',
+          hover_background_color: '#FFFFFF',
+          hover_text_color: '#000000'
         }
       },
       settings: {

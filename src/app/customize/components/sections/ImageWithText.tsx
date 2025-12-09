@@ -45,20 +45,24 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
     }
   };
 
-  // Button Styles (Duplicated from HeroBanner for now)
+  // Button Styles
   const getButtonStyles = () => {
     const buttonStyleObj = style.button || {};
     const buttonStyle = buttonStyleObj.style || 'solid';
+    const borderRadius = buttonStyleObj.border_radius || '8px';
 
-    const baseClasses = 'inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-lg transition-all';
+    const baseClasses = 'inline-flex items-center justify-center px-8 py-3 text-base font-medium transition-all';
 
     let styleClasses = '';
-    let inlineStyles: React.CSSProperties = {};
+    let inlineStyles: React.CSSProperties = {
+      borderRadius: buttonStyle === 'underline' ? '0' : borderRadius,
+    };
 
     switch (buttonStyle) {
       case 'outline':
         styleClasses = 'border-2';
         inlineStyles = {
+          ...inlineStyles,
           borderColor: buttonStyleObj.background_color || '#2563EB',
           color: buttonStyleObj.text_color || '#2563EB',
           backgroundColor: 'transparent',
@@ -67,6 +71,7 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
       case 'white':
         styleClasses = 'border border-white shadow-sm';
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: '#FFFFFF',
           color: '#000000',
         };
@@ -74,13 +79,16 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
       case 'black':
         styleClasses = 'border border-black';
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: '#000000',
           color: '#FFFFFF',
         };
         break;
       case 'underline':
-        styleClasses = 'border-b-2 rounded-none px-0 py-2';
+        styleClasses = 'border-b-2 px-0 py-2';
         inlineStyles = {
+          ...inlineStyles,
+          borderRadius: '0',
           borderColor: buttonStyleObj.background_color || '#2563EB',
           color: buttonStyleObj.text_color || '#2563EB',
           backgroundColor: 'transparent',
@@ -89,6 +97,7 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
       case 'solid':
       default:
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: buttonStyleObj.background_color || '#2563EB',
           color: buttonStyleObj.text_color || '#FFFFFF',
         };

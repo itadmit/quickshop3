@@ -79,24 +79,29 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
   const getButtonStyles = () => {
     const style = section.style?.button || {};
     const buttonStyle = style.style || 'solid';
+    const borderRadius = style.border_radius || '8px';
 
-    const baseClasses = 'inline-flex items-center justify-center px-8 py-4 text-base font-semibold rounded-lg transition-all';
+    const baseClasses = 'inline-flex items-center justify-center px-8 py-4 text-base font-semibold transition-all';
 
     let styleClasses = '';
-    let inlineStyles: React.CSSProperties = {};
+    let inlineStyles: React.CSSProperties = {
+      borderRadius: buttonStyle === 'underline' ? '0' : borderRadius,
+    };
 
     switch (buttonStyle) {
       case 'outline':
         styleClasses = 'border-2';
         inlineStyles = {
-          borderColor: style.background_color || '#2563EB',
-          color: style.text_color || '#2563EB',
+          ...inlineStyles,
+          borderColor: style.background_color || '#FFFFFF',
+          color: style.text_color || '#FFFFFF',
           backgroundColor: 'transparent',
         };
         break;
       case 'white':
         styleClasses = 'border border-white';
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: '#FFFFFF',
           color: '#000000',
         };
@@ -104,13 +109,16 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
       case 'black':
         styleClasses = 'border border-black';
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: '#000000',
           color: '#FFFFFF',
         };
         break;
       case 'underline':
-        styleClasses = 'border-b-2 rounded-none px-0 py-2';
+        styleClasses = 'border-b-2 px-0 py-2';
         inlineStyles = {
+          ...inlineStyles,
+          borderRadius: '0',
           borderColor: style.background_color || '#2563EB',
           color: style.text_color || '#2563EB',
           backgroundColor: 'transparent',
@@ -119,6 +127,7 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
       case 'solid':
       default:
         inlineStyles = {
+          ...inlineStyles,
           backgroundColor: style.background_color || '#2563EB',
           color: style.text_color || '#FFFFFF',
         };

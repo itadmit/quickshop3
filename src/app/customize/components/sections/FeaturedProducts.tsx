@@ -69,14 +69,28 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
   return (
     <div className="w-full" style={{ fontFamily }}>
       <div className="container mx-auto px-4">
-        {settings.title && (
+        {/* Section Header with Title and View All Link */}
+        <div className="flex items-center justify-between mb-8 md:mb-12">
+          {settings.title && (
             <h2 
-                className={`text-3xl font-bold mb-12 text-gray-900 ${titleAlignClass}`}
-                style={{ color: textColor }}
+              className={`text-2xl md:text-3xl font-bold text-gray-900`}
+              style={{ color: textColor }}
             >
-            {settings.title}
+              {settings.title}
             </h2>
-        )}
+          )}
+          {settings.show_view_all !== false && (
+            <a 
+              href={settings.view_all_url || '/collections/all'}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+            >
+              {settings.view_all_text || 'לכל המוצרים'}
+              <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          )}
+        </div>
 
         {settings.display_type === 'carousel' ? (
           <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>

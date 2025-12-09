@@ -96,56 +96,34 @@ export function CustomizerLayout() {
         };
         sections.unshift(headerSection);
       } else {
-        // Update existing header with store data if settings are empty
+        // Update existing header with store data
         const headerIndex = sections.findIndex(s => s.type === 'header');
         if (headerIndex >= 0) {
           sections[headerIndex].locked = true;
-          // Update settings with store data if not already set
-          if (!sections[headerIndex].settings || Object.keys(sections[headerIndex].settings).length === 0) {
-            sections[headerIndex].settings = {
-              logo: {
-                text: storeName,
-                image_url: storeLogo
-              },
-              navigation: {
-                menu_items: [
-                  { label: 'בית', url: '/' },
-                  ...collections.slice(0, 5).map((col: any) => ({
-                    label: col.name,
-                    url: `/collections/${col.handle}`
-                  })),
-                  { label: 'אודות', url: '/pages/about' },
-                  { label: 'צור קשר', url: '/pages/contact' }
-                ]
-              },
-              search: {
-                enabled: true,
-                placeholder: 'חפש מוצרים...'
-              },
-              cart: {
-                enabled: true
-              },
-              user_account: {
-                enabled: true
-              }
-            };
-          } else {
-            // Update logo if not set
-            if (!sections[headerIndex].settings.logo) {
-              sections[headerIndex].settings.logo = {
-                text: storeName,
-                image_url: storeLogo
-              };
-            } else {
-              // Update logo text if empty
-              if (!sections[headerIndex].settings.logo.text) {
-                sections[headerIndex].settings.logo.text = storeName;
-              }
-              if (!sections[headerIndex].settings.logo.image_url && storeLogo) {
-                sections[headerIndex].settings.logo.image_url = storeLogo;
-              }
-            }
-          }
+          sections[headerIndex].name = 'כותרת עליונה';
+          
+          // Always update logo with store data (override template defaults)
+          sections[headerIndex].settings = {
+            ...sections[headerIndex].settings,
+            logo: {
+              text: storeName,
+              image_url: storeLogo || sections[headerIndex].settings?.logo?.image_url || null
+            },
+            navigation: {
+              menu_items: [
+                { label: 'בית', url: '/' },
+                ...collections.slice(0, 5).map((col: any) => ({
+                  label: col.name,
+                  url: `/collections/${col.handle}`
+                })),
+                { label: 'אודות', url: '/pages/about' },
+                { label: 'צור קשר', url: '/pages/contact' }
+              ]
+            },
+            search: sections[headerIndex].settings?.search || { enabled: true, placeholder: 'חפש מוצרים...' },
+            cart: sections[headerIndex].settings?.cart || { enabled: true },
+            user_account: sections[headerIndex].settings?.user_account || { enabled: true }
+          };
         }
       }
 
@@ -201,14 +179,36 @@ export function CustomizerLayout() {
         };
         sections.push(footerSection);
       } else {
-        // Mark existing footer as locked and ensure it's last
+        // Update existing footer with store data
         const footerIndex = sections.findIndex(s => s.type === 'footer');
         if (footerIndex >= 0) {
           sections[footerIndex].locked = true;
-          // Update copyright with store name if not set
-          if (!sections[footerIndex].settings.copyright) {
-            sections[footerIndex].settings.copyright = `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`;
-          }
+          sections[footerIndex].name = 'כותרת תחתונה';
+          
+          // Always update copyright with store name and update products column with collections
+          const existingColumns = sections[footerIndex].settings?.columns || [];
+          const updatedColumns = existingColumns.map((col: any) => {
+            if (col.title === 'מוצרים') {
+              return {
+                ...col,
+                links: [
+                  { label: 'כל המוצרים', url: '/collections/all' },
+                  ...collections.slice(0, 3).map((c: any) => ({
+                    label: c.name,
+                    url: `/collections/${c.handle}`
+                  }))
+                ]
+              };
+            }
+            return col;
+          });
+          
+          sections[footerIndex].settings = {
+            ...sections[footerIndex].settings,
+            columns: updatedColumns.length > 0 ? updatedColumns : sections[footerIndex].settings?.columns,
+            copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
+          };
+          
           // Move footer to end if not already
           const footer = sections.splice(footerIndex, 1)[0];
           footer.order = sections.length;
