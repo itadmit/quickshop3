@@ -221,8 +221,16 @@ export function MediaPicker({
           })),
           ...prev,
         ]);
-        const newSelected = new Set(selected);
-        uploadedFiles.forEach((path: string) => newSelected.add(path));
+        
+        // If single selection mode, only select the last uploaded file
+        const newSelected = new Set<string>();
+        if (multiple) {
+          selected.forEach(path => newSelected.add(path));
+          uploadedFiles.forEach((path: string) => newSelected.add(path));
+        } else {
+          // Only select the last uploaded file in single mode
+          newSelected.add(uploadedFiles[uploadedFiles.length - 1]);
+        }
         setSelected(newSelected);
       }
 
@@ -436,8 +444,8 @@ export function MediaPicker({
                </div>
             ) : loading && files.length === 0 ? (
                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4">
-                  <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
-                    {[...Array(14)].map((_, i) => (
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {[...Array(10)].map((_, i) => (
                         <div key={i} className="aspect-square rounded-md border border-gray-200 bg-white overflow-hidden">
                             <Skeleton className="w-full h-full" />
                         </div>
@@ -485,9 +493,43 @@ export function MediaPicker({
                   </div>
                 </div>
 
+                {/* Uploading Skeletons */}
+                {uploading && uploadingFiles.length > 0 && (
+                  <div className="border border-blue-200 bg-blue-50/30 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-blue-900">מעלה {uploadingFiles.length} קבצים...</p>
+                      <div className="text-xs text-blue-700 font-medium">
+                        {Math.round(Object.values(uploadProgress).reduce((a, b) => a + b, 0) / uploadingFiles.length)}%
+                      </div>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2 mb-4">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${uploadingFiles.length > 0 
+                            ? Math.round(Object.values(uploadProgress).reduce((a, b) => a + b, 0) / uploadingFiles.length) 
+                            : 0}%` 
+                        }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {uploadingFiles.map((tempId) => (
+                        <div key={tempId} className="aspect-square rounded-md border-2 border-blue-300 bg-white overflow-hidden relative">
+                          <Skeleton className="w-full h-full" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-blue-500/10">
+                            <div className="text-xs font-semibold text-blue-700">
+                              {uploadProgress[tempId] || 0}%
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Files Grid */}
                 <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-white">
-                  <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {/* Existing Files */}
                     {files.map((file) => {
                   const isSelected = selected.has(file.path);
