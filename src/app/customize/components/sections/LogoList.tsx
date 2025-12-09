@@ -83,7 +83,7 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
 
         {/* Desktop Grid */}
         <div 
-          className="hidden md:grid gap-8 items-center justify-items-center"
+          className="hidden md:grid gap-4 items-center justify-items-center"
           style={getDesktopGridStyle()}
         >
           {logos.map((logo) => (
@@ -92,24 +92,20 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
               href={logo.content?.link_url || '#'}
               target={logo.content?.link_url ? '_blank' : undefined}
               rel={logo.content?.link_url ? 'noopener noreferrer' : undefined}
-              className={`transition-all duration-300 ${getGrayscaleClass()} hover:scale-110`}
-              style={{ width: getLogoWidth() }}
+              className={`transition-all duration-300 ${getGrayscaleClass()} hover:scale-110 w-full flex items-center justify-center`}
             >
               {logo.content?.image_url ? (
                 <img
                   src={logo.content.image_url}
                   alt={logo.content.title || 'לוגו'}
                   className="w-full h-auto object-contain"
-                  style={{ maxHeight: `${getLogoHeight()}px` }}
+                  style={{ maxHeight: `${getLogoHeight()}px`, maxWidth: `${settings.logo_width || 150}px` }}
                 />
               ) : (
                 <div 
-                  className="w-full bg-gray-200 rounded-md"
-                  style={{ height: `${getLogoHeight()}px` }}
+                  className="bg-gray-200 rounded-md"
+                  style={{ height: `${getLogoHeight()}px`, width: `${Math.min(settings.logo_width || 150, 100)}px` }}
                 />
-              )}
-              {logo.content?.title && (
-                <p className="text-center text-sm mt-2 text-gray-600">{logo.content.title}</p>
               )}
             </a>
           ))}
