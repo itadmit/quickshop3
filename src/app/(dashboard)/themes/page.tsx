@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { HiCode, HiPencil, HiExternalLink, HiCheck, HiDotsVertical } from 'react-icons/hi';
 
@@ -16,6 +16,20 @@ const currentTheme = {
 };
 
 export default function ThemesPage() {
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch store slug from user session
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user?.store?.slug) {
+          setStoreSlug(data.user.store.slug);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   return (
     <div className="p-6 space-y-8" dir="rtl">
       {/* Page Header */}
@@ -53,7 +67,7 @@ export default function ThemesPage() {
         <div className="p-6">
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Theme Preview - Browser Mockup */}
-            <div className="flex-1 max-w-2xl">
+            <div className="w-full lg:w-[60%]">
               <div className="relative bg-gray-100 rounded-xl overflow-hidden shadow-lg">
                 {/* Browser Chrome */}
                 <div className="bg-gray-200 px-4 py-3 flex items-center gap-3 border-b border-gray-300">
@@ -98,9 +112,9 @@ export default function ThemesPage() {
             </div>
 
             {/* Theme Info & Actions */}
-            <div className="lg:w-80 flex flex-col gap-6">
+            <div className="w-full lg:w-[40%] flex flex-col">
               {/* Theme Details */}
-              <div className="space-y-4">
+              <div className="space-y-4 flex-1">
                 <div>
                   <label className="text-sm text-gray-500">שם התבנית</label>
                   <p className="text-lg font-semibold text-gray-900">{currentTheme.name}</p>
@@ -120,35 +134,39 @@ export default function ThemesPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-3 pt-4 border-t border-gray-100">
-                {/* Primary: Customize Button */}
+              <div className="space-y-3 pt-4 border-t border-gray-100 mt-4">
+                {/* Primary: Customize Button - Full Width of column */}
                 <Link
                   href="/customize"
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
                 >
                   <HiPencil className="w-5 h-5" />
                   התאמה אישית
                 </Link>
 
-                {/* Secondary: Edit Code Button */}
-                <Link
-                  href="/themes/code"
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-700 font-medium rounded-xl border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
-                >
-                  <HiCode className="w-5 h-5" />
-                  עריכת קוד
-                </Link>
+                {/* Secondary Actions - Same Row */}
+                <div className="flex gap-2">
+                  {/* Edit Code Button */}
+                  <Link
+                    href="/themes/code"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-xl border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
+                  >
+                    <HiCode className="w-4 h-4" />
+                    עריכת קוד
+                  </Link>
 
-                {/* View Store */}
-                <a
-                  href="/shops/my-store"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-all"
-                >
-                  <HiExternalLink className="w-5 h-5" />
-                  צפייה בחנות
-                </a>
+                  {/* View Store */}
+                  <a
+                    href={storeSlug ? `/shops/${storeSlug}` : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-gray-600 text-sm font-medium rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all ${!storeSlug ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={(e) => !storeSlug && e.preventDefault()}
+                  >
+                    <HiExternalLink className="w-4 h-4" />
+                    צפייה בחנות
+                  </a>
+                </div>
               </div>
             </div>
           </div>
