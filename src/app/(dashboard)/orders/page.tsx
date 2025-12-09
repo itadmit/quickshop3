@@ -205,8 +205,8 @@ export default function OrdersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          financial_status: newFinancialStatus || undefined,
-          fulfillment_status: newFulfillmentStatus || undefined,
+          financial_status: newFinancialStatus || null,
+          fulfillment_status: newFulfillmentStatus || null,
         }),
       });
 

@@ -71,12 +71,25 @@ export async function POST(request: NextRequest) {
     if (existing) {
       // Update balance
       const newBalance = parseFloat(existing.balance) + parseFloat(balance);
+      
+      // Build update dynamically
+      const updateFields = ['balance = $1', 'updated_at = now()'];
+      const values: any[] = [newBalance];
+      let paramIndex = 2;
+
+      if ('expires_at' in body) {
+        updateFields.push(`expires_at = $${paramIndex++}`);
+        values.push(expires_at || null);
+      }
+
+      values.push(existing.id);
+
       storeCredit = await queryOne(
         `UPDATE store_credits 
-         SET balance = $1, expires_at = COALESCE($2, expires_at), updated_at = now()
-         WHERE id = $3
+         SET ${updateFields.join(', ')}
+         WHERE id = $${paramIndex}
          RETURNING *`,
-        [newBalance, expires_at || null, existing.id]
+        values
       );
     } else {
       // Create new

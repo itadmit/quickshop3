@@ -88,6 +88,31 @@ export async function PUT(
       return NextResponse.json({ error: 'Size chart not found' }, { status: 404 });
     }
 
+    // Build dynamic update query - only update fields that were explicitly sent
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if ('name' in body) {
+      updateFields.push(`name = $${paramIndex++}`);
+      values.push(name ? name.trim() : null);
+    }
+    if ('chart_type' in body) {
+      updateFields.push(`chart_type = $${paramIndex++}`);
+      values.push(chart_type || null);
+    }
+    if ('chart_data' in body) {
+      updateFields.push(`chart_data = $${paramIndex++}`);
+      values.push(chart_data ? JSON.stringify(chart_data) : null);
+    }
+
+    if (updateFields.length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    updateFields.push('updated_at = now()');
+    values.push(chartId, storeId);
+
     // Update size chart
     const sizeChart = await queryOne<{
       id: number;
@@ -96,19 +121,10 @@ export async function PUT(
       chart_data: any;
     }>(
       `UPDATE size_charts 
-       SET name = COALESCE($1, name),
-           chart_type = COALESCE($2, chart_type),
-           chart_data = COALESCE($3, chart_data),
-           updated_at = now()
-       WHERE id = $4 AND store_id = $5
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramIndex} AND store_id = $${paramIndex + 1}
        RETURNING id, name, chart_type, chart_data`,
-      [
-        name ? name.trim() : null,
-        chart_type || null,
-        chart_data ? JSON.stringify(chart_data) : null,
-        chartId,
-        storeId,
-      ]
+      values
     );
 
     if (!sizeChart) {

@@ -89,79 +89,78 @@ export async function PUT(
       return NextResponse.json({ error: 'Discount not found' }, { status: 404 });
     }
 
-    // Update discount
-    const discount = await queryOne(
-      `UPDATE automatic_discounts SET
-        name = COALESCE($3, name),
-        description = COALESCE($4, description),
-        discount_type = COALESCE($5, discount_type),
-        value = COALESCE($6, value),
-        minimum_order_amount = COALESCE($7, minimum_order_amount),
-        maximum_order_amount = COALESCE($8, maximum_order_amount),
-        minimum_quantity = COALESCE($9, minimum_quantity),
-        maximum_quantity = COALESCE($10, maximum_quantity),
-        applies_to = COALESCE($11, applies_to),
-        priority = COALESCE($12, priority),
-        can_combine_with_codes = COALESCE($13, can_combine_with_codes),
-        can_combine_with_other_automatic = COALESCE($14, can_combine_with_other_automatic),
-        max_combined_discounts = COALESCE($15, max_combined_discounts),
-        customer_segment = COALESCE($16, customer_segment),
-        minimum_orders_count = COALESCE($17, minimum_orders_count),
-        minimum_lifetime_value = COALESCE($18, minimum_lifetime_value),
-        starts_at = COALESCE($19, starts_at),
-        ends_at = COALESCE($20, ends_at),
-        day_of_week = COALESCE($21, day_of_week),
-        hour_start = COALESCE($22, hour_start),
-        hour_end = COALESCE($23, hour_end),
-        buy_quantity = COALESCE($24, buy_quantity),
-        get_quantity = COALESCE($25, get_quantity),
-        get_discount_type = COALESCE($26, get_discount_type),
-        get_discount_value = COALESCE($27, get_discount_value),
-        applies_to_same_product = COALESCE($28, applies_to_same_product),
-        bundle_min_products = COALESCE($29, bundle_min_products),
-        bundle_discount_type = COALESCE($30, bundle_discount_type),
-        bundle_discount_value = COALESCE($31, bundle_discount_value),
-        volume_tiers = COALESCE($32::jsonb, volume_tiers),
-        is_active = COALESCE($33, is_active),
-        updated_at = now()
+    // Build dynamic update query - only update fields that were explicitly sent
+    const updateFields: string[] = [];
+    const values: any[] = [id, storeId];
+    let paramIndex = 3;
+
+    // Helper function to add field to update
+    const addField = (fieldName: string, value: any, transform?: (v: any) => any) => {
+      if (fieldName in body) {
+        updateFields.push(`${fieldName} = $${paramIndex}`);
+        values.push(transform ? transform(value) : value);
+        paramIndex++;
+      }
+    };
+
+    // Required fields (use COALESCE to prevent null)
+    if ('name' in body && body.name) {
+      updateFields.push(`name = $${paramIndex}`);
+      values.push(body.name);
+      paramIndex++;
+    }
+
+    // Optional fields that can be cleared (null allowed)
+    addField('description', body.description || null);
+    addField('discount_type', body.discount_type);
+    addField('value', body.value || null);
+    addField('minimum_order_amount', body.minimum_order_amount || null);
+    addField('maximum_order_amount', body.maximum_order_amount || null);
+    addField('minimum_quantity', body.minimum_quantity ?? null);
+    addField('maximum_quantity', body.maximum_quantity ?? null);
+    addField('applies_to', body.applies_to);
+    addField('priority', body.priority ?? 0);
+    addField('can_combine_with_codes', body.can_combine_with_codes);
+    addField('can_combine_with_other_automatic', body.can_combine_with_other_automatic);
+    addField('max_combined_discounts', body.max_combined_discounts ?? 1);
+    addField('customer_segment', body.customer_segment || null);
+    addField('minimum_orders_count', body.minimum_orders_count ?? null);
+    addField('minimum_lifetime_value', body.minimum_lifetime_value || null);
+    addField('starts_at', body.starts_at || null);
+    addField('ends_at', body.ends_at || null);
+    addField('day_of_week', body.day_of_week || null);
+    addField('hour_start', body.hour_start ?? null);
+    addField('hour_end', body.hour_end ?? null);
+    addField('buy_quantity', body.buy_quantity ?? null);
+    addField('get_quantity', body.get_quantity ?? null);
+    addField('get_discount_type', body.get_discount_type || null);
+    addField('get_discount_value', body.get_discount_value || null);
+    addField('applies_to_same_product', body.applies_to_same_product);
+    addField('bundle_min_products', body.bundle_min_products ?? null);
+    addField('bundle_discount_type', body.bundle_discount_type || null);
+    addField('bundle_discount_value', body.bundle_discount_value || null);
+    
+    // Special handling for volume_tiers (JSON)
+    if ('volume_tiers' in body) {
+      updateFields.push(`volume_tiers = $${paramIndex}::jsonb`);
+      values.push(body.volume_tiers ? JSON.stringify(body.volume_tiers) : null);
+      paramIndex++;
+    }
+    
+    addField('is_active', body.is_active);
+
+    // Always update updated_at
+    updateFields.push('updated_at = now()');
+
+    // Build and execute query
+    const updateQuery = `
+      UPDATE automatic_discounts SET
+        ${updateFields.join(',\n        ')}
       WHERE id = $1 AND store_id = $2
-      RETURNING *`,
-      [
-        id,
-        storeId,
-        body.name,
-        body.description,
-        body.discount_type,
-        body.value,
-        body.minimum_order_amount,
-        body.maximum_order_amount,
-        body.minimum_quantity,
-        body.maximum_quantity,
-        body.applies_to,
-        body.priority,
-        body.can_combine_with_codes,
-        body.can_combine_with_other_automatic,
-        body.max_combined_discounts,
-        body.customer_segment,
-        body.minimum_orders_count,
-        body.minimum_lifetime_value,
-        body.starts_at,
-        body.ends_at,
-        body.day_of_week,
-        body.hour_start,
-        body.hour_end,
-        body.buy_quantity,
-        body.get_quantity,
-        body.get_discount_type,
-        body.get_discount_value,
-        body.applies_to_same_product,
-        body.bundle_min_products,
-        body.bundle_discount_type,
-        body.bundle_discount_value,
-        body.volume_tiers ? JSON.stringify(body.volume_tiers) : null,
-        body.is_active,
-      ]
-    );
+      RETURNING *
+    `;
+
+    const discount = await queryOne(updateQuery, values);
 
     // Update mappings if provided
     if (body.product_ids !== undefined) {

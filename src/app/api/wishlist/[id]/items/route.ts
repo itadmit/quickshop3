@@ -44,13 +44,24 @@ export async function POST(
     );
 
     if (existingItem) {
-      // Update quantity
+      // Update quantity and note if provided
+      const updateFields = ['quantity = quantity + $1'];
+      const values: any[] = [quantity];
+      let paramIndex = 2;
+
+      if ('note' in body) {
+        updateFields.push(`note = $${paramIndex++}`);
+        values.push(note || null);
+      }
+
+      values.push(existingItem.id);
+
       const updatedItem = await queryOne(
         `UPDATE wishlist_items 
-         SET quantity = quantity + $1, note = COALESCE($2, note)
-         WHERE id = $3
+         SET ${updateFields.join(', ')}
+         WHERE id = $${paramIndex}
          RETURNING *`,
-        [quantity, note || null, existingItem.id]
+        values
       );
 
       return NextResponse.json(quickshopItem('wishlist_item', updatedItem));

@@ -349,30 +349,51 @@ export async function POST(request: NextRequest) {
 
     // If exists, update instead of creating duplicate
     if (existingContact) {
+      // Build dynamic update query - only update fields that were explicitly sent
+      const updateFields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if ('first_name' in body) {
+        updateFields.push(`first_name = $${paramIndex++}`);
+        values.push(body.first_name || null);
+      }
+      if ('last_name' in body) {
+        updateFields.push(`last_name = $${paramIndex++}`);
+        values.push(body.last_name || null);
+      }
+      if ('phone' in body) {
+        updateFields.push(`phone = $${paramIndex++}`);
+        values.push(body.phone || null);
+      }
+      if ('company' in body) {
+        updateFields.push(`company = $${paramIndex++}`);
+        values.push(body.company || null);
+      }
+      if ('notes' in body) {
+        updateFields.push(`notes = $${paramIndex++}`);
+        values.push(body.notes || null);
+      }
+      if ('tags' in body) {
+        updateFields.push(`tags = $${paramIndex++}`);
+        values.push(body.tags || null);
+      }
+      if ('email_marketing_consent' in body) {
+        updateFields.push(`email_marketing_consent = $${paramIndex++}`);
+        values.push(body.email_marketing_consent);
+        updateFields.push(`email_marketing_consent_at = CASE WHEN $${paramIndex - 1} = true AND email_marketing_consent = false THEN now() ELSE email_marketing_consent_at END`);
+      }
+
+      updateFields.push('updated_at = now()');
+      values.push(existingContact.id);
+
       // Update existing contact
       const updatedContact = await queryOne<Contact>(
         `UPDATE contacts 
-         SET first_name = COALESCE($1, first_name),
-             last_name = COALESCE($2, last_name),
-             phone = COALESCE($3, phone),
-             company = COALESCE($4, company),
-             notes = COALESCE($5, notes),
-             tags = COALESCE($6, tags),
-             email_marketing_consent = COALESCE($7, email_marketing_consent),
-             email_marketing_consent_at = CASE WHEN $7 = true AND email_marketing_consent = false THEN now() ELSE email_marketing_consent_at END,
-             updated_at = now()
-         WHERE id = $8
+         SET ${updateFields.join(', ')}
+         WHERE id = $${paramIndex}
          RETURNING *`,
-        [
-          body.first_name || null,
-          body.last_name || null,
-          body.phone || null,
-          body.company || null,
-          body.notes || null,
-          body.tags || null,
-          body.email_marketing_consent !== undefined ? body.email_marketing_consent : null,
-          existingContact.id,
-        ]
+        values
       );
 
       // Update category assignments if provided

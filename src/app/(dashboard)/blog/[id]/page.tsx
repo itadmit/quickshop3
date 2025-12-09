@@ -75,7 +75,7 @@ export default function BlogPostDetailsPage() {
         credentials: 'include',
         body: JSON.stringify({
           title: formData.title,
-          handle: formData.handle || undefined,
+          handle: formData.handle || null,
           body_html: formData.body_html,
           excerpt: formData.excerpt || null,
           tags: formData.tags || null,

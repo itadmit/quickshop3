@@ -270,7 +270,7 @@ export default function CategoryDetailsPage() {
       
       const payload: any = {
         title: formData.name,
-        handle: formData.handle || undefined,
+        handle: formData.handle || null,
         description: formData.description || null,
         image_url: formData.imageUrl || null,
         type: formData.type,

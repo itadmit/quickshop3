@@ -69,7 +69,7 @@ export default function PageDetailsPage() {
         credentials: 'include',
         body: JSON.stringify({
           title: formData.title,
-          handle: formData.handle || undefined,
+          handle: formData.handle || null,
           body_html: formData.body_html,
           meta_title: formData.meta_title || null,
           meta_description: formData.meta_description || null,

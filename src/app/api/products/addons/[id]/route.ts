@@ -92,6 +92,43 @@ export async function PUT(
       return NextResponse.json({ error: 'Addon not found' }, { status: 404 });
     }
 
+    // Build dynamic update query - only update fields that were explicitly sent
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if ('name' in body) {
+      updateFields.push(`name = $${paramIndex++}`);
+      values.push(name ? name.trim() : null);
+    }
+    if ('description' in body) {
+      updateFields.push(`description = $${paramIndex++}`);
+      values.push(description || null);
+    }
+    if ('addon_type' in body) {
+      updateFields.push(`addon_type = $${paramIndex++}`);
+      values.push(addon_type || null);
+    }
+    if ('is_required' in body) {
+      updateFields.push(`is_required = $${paramIndex++}`);
+      values.push(is_required);
+    }
+    if ('price_modifier' in body) {
+      updateFields.push(`price_modifier = $${paramIndex++}`);
+      values.push(price_modifier ?? null);
+    }
+    if ('settings' in body) {
+      updateFields.push(`settings = $${paramIndex++}`);
+      values.push(settings ? JSON.stringify(settings) : null);
+    }
+
+    if (updateFields.length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    updateFields.push('updated_at = now()');
+    values.push(addonId, storeId);
+
     // Update addon
     const addon = await queryOne<{
       id: number;
@@ -100,25 +137,10 @@ export async function PUT(
       settings: any;
     }>(
       `UPDATE product_addons 
-       SET name = COALESCE($1, name),
-           description = COALESCE($2, description),
-           addon_type = COALESCE($3, addon_type),
-           is_required = COALESCE($4, is_required),
-           price_modifier = COALESCE($5, price_modifier),
-           settings = COALESCE($6, settings),
-           updated_at = now()
-       WHERE id = $7 AND store_id = $8
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramIndex} AND store_id = $${paramIndex + 1}
        RETURNING id, name, addon_type, settings`,
-      [
-        name ? name.trim() : null,
-        description !== undefined ? description : null,
-        addon_type || null,
-        is_required !== undefined ? is_required : null,
-        price_modifier !== undefined ? price_modifier : null,
-        settings ? JSON.stringify(settings) : null,
-        addonId,
-        storeId,
-      ]
+      values
     );
 
     if (!addon) {

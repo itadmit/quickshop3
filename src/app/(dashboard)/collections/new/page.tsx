@@ -40,9 +40,9 @@ export default function NewCollectionPage() {
       
       const payload = {
         title: formData.title.trim(),
-        handle: formData.handle?.trim() || undefined,
-        description: formData.description?.trim() || undefined,
-        image_url: formData.image_url?.trim() || undefined,
+        handle: formData.handle?.trim() || null,
+        description: formData.description?.trim() || null,
+        image_url: formData.image_url?.trim() || null,
         published_scope: formData.published_scope || 'web',
         sort_order: formData.sort_order || 'manual',
       };

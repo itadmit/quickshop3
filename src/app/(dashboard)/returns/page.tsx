@@ -192,9 +192,9 @@ export default function ReturnsPage() {
         credentials: 'include',
         body: JSON.stringify({
           status: newStatus,
-          refundAmount: refundAmount ? parseFloat(refundAmount) : undefined,
-          refundMethod: refundMethod || undefined,
-          notes: updateNotes || undefined,
+          refundAmount: refundAmount ? parseFloat(refundAmount) : null,
+          refundMethod: refundMethod || null,
+          notes: updateNotes || null,
         }),
       });
 
