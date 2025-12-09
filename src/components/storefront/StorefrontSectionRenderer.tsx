@@ -18,14 +18,17 @@ import { RichText } from '@/app/customize/components/sections/RichText';
 import { Newsletter } from '@/app/customize/components/sections/Newsletter';
 import { Gallery } from '@/app/customize/components/sections/Gallery';
 import { Footer } from '@/app/customize/components/sections/Footer';
-// Special Header for storefront with real SideCart
-import { StorefrontCustomizerHeader } from './StorefrontCustomizerHeader';
+// Unified Header for storefront with real SideCart
+import { UnifiedHeader } from './UnifiedHeader';
+import { useStoreId } from '@/hooks/useStoreId';
 
 interface StorefrontSectionRendererProps {
   section: SectionSettings;
 }
 
 export function StorefrontSectionRenderer({ section }: StorefrontSectionRendererProps) {
+  const storeId = useStoreId();
+  
   // Get responsive settings (always desktop for storefront)
   const settings = getResponsiveSettings(section, 'desktop');
   const style = getResponsiveStyle(section, 'desktop');
@@ -128,8 +131,8 @@ export function StorefrontSectionRenderer({ section }: StorefrontSectionRenderer
   // Render section based on type
   switch (section.type) {
     case 'header':
-      // Use special header with real SideCart for storefront
-      return <StorefrontCustomizerHeader section={responsiveSection} />;
+      // Use unified header with real SideCart for storefront (isPreview=false)
+      return <UnifiedHeader section={responsiveSection} isPreview={false} storeId={storeId || undefined} />;
 
     case 'hero_banner':
       return (

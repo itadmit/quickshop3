@@ -25,13 +25,15 @@ import {
   HiTruck,
   HiUserGroup,
   HiGlobe,
-  HiViewGrid
+  HiViewGrid,
+  HiColorSwatch
 } from 'react-icons/hi';
 
 export const MenuIcons = {
   home: HiHome,
   analytics: HiChartPie,
   notifications: HiBell,
+  themes: HiColorSwatch,
   sales: HiChartBar,
   products: HiCube,
   categories: HiFolder,

@@ -39,6 +39,154 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
     return current;
   };
 
+  // Special styling for Header
+  if (section.type === 'header') {
+    return (
+      <div className="pb-8">
+        <SettingGroup title="צבעים">
+          <div className="space-y-4">
+            <ColorPicker
+              label="צבע רקע"
+              value={getStyleValue('background.background_color', '#FFFFFF')}
+              onChange={(val) => handleStyleChange('background.background_color', val)}
+            />
+            <ColorPicker
+              label="צבע טקסט / לוגו"
+              value={getStyleValue('typography.color', '#000000')}
+              onChange={(val) => handleStyleChange('typography.color', val)}
+            />
+            <ColorPicker
+              label="צבע קישורי תפריט"
+              value={getStyleValue('navigation.color', '#374151')}
+              onChange={(val) => handleStyleChange('navigation.color', val)}
+            />
+            <ColorPicker
+              label="צבע קישורי תפריט - מעבר עכבר"
+              value={getStyleValue('navigation.hover_color', '#000000')}
+              onChange={(val) => handleStyleChange('navigation.hover_color', val)}
+            />
+            <ColorPicker
+              label="צבע אייקונים"
+              value={getStyleValue('icons.color', '#4B5563')}
+              onChange={(val) => handleStyleChange('icons.color', val)}
+            />
+            <ColorPicker
+              label="צבע אייקונים - מעבר עכבר"
+              value={getStyleValue('icons.hover_color', '#000000')}
+              onChange={(val) => handleStyleChange('icons.hover_color', val)}
+            />
+          </div>
+        </SettingGroup>
+
+        <SettingGroup title="גבולות">
+          <div className="space-y-4">
+            <SettingSelect
+              label="גבול תחתון"
+              value={getStyleValue('border.bottom_style', 'solid')}
+              onChange={(e) => handleStyleChange('border.bottom_style', e.target.value)}
+              options={[
+                { label: 'קו רציף', value: 'solid' },
+                { label: 'צל', value: 'shadow' },
+                { label: 'ללא', value: 'none' },
+              ]}
+            />
+            {getStyleValue('border.bottom_style', 'solid') === 'solid' && (
+              <ColorPicker
+                label="צבע גבול"
+                value={getStyleValue('border.border_color', '#E5E7EB')}
+                onChange={(val) => handleStyleChange('border.border_color', val)}
+              />
+            )}
+          </div>
+        </SettingGroup>
+
+        <SettingGroup title="מרווחים">
+          <div className="space-y-6">
+            <RangeSlider
+              label="גובה הדר - דסקטופ"
+              value={parseInt(getStyleValue('spacing.height_desktop', '64'))}
+              min={48}
+              max={120}
+              step={4}
+              unit="px"
+              onChange={(val) => handleStyleChange('spacing.height_desktop', `${val}px`)}
+            />
+            <RangeSlider
+              label="גובה הדר - מובייל"
+              value={parseInt(getStyleValue('spacing.height_mobile', '56'))}
+              min={40}
+              max={80}
+              step={4}
+              unit="px"
+              onChange={(val) => handleStyleChange('spacing.height_mobile', `${val}px`)}
+            />
+          </div>
+        </SettingGroup>
+      </div>
+    );
+  }
+
+  // Special styling for Footer
+  if (section.type === 'footer') {
+    return (
+      <div className="pb-8">
+        <SettingGroup title="צבעים">
+          <div className="space-y-4">
+            <ColorPicker
+              label="צבע רקע"
+              value={getStyleValue('background.background_color', '#111827')}
+              onChange={(val) => handleStyleChange('background.background_color', val)}
+            />
+            <ColorPicker
+              label="צבע כותרות"
+              value={getStyleValue('typography.heading_color', '#FFFFFF')}
+              onChange={(val) => handleStyleChange('typography.heading_color', val)}
+            />
+            <ColorPicker
+              label="צבע טקסט"
+              value={getStyleValue('typography.color', '#9CA3AF')}
+              onChange={(val) => handleStyleChange('typography.color', val)}
+            />
+            <ColorPicker
+              label="צבע קישורים"
+              value={getStyleValue('links.color', '#9CA3AF')}
+              onChange={(val) => handleStyleChange('links.color', val)}
+            />
+            <ColorPicker
+              label="צבע קישורים - מעבר עכבר"
+              value={getStyleValue('links.hover_color', '#FFFFFF')}
+              onChange={(val) => handleStyleChange('links.hover_color', val)}
+            />
+          </div>
+        </SettingGroup>
+
+        <SettingGroup title="מרווחים">
+          <div className="space-y-6">
+            <RangeSlider
+              label="מרווח עליון"
+              value={parseInt(getStyleValue('spacing.padding_top', '48'))}
+              min={0}
+              max={120}
+              step={4}
+              unit="px"
+              onChange={(val) => handleStyleChange('spacing.padding_top', `${val}px`)}
+            />
+            <RangeSlider
+              label="מרווח תחתון"
+              value={parseInt(getStyleValue('spacing.padding_bottom', '48'))}
+              min={0}
+              max={120}
+              step={4}
+              unit="px"
+              onChange={(val) => handleStyleChange('spacing.padding_bottom', `${val}px`)}
+            />
+          </div>
+        </SettingGroup>
+      </div>
+    );
+  }
+
+  // Default styling for other sections
   return (
     <div className="pb-8">
       {/* Spacing Group */}

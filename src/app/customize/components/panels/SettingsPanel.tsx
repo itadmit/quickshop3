@@ -96,7 +96,14 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
   const handleMediaSelect = (files: string[]) => {
     if (files.length > 0) {
-      if (targetBlockId) {
+      if (targetBlockId === 'header-logo') {
+          // Update header logo
+          handleSettingChange('logo', { 
+            ...section.settings?.logo, 
+            image_url: files[0] 
+          });
+          setTargetBlockId(null);
+      } else if (targetBlockId) {
           // Update specific block - support desktop/mobile images
           const newBlocks = [...(section.blocks || [])];
           const blockIndex = newBlocks.findIndex(b => b.id === targetBlockId);
@@ -184,6 +191,190 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
   const renderSettingsForType = () => {
     switch (section.type) {
+      case 'header':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('סגנון פריסה', 'layout_style', [
+                  { label: 'לוגו בימין - תפריט במרכז - אייקונים משמאל', value: 'logo_right_menu_center' },
+                  { label: 'תפריט בימין - לוגו במרכז - אייקונים משמאל', value: 'menu_right_logo_center' },
+                  { label: 'לוגו בשמאל - תפריט במרכז - אייקונים בימין', value: 'logo_left_menu_center' },
+                  { label: 'לוגו במרכז - תפריט מתחת', value: 'logo_center_menu_below' },
+                ])}
+                {renderSelect('הצג חיפוש', 'search.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                {renderSelect('הצג עגלה', 'cart.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                {renderSelect('הצג חשבון משתמש', 'user_account.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="לוגו">
+              <div className="space-y-4">
+                {/* Logo Image Upload */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">תמונת לוגו</label>
+                  {getValue('logo.image_url') ? (
+                    <div className="relative group">
+                      <img 
+                        src={getValue('logo.image_url')} 
+                        alt="לוגו" 
+                        className="w-full h-20 object-contain bg-gray-100 rounded-lg"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            setMediaType('image');
+                            setTargetBlockId('header-logo');
+                            setIsMediaPickerOpen(true);
+                          }}
+                          className="p-2 bg-white rounded-full text-gray-700 hover:bg-gray-100"
+                          title="החלף תמונה"
+                        >
+                          <HiRefresh className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleSettingChange('logo', { ...section.settings?.logo, image_url: null })}
+                          className="p-2 bg-white rounded-full text-red-600 hover:bg-red-50"
+                          title="הסר תמונה"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setMediaType('image');
+                        setTargetBlockId('header-logo');
+                        setIsMediaPickerOpen(true);
+                      }}
+                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center gap-2"
+                    >
+                      <HiPhotograph className="w-8 h-8 text-gray-400" />
+                      <span className="text-sm text-gray-600">העלה לוגו</span>
+                    </button>
+                  )}
+                </div>
+
+                {renderInput('טקסט לוגו (אם אין תמונה)', 'logo.text', 'שם החנות')}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">גובה לוגו - דסקטופ</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={parseInt(getValue('logo.height_desktop', '40'))}
+                        onChange={(e) => handleSettingChange('logo', { 
+                          ...section.settings?.logo, 
+                          height_desktop: `${e.target.value}px` 
+                        })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        min={20}
+                        max={120}
+                      />
+                      <span className="text-xs text-gray-400">px</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">גובה לוגו - מובייל</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={parseInt(getValue('logo.height_mobile', '32'))}
+                        onChange={(e) => handleSettingChange('logo', { 
+                          ...section.settings?.logo, 
+                          height_mobile: `${e.target.value}px` 
+                        })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        min={16}
+                        max={80}
+                      />
+                      <span className="text-xs text-gray-400">px</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">מרווח לוגו - דסקטופ</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={parseInt(getValue('logo.padding_desktop', '0'))}
+                        onChange={(e) => handleSettingChange('logo', { 
+                          ...section.settings?.logo, 
+                          padding_desktop: `${e.target.value}px` 
+                        })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        min={0}
+                        max={40}
+                      />
+                      <span className="text-xs text-gray-400">px</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">מרווח לוגו - מובייל</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={parseInt(getValue('logo.padding_mobile', '0'))}
+                        onChange={(e) => handleSettingChange('logo', { 
+                          ...section.settings?.logo, 
+                          padding_mobile: `${e.target.value}px` 
+                        })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        min={0}
+                        max={40}
+                      />
+                      <span className="text-xs text-gray-400">px</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תפריט ניווט">
+              <div className="space-y-4">
+                {renderSelect('גודל פונט תפריט', 'navigation.font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'רגיל', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+                {renderSelect('משקל פונט', 'navigation.font_weight', [
+                  { label: 'רגיל', value: 'normal' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'מודגש', value: 'bold' },
+                ])}
+                {renderInput('מרווח בין פריטים', 'navigation.gap', '24', 'number')}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="הדר דביק (Sticky)">
+              <div className="space-y-4">
+                {renderSelect('הדר דביק', 'sticky.enabled', [
+                  { label: 'כן - נשאר למעלה בגלילה', value: true },
+                  { label: 'לא - נגלל עם העמוד', value: false },
+                ])}
+                {getValue('sticky.enabled', true) && renderSelect('אפקט בגלילה', 'sticky.shrink', [
+                  { label: 'ללא', value: 'none' },
+                  { label: 'הקטנה', value: 'shrink' },
+                  { label: 'צל', value: 'shadow' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
       case 'hero_banner':
         return (
           <div className="space-y-1">

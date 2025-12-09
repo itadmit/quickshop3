@@ -3,7 +3,7 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiCube } from 'react-icons/hi';
-import type { DeviceType } from './Header'; // Import DeviceType
+import { UnifiedHeader, DeviceType } from '@/components/storefront/UnifiedHeader';
 import { getResponsiveSettings, getResponsiveStyle } from '@/lib/customizer/utils'; // Import utils
 
 // Import section components
@@ -14,7 +14,6 @@ import { ImageWithText } from './ImageWithText';
 import { RichText } from './RichText';
 import { Newsletter } from './Newsletter';
 import { Gallery } from './Gallery';
-import { Header } from './Header';
 import { Footer } from './Footer';
 
 interface SectionRendererProps {
@@ -113,7 +112,8 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
   switch (section.type) {
     case 'header':
       // Header should not be wrapped with SectionWrapper padding/spacing - it's sticky
-      return <Header section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />;
+      // isPreview=true means customizer preview (no real cart/search functionality)
+      return <UnifiedHeader section={responsiveSection} onUpdate={onUpdate} editorDevice={device} isPreview={true} />;
 
     case 'hero_banner':
       return (
