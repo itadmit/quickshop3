@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { ElementsPanel } from './panels/ElementsPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
@@ -29,8 +29,17 @@ export function Sidebar({
   onSectionMove
 }: SidebarProps) {
   const [activePanel, setActivePanel] = useState<PanelType>('elements');
+  const prevSelectedSectionId = useRef<string | null>(null);
 
   const selectedSection = sections.find(s => s.id === selectedSectionId);
+
+  // Switch to settings panel when a section is selected
+  useEffect(() => {
+    if (selectedSectionId && selectedSectionId !== prevSelectedSectionId.current) {
+      setActivePanel('settings');
+    }
+    prevSelectedSectionId.current = selectedSectionId;
+  }, [selectedSectionId]);
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
