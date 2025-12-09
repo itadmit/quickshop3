@@ -414,6 +414,33 @@ export async function addSection(data: AddSectionRequest) {
       );
     }
 
+    // 4 לוגואים ברירת מחדל לסקשן לוגואים
+    if (data.section_type === 'logo_list') {
+      for (let i = 1; i <= 4; i++) {
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, true, $5)
+          `,
+          [
+            dbSectionId,
+            'image',
+            `logo_${i}`,
+            i - 1,
+            JSON.stringify({
+              image_url: '',
+              title: '',
+              description: '',
+              link_url: ''
+            })
+          ]
+        );
+      }
+    }
+
     // ✅ פליטת אירוע
     await eventBus.emit(
       'customizer.section.added',

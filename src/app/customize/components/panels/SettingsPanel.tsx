@@ -1562,8 +1562,6 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         {renderInput('כותרת ראשית', 'heading', 'המותגים שלנו')}
                         {renderInput('תת כותרת', 'subheading', 'אנחנו עובדים עם המותגים המובילים בעולם')}
-                        {renderColorPicker('צבע כותרת', 'heading_color')}
-                        {renderColorPicker('צבע תת כותרת', 'subheading_color')}
                     </div>
                 </SettingGroup>
 
@@ -1573,26 +1571,17 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         {renderInput('לוגואים בשורה (מובייל)', 'items_per_row_mobile', '2', 'number')}
                         {renderInput('רוחב לוגו (px)', 'logo_width', '150', 'number')}
                         {renderInput('גובה מקסימלי (px)', 'logo_height', '80', 'number')}
-                    </div>
-                </SettingGroup>
-
-                <SettingGroup title="עיצוב לוגואים">
-                    <div className="space-y-4">
                         {renderSelect('אפקט גווני אפור', 'grayscale_enabled', [
                             { label: 'מופעל (צבע בהובר)', value: true },
                             { label: 'כבוי', value: false },
                         ])}
-                        {renderInput('מרווח בין לוגואים (px)', 'gap', '32', 'number')}
                     </div>
                 </SettingGroup>
 
                 <SettingGroup title="כפתור פעולה">
                     <div className="space-y-4">
-                        {renderInput('טקסט כפתור', 'button_text', 'כל המותגים')}
+                        {renderInput('טקסט כפתור', 'button_text', '')}
                         {renderInput('קישור כפתור', 'button_url', '#', 'text', undefined, 'ltr')}
-                        {renderColorPicker('צבע רקע כפתור', 'button_background')}
-                        {renderColorPicker('צבע טקסט כפתור', 'button_text_color')}
-                        {renderInput('עיגול פינות (px)', 'button_border_radius', '6', 'number')}
                     </div>
                 </SettingGroup>
 

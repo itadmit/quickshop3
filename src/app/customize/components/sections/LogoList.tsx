@@ -11,7 +11,12 @@ interface LogoListProps {
 
 export function LogoList({ section, onUpdate }: LogoListProps) {
   const settings = section.settings || {};
+  const style = section.style || {};
   const logos = section.blocks?.filter(b => b.type === 'image') || [];
+
+  // Get style values with defaults
+  const typography = style.typography || {};
+  const buttonStyle = style.button || {};
 
   // Grid columns for desktop
   const getDesktopGridStyle = () => {
@@ -34,6 +39,11 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
     return `${width}px`;
   };
 
+  // Logo height
+  const getLogoHeight = () => {
+    return settings.logo_height || 80;
+  };
+
   // Grayscale effect
   const getGrayscaleClass = () => {
     return settings.grayscale_enabled ? 'grayscale hover:grayscale-0' : '';
@@ -48,15 +58,15 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
             {settings.heading && (
               <h2 
                 className="text-3xl md:text-4xl font-bold"
-                style={{ color: settings.heading_color || '#000' }}
+                style={{ color: typography.color || '#000' }}
               >
                 {settings.heading}
               </h2>
             )}
             {settings.subheading && (
               <p 
-                className="text-lg md:text-xl"
-                style={{ color: settings.subheading_color || '#666' }}
+                className="text-lg md:text-xl opacity-70"
+                style={{ color: typography.color || '#666' }}
               >
                 {settings.subheading}
               </p>
@@ -83,15 +93,13 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
                   src={logo.content.image_url}
                   alt={logo.content.title || 'לוגו'}
                   className="w-full h-auto object-contain"
-                  style={{ maxHeight: settings.logo_height || '80px' }}
+                  style={{ maxHeight: `${getLogoHeight()}px` }}
                 />
               ) : (
                 <div 
-                  className="w-full bg-gray-100 flex items-center justify-center text-gray-400"
-                  style={{ height: settings.logo_height || '80px' }}
-                >
-                  <span className="text-sm">לוגו</span>
-                </div>
+                  className="w-full bg-gray-200 rounded-md"
+                  style={{ height: `${getLogoHeight()}px` }}
+                />
               )}
               {logo.content?.title && (
                 <p className="text-center text-sm mt-2 text-gray-600">{logo.content.title}</p>
@@ -117,15 +125,13 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
                     src={logo.content.image_url}
                     alt={logo.content.title || 'לוגו'}
                     className="w-full h-auto object-contain"
-                    style={{ maxHeight: settings.logo_height || '60px' }}
+                    style={{ maxHeight: `${getLogoHeight()}px` }}
                   />
                 ) : (
                   <div 
-                    className="w-full bg-gray-100 flex items-center justify-center text-gray-400"
-                    style={{ height: settings.logo_height || '60px' }}
-                  >
-                    <span className="text-xs">לוגו</span>
-                  </div>
+                    className="w-full bg-gray-200 rounded-md"
+                    style={{ height: `${getLogoHeight()}px` }}
+                  />
                 )}
                 {logo.content?.title && (
                   <p className="text-center text-xs mt-2 text-gray-600">{logo.content.title}</p>
@@ -140,11 +146,11 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
           <div className="text-center mt-12">
             <a
               href={settings.button_url || '#'}
-              className="inline-block px-8 py-3 bg-black text-white font-medium rounded-md hover:bg-gray-800 transition-colors"
+              className="inline-block px-8 py-3 font-medium transition-colors"
               style={{
-                backgroundColor: settings.button_background || '#000',
-                color: settings.button_text_color || '#fff',
-                borderRadius: settings.button_border_radius || '0.375rem'
+                backgroundColor: buttonStyle.background_color || '#000',
+                color: buttonStyle.text_color || '#fff',
+                borderRadius: buttonStyle.border_radius || '8px'
               }}
             >
               {settings.button_text}
