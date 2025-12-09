@@ -736,6 +736,17 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: '5 קטגוריות', value: 5 },
                             { label: '6 קטגוריות', value: 6 },
                         ])}
+                        {getValue('display_type') === 'slider' && renderSelect('פריטים נראים (מחשב)', 'slider_items_desktop', [
+                            { label: '2.5 פריטים', value: 2.5 },
+                            { label: '3.5 פריטים', value: 3.5 },
+                            { label: '4.5 פריטים', value: 4.5 },
+                            { label: '5.5 פריטים', value: 5.5 },
+                        ])}
+                        {getValue('display_type') === 'slider' && renderSelect('פריטים נראים (מובייל)', 'slider_items_mobile', [
+                            { label: '1.2 פריטים', value: 1.2 },
+                            { label: '1.5 פריטים', value: 1.5 },
+                            { label: '2.2 פריטים', value: 2.2 },
+                        ])}
                         {renderSelect('יישור תוכן קטגוריה', 'content_align', [
                             { label: 'ימין', value: 'right' },
                             { label: 'מרכז', value: 'center' },

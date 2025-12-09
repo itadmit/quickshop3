@@ -46,13 +46,13 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
   // Section width class
   const getSectionWidthClass = () => {
     return settings.section_width === 'full' 
-      ? 'w-full px-4 sm:px-6 lg:px-8' 
-      : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8';
+      ? 'w-full' 
+      : 'container mx-auto';
   };
 
   return (
-    <div className="w-full">
-      <div className={`${getSectionWidthClass()} py-12`}>
+    <div className="w-full py-8 md:py-12">
+      <div className={`${getSectionWidthClass()} px-4 sm:px-6 lg:px-8`}>
         {/* Header */}
         {(settings.heading || settings.subheading) && (
           <div className="text-center mb-12 space-y-4">

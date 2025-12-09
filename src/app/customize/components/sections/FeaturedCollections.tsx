@@ -14,20 +14,37 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
   const style = section.style || {};
   
   const itemsPerRow = settings.items_per_row || 3;
+  const sliderItemsDesktop = settings.slider_items_desktop || 4.5;
+  const sliderItemsMobile = settings.slider_items_mobile || 1.5;
+
+  // Calculate item width for slider based on visible items
+  const getSliderItemWidth = (visibleItems: number) => {
+    // Account for gaps (24px gap = 1.5rem)
+    const gapSize = 24;
+    const totalGaps = (visibleItems - 1) * gapSize;
+    return `calc((100% - ${totalGaps}px) / ${visibleItems})`;
+  };
 
   const getGridCols = () => {
     // If in editor with mobile/tablet view, force mobile layout
     if (editorDevice === 'mobile' || editorDevice === 'tablet') {
-      return 'grid-cols-1';
+      return 'grid-cols-2';
     }
     // Desktop: based on settings (with responsive fallback for actual storefront)
     switch (itemsPerRow) {
-      case 2: return 'grid-cols-1 md:grid-cols-2';
-      case 3: return 'grid-cols-1 md:grid-cols-3';
-      case 4: return 'grid-cols-1 md:grid-cols-4';
-      case 5: return 'grid-cols-1 md:grid-cols-5';
-      default: return 'grid-cols-1 md:grid-cols-3';
+      case 2: return 'grid-cols-2 md:grid-cols-2';
+      case 3: return 'grid-cols-2 md:grid-cols-3';
+      case 4: return 'grid-cols-2 md:grid-cols-4';
+      case 5: return 'grid-cols-2 md:grid-cols-5';
+      case 6: return 'grid-cols-2 md:grid-cols-3'; // 6 items = 2 rows of 3
+      default: return 'grid-cols-2 md:grid-cols-3';
     }
+  };
+
+  // Number of items to show in grid
+  const getGridItemCount = () => {
+    if (itemsPerRow === 6) return 6; // 2 rows of 3
+    return itemsPerRow;
   };
 
   // Title alignment (separate from content)
@@ -41,8 +58,8 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
   const textColor = style.typography?.color || '#111827';
 
   return (
-    <div className="w-full" style={{ fontFamily }}>
-      <div className="container mx-auto px-4">
+    <div className="w-full py-8 md:py-12" style={{ fontFamily }}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header with Title and View All Link */}
         <div className="flex items-center justify-between mb-8 md:mb-12">
           <h2 
@@ -65,55 +82,89 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
         </div>
 
         {(settings.display_type === 'slider' || settings.display_type === 'carousel') ? (
-          <div className="overflow-x-auto scrollbar-hide -mx-4" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex gap-6 px-4 pb-4" style={{ width: 'max-content' }}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                  <div 
-                    key={i} 
-                    className="group cursor-pointer flex-shrink-0"
-                    style={{ 
-                      width: '280px',
-                      scrollSnapAlign: 'start'
-                    }}
-                  >
-                    <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
-                       <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
-                          <span>קטגוריה {i}</span>
-                       </div>
-                       {/* Hover Overlay */}
-                       <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <>
+            {/* Desktop Slider */}
+            <div className="hidden md:block overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex gap-6 pb-4" style={{ width: 'max-content' }}>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div 
+                      key={i} 
+                      className="group cursor-pointer flex-shrink-0"
+                      style={{ 
+                        width: getSliderItemWidth(sliderItemsDesktop),
+                        minWidth: '200px',
+                        scrollSnapAlign: 'start'
+                      }}
+                    >
+                      <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
+                         <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
+                            <span>קטגוריה {i}</span>
+                         </div>
+                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      
+                      <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
+                        <h3 className="text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
+                            שם הקטגוריה {i}
+                        </h3>
+                        {settings.show_description !== false && (
+                            <p className="text-gray-500 text-sm">תיאור קצר של הקטגוריה</p>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
-                      <h3 className="text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
-                          שם הקטגוריה {i}
-                      </h3>
-                      {settings.show_description !== false && (
-                          <p className="text-gray-500 text-sm">תיאור קצר של הקטגוריה</p>
-                      )}
-                    </div>
-                  </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+
+            {/* Mobile Slider */}
+            <div className="md:hidden overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div 
+                      key={i} 
+                      className="group cursor-pointer flex-shrink-0"
+                      style={{ 
+                        width: getSliderItemWidth(sliderItemsMobile),
+                        minWidth: '200px',
+                        scrollSnapAlign: 'start'
+                      }}
+                    >
+                      <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-3 shadow-sm">
+                         <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
+                            <span>קטגוריה {i}</span>
+                         </div>
+                      </div>
+                      
+                      <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
+                        <h3 className="text-lg font-bold mb-1" style={{ color: textColor }}>
+                            שם הקטגוריה {i}
+                        </h3>
+                        {settings.show_description !== false && (
+                            <p className="text-gray-500 text-xs">תיאור קצר של הקטגוריה</p>
+                        )}
+                      </div>
+                    </div>
+                ))}
+              </div>
+            </div>
+          </>
         ) : (
-          <div className={`grid ${getGridCols()} gap-6 md:gap-8`}>
-            {[1, 2, 3].map((i) => (
+          <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
+            {Array.from({ length: getGridItemCount() }, (_, i) => i + 1).map((i) => (
               <div key={i} className="group cursor-pointer">
-                <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
+                <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-3 md:mb-4 shadow-sm group-hover:shadow-md transition-all">
                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
                       <span>קטגוריה {i}</span>
                    </div>
-                   {/* Hover Overlay */}
                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 
                 <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
-                  <h3 className="text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
+                  <h3 className="text-lg md:text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
                       שם הקטגוריה {i}
                   </h3>
                   {settings.show_description !== false && (
-                      <p className="text-gray-500 text-sm">תיאור קצר של הקטגוריה</p>
+                      <p className="text-gray-500 text-xs md:text-sm">תיאור קצר של הקטגוריה</p>
                   )}
                 </div>
               </div>
