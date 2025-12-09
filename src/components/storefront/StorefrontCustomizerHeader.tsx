@@ -112,18 +112,28 @@ export function StorefrontCustomizerHeader({ section }: StorefrontCustomizerHead
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4">
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 z-40 animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col gap-4">
               {settings.navigation?.menu_items?.map((item: any, index: number) => (
                 <Link
                   key={index}
                   href={item.url?.startsWith('/') ? `/shops/${storeSlug}${item.url}` : item.url || '#'}
-                  className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                  className="text-gray-800 hover:text-blue-600 font-medium text-lg py-2 border-b border-gray-100 last:border-0 transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
+              {settings.user_account?.enabled !== false && (
+                <Link
+                  href={`/shops/${storeSlug}/account`}
+                  className="flex items-center gap-2 text-gray-800 font-medium text-lg py-2 mt-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <HiUser className="w-5 h-5" />
+                  החשבון שלי
+                </Link>
+              )}
             </nav>
           </div>
         )}

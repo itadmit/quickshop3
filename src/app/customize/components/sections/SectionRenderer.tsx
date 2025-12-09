@@ -125,21 +125,21 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     case 'featured_products':
       return (
         <SectionWrapper>
-          <FeaturedProducts section={responsiveSection} onUpdate={onUpdate} />
+          <FeaturedProducts section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
         </SectionWrapper>
       );
 
     case 'featured_collections':
       return (
         <SectionWrapper>
-          <FeaturedCollections section={responsiveSection} onUpdate={onUpdate} />
+          <FeaturedCollections section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
         </SectionWrapper>
       );
 
     case 'image_with_text':
       return (
         <SectionWrapper>
-          <ImageWithText section={responsiveSection} onUpdate={onUpdate} />
+          <ImageWithText section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
         </SectionWrapper>
       );
 

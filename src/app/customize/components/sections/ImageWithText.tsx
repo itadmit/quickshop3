@@ -6,9 +6,10 @@ import { SectionSettings } from '@/lib/customizer/types';
 interface ImageWithTextProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
+  editorDevice?: 'desktop' | 'tablet' | 'mobile';
 }
 
-export function ImageWithText({ section, onUpdate }: ImageWithTextProps) {
+export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithTextProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
@@ -23,12 +24,19 @@ export function ImageWithText({ section, onUpdate }: ImageWithTextProps) {
   // flex-row in RTL: Start is Right.
   // flex-row-reverse in RTL: Start is Left.
   
+  // If in editor mobile/tablet view, force vertical layout
+  const isMobileView = editorDevice === 'mobile' || editorDevice === 'tablet';
+  
   // If we want Image Right (Start in RTL) -> flex-row
   // If we want Image Left (End in RTL) -> flex-row-reverse
-  const flexDirection = isImageRight ? 'md:flex-row' : 'md:flex-row-reverse';
+  const flexDirection = isMobileView ? 'flex-col' : (isImageRight ? 'md:flex-row' : 'md:flex-row-reverse');
 
   // Image Width Logic
   const getImageWidthClass = () => {
+    // In mobile editor view, always full width
+    if (isMobileView) {
+      return 'w-full';
+    }
     switch (settings.image_width) {
         case 'small': return 'md:w-3/12';
         case 'large': return 'md:w-7/12';
@@ -96,7 +104,7 @@ export function ImageWithText({ section, onUpdate }: ImageWithTextProps) {
   return (
     <div className="w-full" style={{ fontFamily }}>
       <div className="container mx-auto px-4">
-        <div className={`flex flex-col ${flexDirection} gap-12 items-center`}>
+        <div className={`flex ${isMobileView ? 'flex-col' : `flex-col ${flexDirection}`} gap-8 md:gap-12 items-center`}>
             {/* Image Side */}
             <div className={`w-full ${getImageWidthClass()}`}>
                 <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden shadow-sm">

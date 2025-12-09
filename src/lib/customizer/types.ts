@@ -19,7 +19,14 @@ export type SectionType =
   | 'newsletter'
   | 'gallery'
   | 'footer'
-  | 'header';
+  | 'header'
+  | 'product_header'
+  | 'product_gallery'
+  | 'product_info'
+  | 'related_products'
+  | 'collection_header'
+  | 'collection_filters'
+  | 'collection_products';
 
 // סוגי בלוקים בתוך סקשן
 export type BlockType = 'text' | 'image' | 'button' | 'product' | 'collection' | 'video';
@@ -31,6 +38,10 @@ export interface ColorSettings {
   background?: string;
   text?: string;
   accent?: string;
+  heading_color?: string;
+  subheading_color?: string;
+  button_background?: string;
+  button_text?: string;
 }
 
 // הגדרות טיפוגרפיה
@@ -40,6 +51,7 @@ export interface TypographySettings {
   font_weight?: string;
   line_height?: string;
   text_align?: 'left' | 'center' | 'right';
+  color?: string;
 }
 
 // הגדרות רווחים
@@ -69,6 +81,16 @@ export interface ShadowSettings {
   shadow_spread?: string;
 }
 
+// הגדרות כפתור
+export interface ButtonSettings {
+  style?: 'solid' | 'outline' | 'white' | 'black' | 'underline';
+  background_color?: string;
+  text_color?: string;
+  hover_background_color?: string;
+  hover_text_color?: string;
+  border_radius?: string;
+}
+
 // הגדרות כלליות לעיצוב
 export interface StyleSettings {
   colors?: ColorSettings;
@@ -76,6 +98,8 @@ export interface StyleSettings {
   spacing?: SpacingSettings;
   border?: BorderSettings;
   shadow?: ShadowSettings;
+  button?: ButtonSettings;
+  text_align?: 'left' | 'center' | 'right';
   background_image?: string;
   background_image_mobile?: string; // תמונת רקע למובייל
   background_color?: string;
@@ -104,6 +128,7 @@ export interface BlockContent {
   image_url?: string;
   image_url_mobile?: string; // תמונה למובייל
   image_alt?: string;
+  alt_text?: string; // חלופה ל-image_alt
   button_text?: string;
   button_url?: string;
   product_ids?: number[];

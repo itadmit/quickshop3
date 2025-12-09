@@ -59,17 +59,17 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
           id: 'hero-text',
           type: 'text',
           content: {
-            heading: 'כותרת ראשית מרהיבה',
-            subheading: 'תת כותרת שמסבירה על החנות שלך',
-            button_text: 'קנה עכשיו',
+            heading: 'ברוכים הבאים',
+            subheading: 'לחנות החדשה שלנו',
+            button_text: 'מעבר לחנות',
             button_url: '/collections/all'
           },
           style: {
             text_align: 'center',
             colors: {
               heading_color: '#000000',
-              subheading_color: '#666666',
-              button_background: '#10B981',
+              subheading_color: '#333333',
+              button_background: '#000000',
               button_text: '#FFFFFF'
             }
           },
@@ -78,14 +78,20 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       ],
       style: {
         background: {
-          background_color: '#FFFFFF'
+          background_color: '#E5E7EB',
+          background_image: '/images/library/New_york_desktop_image.jpg',
+          background_image_mobile: '/images/library/New_york_mobile_image.jpeg',
+          background_size: 'cover',
+          background_position: 'center',
+          overlay_opacity: '0.3'
         },
         typography: {
-          font_family: '"Noto Sans Hebrew", sans-serif'
+          font_family: '"Noto Sans Hebrew", sans-serif',
+          color: '#FFFFFF'
         },
         spacing: {
-          padding_top: '80px',
-          padding_bottom: '80px'
+          padding_top: '0',
+          padding_bottom: '0'
         }
       },
       settings: {
@@ -93,7 +99,11 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         height: 'medium',
         text_align: 'center',
         content_position_vertical: 'center',
-        content_position_horizontal: 'center'
+        content_position_horizontal: 'center',
+        heading: 'ברוכים הבאים',
+        subheading: 'לחנות החדשה שלנו',
+        button_text: 'מעבר לחנות',
+        button_url: '/collections/all'
       }
     },
 
@@ -154,6 +164,9 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         products: [],
         display_type: 'grid',
         items_per_row: 4,
+        items_per_row_mobile: 2,
+        products_count: 8,
+        products_count_mobile: 2,
         show_price: true,
         show_rating: true,
         show_badges: true,
@@ -174,7 +187,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
           id: 'about-image',
           type: 'image',
           content: {
-            image_url: '/images/about.jpg',
+            image_url: '/images/library/new_york_model_desktop.jpeg',
             alt_text: 'אודות החנות'
           },
           style: {},
@@ -205,6 +218,13 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         spacing: {
           padding_top: '60px',
           padding_bottom: '60px'
+        },
+        button: {
+          style: 'solid',
+          background_color: '#000000',
+          text_color: '#FFFFFF',
+          hover_background_color: '#333333',
+          hover_text_color: '#FFFFFF'
         }
       },
       settings: {
@@ -238,7 +258,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       ],
       style: {
         background: {
-          background_color: '#FFFFFF'
+          background_color: '#F9FAFB'
         },
         typography: {
           font_family: '"Noto Sans Hebrew", sans-serif'
@@ -246,6 +266,13 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         spacing: {
           padding_top: '60px',
           padding_bottom: '60px'
+        },
+        button: {
+          style: 'solid',
+          background_color: '#000000',
+          text_color: '#FFFFFF',
+          hover_background_color: '#333333',
+          hover_text_color: '#FFFFFF'
         }
       },
       settings: {

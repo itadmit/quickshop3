@@ -16,19 +16,35 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
-    if (editorDevice === 'mobile') {
-        return settings.items_per_row_mobile || 1;
+    if (editorDevice === 'mobile' || editorDevice === 'tablet') {
+        return settings.items_per_row_mobile || 2;
     }
     return settings.items_per_row || 4;
   };
 
   const itemsPerRow = getItemsPerRow();
   
+  // Number of products to show (mobile shows less)
+  const getProductsToShow = () => {
+    if (editorDevice === 'mobile' || editorDevice === 'tablet') {
+      return settings.products_count_mobile || 2; // Default 2 products on mobile
+    }
+    return settings.products_count || itemsPerRow * 2; // Default 2 rows on desktop
+  };
+  
+  const productsToShow = getProductsToShow();
+  
   const getGridCols = () => {
-    // Mobile is usually 1 or 2
-    const mobileCols = settings.items_per_row_mobile === 2 ? 'grid-cols-2' : 'grid-cols-1';
+    // If in editor with mobile/tablet view, force mobile layout (2 columns for products)
+    if (editorDevice === 'mobile' || editorDevice === 'tablet') {
+      const mobileColsSetting = settings.items_per_row_mobile || 2;
+      return mobileColsSetting >= 2 ? 'grid-cols-2' : 'grid-cols-1';
+    }
     
-    // Desktop
+    // Desktop view or actual storefront (with responsive CSS)
+    const mobileColsSetting = settings.items_per_row_mobile || 2;
+    const mobileCols = mobileColsSetting >= 2 ? 'grid-cols-2' : 'grid-cols-1';
+    
     let desktopCols = 'md:grid-cols-4';
     switch (settings.items_per_row) {
       case 2: desktopCols = 'md:grid-cols-2'; break;
@@ -65,7 +81,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
         {settings.display_type === 'carousel' ? (
           <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
             <div className="flex gap-8 pb-4" style={{ width: 'max-content' }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8].slice(0, itemsPerRow * 2).map((i) => {
+              {[1, 2, 3, 4, 5, 6, 7, 8].slice(0, productsToShow).map((i) => {
                 const cardWidth = `calc((100vw - 2rem) / ${Math.min(itemsPerRow, 4)})`;
                 return (
             <div 
@@ -124,9 +140,9 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
             </div>
           </div>
         ) : (
-          <div className={`grid ${getGridCols()} gap-8`}>
+          <div className={`grid ${getGridCols()} gap-4 md:gap-8`}>
             {/* Placeholder products */}
-            {[1, 2, 3, 4, 5, 6, 7, 8].slice(0, itemsPerRow * 2).map((i) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].slice(0, productsToShow).map((i) => (
               <div key={i} className="group flex flex-col">
                 <div className="relative aspect-[3/4] bg-white border border-gray-100 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-shadow">
                   <div className="absolute inset-0 flex items-center justify-center text-gray-200 bg-gray-50">

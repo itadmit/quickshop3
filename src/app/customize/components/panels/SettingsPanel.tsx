@@ -467,6 +467,18 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                       { label: '1 מוצר', value: 1 },
                       { label: '2 מוצרים', value: 2 },
                   ])}
+                  {renderSelect('כמה מוצרים להציג (דסקטופ)', 'products_count', [
+                      { label: '4 מוצרים', value: 4 },
+                      { label: '6 מוצרים', value: 6 },
+                      { label: '8 מוצרים', value: 8 },
+                      { label: '10 מוצרים', value: 10 },
+                      { label: '12 מוצרים', value: 12 },
+                  ])}
+                  {renderSelect('כמה מוצרים להציג (מובייל)', 'products_count_mobile', [
+                      { label: '2 מוצרים', value: 2 },
+                      { label: '4 מוצרים', value: 4 },
+                      { label: '6 מוצרים', value: 6 },
+                  ])}
                    {renderSelect('סוג תצוגה', 'display_type', [
                       { label: 'רשת (Grid)', value: 'grid' },
                       { label: 'קרוסלה (Carousel)', value: 'carousel' },

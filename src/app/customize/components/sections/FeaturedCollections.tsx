@@ -6,21 +6,27 @@ import { SectionSettings } from '@/lib/customizer/types';
 interface FeaturedCollectionsProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
+  editorDevice?: 'desktop' | 'tablet' | 'mobile';
 }
 
-export function FeaturedCollections({ section, onUpdate }: FeaturedCollectionsProps) {
+export function FeaturedCollections({ section, onUpdate, editorDevice }: FeaturedCollectionsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
   const itemsPerRow = settings.items_per_row || 3;
 
   const getGridCols = () => {
+    // If in editor with mobile/tablet view, force mobile layout
+    if (editorDevice === 'mobile' || editorDevice === 'tablet') {
+      return 'grid-cols-1';
+    }
+    // Desktop: based on settings (with responsive fallback for actual storefront)
     switch (itemsPerRow) {
-      case 2: return 'md:grid-cols-2';
-      case 3: return 'md:grid-cols-3';
-      case 4: return 'md:grid-cols-4';
-      case 5: return 'md:grid-cols-5';
-      default: return 'md:grid-cols-3';
+      case 2: return 'grid-cols-1 md:grid-cols-2';
+      case 3: return 'grid-cols-1 md:grid-cols-3';
+      case 4: return 'grid-cols-1 md:grid-cols-4';
+      case 5: return 'grid-cols-1 md:grid-cols-5';
+      default: return 'grid-cols-1 md:grid-cols-3';
     }
   };
 
@@ -80,7 +86,7 @@ export function FeaturedCollections({ section, onUpdate }: FeaturedCollectionsPr
             </div>
           </div>
         ) : (
-          <div className={`grid grid-cols-1 ${getGridCols()} gap-8`}>
+          <div className={`grid ${getGridCols()} gap-6 md:gap-8`}>
             {[1, 2, 3].map((i) => (
               <div key={i} className="group cursor-pointer">
                 <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
