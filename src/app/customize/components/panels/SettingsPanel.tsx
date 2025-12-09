@@ -934,6 +934,18 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                              { label: 'צר', value: 'narrow' },
                              { label: 'רגיל', value: 'regular' },
                         ])}
+                        {renderInput('הודעת הצלחה', 'success_message', 'תודה שנרשמת!')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="אישורים והסכמות">
+                    <div className="space-y-4">
+                        {renderSelect('הצג אישור מדיניות פרטיות', 'show_privacy_consent', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                        {getValue('show_privacy_consent') !== false && renderInput('טקסט מדיניות פרטיות', 'privacy_text', 'אני מאשר/ת את מדיניות הפרטיות')}
+                        {getValue('show_privacy_consent') !== false && renderInput('קישור למדיניות', 'privacy_url', '/privacy-policy', 'text', undefined, 'ltr')}
                     </div>
                 </SettingGroup>
             </div>
@@ -1510,6 +1522,41 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         {renderInput('כותרת', 'title', 'צור קשר')}
                         {renderInput('תת כותרת', 'subtitle', 'נשמח לשמוע מכם')}
                         {renderInput('טקסט כפתור שליחה', 'submit_text', 'שלח הודעה')}
+                        {renderInput('הודעת הצלחה', 'success_message', 'ההודעה נשלחה בהצלחה!')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="שדות הטופס">
+                    <div className="space-y-4">
+                        {renderSelect('הצג שדה אימייל', 'show_email', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                        {renderSelect('הצג שדה טלפון', 'show_phone', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                        {renderSelect('הצג שדה נושא', 'show_subject', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="אישורים והסכמות">
+                    <div className="space-y-4">
+                        {renderSelect('הצג אישור מדיניות פרטיות', 'show_privacy_consent', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                        {getValue('show_privacy_consent') !== false && renderInput('טקסט מדיניות פרטיות', 'privacy_text', 'אני מאשר/ת את מדיניות הפרטיות')}
+                        {getValue('show_privacy_consent') !== false && renderInput('קישור למדיניות', 'privacy_url', '/privacy-policy', 'text', undefined, 'ltr')}
+                        
+                        {renderSelect('הצג אישור קבלת דיוור', 'show_marketing_consent', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                        {getValue('show_marketing_consent') === true && renderInput('טקסט אישור דיוור', 'marketing_text', 'אני מאשר/ת לקבל עדכונים ומבצעים במייל')}
                     </div>
                 </SettingGroup>
             </div>

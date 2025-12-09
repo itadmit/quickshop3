@@ -178,7 +178,7 @@ export function StorefrontSectionRenderer({ section }: StorefrontSectionRenderer
     case 'newsletter':
       return (
         <SectionWrapper>
-          <Newsletter section={responsiveSection} onUpdate={noopUpdate} />
+          <Newsletter section={responsiveSection} onUpdate={noopUpdate} storeId={storeId || undefined} />
         </SectionWrapper>
       );
 
@@ -220,7 +220,7 @@ export function StorefrontSectionRenderer({ section }: StorefrontSectionRenderer
     case 'contact_form':
       return (
         <SectionWrapper>
-          <ContactForm section={responsiveSection} onUpdate={noopUpdate} />
+          <ContactForm section={responsiveSection} onUpdate={noopUpdate} storeId={storeId || undefined} />
         </SectionWrapper>
       );
 
