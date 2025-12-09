@@ -14,7 +14,14 @@ import {
   HiPlus,
   HiDotsVertical,
   HiMenu,
-  HiViewList
+  HiViewList,
+  HiVideoCamera,
+  HiChatAlt2,
+  HiQuestionMarkCircle,
+  HiUserGroup,
+  HiClipboardList,
+  HiPlay,
+  HiCollection
 } from 'react-icons/hi';
 
 interface ElementsSidebarProps {
@@ -27,47 +34,112 @@ interface ElementsSidebarProps {
   onSectionUpdate?: (sectionId: string, updates: Partial<SectionSettings>) => void;
 }
 
+type CategoryType = 'media' | 'store' | 'content' | 'marketing';
+
+const CATEGORIES: { id: CategoryType; name: string; icon: React.ComponentType<any> }[] = [
+  { id: 'media', name: 'מדיה ותמונה', icon: HiPhotograph },
+  { id: 'store', name: 'חנות ומוצרים', icon: HiCube },
+  { id: 'content', name: 'תוכן ומידע', icon: HiDocumentText },
+  { id: 'marketing', name: 'שיווק וקשר', icon: HiMail },
+];
+
 const AVAILABLE_SECTIONS: Array<{
   type: SectionType;
   name: string;
   description: string;
   icon: React.ComponentType<any>;
+  category: CategoryType;
 }> = [
+  // Media
   {
     type: 'hero_banner',
     name: 'באנר ראשי',
     description: 'סקשן גדול עם כותרת ותמונה',
-    icon: HiPhotograph
+    icon: HiPhotograph,
+    category: 'media'
   },
+  {
+    type: 'slideshow',
+    name: 'מצגת תמונות',
+    description: 'קרוסלת תמונות מתחלפת',
+    icon: HiCollection,
+    category: 'media'
+  },
+  {
+    type: 'video',
+    name: 'וידאו',
+    description: 'נגן וידאו מובנה',
+    icon: HiVideoCamera,
+    category: 'media'
+  },
+  {
+    type: 'gallery',
+    name: 'גלריה',
+    description: 'רשת תמונות מעוצבת',
+    icon: HiPhotograph,
+    category: 'media'
+  },
+  
+  // Store
   {
     type: 'featured_products',
     name: 'מוצרים מוצגים',
     description: 'רשימת מוצרים מומלצים',
-    icon: HiCube
+    icon: HiCube,
+    category: 'store'
   },
   {
     type: 'featured_collections',
     name: 'קטגוריות מוצגות',
     description: 'רשימת קטגוריות מוצגות',
-    icon: HiFolder
+    icon: HiFolder,
+    category: 'store'
   },
+
+  // Content
   {
     type: 'image_with_text',
     name: 'תמונה עם טקסט',
     description: 'תמונה לצד טקסט',
-    icon: HiPhotograph
+    icon: HiPhotograph,
+    category: 'content'
   },
   {
     type: 'rich_text',
     name: 'טקסט עשיר',
     description: 'אזור טקסט עם עיצוב',
-    icon: HiDocumentText
+    icon: HiDocumentText,
+    category: 'content'
   },
+  {
+    type: 'faq',
+    name: 'שאלות ותשובות',
+    description: 'רשימת שאלות נפוצות',
+    icon: HiQuestionMarkCircle,
+    category: 'content'
+  },
+  {
+    type: 'testimonials',
+    name: 'המלצות',
+    description: 'חוות דעת של לקוחות',
+    icon: HiUserGroup,
+    category: 'content'
+  },
+
+  // Marketing
   {
     type: 'newsletter',
     name: 'הרשמה לניוזלטר',
     description: 'טופס הרשמה לניוזלטר',
-    icon: HiMail
+    icon: HiMail,
+    category: 'marketing'
+  },
+  {
+    type: 'contact_form',
+    name: 'צור קשר',
+    description: 'טופס יצירת קשר',
+    icon: HiClipboardList,
+    category: 'marketing'
   }
 ];
 
@@ -81,6 +153,7 @@ export function ElementsSidebar({
   onSectionUpdate
 }: ElementsSidebarProps) {
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<CategoryType>('media');
 
   const handleSectionClick = (sectionId: string) => {
     onSectionSelect(selectedSectionId === sectionId ? null : sectionId);
@@ -111,12 +184,10 @@ export function ElementsSidebar({
       </div>
 
       {/* Sections List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="divide-y divide-gray-50">
           {sections.map((section, index) => {
             const isLocked = section.locked || section.type === 'header' || section.type === 'footer';
-            const isHeader = section.type === 'header';
-            const isFooter = section.type === 'footer';
             
             return (
               <div
@@ -162,7 +233,7 @@ export function ElementsSidebar({
                 </div>
 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Visibility Toggle - always available */}
+                  {/* Visibility Toggle */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -178,7 +249,7 @@ export function ElementsSidebar({
                     {section.visible ? <HiEye className="w-4 h-4" /> : <HiEyeOff className="w-4 h-4" />}
                   </button>
 
-                  {/* Delete Button - hidden for locked sections */}
+                  {/* Delete Button */}
                   {!isLocked && (
                     <button
                       onClick={(e) => {
@@ -203,38 +274,74 @@ export function ElementsSidebar({
         <div className="relative">
           <button
             onClick={() => setShowAddMenu(!showAddMenu)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm text-sm font-medium"
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-sm text-sm font-medium ${
+                showAddMenu 
+                    ? 'bg-blue-600 text-white shadow-blue-200'
+                    : 'bg-gray-900 text-white hover:bg-gray-800'
+            }`}
           >
-            <HiPlus className="w-4 h-4" />
-            הוסף סקשן
+            <HiPlus className={`w-4 h-4 transition-transform ${showAddMenu ? 'rotate-45' : ''}`} />
+            {showAddMenu ? 'סגור תפריט' : 'הוסף סקשן'}
           </button>
 
-          {/* Add Menu Dropdown */}
+          {/* Add Menu Overlay */}
           {showAddMenu && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-80 overflow-y-auto">
-              <div className="p-2 sticky top-0 bg-white border-b border-gray-100">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1">בחר סקשן</h4>
-              </div>
-              <div className="p-2 space-y-1">
-                {AVAILABLE_SECTIONS.map((section) => (
-                  <button
-                    key={section.type}
-                    onClick={() => handleAddSection(section.type)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-md hover:bg-gray-50 transition-colors text-right group"
-                  >
-                    <div className="p-2 rounded-md bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-blue-600 transition-colors shadow-sm">
-                      {React.createElement(section.icon, { className: "w-5 h-5" })}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {section.name}
-                      </p>
-                      <p className="text-xs text-gray-500 line-clamp-1">
-                        {section.description}
-                      </p>
-                    </div>
-                  </button>
+            <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden max-h-[500px] w-[320px] -right-4">
+              
+              {/* Categories Tabs */}
+              <div className="flex overflow-x-auto border-b border-gray-100 scrollbar-hide bg-gray-50/50">
+                {CATEGORIES.map(category => (
+                    <button
+                        key={category.id}
+                        onClick={() => setActiveCategory(category.id)}
+                        className={`flex flex-col items-center justify-center py-3 px-4 min-w-[70px] text-xs font-medium border-b-2 transition-colors ${
+                            activeCategory === category.id
+                                ? 'border-blue-600 text-blue-600 bg-white'
+                                : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
+                        }`}
+                    >
+                        {React.createElement(category.icon, { className: "w-5 h-5 mb-1" })}
+                        {category.name.split(' ')[0]}
+                    </button>
                 ))}
+              </div>
+
+              {/* Sections List */}
+              <div className="flex-1 overflow-y-auto p-2 bg-white">
+                <div className="space-y-1">
+                  {AVAILABLE_SECTIONS
+                    .filter(section => section.category === activeCategory)
+                    .map((section) => (
+                    <button
+                      key={section.type}
+                      onClick={() => handleAddSection(section.type)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-right group border border-transparent hover:border-gray-100"
+                    >
+                      <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        {React.createElement(section.icon, { className: "w-6 h-6" })}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-700">
+                          {section.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {section.description}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                  
+                  {AVAILABLE_SECTIONS.filter(section => section.category === activeCategory).length === 0 && (
+                      <div className="py-8 text-center text-gray-400 text-sm">
+                          אין סקשנים בקטגוריה זו
+                      </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Footer hint */}
+              <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-400">בחר קטגוריה למעלה וגרור סקשן לעמוד</p>
               </div>
             </div>
           )}

@@ -263,13 +263,128 @@ export function CustomizerLayout() {
       return;
     }
 
+    let defaultBlocks: any[] = [];
+    let defaultSettings: any = {};
+
+    // Default content for new sections
+    switch (sectionType) {
+      case 'slideshow':
+        defaultSettings = {
+          autoplay: true,
+          autoplay_speed: 5,
+          height: 'medium'
+        };
+        defaultBlocks = [
+          {
+            id: `slide-${Date.now()}-1`,
+            type: 'image',
+            content: {
+              heading: 'ברוכים הבאים לחנות החדשה',
+              subheading: 'גלו את הקולקציה החדשה שלנו',
+              button_text: 'קנה עכשיו',
+              button_url: '/collections/all',
+              image_url: '' // Placeholder will be handled by component
+            }
+          },
+          {
+            id: `slide-${Date.now()}-2`,
+            type: 'image',
+            content: {
+              heading: 'מבצעי קיץ חמים',
+              subheading: 'עד 50% הנחה על כל הפריטים',
+              button_text: 'למבצעים',
+              button_url: '/collections/sale',
+              image_url: ''
+            }
+          }
+        ];
+        break;
+
+      case 'testimonials':
+        defaultSettings = {
+          title: 'לקוחות מספרים',
+          subtitle: 'מה הלקוחות שלנו חושבים עלינו',
+          columns: 3
+        };
+        defaultBlocks = [
+          {
+            id: `testim-${Date.now()}-1`,
+            type: 'text',
+            content: {
+              text: 'שירות מעולה ומוצרים איכותיים מאוד! המשלוח הגיע מהר ובצורה מסודרת. בטוח אזמין שוב.',
+              heading: 'דניאל כהן',
+              subheading: 'לקוח מאומת'
+            }
+          },
+          {
+            id: `testim-${Date.now()}-2`,
+            type: 'text',
+            content: {
+              text: 'חווית קנייה נהדרת. האתר נוח לשימוש והמחירים הוגנים. ממליצה בחום!',
+              heading: 'נועה לוי',
+              subheading: 'לקוחה מאומתת'
+            }
+          },
+          {
+            id: `testim-${Date.now()}-3`,
+            type: 'text',
+            content: {
+              text: 'חיפשתי את המוצר הזה המון זמן ומצאתי אותו כאן במחיר הכי טוב. תודה רבה!',
+              heading: 'יוסי אברהמי',
+              subheading: 'לקוח מאומת'
+            }
+          }
+        ];
+        break;
+
+      case 'faq':
+        defaultSettings = {
+          title: 'שאלות ותשובות',
+          width: 'regular'
+        };
+        defaultBlocks = [
+          {
+            id: `faq-${Date.now()}-1`,
+            type: 'text',
+            content: {
+              heading: 'כמה זמן לוקח המשלוח?',
+              text: 'זמן המשלוח תלוי במיקום ובשיטת המשלוח שנבחרה. בדרך כלל משלוח רגיל לוקח 3-5 ימי עסקים.'
+            }
+          },
+          {
+            id: `faq-${Date.now()}-2`,
+            type: 'text',
+            content: {
+              heading: 'האם ניתן להחזיר מוצר?',
+              text: 'כן, ניתן להחזיר מוצרים תוך 14 יום מקבלתם, בתנאי שלא נעשה בהם שימוש והם באריזתם המקורית.'
+            }
+          },
+          {
+            id: `faq-${Date.now()}-3`,
+            type: 'text',
+            content: {
+              heading: 'איך יוצרים קשר עם שירות הלקוחות?',
+              text: 'ניתן ליצור קשר דרך עמוד "צור קשר" באתר, במייל support@example.com או בטלפון 050-0000000.'
+            }
+          }
+        ];
+        break;
+      
+      case 'gallery':
+         defaultSettings = {
+             items_per_row: 4,
+             display_type: 'grid'
+         };
+         break;
+    }
+
     const newSection: SectionSettings = {
       id: `section-${Date.now()}`,
       type: sectionType as any,
       name: getSectionName(sectionType),
       visible: true,
       order: position ?? pageSections.length,
-      blocks: [],
+      blocks: defaultBlocks,
       style: {
         background: {
           background_color: '#FFFFFF'
@@ -282,7 +397,7 @@ export function CustomizerLayout() {
           padding_bottom: '60px'
         }
       },
-      settings: {}
+      settings: defaultSettings
     };
 
     setPageSections(prev => {

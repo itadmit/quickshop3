@@ -15,6 +15,11 @@ import { RichText } from './RichText';
 import { Newsletter } from './Newsletter';
 import { Gallery } from './Gallery';
 import { Footer } from './Footer';
+import { Slideshow } from './Slideshow';
+import { Testimonials } from './Testimonials';
+import { FAQ } from './FAQ';
+import { VideoSection } from './VideoSection';
+import { ContactForm } from './ContactForm';
 
 interface SectionRendererProps {
   section: SectionSettings;
@@ -161,6 +166,41 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
       return (
         <SectionWrapper>
           <Gallery section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'slideshow':
+      return (
+        <SectionWrapper>
+          <Slideshow section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'testimonials':
+      return (
+        <SectionWrapper>
+          <Testimonials section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'faq':
+      return (
+        <SectionWrapper>
+          <FAQ section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'video':
+      return (
+        <SectionWrapper>
+          <VideoSection section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'contact_form':
+      return (
+        <SectionWrapper>
+          <ContactForm section={responsiveSection} onUpdate={onUpdate} />
         </SectionWrapper>
       );
 
