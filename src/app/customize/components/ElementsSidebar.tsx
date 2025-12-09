@@ -312,24 +312,24 @@ export function ElementsSidebar({
                   {AVAILABLE_SECTIONS
                     .filter(section => section.category === activeCategory)
                     .map((section) => (
-                    <button
-                      key={section.type}
-                      onClick={() => handleAddSection(section.type)}
+                  <button
+                    key={section.type}
+                    onClick={() => handleAddSection(section.type)}
                       className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-right group border border-transparent hover:border-gray-100"
-                    >
+                  >
                       <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm">
                         {React.createElement(section.icon, { className: "w-6 h-6" })}
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
-                          {section.name}
-                        </p>
+                        {section.name}
+                      </p>
                         <p className="text-xs text-gray-500">
-                          {section.description}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                        {section.description}
+                      </p>
+                    </div>
+                  </button>
+                ))}
                   
                   {AVAILABLE_SECTIONS.filter(section => section.category === activeCategory).length === 0 && (
                       <div className="py-8 text-center text-gray-400 text-sm">

@@ -98,8 +98,8 @@ export function Header({ onPreview, onPublish, device, onDeviceChange, isPublish
             </>
           ) : (
             <>
-              <HiUpload className="w-4 h-4" />
-              <span>פרסם</span>
+          <HiUpload className="w-4 h-4" />
+          <span>פרסם</span>
             </>
           )}
         </button>

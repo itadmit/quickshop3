@@ -379,26 +379,16 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'hero_banner':
-        // Phone Mockup Component
-        const PhoneMockup = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
-          <div className="flex justify-center group">
-            <div className="relative">
-              {/* Phone frame */}
-              <div className="bg-gray-800 rounded-[1.5rem] p-1.5 shadow-lg" style={{ width: '90px' }}>
-                {/* Notch */}
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-2 bg-gray-900 rounded-full z-10" />
-                {/* Screen */}
-                <div className="bg-white rounded-[1.2rem] overflow-hidden" style={{ height: '130px' }}>
-                  {children}
-                </div>
-                {/* Home indicator */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-6 h-1 bg-gray-600 rounded-full" />
-              </div>
-              {/* Delete button */}
+        // Mobile Preview Component
+        const MobilePreview = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-500 text-center">תצוגה מקדימה</div>
+            <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden" style={{ height: '180px', maxWidth: '110px', margin: '0 auto' }}>
+              {children}
               {onDelete && (
                 <button
                   onClick={onDelete}
-                  className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 z-20"
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   title="הסר"
                 >
                   <HiTrash className="w-3 h-3" />
@@ -408,37 +398,19 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           </div>
         );
 
-        // Desktop Mockup Component  
-        const DesktopMockup = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
-          <div className="flex justify-center group">
-            <div className="relative">
-              {/* Monitor frame */}
-              <div className="bg-gray-800 rounded-lg p-1 shadow-lg">
-                {/* Screen bezel */}
-                <div className="bg-gray-900 rounded p-0.5">
-                  {/* Screen */}
-                  <div className="bg-white rounded-sm overflow-hidden" style={{ width: '180px', height: '110px' }}>
-                    {children}
-                  </div>
-                </div>
-                {/* Bottom bezel */}
-                <div className="h-2 bg-gray-900 rounded-b flex items-center justify-center">
-                  <div className="w-1 h-1 bg-gray-700 rounded-full" />
-                </div>
-              </div>
-              {/* Stand */}
-              <div className="flex flex-col items-center">
-                <div className="w-4 h-2 bg-gray-700" />
-                <div className="w-10 h-1 bg-gray-600 rounded-b" />
-              </div>
-              {/* Delete button */}
+        // Desktop Preview Component  
+        const DesktopPreview = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-500 text-center">תצוגה מקדימה</div>
+            <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden" style={{ height: '180px' }}>
+              {children}
               {onDelete && (
                 <button
                   onClick={onDelete}
-                  className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 z-20"
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   title="הסר"
                 >
-                  <HiTrash className="w-3 h-3" />
+                  <HiTrash className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -477,26 +449,26 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </button>
                     </div>
 
-                    {/* Preview Mobile Image in Phone Mockup */}
+                    {/* Preview Mobile Image */}
                     {section.style?.background?.background_image_mobile && (
-                        <PhoneMockup onDelete={() => handleStyleChange('background.background_image_mobile', '')}>
+                        <MobilePreview onDelete={() => handleStyleChange('background.background_image_mobile', '')}>
                             <img 
                                 src={section.style.background.background_image_mobile} 
                                 alt="Mobile Background" 
                                 className="w-full h-full object-cover"
                             />
-                        </PhoneMockup>
+                        </MobilePreview>
                     )}
 
-                    {/* Preview Mobile Video in Phone Mockup */}
+                    {/* Preview Mobile Video */}
                     {section.style?.background?.background_video_mobile && (
-                        <PhoneMockup onDelete={() => handleStyleChange('background.background_video_mobile', '')}>
+                        <MobilePreview onDelete={() => handleStyleChange('background.background_video_mobile', '')}>
                             <video 
                                 src={section.style.background.background_video_mobile} 
                                 className="w-full h-full object-cover"
                                 autoPlay muted loop
                             />
-                        </PhoneMockup>
+                        </MobilePreview>
                     )}
                 </div>
             </SettingGroup>
@@ -531,26 +503,26 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </button>
                     </div>
 
-                    {/* Preview Desktop Image in Monitor Mockup */}
+                    {/* Preview Desktop Image */}
                     {section.style?.background?.background_image && (
-                        <DesktopMockup onDelete={() => handleStyleChange('background.background_image', '')}>
+                        <DesktopPreview onDelete={() => handleStyleChange('background.background_image', '')}>
                             <img 
                                 src={section.style.background.background_image} 
                                 alt="Desktop Background" 
                                 className="w-full h-full object-cover"
                             />
-                        </DesktopMockup>
+                        </DesktopPreview>
                     )}
 
-                    {/* Preview Desktop Video in Monitor Mockup */}
+                    {/* Preview Desktop Video */}
                     {section.style?.background?.background_video && (
-                        <DesktopMockup onDelete={() => handleStyleChange('background.background_video', '')}>
+                        <DesktopPreview onDelete={() => handleStyleChange('background.background_video', '')}>
                             <video 
                                 src={section.style.background.background_video} 
                                 className="w-full h-full object-cover"
                                 autoPlay muted loop
                             />
-                        </DesktopMockup>
+                        </DesktopPreview>
                     )}
 
                     {/* Image Settings */}
@@ -1172,53 +1144,68 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                     </div>
                                     
                                     {/* Mobile + Desktop Images */}
-                                    <div className="space-y-3 mb-3">
-                                        <div className="text-xs text-gray-500 font-medium flex items-center gap-1"><HiDeviceMobile className="w-3 h-3" /> מובייל + טאבלט</div>
-                                        <button
-                                            onClick={() => {
-                                                setMediaType('image');
-                                                setTargetBlockId(slide.id);
-                                                setImageDeviceTarget('mobile');
-                                                setIsMediaPickerOpen(true);
-                                            }}
-                                            className="w-full h-16 bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 transition-all group relative flex items-center justify-center"
-                                            title="לחץ להחלפת תמונת מובייל"
-                                        >
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                        {/* Mobile */}
+                                        <div className="space-y-2">
+                                            <div className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                                                <HiDeviceMobile className="w-3 h-3" /> מובייל
+                                            </div>
                                             {slide.content?.image_url_mobile ? (
-                                                <img src={slide.content.image_url_mobile} className="w-full h-full object-cover" />
+                                                <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden" style={{ height: '120px' }}>
+                                                    <img src={slide.content.image_url_mobile} className="w-full h-full object-cover" />
+                                                    <button
+                                                        onClick={() => {
+                                                            setMediaType('image');
+                                                            setTargetBlockId(slide.id);
+                                                            setImageDeviceTarget('mobile');
+                                                            setIsMediaPickerOpen(true);
+                                                        }}
+                                                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                    >
+                                                        <HiRefresh className="w-5 h-5 text-white" />
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                <div className="flex items-center gap-2 text-gray-400">
-                                                    <HiPhotograph className="w-5 h-5" />
-                                                    <span className="text-xs">הוסף תמונה</span>
-                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setMediaType('image');
+                                                        setTargetBlockId(slide.id);
+                                                        setImageDeviceTarget('mobile');
+                                                        setIsMediaPickerOpen(true);
+                                                    }}
+                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all flex items-center justify-center"
+                                                    style={{ height: '120px' }}
+                                                >
+                                                    <HiPhotograph className="w-6 h-6 text-gray-400" />
+                                                </button>
                                             )}
-                                            {slide.content?.image_url_mobile && (
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <HiRefresh className="w-5 h-5 text-white" />
-                                                </div>
-                                            )}
-                                        </button>
+                                        </div>
 
-                                        <div className="text-xs text-gray-500 font-medium flex items-center gap-1"><HiDesktopComputer className="w-3 h-3" /> מחשב</div>
-                                        <button
-                                            onClick={() => openSlideImagePicker(slide.id)}
-                                            className="w-full h-16 bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 transition-all group relative flex items-center justify-center"
-                                            title="לחץ להחלפת תמונת מחשב"
-                                        >
+                                        {/* Desktop */}
+                                        <div className="space-y-2">
+                                            <div className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                                                <HiDesktopComputer className="w-3 h-3" /> מחשב
+                                            </div>
                                             {slide.content?.image_url ? (
-                                                <img src={slide.content.image_url} className="w-full h-full object-cover" />
+                                                <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden" style={{ height: '120px' }}>
+                                                    <img src={slide.content.image_url} className="w-full h-full object-cover" />
+                                                    <button
+                                                        onClick={() => openSlideImagePicker(slide.id)}
+                                                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                    >
+                                                        <HiRefresh className="w-5 h-5 text-white" />
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                <div className="flex items-center gap-2 text-gray-400">
-                                                    <HiPhotograph className="w-5 h-5" />
-                                                    <span className="text-xs">הוסף תמונה</span>
-                                                </div>
+                                                <button
+                                                    onClick={() => openSlideImagePicker(slide.id)}
+                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all flex items-center justify-center"
+                                                    style={{ height: '120px' }}
+                                                >
+                                                    <HiPhotograph className="w-6 h-6 text-gray-400" />
+                                                </button>
                                             )}
-                                            {slide.content?.image_url && (
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <HiRefresh className="w-5 h-5 text-white" />
-                                                </div>
-                                            )}
-                                        </button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
