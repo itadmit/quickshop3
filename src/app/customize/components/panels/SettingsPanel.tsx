@@ -6,7 +6,7 @@ import { SettingGroup } from '../ui/SettingGroup';
 import { SettingInput } from '../ui/SettingInput';
 import { SettingSelect } from '../ui/SettingSelect';
 import { MediaPicker } from '@/components/MediaPicker';
-import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh } from 'react-icons/hi';
+import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
 
@@ -31,7 +31,6 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
     }
 
     // If mobile/tablet, try to get from responsive settings first
-    // Note: TypeScript might complain about indexing 'responsive', we need to ensure type definition supports it or cast
     const responsiveSettings = (section as any).responsive?.[device]?.settings;
     if (responsiveSettings && responsiveSettings[key] !== undefined) {
       return responsiveSettings[key];
@@ -78,11 +77,6 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   };
 
   const handleStyleChange = (path: string, value: any) => {
-      // For now style handling remains on desktop/base only in this implementation for simplicity unless requested
-      // But typically style should also be responsive.
-      // The user specifically asked about "Each field has a different value in mobile", referring mainly to settings inputs I presume.
-      // Let's keep style simple for now or apply same logic if needed.
-      
       const keys = path.split('.');
       const style = { ...(section.style || {}) };
       let current: any = style;
@@ -96,7 +90,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
   const handleMediaSelect = (files: string[]) => {
     if (files.length > 0) {
-      if (targetBlockId === 'header-logo') {
+      if ((window as any).__videoSelect) {
+          (window as any).__videoSelect(files[0]);
+          (window as any).__videoSelect = null;
+      } else if (targetBlockId === 'header-logo') {
           // Update header logo
           handleSettingChange('logo', { 
             ...section.settings?.logo, 
@@ -125,6 +122,12 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
               (window as any).__galleryAddImage(file);
           });
           (window as any).__galleryAddImage = null;
+      } else if (section.type === 'slideshow' && (window as any).__slideshowAddImage) {
+          // Add slide to slideshow
+          files.forEach(file => {
+              (window as any).__slideshowAddImage(file);
+          });
+          (window as any).__slideshowAddImage = null;
       } else {
         // Update section background - support desktop/mobile images
         if (mediaType === 'image') {
@@ -1028,6 +1031,381 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'רשת (Grid)', value: 'grid' },
                             { label: 'קרוסלה (Carousel)', value: 'carousel' },
                         ])}
+                    </div>
+                </SettingGroup>
+            </div>
+          );
+
+      case 'slideshow':
+          const slides = section.blocks?.filter(b => b.type === 'image') || [];
+          
+          const addSlide = (imageUrl: string) => {
+              const newBlock = {
+                  id: `slide-${Date.now()}`,
+                  type: 'image' as const,
+                  content: {
+                      image_url: imageUrl,
+                      heading: 'כותרת חדשה',
+                      subheading: 'תת כותרת',
+                      button_text: 'כפתור',
+                      button_url: '#'
+                  },
+                  style: {},
+                  settings: {}
+              };
+              onUpdate({
+                  blocks: [...(section.blocks || []), newBlock]
+              });
+          };
+          
+          const removeSlide = (blockId: string) => {
+              const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+              onUpdate({ blocks: newBlocks });
+          };
+
+          const updateSlide = (blockId: string, updates: any) => {
+             const newBlocks = [...(section.blocks || [])];
+             const index = newBlocks.findIndex(b => b.id === blockId);
+             if (index >= 0) {
+                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 onUpdate({ blocks: newBlocks });
+             }
+          };
+
+          return (
+            <div className="space-y-1">
+                <SettingGroup title="הגדרות מצגת">
+                    <div className="space-y-4">
+                        {renderSelect('גובה', 'height', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'מסך מלא', value: 'full' },
+                        ])}
+                        {renderSelect('ניגון אוטומטי', 'autoplay', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ])}
+                        {getValue('autoplay') && renderInput('מהירות (שניות)', 'autoplay_speed', '5', 'number')}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="שקופיות">
+                    <div className="space-y-4">
+                        <button
+                            onClick={() => {
+                                setMediaType('image');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                                (window as any).__slideshowAddImage = addSlide;
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                        >
+                            <HiPlus className="w-5 h-5" />
+                            הוסף שקופית
+                        </button>
+
+                        <div className="space-y-3">
+                            {slides.map((slide, index) => (
+                                <div key={slide.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                                            {slide.content?.image_url && (
+                                                <img src={slide.content.image_url} className="w-full h-full object-cover" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 font-medium text-sm">שקופית {index + 1}</div>
+                                        <button onClick={() => removeSlide(slide.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
+                                            <HiTrash className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <input 
+                                            className="w-full text-xs p-2 border rounded" 
+                                            placeholder="כותרת"
+                                            value={slide.content?.heading || ''}
+                                            onChange={(e) => updateSlide(slide.id, { heading: e.target.value })}
+                                        />
+                                        <input 
+                                            className="w-full text-xs p-2 border rounded" 
+                                            placeholder="תת כותרת"
+                                            value={slide.content?.subheading || ''}
+                                            onChange={(e) => updateSlide(slide.id, { subheading: e.target.value })}
+                                        />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                className="w-1/2 text-xs p-2 border rounded" 
+                                                placeholder="טקסט כפתור"
+                                                value={slide.content?.button_text || ''}
+                                                onChange={(e) => updateSlide(slide.id, { button_text: e.target.value })}
+                                            />
+                                            <input 
+                                                className="w-1/2 text-xs p-2 border rounded" 
+                                                placeholder="לינק"
+                                                value={slide.content?.button_url || ''}
+                                                onChange={(e) => updateSlide(slide.id, { button_url: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </SettingGroup>
+            </div>
+          );
+
+      case 'testimonials':
+          const testimonials = section.blocks?.filter(b => b.type === 'text') || [];
+          
+          const addTestimonial = () => {
+              const newBlock = {
+                  id: `testim-${Date.now()}`,
+                  type: 'text' as const,
+                  content: {
+                      text: 'המלצה חדשה...',
+                      heading: 'שם לקוח',
+                      subheading: 'לקוח מאומת'
+                  },
+                  style: {},
+                  settings: {}
+              };
+              onUpdate({
+                  blocks: [...(section.blocks || []), newBlock]
+              });
+          };
+          
+          const removeTestimonial = (blockId: string) => {
+              const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+              onUpdate({ blocks: newBlocks });
+          };
+
+          const updateTestimonial = (blockId: string, updates: any) => {
+             const newBlocks = [...(section.blocks || [])];
+             const index = newBlocks.findIndex(b => b.id === blockId);
+             if (index >= 0) {
+                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 onUpdate({ blocks: newBlocks });
+             }
+          };
+
+          return (
+            <div className="space-y-1">
+                <SettingGroup title="כללי">
+                    <div className="space-y-4">
+                        {renderInput('כותרת', 'title', 'לקוחות מספרים')}
+                        {renderInput('תת כותרת', 'subtitle', 'מה חושבים עלינו')}
+                        {renderSelect('מספר עמודות', 'columns', [
+                            { label: '2', value: 2 },
+                            { label: '3', value: 3 },
+                            { label: '4', value: 4 },
+                        ])}
+                        {renderSelect('יישור טקסט', 'text_align', [
+                            { label: 'ימין', value: 'right' },
+                            { label: 'מרכז', value: 'center' },
+                            { label: 'שמאל', value: 'left' },
+                        ])}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="המלצות">
+                    <div className="space-y-4">
+                        <button
+                            onClick={addTestimonial}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                        >
+                            <HiPlus className="w-5 h-5" />
+                            הוסף המלצה
+                        </button>
+
+                        <div className="space-y-3">
+                            {testimonials.map((item, index) => (
+                                <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex-1 font-medium text-sm">המלצה {index + 1}</div>
+                                        <button onClick={() => removeTestimonial(item.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
+                                            <HiTrash className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <textarea 
+                                            className="w-full text-xs p-2 border rounded resize-none" 
+                                            placeholder="תוכן ההמלצה"
+                                            rows={2}
+                                            value={item.content?.text || ''}
+                                            onChange={(e) => updateTestimonial(item.id, { text: e.target.value })}
+                                        />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                className="w-1/2 text-xs p-2 border rounded" 
+                                                placeholder="שם לקוח"
+                                                value={item.content?.heading || ''}
+                                                onChange={(e) => updateTestimonial(item.id, { heading: e.target.value })}
+                                            />
+                                            <input 
+                                                className="w-1/2 text-xs p-2 border rounded" 
+                                                placeholder="תיאור (לקוח מאומת)"
+                                                value={item.content?.subheading || ''}
+                                                onChange={(e) => updateTestimonial(item.id, { subheading: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </SettingGroup>
+            </div>
+          );
+
+      case 'faq':
+          const faqItems = section.blocks?.filter(b => b.type === 'text') || [];
+          
+          const addFaq = () => {
+              const newBlock = {
+                  id: `faq-${Date.now()}`,
+                  type: 'text' as const,
+                  content: {
+                      heading: 'שאלה חדשה?',
+                      text: 'תשובה...'
+                  },
+                  style: {},
+                  settings: {}
+              };
+              onUpdate({
+                  blocks: [...(section.blocks || []), newBlock]
+              });
+          };
+          
+          const removeFaq = (blockId: string) => {
+              const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+              onUpdate({ blocks: newBlocks });
+          };
+
+          const updateFaq = (blockId: string, updates: any) => {
+             const newBlocks = [...(section.blocks || [])];
+             const index = newBlocks.findIndex(b => b.id === blockId);
+             if (index >= 0) {
+                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 onUpdate({ blocks: newBlocks });
+             }
+          };
+
+          return (
+            <div className="space-y-1">
+                <SettingGroup title="כללי">
+                    <div className="space-y-4">
+                        {renderInput('כותרת', 'title', 'שאלות ותשובות')}
+                        {renderInput('תת כותרת', 'subtitle', 'כל המידע שחשוב לדעת')}
+                        {renderSelect('רוחב', 'width', [
+                            { label: 'רגיל', value: 'regular' },
+                            { label: 'צר', value: 'narrow' },
+                        ])}
+                    </div>
+                </SettingGroup>
+
+                <SettingGroup title="שאלות">
+                    <div className="space-y-4">
+                        <button
+                            onClick={addFaq}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                        >
+                            <HiPlus className="w-5 h-5" />
+                            הוסף שאלה
+                        </button>
+
+                        <div className="space-y-3">
+                            {faqItems.map((item, index) => (
+                                <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex-1 font-medium text-sm">שאלה {index + 1}</div>
+                                        <button onClick={() => removeFaq(item.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
+                                            <HiTrash className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <input 
+                                            className="w-full text-xs p-2 border rounded" 
+                                            placeholder="השאלה"
+                                            value={item.content?.heading || ''}
+                                            onChange={(e) => updateFaq(item.id, { heading: e.target.value })}
+                                        />
+                                        <textarea 
+                                            className="w-full text-xs p-2 border rounded resize-none" 
+                                            placeholder="התשובה"
+                                            rows={2}
+                                            value={item.content?.text || ''}
+                                            onChange={(e) => updateFaq(item.id, { text: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </SettingGroup>
+            </div>
+          );
+
+      case 'video':
+          return (
+            <div className="space-y-1">
+                <SettingGroup title="תוכן">
+                    <div className="space-y-4">
+                        {renderInput('כותרת', 'title', 'כותרת הוידאו')}
+                        {renderInput('תיאור', 'description', 'תיאור קצר מתחת לוידאו')}
+                    </div>
+                </SettingGroup>
+                
+                <SettingGroup title="קובץ וידאו">
+                    <div className="space-y-4">
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+                            {section.settings?.video_url ? (
+                                <div className="space-y-2">
+                                    <video src={section.settings.video_url} className="w-full rounded h-32 object-cover bg-black" />
+                                    <div className="flex gap-2 justify-center">
+                                        <button 
+                                            onClick={() => {
+                                                setMediaType('video');
+                                                setTargetBlockId('video-main'); // Custom ID logic
+                                                // Handle video update manually
+                                                handleSettingChange('video_url', '');
+                                            }}
+                                            className="text-xs text-red-600 hover:underline"
+                                        >
+                                            הסר וידאו
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setMediaType('video');
+                                        setTargetBlockId(null);
+                                        setIsMediaPickerOpen(true);
+                                        // Update handleMediaSelect to check for video section
+                                        (window as any).__videoSelect = (url: string) => handleSettingChange('video_url', url);
+                                    }}
+                                    className="flex flex-col items-center gap-2 text-gray-500 hover:text-blue-600"
+                                >
+                                    <HiVideoCamera className="w-8 h-8" />
+                                    <span className="text-sm">בחר וידאו</span>
+                                </button>
+                            )}
+                        </div>
+                        {renderInput('תמונת כיסוי (URL)', 'cover_image', 'https://...', 'text', 'אופציונלי', 'ltr')}
+                    </div>
+                </SettingGroup>
+            </div>
+          );
+
+      case 'contact_form':
+          return (
+            <div className="space-y-1">
+                <SettingGroup title="כללי">
+                    <div className="space-y-4">
+                        {renderInput('כותרת', 'title', 'צור קשר')}
+                        {renderInput('תת כותרת', 'subtitle', 'נשמח לשמוע מכם')}
+                        {renderInput('טקסט כפתור שליחה', 'submit_text', 'שלח הודעה')}
                     </div>
                 </SettingGroup>
             </div>

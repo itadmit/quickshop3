@@ -268,6 +268,94 @@ export function CustomizerLayout() {
 
     // Default content for new sections
     switch (sectionType) {
+      case 'hero_banner':
+        defaultSettings = {
+          heading: 'קולקציית קיץ 2024',
+          subheading: 'הפריטים החמים ביותר לעונה',
+          button_text: 'קנה עכשיו',
+          button_url: '/collections/all',
+          height: 'medium',
+          text_align: 'center',
+          content_position_vertical: 'center',
+          content_position_horizontal: 'center'
+        };
+        break;
+
+      case 'featured_products':
+        defaultSettings = {
+          title: 'מוצרים מומלצים',
+          collection: 'all',
+          items_per_row: 4,
+          products_count: 8,
+          show_view_all: true,
+          view_all_text: 'לכל המוצרים',
+          display_type: 'grid'
+        };
+        break;
+
+      case 'featured_collections':
+        defaultSettings = {
+          title: 'קטגוריות פופולריות',
+          items_per_row: 4,
+          display_type: 'grid',
+          show_view_all: true
+        };
+        break;
+
+      case 'image_with_text':
+        defaultSettings = {
+          height: 'auto',
+          layout: 'image_right',
+          image_width: 'medium'
+        };
+        defaultBlocks = [
+          {
+            id: `img-${Date.now()}`,
+            type: 'image',
+            content: {
+              image_url: '' // Placeholder handled by component
+            }
+          },
+          {
+            id: `txt-${Date.now()}`,
+            type: 'text',
+            content: {
+              heading: 'הסיפור שלנו',
+              text: 'אנחנו מאמינים באיכות ללא פשרות ובעיצוב על זמני. כל פריט בקולקציה שלנו נבחר בקפידה כדי להבטיח את החוויה הטובה ביותר עבורכם.',
+              button_text: 'קרא עוד',
+              button_url: '/pages/about'
+            },
+            style: {
+              text_align: 'right'
+            }
+          }
+        ];
+        break;
+
+      case 'rich_text':
+        defaultSettings = {
+          content_width: 'regular',
+          content_align: 'center'
+        };
+        defaultBlocks = [
+          {
+            id: `rt-${Date.now()}`,
+            type: 'text',
+            content: {
+              heading: 'דברו על המותג שלכם',
+              text: 'שתפו מידע על המותג שלכם עם הלקוחות. תארו מוצר, שתפו הודעות, או קבלו את פני הלקוחות לחנות שלכם.'
+            }
+          }
+        ];
+        break;
+
+      case 'newsletter':
+        defaultSettings = {
+          height: 'small',
+          content_width: 'regular'
+        };
+        break;
+
       case 'slideshow':
         defaultSettings = {
           autoplay: true,
@@ -376,6 +464,21 @@ export function CustomizerLayout() {
              display_type: 'grid'
          };
          break;
+         
+      case 'video':
+        defaultSettings = {
+            title: 'הסיפור שלנו בוידאו',
+            description: 'צפו בסרטון קצר על תהליך הייצור שלנו'
+        };
+        break;
+
+      case 'contact_form':
+        defaultSettings = {
+            title: 'צור קשר',
+            subtitle: 'נשמח לשמוע מכם',
+            submit_text: 'שלח הודעה'
+        };
+        break;
     }
 
     const newSection: SectionSettings = {
@@ -427,6 +530,13 @@ export function CustomizerLayout() {
       
       return updated;
     });
+
+    // Automatically select the new section to scroll to it and open settings
+    // Timeout needed to allow state update and render to happen first
+    setTimeout(() => {
+        setSelectedSectionId(newSection.id);
+    }, 100);
+
   }, [pageSections]);
 
   const handleSectionDelete = useCallback((sectionId: string) => {

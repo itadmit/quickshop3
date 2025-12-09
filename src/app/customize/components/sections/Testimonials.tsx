@@ -14,15 +14,15 @@ export function Testimonials({ section, onUpdate }: TestimonialsProps) {
   const style = section.style || {};
   const blocks = section.blocks?.filter(b => b.type === 'text') || [];
 
-  const textColor = style.typography?.color || '#111827';
-  const bgColor = style.background?.background_color || '#F9FAFB';
+  const textColor = style.typography?.color;
+  // Note: We don't force background color here as it's handled by the wrapper
 
   const gridCols = settings.columns === 4 ? 'md:grid-cols-4' : 
                    settings.columns === 3 ? 'md:grid-cols-3' : 
                    settings.columns === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
 
   return (
-    <div className="py-16 px-4" style={{ backgroundColor: bgColor }}>
+    <div className="py-16 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         {(settings.title || settings.subtitle) && (
@@ -33,7 +33,7 @@ export function Testimonials({ section, onUpdate }: TestimonialsProps) {
               </h2>
             )}
             {settings.subtitle && (
-              <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              <p className="text-lg opacity-80 max-w-2xl mx-auto" style={{ color: textColor }}>
                 {settings.subtitle}
               </p>
             )}
@@ -90,4 +90,3 @@ export function Testimonials({ section, onUpdate }: TestimonialsProps) {
     </div>
   );
 }
-

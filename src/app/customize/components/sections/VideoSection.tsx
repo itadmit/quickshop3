@@ -11,19 +11,22 @@ interface VideoSectionProps {
 
 export function VideoSection({ section, onUpdate }: VideoSectionProps) {
   const settings = section.settings || {};
+  const style = section.style || {};
+  
   const videoUrl = settings.video_url;
   const coverImage = settings.cover_image;
+  const textColor = style.typography?.color;
 
   return (
-    <div className="py-16 px-4 bg-gray-50">
+    <div className="py-16 px-4">
       <div className="max-w-6xl mx-auto">
         {(settings.title || settings.description) && (
           <div className="text-center mb-10 max-w-3xl mx-auto">
             {settings.title && (
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">{settings.title}</h2>
+              <h2 className="text-3xl font-bold mb-4" style={{ color: textColor }}>{settings.title}</h2>
             )}
             {settings.description && (
-              <p className="text-lg text-gray-600">{settings.description}</p>
+              <p className="text-lg opacity-80" style={{ color: textColor }}>{settings.description}</p>
             )}
           </div>
         )}
@@ -51,4 +54,3 @@ export function VideoSection({ section, onUpdate }: VideoSectionProps) {
     </div>
   );
 }
-

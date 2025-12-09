@@ -11,11 +11,12 @@ interface FAQProps {
 
 export function FAQ({ section, onUpdate }: FAQProps) {
   const settings = section.settings || {};
+  const style = section.style || {};
   const blocks = section.blocks?.filter(b => b.type === 'text') || [];
   
-  // State for open accordion items (using a simple local state approach for preview)
-  // In a real implementation, this might be handled differently to persist state, 
-  // but for a view component, local state is fine.
+  // Text color from style settings
+  const textColor = style.typography?.color;
+  
   const [openItems, setOpenItems] = React.useState<string[]>([]);
 
   const toggleItem = (id: string) => {
@@ -32,12 +33,12 @@ export function FAQ({ section, onUpdate }: FAQProps) {
         {/* Header */}
         <div className="text-center mb-12">
           {settings.title && (
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold mb-4" style={{ color: textColor }}>
               {settings.title}
             </h2>
           )}
           {settings.subtitle && (
-            <p className="text-lg text-gray-500">
+            <p className="text-lg opacity-80" style={{ color: textColor }}>
               {settings.subtitle}
             </p>
           )}
@@ -57,7 +58,7 @@ export function FAQ({ section, onUpdate }: FAQProps) {
                     onClick={() => toggleItem(block.id)}
                     className="w-full flex items-center justify-between p-6 text-right bg-white hover:bg-gray-50 transition-colors"
                   >
-                    <span className="font-medium text-lg text-gray-900">
+                    <span className="font-medium text-lg" style={{ color: textColor || '#111827' }}>
                       {block.content?.heading || 'שאלה לדוגמה?'}
                     </span>
                     <span className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
@@ -69,7 +70,10 @@ export function FAQ({ section, onUpdate }: FAQProps) {
                       isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                     }`}
                   >
-                    <div className="p-6 pt-0 text-gray-600 leading-relaxed border-t border-gray-100 mt-4 pt-4">
+                    <div 
+                        className="p-6 pt-0 leading-relaxed border-t border-gray-100 mt-4 pt-4"
+                        style={{ color: textColor ? `${textColor}CC` : '#4B5563' }} // 80% opacity for body text
+                    >
                       {block.content?.text || 'תשובה לדוגמה...'}
                     </div>
                   </div>
@@ -86,4 +90,3 @@ export function FAQ({ section, onUpdate }: FAQProps) {
     </div>
   );
 }
-

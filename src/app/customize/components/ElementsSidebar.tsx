@@ -276,8 +276,8 @@ export function ElementsSidebar({
             onClick={() => setShowAddMenu(!showAddMenu)}
             className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-sm text-sm font-medium ${
                 showAddMenu 
-                    ? 'bg-blue-600 text-white shadow-blue-200'
-                    : 'bg-gray-900 text-white hover:bg-gray-800'
+                    ? 'bg-black text-white shadow-gray-200'
+                    : 'bg-gray-900 text-white hover:bg-black'
             }`}
           >
             <HiPlus className={`w-4 h-4 transition-transform ${showAddMenu ? 'rotate-45' : ''}`} />
@@ -286,17 +286,17 @@ export function ElementsSidebar({
 
           {/* Add Menu Overlay */}
           {showAddMenu && (
-            <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden max-h-[500px] w-[320px] -right-4">
+            <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[400px] w-[320px] -right-4">
               
               {/* Categories Tabs */}
-              <div className="flex overflow-x-auto border-b border-gray-100 scrollbar-hide bg-gray-50/50">
+              <div className="flex overflow-x-auto border-b border-gray-100 scrollbar-hide bg-gray-50/50 flex-shrink-0">
                 {CATEGORIES.map(category => (
                     <button
                         key={category.id}
                         onClick={() => setActiveCategory(category.id)}
                         className={`flex flex-col items-center justify-center py-3 px-4 min-w-[70px] text-xs font-medium border-b-2 transition-colors ${
                             activeCategory === category.id
-                                ? 'border-blue-600 text-blue-600 bg-white'
+                                ? 'border-black text-black bg-white'
                                 : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
                         }`}
                     >
@@ -307,7 +307,7 @@ export function ElementsSidebar({
               </div>
 
               {/* Sections List */}
-              <div className="flex-1 overflow-y-auto p-2 bg-white">
+              <div className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
                 <div className="space-y-1">
                   {AVAILABLE_SECTIONS
                     .filter(section => section.category === activeCategory)
@@ -317,11 +317,11 @@ export function ElementsSidebar({
                       onClick={() => handleAddSection(section.type)}
                       className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-right group border border-transparent hover:border-gray-100"
                     >
-                      <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                      <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm">
                         {React.createElement(section.icon, { className: "w-6 h-6" })}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-700">
+                        <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
                           {section.name}
                         </p>
                         <p className="text-xs text-gray-500">
@@ -340,8 +340,8 @@ export function ElementsSidebar({
               </div>
               
               {/* Footer hint */}
-              <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
-                  <p className="text-[10px] text-gray-400">בחר קטגוריה למעלה וגרור סקשן לעמוד</p>
+              <div className="p-2 bg-gray-50 border-t border-gray-100 text-center flex-shrink-0">
+                  <p className="text-[10px] text-gray-400">בחר קטגוריה למעלה והוסף סקשן לעמוד</p>
               </div>
             </div>
           )}
