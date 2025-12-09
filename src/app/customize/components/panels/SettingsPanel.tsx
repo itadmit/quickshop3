@@ -725,15 +725,16 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 </SettingGroup>
                 <SettingGroup title="פריסה">
                     <div className="space-y-4">
-                        {renderSelect('מספר קטגוריות בשורה', 'items_per_row', [
+                        {renderSelect('סוג תצוגה', 'display_type', [
+                            { label: 'רשת (Grid)', value: 'grid' },
+                            { label: 'סליידר נגלל', value: 'slider' },
+                        ])}
+                        {getValue('display_type') !== 'slider' && renderSelect('מספר קטגוריות בשורה', 'items_per_row', [
                             { label: '2 קטגוריות', value: 2 },
                             { label: '3 קטגוריות', value: 3 },
                             { label: '4 קטגוריות', value: 4 },
                             { label: '5 קטגוריות', value: 5 },
-                        ])}
-                         {renderSelect('סוג תצוגה', 'display_type', [
-                            { label: 'רשת (Grid)', value: 'grid' },
-                            { label: 'קרוסלה (Carousel)', value: 'carousel' },
+                            { label: '6 קטגוריות', value: 6 },
                         ])}
                         {renderSelect('יישור תוכן קטגוריה', 'content_align', [
                             { label: 'ימין', value: 'right' },

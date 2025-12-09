@@ -64,17 +64,15 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
           )}
         </div>
 
-        {settings.display_type === 'carousel' ? (
-          <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex gap-8 pb-4" style={{ width: 'max-content' }}>
-              {[1, 2, 3].map((i) => {
-                const cardWidth = `calc((100vw - 2rem) / ${Math.min(itemsPerRow, 4)})`;
-                return (
+        {(settings.display_type === 'slider' || settings.display_type === 'carousel') ? (
+          <div className="overflow-x-auto scrollbar-hide -mx-4" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex gap-6 px-4 pb-4" style={{ width: 'max-content' }}>
+              {[1, 2, 3, 4, 5].map((i) => (
                   <div 
                     key={i} 
                     className="group cursor-pointer flex-shrink-0"
                     style={{ 
-                      width: cardWidth,
+                      width: '280px',
                       scrollSnapAlign: 'start'
                     }}
                   >
@@ -95,8 +93,7 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
                       )}
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         ) : (
@@ -124,6 +121,16 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
