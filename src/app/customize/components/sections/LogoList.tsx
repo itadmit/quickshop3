@@ -75,37 +75,70 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
           </div>
         )}
 
-        {/* Desktop Grid */}
-        <div 
-          className="hidden md:grid gap-4 items-center justify-items-center"
-          style={getDesktopGridStyle()}
-        >
-          {logos.map((logo) => (
-            <a
-              key={logo.id}
-              href={logo.content?.link_url || '#'}
-              target={logo.content?.link_url ? '_blank' : undefined}
-              rel={logo.content?.link_url ? 'noopener noreferrer' : undefined}
-              className={`transition-all duration-300 ${getGrayscaleClass()} hover:scale-105 w-full flex items-center justify-center p-2`}
-            >
-              {logo.content?.image_url ? (
-                <img
-                  src={logo.content.image_url}
-                  alt={logo.content.title || 'לוגו'}
-                  className="w-full h-auto object-contain"
-                  style={{ maxHeight: `${getLogoHeight()}px` }}
-                />
-              ) : (
-                <div 
-                  className="bg-gray-200 rounded-md w-full"
-                  style={{ height: `${getLogoHeight()}px` }}
-                />
-              )}
-            </a>
-          ))}
-        </div>
+        {/* Desktop - Grid or Slider */}
+        {settings.display_type === 'slider' ? (
+          // Desktop Slider
+          <div className="hidden md:block overflow-x-auto scrollbar-hide -mx-4">
+            <div className="flex gap-6 px-4 py-2" style={{ width: 'max-content' }}>
+              {logos.map((logo) => (
+                <a
+                  key={logo.id}
+                  href={logo.content?.link_url || '#'}
+                  target={logo.content?.link_url ? '_blank' : undefined}
+                  rel={logo.content?.link_url ? 'noopener noreferrer' : undefined}
+                  className={`flex-shrink-0 transition-all duration-300 ${getGrayscaleClass()} hover:scale-105`}
+                  style={{ width: '180px' }}
+                >
+                  {logo.content?.image_url ? (
+                    <img
+                      src={logo.content.image_url}
+                      alt={logo.content.title || 'לוגו'}
+                      className="w-full h-auto object-contain"
+                      style={{ maxHeight: `${getLogoHeight()}px` }}
+                    />
+                  ) : (
+                    <div 
+                      className="w-full bg-gray-200 rounded-md"
+                      style={{ height: `${getLogoHeight()}px` }}
+                    />
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Desktop Grid
+          <div 
+            className="hidden md:grid gap-4 items-center justify-items-center"
+            style={getDesktopGridStyle()}
+          >
+            {logos.map((logo) => (
+              <a
+                key={logo.id}
+                href={logo.content?.link_url || '#'}
+                target={logo.content?.link_url ? '_blank' : undefined}
+                rel={logo.content?.link_url ? 'noopener noreferrer' : undefined}
+                className={`transition-all duration-300 ${getGrayscaleClass()} hover:scale-105 w-full flex items-center justify-center p-2`}
+              >
+                {logo.content?.image_url ? (
+                  <img
+                    src={logo.content.image_url}
+                    alt={logo.content.title || 'לוגו'}
+                    className="w-full h-auto object-contain"
+                    style={{ maxHeight: `${getLogoHeight()}px` }}
+                  />
+                ) : (
+                  <div 
+                    className="bg-gray-200 rounded-md w-full"
+                    style={{ height: `${getLogoHeight()}px` }}
+                  />
+                )}
+              </a>
+            ))}
+          </div>
+        )}
 
-        {/* Mobile Horizontal Scroll */}
+        {/* Mobile Horizontal Scroll (always slider) */}
         <div className="md:hidden overflow-x-auto scrollbar-hide -mx-4">
           <div className="flex gap-4 px-4 py-2" style={{ width: 'max-content' }}>
             {logos.map((logo) => (

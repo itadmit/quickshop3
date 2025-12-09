@@ -1567,11 +1567,15 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
                 <SettingGroup title="פריסה">
                     <div className="space-y-4">
+                        {renderSelect('סוג תצוגה', 'display_type', [
+                            { label: 'רשת (Grid)', value: 'grid' },
+                            { label: 'סליידר נגלל', value: 'slider' },
+                        ])}
                         {renderSelect('רוחב סקשן', 'section_width', [
                             { label: 'קונטיינר (מרכז)', value: 'container' },
                             { label: 'רוחב מלא', value: 'full' },
                         ])}
-                        {renderSelect('לוגואים בשורה (מחשב)', 'items_per_row_desktop', [
+                        {getValue('display_type') !== 'slider' && renderSelect('לוגואים בשורה (מחשב)', 'items_per_row_desktop', [
                             { label: '1', value: 1 },
                             { label: '2', value: 2 },
                             { label: '3', value: 3 },
