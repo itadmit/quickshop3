@@ -114,19 +114,39 @@ export default function CategoryDetailsPage() {
         setSelectedProducts(category.products.map((p: any, index: number) => {
           // מיפוי נכון של תמונות
           let images: string[] = [];
-          if (Array.isArray(p.images)) {
-            images = p.images.map((img: any) => img.url || img.image_url || img).filter(Boolean);
+          if (Array.isArray(p.images) && p.images.length > 0) {
+            images = p.images.map((img: any) => {
+              // תמונות יכולות להיות string או object
+              if (typeof img === 'string') return img;
+              return img.url || img.image_url || img.src || img;
+            }).filter(Boolean);
+          }
+          
+          // מיפוי נכון של מחיר - יכול להיות number או string
+          let price = 0;
+          if (p.price !== undefined && p.price !== null) {
+            price = typeof p.price === 'string' ? parseFloat(p.price) || 0 : p.price;
+          } else if (p.variants?.[0]?.price) {
+            price = typeof p.variants[0].price === 'string' ? parseFloat(p.variants[0].price) || 0 : p.variants[0].price;
+          }
+          
+          // מיפוי נכון של compare_at_price
+          let comparePrice: number | null = null;
+          if (p.compare_at_price !== undefined && p.compare_at_price !== null) {
+            comparePrice = typeof p.compare_at_price === 'string' ? parseFloat(p.compare_at_price) || null : p.compare_at_price;
+          } else if (p.variants?.[0]?.compare_at_price) {
+            comparePrice = typeof p.variants[0].compare_at_price === 'string' ? parseFloat(p.variants[0].compare_at_price) || null : p.variants[0].compare_at_price;
           }
           
           return {
             id: `temp-${p.id || index}`,
-            position: index,
+            position: p.position !== undefined ? p.position : index,
             product: {
               id: p.id?.toString() || '',
               name: p.title || p.name || 'ללא שם',
               slug: p.handle || '',
-              price: p.price || p.variants?.[0]?.price || 0,
-              comparePrice: p.compare_at_price || p.variants?.[0]?.compare_at_price || null,
+              price: price,
+              comparePrice: comparePrice,
               images: images,
               status: p.status || '',
               availability: '',
@@ -698,17 +718,24 @@ export default function CategoryDetailsPage() {
                               ↓
                             </Button>
                           </div>
-                          {item.product.images?.[0] ? (
-                            <img
-                              src={item.product.images[0]}
-                              alt={item.product.name || 'מוצר'}
-                              className="w-16 h-16 object-cover rounded-lg border border-gray-200 flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0">
-                              <HiSearch className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
+                          {(() => {
+                            const firstImage = item.product.images?.[0];
+                            const imageUrl = typeof firstImage === 'string' 
+                              ? firstImage 
+                              : firstImage?.src || firstImage?.url || firstImage?.image_url;
+                            
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={item.product.name || 'מוצר'}
+                                className="w-16 h-16 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                <HiSearch className="w-8 h-8 text-gray-400" />
+                              </div>
+                            );
+                          })()}
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900">{item.product.name || 'ללא שם'}</p>
                             <p className="text-sm text-gray-500 mt-1">

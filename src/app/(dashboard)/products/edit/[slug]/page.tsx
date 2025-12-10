@@ -67,7 +67,7 @@ export default function EditProductPage() {
       width: '',
       height: '',
     },
-    status: 'draft' as 'draft' | 'active' | 'archived',
+    status: 'active' as 'draft' | 'active' | 'archived',
     scheduledPublishDate: '',
     scheduledArchiveDate: '',
     notifyOnPublish: false,
@@ -100,7 +100,7 @@ export default function EditProductPage() {
         body_html: '',
         vendor: null,
         product_type: null,
-        status: 'draft',
+        status: 'active',
         published_at: null,
         published_scope: 'web',
         template_suffix: null,
@@ -125,7 +125,7 @@ export default function EditProductPage() {
         pricePer100ml: '',
         weight: '',
         dimensions: { length: '', width: '', height: '' },
-        status: 'draft',
+        status: 'active',
         scheduledPublishDate: '',
         scheduledArchiveDate: '',
         notifyOnPublish: false,
@@ -356,19 +356,59 @@ export default function EditProductPage() {
           if (variantsData.variants && variantsData.variants.length > 0) {
             const firstVariant = variantsData.variants[0];
             
-            // עדכון ה-variant עם הנתונים מהטופס (price, sku, inventory, weight, taxable)
-            await fetch(`/api/variants/${firstVariant.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                price: parseFloat(formData.price) || 0,
-                compare_at_price: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
-                sku: formData.sku || null,
-                taxable: formData.taxEnabled,
-                inventory_quantity: parseInt(formData.inventoryQty) || 0,
-                weight: formData.weight ? parseFloat(formData.weight) : null,
-              }),
-            });
+            // בנה אובייקט עדכון רק עם השדות שיש להם ערך (לא מאפס שדות שלא נשלחו)
+            const variantUpdate: any = {};
+            
+            // עדכן מחיר רק אם יש ערך תקין
+            if (formData.price && formData.price.trim() !== '') {
+              const priceValue = parseFloat(formData.price);
+              if (!isNaN(priceValue) && priceValue >= 0) {
+                variantUpdate.price = priceValue;
+              }
+            }
+            
+            // עדכן מחיר השוואה רק אם יש ערך תקין
+            if (formData.comparePrice && formData.comparePrice.trim() !== '') {
+              const comparePriceValue = parseFloat(formData.comparePrice);
+              if (!isNaN(comparePriceValue) && comparePriceValue >= 0) {
+                variantUpdate.compare_at_price = comparePriceValue;
+              }
+            }
+            
+            // עדכן SKU רק אם יש ערך
+            if (formData.sku !== undefined) {
+              variantUpdate.sku = formData.sku || null;
+            }
+            
+            // עדכן taxable רק אם יש ערך
+            if (formData.taxEnabled !== undefined) {
+              variantUpdate.taxable = formData.taxEnabled;
+            }
+            
+            // עדכן מלאי רק אם יש ערך תקין
+            if (formData.inventoryQty !== undefined && formData.inventoryQty.trim() !== '') {
+              const inventoryValue = parseInt(formData.inventoryQty);
+              if (!isNaN(inventoryValue) && inventoryValue >= 0) {
+                variantUpdate.inventory_quantity = inventoryValue;
+              }
+            }
+            
+            // עדכן משקל רק אם יש ערך תקין
+            if (formData.weight && formData.weight.trim() !== '') {
+              const weightValue = parseFloat(formData.weight);
+              if (!isNaN(weightValue) && weightValue >= 0) {
+                variantUpdate.weight = weightValue;
+              }
+            }
+            
+            // עדכן את ה-variant רק אם יש שדות לעדכן
+            if (Object.keys(variantUpdate).length > 0) {
+              await fetch(`/api/variants/${firstVariant.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(variantUpdate),
+              });
+            }
           }
         }
       }

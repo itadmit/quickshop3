@@ -33,16 +33,15 @@ export function RichTextEditor({
         const hasRTL = /[\u0590-\u05FF\u0600-\u06FF]/.test(text);
         const hasLTR = /[a-zA-Z0-9]/.test(text);
         
-        if (hasRTL && !hasLTR) {
-          editorRef.current.style.direction = 'rtl';
-          editorRef.current.style.textAlign = 'right';
-        } else if (hasLTR && !hasRTL) {
+        // ברירת מחדל RTL (מימין לשמאל) לתיאור מוצר
+        // אם יש רק טקסט LTR, נשנה ל-LTR
+        if (hasLTR && !hasRTL) {
           editorRef.current.style.direction = 'ltr';
           editorRef.current.style.textAlign = 'left';
         } else {
-          // מעורב - נשתמש ב-auto
-          editorRef.current.style.direction = 'auto';
-          editorRef.current.style.textAlign = 'start';
+          // ברירת מחדל RTL
+          editorRef.current.style.direction = 'rtl';
+          editorRef.current.style.textAlign = 'right';
         }
       }
     }
@@ -266,8 +265,8 @@ export function RichTextEditor({
           onBlur={updateContent}
           data-placeholder={placeholder}
           suppressContentEditableWarning
-          dir="auto"
-          style={{ unicodeBidi: 'isolate' }}
+          dir="rtl"
+          style={{ unicodeBidi: 'isolate', textAlign: 'right' }}
         />
       )}
 

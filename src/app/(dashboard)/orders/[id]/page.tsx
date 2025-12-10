@@ -188,6 +188,52 @@ export default function OrderDetailsPage() {
     return tags.includes('fraud') || tags.includes('risk') || tags.includes('high-risk');
   };
 
+  const getFulfillmentStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-orange-100 text-orange-800';
+      case 'approved':
+        return 'bg-blue-100 text-blue-800';
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'processing':
+        return 'bg-purple-100 text-purple-800';
+      case 'shipped':
+        return 'bg-cyan-100 text-cyan-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'canceled':
+        return 'bg-red-100 text-red-800';
+      case 'returned':
+        return 'bg-gray-100 text-gray-800';
+      case 'fulfilled':
+        return 'bg-blue-100 text-blue-800';
+      case 'partial':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'restocked':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getFulfillmentStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'pending': 'ממתין',
+      'approved': 'מאושר',
+      'paid': 'שולם',
+      'processing': 'מעובד',
+      'shipped': 'נשלח',
+      'delivered': 'נמסר',
+      'canceled': 'בוטל',
+      'returned': 'הוחזר',
+      'fulfilled': 'בוצע',
+      'partial': 'חלקי',
+      'restocked': 'הוחזר למלאי',
+    };
+    return labels[status] || status;
+  };
+
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -288,10 +334,8 @@ export default function OrderDetailsPage() {
             <div className="text-sm text-gray-500 mb-2">סטטוס ביצוע</div>
             <div className="flex items-center justify-between">
               {order.fulfillment_status ? (
-                <span className={`px-3 py-1 rounded text-sm font-medium ${getStatusBadgeColor(order.fulfillment_status)}`}>
-                  {order.fulfillment_status === 'fulfilled' ? 'בוצע' :
-                   order.fulfillment_status === 'partial' ? 'חלקי' :
-                   order.fulfillment_status}
+                <span className={`px-3 py-1 rounded text-sm font-medium ${getFulfillmentStatusBadgeColor(order.fulfillment_status)}`}>
+                  {getFulfillmentStatusLabel(order.fulfillment_status)}
                 </span>
               ) : (
                 <span className="text-gray-400 text-sm">לא בוצע</span>
@@ -386,7 +430,7 @@ export default function OrderDetailsPage() {
                   {order.fulfillments.map((fulfillment) => (
                     <div key={fulfillment.id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(fulfillment.status)}`}>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getFulfillmentStatusBadgeColor(fulfillment.status)}`}>
                           {fulfillment.status === 'success' ? 'בוצע' :
                            fulfillment.status === 'pending' ? 'ממתין' :
                            fulfillment.status}

@@ -41,7 +41,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      sql += ` AND (p.title ILIKE $${paramIndex} OR p.handle ILIKE $${paramIndex})`;
+      // Search in title, handle, AND SKU from product_variants
+      sql += ` AND (p.title ILIKE $${paramIndex} OR p.handle ILIKE $${paramIndex} OR EXISTS (
+        SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku ILIKE $${paramIndex}
+      ))`;
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -82,7 +85,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      countSql += ` AND (p.title ILIKE $${countParamIndex} OR p.handle ILIKE $${countParamIndex})`;
+      // Search in title, handle, AND SKU from product_variants
+      countSql += ` AND (p.title ILIKE $${countParamIndex} OR p.handle ILIKE $${countParamIndex} OR EXISTS (
+        SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku ILIKE $${countParamIndex}
+      ))`;
       countParams.push(`%${search}%`);
       countParamIndex++;
     }
@@ -192,7 +198,7 @@ export async function POST(request: NextRequest) {
       body.body_html || null,
       body.vendor || null,
       body.product_type || null,
-      body.status || 'draft',
+      body.status || 'active',
       body.published_at || null,
       body.archived_at || null,
       body.published_scope || 'web',

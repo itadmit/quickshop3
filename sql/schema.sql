@@ -81,7 +81,7 @@ CREATE TABLE products (
   body_html TEXT, -- HTML description
   vendor VARCHAR(150),
   product_type VARCHAR(150),
-  status VARCHAR(50) DEFAULT 'draft', -- draft, active, archived
+  status VARCHAR(50) DEFAULT 'active', -- draft, active, archived
   published_at TIMESTAMP WITHOUT TIME ZONE,
   archived_at TIMESTAMP WITHOUT TIME ZONE, -- תאריך להעברה אוטומטית לארכיון
   published_scope VARCHAR(50) DEFAULT 'web',

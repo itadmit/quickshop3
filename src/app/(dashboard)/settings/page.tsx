@@ -281,6 +281,7 @@ export default function SettingsPage() {
     { id: 'meta-fields', label: 'שדות מטא', href: '/settings/meta-fields' },
     { id: 'size-charts', label: 'טבלאות מידות', href: '/settings/size-charts' },
     { id: 'product-addons', label: 'תוספות למוצרים', href: '/settings/product-addons' },
+    { id: 'order-statuses', label: 'סטטוסי הזמנות', href: '/settings/order-statuses' },
     { id: 'premium-club', label: 'מועדון פרימיום', href: '/settings/premium-club' },
     { id: 'cron-status', label: 'סטטוס CRON', href: '/settings/cron-status' },
   ];

@@ -39,6 +39,7 @@ export default function InventoryPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
   useEffect(() => {
@@ -191,7 +192,7 @@ export default function InventoryPage() {
               <div className="text-sm text-gray-500">{variantDisplay}</div>
             )}
             {item.sku && (
-              <div className="text-xs text-gray-400">SKU: {item.sku}</div>
+              <div className="text-xs text-gray-400">מקט: {item.sku}</div>
             )}
           </div>
         );
@@ -210,31 +211,32 @@ export default function InventoryPage() {
       ),
     },
     {
-      key: 'committed',
-      label: 'מחויב',
-      render: (item) => (
-        <div className="text-gray-600">{item.committed}</div>
-      ),
-    },
-    {
-      key: 'incoming',
-      label: 'בדרך',
-      render: (item) => (
-        <div className="text-gray-600">{item.incoming}</div>
-      ),
-    },
-    {
       key: 'actions',
       label: 'פעולות',
       render: (item) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => openAdjustmentDialog(item)}
-        >
-          <HiPencil className="w-4 h-4 ml-1" />
-          עדכן
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedVariantId(item.id);
+              setShowHistory(true);
+              loadHistory(item.id);
+            }}
+            title="היסטוריית מלאי"
+          >
+            <HiClock className="w-4 h-4 ml-1" />
+            היסטוריה
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openAdjustmentDialog(item)}
+          >
+            <HiPencil className="w-4 h-4 ml-1" />
+            עדכן
+          </Button>
+        </div>
       ),
     },
   ];
@@ -257,12 +259,13 @@ export default function InventoryPage() {
           <Button
             variant="outline"
             onClick={() => {
+              setSelectedVariantId(null);
               setShowHistory(!showHistory);
               if (!showHistory) loadHistory();
             }}
           >
             <HiClock className="w-4 h-4 ml-2" />
-            היסטוריה
+            היסטוריה כללית
           </Button>
         </div>
       </div>
@@ -306,7 +309,7 @@ export default function InventoryPage() {
                       );
                     })()}
                     {item.sku && (
-                      <div className="text-xs text-gray-400">SKU: {item.sku}</div>
+                      <div className="text-xs text-gray-400">מקט: {item.sku}</div>
                     )}
                   </div>
                   <div className="text-right">
@@ -436,16 +439,26 @@ export default function InventoryPage() {
       </Dialog>
 
       {/* History Dialog */}
-      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+      <Dialog open={showHistory} onOpenChange={(open) => {
+        setShowHistory(open);
+        if (!open) {
+          setSelectedVariantId(null);
+          setHistory([]);
+        }
+      }}>
         <DialogContent dir="rtl" className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>היסטוריית מלאי</DialogTitle>
+            <DialogTitle>
+              {selectedVariantId 
+                ? `היסטוריית מלאי - ${items.find(i => i.id === selectedVariantId)?.product_title || 'מוצר'}`
+                : 'היסטוריית מלאי - כל המוצרים'}
+            </DialogTitle>
           </DialogHeader>
           <div className="p-6">
             {loadingHistory ? (
               <div className="animate-pulse space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                  <div key={i} className="h-20 bg-gray-200 rounded"></div>
                 ))}
               </div>
             ) : history.length === 0 ? (
@@ -453,33 +466,98 @@ export default function InventoryPage() {
                 אין היסטוריה להצגה
               </div>
             ) : (
-              <div className="space-y-3">
-                {history.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <div className="font-medium text-gray-900">{item.message}</div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {new Date(item.created_at).toLocaleString('he-IL')}
-                      </div>
-                      {item.context && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          {JSON.stringify(item.context)}
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {history.map((item, index) => {
+                  // נסה לפרסר את ה-context אם זה JSON string
+                  let contextData: any = {};
+                  try {
+                    if (typeof item.context === 'string') {
+                      contextData = JSON.parse(item.context);
+                    } else if (item.context) {
+                      contextData = item.context;
+                    }
+                  } catch (e) {
+                    // אם זה לא JSON, נשתמש בזה כמו שהוא
+                    contextData = item.context || {};
+                  }
+
+                  // נסה למצוא variant_id, quantity, old_quantity מה-context
+                  const variantId = contextData.variant_id || contextData.variantId;
+                  const quantity = contextData.quantity || contextData.new_quantity;
+                  const oldQuantity = contextData.old_quantity || contextData.oldQuantity;
+                  const reason = contextData.reason || contextData.reason_text || 'עדכון מלאי';
+                  
+                  // מצא את המוצר לפי variant_id
+                  const relatedItem = variantId ? items.find(i => i.id === variantId) : null;
+                  
+                  return (
+                    <div key={item.id || index} className="p-4 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          {/* כותרת */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              item.level === 'error'
+                                ? 'bg-red-100 text-red-800'
+                                : item.level === 'warn'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {item.level === 'error' ? 'שגיאה' : item.level === 'warn' ? 'אזהרה' : 'עדכון'}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {relatedItem ? relatedItem.product_title : 'מלאי עודכן'}
+                            </span>
+                          </div>
+                          
+                          {/* פרטי השינוי */}
+                          {quantity !== undefined && (
+                            <div className="text-sm text-gray-700 mb-1">
+                              <span className="font-medium">כמות חדשה:</span> {quantity}
+                              {oldQuantity !== undefined && oldQuantity !== quantity && (
+                                <>
+                                  {' '}
+                                  <span className="text-gray-500">(לפני: {oldQuantity})</span>
+                                  {' '}
+                                  <span className={`font-semibold ${
+                                    quantity > oldQuantity ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {quantity > oldQuantity ? '+' : ''}{quantity - oldQuantity}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* סיבה */}
+                          {reason && reason !== 'עדכון מלאי' && (
+                            <div className="text-sm text-gray-600 mb-1">
+                              <span className="font-medium">סיבה:</span> {reason}
+                            </div>
+                          )}
+                          
+                          {/* מקט אם יש */}
+                          {relatedItem?.sku && (
+                            <div className="text-xs text-gray-500 mb-1">
+                              מקט: {relatedItem.sku}
+                            </div>
+                          )}
+                          
+                          {/* תאריך */}
+                          <div className="text-xs text-gray-400 mt-2">
+                            {new Date(item.created_at).toLocaleString('he-IL', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        item.level === 'error'
-                          ? 'bg-red-100 text-red-800'
-                          : item.level === 'warn'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {item.level}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

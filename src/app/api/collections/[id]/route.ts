@@ -53,14 +53,55 @@ export async function GET(
       );
     }
 
-    // Get products in this collection
-    const products = await query(
+    // Get products in this collection with full details (images, price, SKU)
+    const productsRaw = await query<{
+      id: number;
+      title: string;
+      handle: string;
+      status: string;
+      position: number;
+    }>(
       `SELECT p.id, p.title, p.handle, p.status, pcm.position
        FROM products p
        INNER JOIN product_collection_map pcm ON p.id = pcm.product_id
        WHERE pcm.collection_id = $1
        ORDER BY pcm.position ASC, p.title ASC`,
       [collectionId]
+    );
+
+    // Get full product details (images, variants with price and SKU) for each product
+    const products = await Promise.all(
+      productsRaw.map(async (product) => {
+        // Get images
+        const images = await query<{ src: string; alt: string | null }>(
+          'SELECT src, alt FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 1',
+          [product.id]
+        );
+
+        // Get first variant (for price and SKU)
+        const variant = await queryOne<{ price: string; compare_at_price: string | null; sku: string | null }>(
+          'SELECT price, compare_at_price, sku FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
+          [product.id]
+        );
+
+        return {
+          id: product.id,
+          title: product.title,
+          handle: product.handle,
+          status: product.status,
+          position: product.position,
+          images: images.map(img => ({ url: img.src, image_url: img.src, src: img.src, alt: img.alt })),
+          price: variant?.price ? parseFloat(variant.price) : 0,
+          compare_at_price: variant?.compare_at_price ? parseFloat(variant.compare_at_price) : null,
+          sku: variant?.sku || null,
+          variants: variant ? [{
+            id: 0,
+            price: variant.price,
+            compare_at_price: variant.compare_at_price,
+            sku: variant.sku,
+          }] : [],
+        };
+      })
     );
 
     return NextResponse.json({

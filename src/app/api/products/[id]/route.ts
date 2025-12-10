@@ -236,7 +236,14 @@ export async function PUT(
 
     // Handle default variant if no variants exist (for SKU, price, etc.)
     const hasVariants = body.variants && Array.isArray(body.variants) && body.variants.length > 0;
-    if (!hasVariants) {
+    
+    // Only update variant if variant-related fields were explicitly sent
+    // This prevents resetting price/sku when only changing product status
+    const hasVariantFieldsInBody = body.price !== undefined || body.sku !== undefined || 
+                                    body.compare_at_price !== undefined || body.taxable !== undefined ||
+                                    body.inventory_quantity !== undefined;
+    
+    if (!hasVariants && hasVariantFieldsInBody) {
       // Check if default variant exists
       const existingVariant = await queryOne<{ id: number }>(
         'SELECT id FROM product_variants WHERE product_id = $1 ORDER BY position LIMIT 1',
@@ -250,69 +257,85 @@ export async function PUT(
           [existingVariant.id]
         );
 
-        // Update existing default variant
-        const updatedVariant = await queryOne<ProductVariant>(
-          `UPDATE product_variants SET
-            price = $1,
-            compare_at_price = $2,
-            sku = $3,
-            taxable = $4,
-            updated_at = now()
-           WHERE id = $5
-           RETURNING *`,
-          [
-            body.price || '0.00',
-            body.compare_at_price || null,
-            body.sku || null,
-            body.taxable !== false,
-            existingVariant.id,
-          ]
-        );
+        // Build dynamic update query - only update fields that were sent
+        const updateFields: string[] = [];
+        const updateValues: any[] = [];
+        let paramIndex = 1;
 
-        // Emit variant.updated event
-        if (updatedVariant && oldVariant) {
-          const changes: any = {};
-          if (oldVariant.price !== updatedVariant.price) changes.price = { from: oldVariant.price, to: updatedVariant.price };
-          if (oldVariant.compare_at_price !== updatedVariant.compare_at_price) changes.compare_at_price = { from: oldVariant.compare_at_price, to: updatedVariant.compare_at_price };
-          if (oldVariant.sku !== updatedVariant.sku) changes.sku = { from: oldVariant.sku, to: updatedVariant.sku };
-          if (oldVariant.taxable !== updatedVariant.taxable) changes.taxable = { from: oldVariant.taxable, to: updatedVariant.taxable };
-          
-          await eventBus.emitEvent('variant.updated', {
-            variant: updatedVariant,
-            changes,
-          }, {
-            store_id: user.store_id,
-            source: 'api',
-            user_id: user.id,
-          });
+        if (body.price !== undefined) {
+          updateFields.push(`price = $${paramIndex}`);
+          updateValues.push(body.price);
+          paramIndex++;
+        }
+        if (body.compare_at_price !== undefined) {
+          updateFields.push(`compare_at_price = $${paramIndex}`);
+          updateValues.push(body.compare_at_price);
+          paramIndex++;
+        }
+        if (body.sku !== undefined) {
+          updateFields.push(`sku = $${paramIndex}`);
+          updateValues.push(body.sku);
+          paramIndex++;
+        }
+        if (body.taxable !== undefined) {
+          updateFields.push(`taxable = $${paramIndex}`);
+          updateValues.push(body.taxable);
+          paramIndex++;
+        }
+        if (body.inventory_quantity !== undefined && body.track_inventory !== false) {
+          updateFields.push(`inventory_quantity = $${paramIndex}`);
+          updateValues.push(body.inventory_quantity || 0);
+          paramIndex++;
         }
 
-        // Update inventory
-        if (body.track_inventory !== false && body.inventory_quantity !== undefined) {
-          await query(
-            `UPDATE product_variants SET inventory_quantity = $1, updated_at = now() WHERE id = $2`,
-            [body.inventory_quantity || 0, existingVariant.id]
-          );
+        if (updateFields.length > 0) {
+          updateFields.push('updated_at = now()');
+          updateValues.push(existingVariant.id);
+
+          const updateSql = `UPDATE product_variants SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+          const updatedVariant = await queryOne<ProductVariant>(updateSql, updateValues);
+
+          // Emit variant.updated event
+          if (updatedVariant && oldVariant) {
+            const changes: any = {};
+            if (oldVariant.price !== updatedVariant.price) changes.price = { from: oldVariant.price, to: updatedVariant.price };
+            if (oldVariant.compare_at_price !== updatedVariant.compare_at_price) changes.compare_at_price = { from: oldVariant.compare_at_price, to: updatedVariant.compare_at_price };
+            if (oldVariant.sku !== updatedVariant.sku) changes.sku = { from: oldVariant.sku, to: updatedVariant.sku };
+            if (oldVariant.taxable !== updatedVariant.taxable) changes.taxable = { from: oldVariant.taxable, to: updatedVariant.taxable };
+            
+            if (Object.keys(changes).length > 0) {
+              await eventBus.emitEvent('variant.updated', {
+                variant: updatedVariant,
+                changes,
+              }, {
+                store_id: user.store_id,
+                source: 'api',
+                user_id: user.id,
+              });
+            }
+          }
         }
       } else {
-        // Create new default variant
-        await query(
-          `INSERT INTO product_variants (
-            product_id, title, price, compare_at_price, sku, taxable,
-            inventory_quantity, position, inventory_policy, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())`,
-          [
-            productId,
-            'Default Title',
-            body.price || '0.00',
-            body.compare_at_price || null,
-            body.sku || null,
-            body.taxable !== false,
-            (body.track_inventory !== false && body.inventory_quantity !== undefined) ? (body.inventory_quantity || 0) : 0,
-            1,
-            'deny',
-          ]
-        );
+        // Create new default variant only if we have price data
+        if (body.price !== undefined) {
+          await query(
+            `INSERT INTO product_variants (
+              product_id, title, price, compare_at_price, sku, taxable,
+              inventory_quantity, position, inventory_policy, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())`,
+            [
+              productId,
+              'Default Title',
+              body.price || '0.00',
+              body.compare_at_price || null,
+              body.sku || null,
+              body.taxable !== false,
+              (body.track_inventory !== false && body.inventory_quantity !== undefined) ? (body.inventory_quantity || 0) : 0,
+              1,
+              'deny',
+            ]
+          );
+        }
       }
     }
 
