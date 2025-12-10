@@ -67,6 +67,13 @@ export async function GET(request: NextRequest) {
           [product.id]
         );
 
+        // Get cost meta fields for variants
+        const costMetaFields = await query(
+          `SELECT key, value FROM product_meta_fields 
+           WHERE product_id = $1 AND namespace = 'custom' AND key LIKE 'variant_cost%'`,
+          [product.id]
+        );
+
         // Get images
         const images = await query(
           `SELECT src, alt, position
@@ -106,17 +113,23 @@ export async function GET(request: NextRequest) {
             category: { id: c.id.toString(), name: c.title },
           })),
           images: images.map((img: any) => img.src),
-          variants: variants.map((v: any) => ({
-            id: v.id.toString(),
-            name: v.title,
-            sku: v.sku,
-            price: parseFloat(v.price || '0'),
-            comparePrice: v.compare_at_price ? parseFloat(v.compare_at_price) : null,
-            cost: null,
-            inventoryQty: v.inventory_quantity,
-            weight: v.weight,
-            image: images[0]?.src || null,
-          })),
+          variants: variants.map((v: any) => {
+            // Find cost from meta fields (if exists)
+            const costMetaField = costMetaFields.find((mf: any) => mf.key === `variant_cost_${v.id}`);
+            const costValue = costMetaField?.value ? parseFloat(costMetaField.value) : null;
+            
+            return {
+              id: v.id.toString(),
+              name: v.title,
+              sku: v.sku,
+              price: parseFloat(v.price || '0'),
+              comparePrice: v.compare_at_price ? parseFloat(v.compare_at_price) : null,
+              cost: costValue,
+              inventoryQty: v.inventory_quantity,
+              weight: v.weight,
+              image: images[0]?.src || null,
+            };
+          }),
         };
       })
     );

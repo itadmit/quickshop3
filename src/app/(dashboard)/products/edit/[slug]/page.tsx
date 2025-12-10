@@ -48,6 +48,7 @@ export default function EditProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    vendor: '',
     price: '',
     comparePrice: '',
     cost: '',
@@ -110,6 +111,7 @@ export default function EditProductPage() {
       setFormData({
         name: '',
         description: '',
+        vendor: '',
         price: '',
         comparePrice: '',
         cost: '',
@@ -199,6 +201,7 @@ export default function EditProductPage() {
       setFormData({
         name: prod.title || '',
         description: prod.body_html || '',
+        vendor: prod.vendor || '',
         price: firstVariant?.price?.toString() || prod.price?.toString() || '',
         comparePrice: firstVariant?.compare_at_price?.toString() || prod.compare_at_price?.toString() || '',
         cost: prod.cost_per_item?.toString() || '',
@@ -265,7 +268,7 @@ export default function EditProductPage() {
         title: formData.name,
         handle: formData.slug || formData.name.toLowerCase().replace(/\s+/g, '-'),
         body_html: formData.description || null,
-        vendor: product.vendor || null,
+        vendor: formData.vendor || product.vendor || null,
         product_type: product.product_type || null,
         status: formData.status,
         published_at: formData.scheduledPublishDate ? new Date(formData.scheduledPublishDate).toISOString() : null,
@@ -385,9 +388,9 @@ export default function EditProductPage() {
               variantUpdate.taxable = formData.taxEnabled;
             }
             
-            // עדכן מלאי רק אם יש ערך תקין
-            if (formData.inventoryQty !== undefined && formData.inventoryQty.trim() !== '') {
-              const inventoryValue = parseInt(formData.inventoryQty);
+            // עדכן מלאי - תמיד עדכן גם אם הערך הוא 0 או ריק
+            if (formData.inventoryQty !== undefined) {
+              const inventoryValue = formData.inventoryQty.trim() === '' ? 0 : parseInt(formData.inventoryQty);
               if (!isNaN(inventoryValue) && inventoryValue >= 0) {
                 variantUpdate.inventory_quantity = inventoryValue;
               }
@@ -576,6 +579,7 @@ export default function EditProductPage() {
             data={{
               name: formData.name,
               description: formData.description,
+              vendor: formData.vendor || product.vendor || null,
             }}
             onNameChange={(name) => {
               setFormData(prev => ({ ...prev, name }));
@@ -584,6 +588,10 @@ export default function EditProductPage() {
             onDescriptionChange={(description) => {
               setFormData(prev => ({ ...prev, description }));
               setProduct(prev => prev ? { ...prev, body_html: description } : null);
+            }}
+            onVendorChange={(vendor) => {
+              setFormData(prev => ({ ...prev, vendor }));
+              setProduct(prev => prev ? { ...prev, vendor } : null);
             }}
           />
 

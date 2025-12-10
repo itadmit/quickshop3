@@ -604,10 +604,19 @@ export default function BulkEditPage() {
             const rowInventoryQty = parseInt(row.inventoryQty?.toString() || '0');
             const hasInventoryChange = rowInventoryQty !== originalInventoryQty;
             
-            if (hasPriceChange || hasInventoryChange) {
+            const originalSku = originalVariant?.sku || original.sku || null;
+            const hasSkuChange = row.sku !== originalSku;
+            
+            const originalCost = originalVariant?.cost ?? original.cost ?? null;
+            const rowCost = row.cost !== null && row.cost !== undefined ? parseFloat(row.cost.toString()) : null;
+            const hasCostChange = rowCost !== originalCost;
+            
+            if (hasPriceChange || hasInventoryChange || hasSkuChange || hasCostChange) {
               const variantChanges: any = {};
               if (hasPriceChange) variantChanges.price = rowPrice;
               if (hasInventoryChange) variantChanges.inventoryQty = rowInventoryQty;
+              if (hasSkuChange) variantChanges.sku = row.sku;
+              if (hasCostChange) variantChanges.cost = rowCost;
               
               if (row.variantId) {
                 // יש וריאציה - עדכון שלה
@@ -621,8 +630,11 @@ export default function BulkEditPage() {
                 // אין וריאציה - ה-API יצור אחת
                 if (hasPriceChange) changes.price = rowPrice;
                 if (hasInventoryChange) changes.inventoryQty = rowInventoryQty;
+                if (hasSkuChange) changes.sku = row.sku;
               }
             }
+            // הסרת SKU מהשינויים של המוצר כי זה מתעדכן בווריאציה
+            delete changes.sku;
           } else if (!row.variantFieldsReadOnly) {
             // מוצר עם מספר וריאציות - אם השדות לא read-only
             // (בדרך כלל השדות כן read-only עבור מוצרים עם מספר וריאציות)
@@ -727,6 +739,13 @@ export default function BulkEditPage() {
           const rowInventoryQty = parseInt(row.inventoryQty?.toString() || '0');
           if (rowInventoryQty !== originalInventoryQty) {
             changes.inventoryQty = rowInventoryQty;
+          }
+
+          // השוואה נכונה של עלות
+          const originalCost = original.cost ?? null;
+          const rowCost = row.cost !== null && row.cost !== undefined ? parseFloat(row.cost.toString()) : null;
+          if (rowCost !== originalCost) {
+            changes.cost = rowCost;
           }
 
           if (Object.keys(changes).length > 0) {
@@ -863,7 +882,7 @@ export default function BulkEditPage() {
           displayNumber = productIndex !== -1 ? productIndex + 1 : 1;
         }
         return (
-          <div className="text-sm text-gray-600 font-semibold">#{displayNumber}</div>
+          <div className="text-xs text-gray-600 font-semibold">#{displayNumber}</div>
         );
       case 'product-title':
         // עבור שם מוצר, נציג תמונה + שם
@@ -879,11 +898,11 @@ export default function BulkEditPage() {
               <img
                 src={row.image}
                 alt={row.name}
-                className="w-10 h-10 rounded-md object-cover border border-gray-200 flex-shrink-0"
+                className="w-8 h-8 rounded-md object-cover border border-gray-200 flex-shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                <HiCube className="w-5 h-5 text-gray-400" />
+              <div className="w-8 h-8 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                <HiCube className="w-4 h-4 text-gray-400" />
               </div>
             )}
             {isNameEditable ? (
@@ -892,13 +911,13 @@ export default function BulkEditPage() {
                 value={row.name}
                 onChange={(e) => updateRow(row.id, column.key, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, row.id, column.key)}
-                className="h-9 flex-1 border border-gray-200 rounded-md bg-white px-3 py-2 text-sm hover:border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
+                className="h-7 flex-1 border border-gray-200 rounded-md bg-white px-2 py-1 text-xs hover:border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
                 ref={(el) => {
                   if (el) cellRefs.current.set(cellKey, el);
                 }}
               />
             ) : (
-              <div className="h-9 flex-1 border border-gray-100 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-600">
+              <div className="h-7 flex-1 border border-gray-100 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-600">
                 {row.name}
               </div>
             )}
@@ -996,7 +1015,7 @@ export default function BulkEditPage() {
           : value;
       
       return (
-        <div className="h-9 w-full border border-gray-100 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-500 flex items-center">
+        <div className="h-7 w-full border border-gray-100 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-500 flex items-center">
           {displayValue}
         </div>
       );
@@ -1009,7 +1028,7 @@ export default function BulkEditPage() {
         onChange={(e) => updateRow(row.id, column.key, e.target.value)}
         onBlur={handleBlur}
         onKeyDown={(e) => handleKeyDown(e, row.id, column.key)}
-        className={`h-9 w-full border rounded-md bg-white px-3 py-2 text-sm transition-colors focus:outline-none ${
+        className={`h-7 w-full border rounded-md bg-white px-2 py-1 text-xs transition-colors focus:outline-none ${
           isComparePriceInvalid
             ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
             : 'border-gray-200 hover:border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500'
@@ -1196,11 +1215,11 @@ export default function BulkEditPage() {
           )}
 
           <Card className="border-0 shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+            <div className="overflow-x-auto overflow-y-visible">
+              <table className="w-full border-collapse min-w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b-2 border-gray-200">
-                    <th className="text-right px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider w-12 sticky right-0 bg-gradient-to-r from-gray-50 to-gray-100/50 z-10">
+                    <th className="text-right px-2 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wider w-10 sticky right-0 bg-gradient-to-r from-gray-50 to-gray-100/50 z-10">
                       <Checkbox
                         checked={selectedRows.size === filteredRows.length && filteredRows.length > 0}
                         onCheckedChange={(checked) => {
@@ -1212,13 +1231,24 @@ export default function BulkEditPage() {
                         }}
                       />
                     </th>
-                    <th className="text-right px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap border-l border-gray-200/50">
-                      פעיל/מוסתר
+                    <th className="text-right px-2 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap border-l border-gray-200/50 w-12">
+                      פעיל
                     </th>
                     {visibleColumnsData.map((column: any) => (
                       <th
                         key={column.key}
-                        className="text-right px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap border-l border-gray-200/50 first:border-l-0"
+                        className={`text-right px-2 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap border-l border-gray-200/50 first:border-l-0 ${
+                          column.key === 'product-id' ? 'w-16' :
+                          column.key === 'product-title' ? 'w-48 min-w-[200px]' :
+                          column.key === 'product-category' ? 'w-32 min-w-[140px]' :
+                          column.key === 'vendor' ? 'w-32 min-w-[120px]' :
+                          column.key === 'base-price' ? 'w-24' :
+                          column.key === 'compare-price' ? 'w-24' :
+                          column.key === 'cost' ? 'w-24' :
+                          column.key === 'on-hand-quantity' ? 'w-28' :
+                          column.key === 'sku' ? 'w-32 min-w-[100px]' :
+                          'w-32'
+                        }`}
                       >
                         {column.label}
                       </th>
@@ -1236,7 +1266,7 @@ export default function BulkEditPage() {
                         ${index % 2 === 0 && !row.isVariant ? 'bg-white' : ''}
                       `}
                     >
-                      <td className="px-6 py-3 sticky right-0 bg-inherit z-10 border-l border-gray-200/30">
+                      <td className="px-2 py-2 sticky right-0 bg-inherit z-10 border-l border-gray-200/30">
                         <Checkbox
                           checked={selectedRows.has(row.id)}
                           onCheckedChange={(checked) => {
@@ -1250,17 +1280,17 @@ export default function BulkEditPage() {
                           }}
                         />
                       </td>
-                      <td className="px-6 py-3 border-l border-gray-200/30">
+                      <td className="px-1 py-2 border-l border-gray-200/30 w-12">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleVisibility(row.id)}
-                          className="h-8 w-8 p-0"
+                          className="h-6 w-6 p-0 mx-auto"
                         >
                           {row.isHidden ? (
-                            <HiEyeOff className="w-4 h-4 text-gray-400" />
+                            <HiEyeOff className="w-3 h-3 text-gray-400" />
                           ) : (
-                            <HiEye className="w-4 h-4 text-green-600" />
+                            <HiEye className="w-3 h-3 text-green-600" />
                           )}
                         </Button>
                       </td>
@@ -1268,15 +1298,15 @@ export default function BulkEditPage() {
                         <td
                           key={column.key}
                           className={`
-                            px-6 py-3 border-l border-gray-200/30 first:border-l-0
-                            ${row.isVariant ? 'pr-12' : ''}
+                            px-2 py-2 border-l border-gray-200/30 first:border-l-0
+                            ${row.isVariant ? 'pr-8' : ''}
                             group
                           `}
                         >
-                          <div className="flex items-center min-h-[32px]">
+                          <div className="flex items-center min-h-[28px]">
                             {column.key === 'product-title' && row.isVariant ? (
-                              <div className="flex items-center gap-3 w-full">
-                                <span className="text-gray-300 text-lg font-light flex-shrink-0">┘</span>
+                              <div className="flex items-center gap-2 w-full">
+                                <span className="text-gray-300 text-sm font-light flex-shrink-0">┘</span>
                                 {renderCell(row, column, index)}
                               </div>
                             ) : (

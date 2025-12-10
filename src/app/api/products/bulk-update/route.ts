@@ -299,9 +299,15 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Handle inventory update separately (in variant_inventory table)
+          // Handle inventory update - update both product_variants.inventory_quantity and variant_inventory
           if (update.changes.inventoryQty !== undefined) {
-            // Get current inventory
+            // עדכון המלאי ב-product_variants (המקור הראשי)
+            await query(
+              'UPDATE product_variants SET inventory_quantity = $1, updated_at = now() WHERE id = $2',
+              [update.changes.inventoryQty, variantId]
+            );
+
+            // עדכון גם ב-variant_inventory (אם קיים)
             const currentInventory = await queryOne<{ id: number; available: number }>(
               'SELECT id, available FROM variant_inventory WHERE variant_id = $1 LIMIT 1',
               [variantId]
@@ -330,6 +336,38 @@ export async function POST(request: NextRequest) {
               store_id: storeId,
               source: 'api',
             });
+          }
+
+          // Handle cost update - save as meta field (no cost field in schema)
+          if (update.changes.cost !== undefined) {
+            // Get the product_id for the meta field
+            const variantWithProduct = await queryOne<{ product_id: number }>(
+              'SELECT product_id FROM product_variants WHERE id = $1',
+              [variantId]
+            );
+
+            if (variantWithProduct) {
+              const metaFieldKey = `variant_cost_${variantId}`;
+              // Check if meta field exists
+              const existingMetaField = await queryOne<{ id: number }>(
+                'SELECT id FROM product_meta_fields WHERE product_id = $1 AND namespace = $2 AND key = $3',
+                [variantWithProduct.product_id, 'custom', metaFieldKey]
+              );
+
+              if (existingMetaField) {
+                // Update existing meta field
+                await query(
+                  'UPDATE product_meta_fields SET value = $1, updated_at = now() WHERE id = $2',
+                  [update.changes.cost?.toString() || null, existingMetaField.id]
+                );
+              } else {
+                // Create new meta field
+                await query(
+                  'INSERT INTO product_meta_fields (product_id, namespace, key, value, value_type, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, now(), now()) ON CONFLICT (product_id, namespace, key) DO UPDATE SET value = $4, updated_at = now()',
+                  [variantWithProduct.product_id, 'custom', metaFieldKey, update.changes.cost?.toString() || null, 'number']
+                );
+              }
+            }
           }
 
           results.push({
