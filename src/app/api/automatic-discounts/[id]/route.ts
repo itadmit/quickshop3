@@ -139,6 +139,7 @@ export async function PUT(
     addField('bundle_min_products', body.bundle_min_products ?? null);
     addField('bundle_discount_type', body.bundle_discount_type || null);
     addField('bundle_discount_value', body.bundle_discount_value || null);
+    addField('gift_product_id', body.gift_product_id ?? null);
     
     // Special handling for volume_tiers (JSON)
     if ('volume_tiers' in body) {

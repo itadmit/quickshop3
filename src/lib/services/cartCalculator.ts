@@ -153,6 +153,17 @@ export interface AppliedDiscount {
   priority: number;
 }
 
+export interface GiftProduct {
+  product_id: number;
+  variant_id: number;
+  product_title: string;
+  variant_title: string;
+  price: number;
+  image?: string;
+  discount_id: number;
+  discount_name: string;
+}
+
 export interface CartCalculationResult {
   // Items
   items: Array<{
@@ -175,6 +186,9 @@ export interface CartCalculationResult {
   
   // Discounts Applied
   discounts: AppliedDiscount[];
+  
+  // Gift Products (מתנות אוטומטיות)
+  giftProducts: GiftProduct[];
   
   // Final Total
   total: number;
@@ -474,7 +488,7 @@ export class CartCalculator {
           day_of_week, hour_start, hour_end,
           buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
           bundle_min_products, bundle_discount_type, bundle_discount_value,
-          volume_tiers
+          volume_tiers, gift_product_id
         FROM automatic_discounts
         WHERE store_id = $1 
           AND is_active = true
@@ -558,6 +572,7 @@ export class CartCalculator {
           bundle_discount_type: discount.bundle_discount_type as 'percentage' | 'fixed_amount' | null,
           bundle_discount_value: discount.bundle_discount_value ? String(discount.bundle_discount_value) : null,
           volume_tiers: discount.volume_tiers ? (typeof discount.volume_tiers === 'string' ? JSON.parse(discount.volume_tiers) : discount.volume_tiers) : null,
+          gift_product_id: discount.gift_product_id,
           product_ids: productIds.map(p => p.product_id),
           collection_ids: collectionIds.map(c => c.collection_id),
           tag_names: tagNames.map(t => t.tag_name),
@@ -858,7 +873,66 @@ export class CartCalculator {
 
     const shippingAfterDiscount = shipping - shippingDiscount;
 
-    // 4. חישוב סה"כ סופי
+    // 4. איסוף מתנות אוטומטיות מההנחות שהוחלו
+    const giftProducts: GiftProduct[] = [];
+    const appliedAutomaticDiscountIds = allAppliedDiscounts
+      .filter(d => d.source === 'automatic')
+      .map(d => d.id);
+
+    for (const discountId of appliedAutomaticDiscountIds) {
+      const discount = this.automaticDiscounts.find(d => d.id === discountId);
+      if (discount?.gift_product_id) {
+        try {
+          // טעינת פרטי המוצר והגרסה הראשונה שלו
+          const productResult = await query<{
+            id: number;
+            title: string;
+            image: string | null;
+          }>(
+            `SELECT id, title, image FROM products WHERE id = $1 AND store_id = $2`,
+            [discount.gift_product_id, this.storeId]
+          );
+
+          if (productResult.length > 0) {
+            const product = productResult[0];
+            
+            // טעינת הגרסה הראשונה של המוצר
+            const variantResult = await query<{
+              id: number;
+              title: string;
+              price: string;
+              image: string | null;
+            }>(
+              `SELECT id, title, price, image 
+               FROM product_variants 
+               WHERE product_id = $1 
+               ORDER BY id ASC 
+               LIMIT 1`,
+              [product.id]
+            );
+
+            if (variantResult.length > 0) {
+              const variant = variantResult[0];
+              giftProducts.push({
+                product_id: product.id,
+                variant_id: variant.id,
+                product_title: product.title,
+                variant_title: variant.title || 'Default',
+                price: parseFloat(variant.price),
+                image: variant.image || product.image || undefined,
+                discount_id: discount.id,
+                discount_name: discount.name,
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error loading gift product ${discount.gift_product_id}:`, error);
+          this.warnings.push(`לא ניתן לטעון מתנה מההנחה "${discount.name}"`);
+        }
+      }
+    }
+
+    // 5. חישוב סה"כ סופי
     const total = subtotalAfterDiscount + shippingAfterDiscount;
 
     return {
@@ -876,6 +950,7 @@ export class CartCalculator {
       shippingDiscount,
       shippingAfterDiscount,
       discounts: allAppliedDiscounts,
+      giftProducts,
       total,
       isValid: this.errors.length === 0,
       errors: [...this.errors],
@@ -1210,6 +1285,7 @@ export class CartCalculator {
       shippingDiscount: 0,
       shippingAfterDiscount: 0,
       discounts: [],
+      giftProducts: [],
       total: 0,
       isValid: true,
       errors: [],

@@ -105,6 +105,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         shippingDiscount: 0,
         shippingAfterDiscount: shippingPrice,
         discounts: [],
+        giftProducts: [],
         total: shippingPrice,
         isValid: true,
         errors: [],
@@ -175,6 +176,34 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           setDiscountCode(serverCode);
         }
       }
+
+      // הוספת מתנות אוטומטיות לעגלה
+      if (result.giftProducts && Array.isArray(result.giftProducts) && result.giftProducts.length > 0) {
+        for (const giftProduct of result.giftProducts) {
+          // בדיקה אם המתנה כבר נמצאת בעגלה
+          const isGiftInCart = cartItems.some(
+            item => item.variant_id === giftProduct.variant_id && 
+                    item.product_id === giftProduct.product_id
+          );
+          
+          if (!isGiftInCart) {
+            // הוספת המתנה לעגלה
+            await cartFromHook.addToCart({
+              variant_id: giftProduct.variant_id,
+              product_id: giftProduct.product_id,
+              product_title: giftProduct.product_title,
+              variant_title: giftProduct.variant_title,
+              price: giftProduct.price,
+              quantity: 1,
+              image: giftProduct.image,
+              properties: [{
+                name: 'מתנה',
+                value: giftProduct.discount_name,
+              }],
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('Error calculating cart:', error);
       // טיפול נכון ב-shippingRate null/undefined
@@ -197,6 +226,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         shippingDiscount: 0,
         shippingAfterDiscount: shippingPrice,
         discounts: [],
+        giftProducts: [],
         total: subtotal + shippingPrice,
         isValid: false,
         errors: ['שגיאה בחישוב העגלה. אנא נסה שוב.'],

@@ -15,6 +15,7 @@ import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ProductSelector } from '@/components/discounts/ProductSelector';
 import { CollectionSelector } from '@/components/discounts/CollectionSelector';
 import { TagSelector } from '@/components/discounts/TagSelector';
+import { GiftProductSelector } from '@/components/discounts/GiftProductSelector';
 
 export default function EditAutomaticDiscountPage() {
   const params = useParams();
@@ -67,6 +68,8 @@ export default function EditAutomaticDiscountPage() {
       discount_type: 'percentage' | 'fixed_amount';
       value: number;
     }>;
+    // Gift Product
+    gift_product_id?: number | null;
   }>({});
 
   useEffect(() => {
@@ -144,6 +147,8 @@ export default function EditAutomaticDiscountPage() {
         bundle_discount_value: data.discount.bundle_discount_value || undefined,
         // Volume fields
         volume_tiers: data.discount.volume_tiers || undefined,
+        // Gift Product
+        gift_product_id: data.discount.gift_product_id || null,
       });
     } catch (error: any) {
       console.error('Error loading automatic discount:', error);
@@ -236,6 +241,8 @@ export default function EditAutomaticDiscountPage() {
         bundle_discount_value: formData.discount_type === 'bundle' && formData.bundle_discount_value ? formData.bundle_discount_value : null,
         // Volume fields
         volume_tiers: formData.discount_type === 'volume' && formData.volume_tiers && formData.volume_tiers.length > 0 ? formData.volume_tiers : null,
+        // Gift Product
+        gift_product_id: formData.gift_product_id || null,
         minimum_order_amount: formData.minimum_order_amount || null,
         maximum_order_amount: formData.maximum_order_amount || null,
         minimum_quantity: formData.minimum_quantity ? parseInt(formData.minimum_quantity) : null,
@@ -525,6 +532,18 @@ export default function EditAutomaticDiscountPage() {
               </div>
             )}
           </div>
+        </Card>
+
+        {/* Gift Product */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">מתנה אוטומטית</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            מוצר שיתווסף אוטומטית לעגלה כאשר ההנחה האוטומטית מוחלת
+          </p>
+          <GiftProductSelector
+            selectedProductId={formData.gift_product_id || null}
+            onProductChange={(productId) => setFormData({ ...formData, gift_product_id: productId })}
+          />
         </Card>
 
         {/* Order Conditions */}

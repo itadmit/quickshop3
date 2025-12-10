@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         shippingDiscount: 0,
         shippingAfterDiscount: shippingRate?.price || 0,
         discounts: [],
+        giftProducts: [],
         total: shippingRate?.price || 0,
         isValid: true,
         errors: [],

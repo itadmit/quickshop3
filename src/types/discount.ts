@@ -31,6 +31,8 @@ export interface DiscountCode {
   get_discount_type: 'free' | 'percentage' | 'fixed_amount' | null;
   get_discount_value: string | null;
   applies_to_same_product: boolean | null;
+  // Gift Product (מתנה אוטומטית)
+  gift_product_id: number | null;
   // Bundle fields
   bundle_min_products: number | null;
   bundle_discount_type: 'percentage' | 'fixed_amount' | null;
@@ -122,6 +124,8 @@ export interface UpdateDiscountCodeRequest {
   get_discount_type?: 'free' | 'percentage' | 'fixed_amount' | null;
   get_discount_value?: string | null;
   applies_to_same_product?: boolean | null;
+  // Gift Product (מתנה אוטומטית)
+  gift_product_id?: number | null;
   // Bundle fields
   bundle_min_products?: number | null;
   bundle_discount_type?: 'percentage' | 'fixed_amount' | null;
@@ -169,6 +173,8 @@ export interface AutomaticDiscount {
   get_discount_type?: 'free' | 'percentage' | 'fixed_amount' | null;
   get_discount_value?: string | null;
   applies_to_same_product?: boolean | null;
+  // Gift Product (מתנה אוטומטית)
+  gift_product_id?: number | null;
   // Bundle fields
   bundle_min_products?: number | null;
   bundle_discount_type?: 'percentage' | 'fixed_amount' | null;
@@ -225,6 +231,8 @@ export interface CreateAutomaticDiscountRequest {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }>;
+  // Gift Product (מתנה אוטומטית)
+  gift_product_id?: number | null;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -259,6 +267,8 @@ export interface UpdateAutomaticDiscountRequest {
   get_discount_type?: 'free' | 'percentage' | 'fixed_amount' | null;
   get_discount_value?: string | null;
   applies_to_same_product?: boolean | null;
+  // Gift Product (מתנה אוטומטית)
+  gift_product_id?: number | null;
   // Bundle fields
   bundle_min_products?: number | null;
   bundle_discount_type?: 'percentage' | 'fixed_amount' | null;
