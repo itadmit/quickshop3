@@ -34,7 +34,7 @@ export function RangeSlider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-700"
+        className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-gray-600 hover:accent-gray-700"
       />
     </div>
   );

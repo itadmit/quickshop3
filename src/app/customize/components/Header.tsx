@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiUpload } from 'react-icons/hi';
+import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiUpload, HiDownload } from 'react-icons/hi';
 import { cn } from '@/lib/utils';
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
@@ -9,12 +9,13 @@ export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 interface HeaderProps {
   onPreview: () => void;
   onPublish: () => void;
+  onTemplates: () => void;
   device: DeviceType;
   onDeviceChange: (device: DeviceType) => void;
   isPublishing?: boolean;
 }
 
-export function Header({ onPreview, onPublish, device, onDeviceChange, isPublishing = false }: HeaderProps) {
+export function Header({ onPreview, onPublish, onTemplates, device, onDeviceChange, isPublishing = false }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10 relative">
       <div className="flex items-center gap-3">
@@ -73,6 +74,14 @@ export function Header({ onPreview, onPublish, device, onDeviceChange, isPublish
 
       <div className="flex items-center gap-2">
         {/* Action Buttons */}
+        <button
+          onClick={onTemplates}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
+        >
+          <HiDownload className="w-4 h-4" />
+          <span className="hidden sm:inline">ייבוא/ייצוא</span>
+        </button>
+
         <button
           onClick={onPreview}
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"

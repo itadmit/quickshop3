@@ -143,7 +143,7 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all bg-white"
                 placeholder="ישראל ישראלי"
               />
             </div>
@@ -157,7 +157,7 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all bg-white"
                   placeholder="example@email.com"
                   dir="ltr"
                 />
@@ -172,7 +172,7 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all bg-white"
                   placeholder="050-0000000"
                   dir="ltr"
                 />
@@ -188,7 +188,7 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
                 id="subject"
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all bg-white"
                 placeholder="בנושא מה הפנייה?"
               />
             </div>
@@ -216,12 +216,12 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
                     type="checkbox"
                     checked={formData.privacyConsent}
                     onChange={(e) => setFormData({ ...formData, privacyConsent: e.target.checked })}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="mt-1 w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-400"
                     required
                   />
                   <span className="text-sm" style={{ color: textColor }}>
                     {settings.privacy_text || 'אני מאשר/ת את'}{' '}
-                    <a href={settings.privacy_url || '/privacy-policy'} target="_blank" className="text-blue-600 hover:underline">
+                    <a href={settings.privacy_url || '/privacy-policy'} target="_blank" className="text-gray-600 hover:underline">
                       מדיניות הפרטיות
                     </a> *
                   </span>
@@ -234,7 +234,7 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
                     type="checkbox"
                     checked={formData.marketingConsent}
                     onChange={(e) => setFormData({ ...formData, marketingConsent: e.target.checked })}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="mt-1 w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-400"
                   />
                   <span className="text-sm" style={{ color: textColor }}>
                     {settings.marketing_text || 'אני מאשר/ת לקבל עדכונים ומבצעים במייל'}
@@ -245,7 +245,7 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
           )}
 
           {submitStatus === 'error' && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-sm">
               אירעה שגיאה בשליחת הטופס. אנא נסו שוב.
             </div>
           )}

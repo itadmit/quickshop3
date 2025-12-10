@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { Order, OrderWithDetails, OrderLineItem, OrderFulfillment, OrderRefund, CreateOrderRequest } from '@/types/order';
 import { eventBus } from '@/lib/events/eventBus';
 import { getUserFromRequest } from '@/lib/auth';
+import { syncCustomerToContact } from '@/lib/contacts/sync-customer-to-contact';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
     const storeId = user.store_id;
     const financialStatus = searchParams.get('financial_status');
     const fulfillmentStatus = searchParams.get('fulfillment_status');
+    const customerId = searchParams.get('customer_id');
     const limit = parseInt(searchParams.get('limit') || '20');
     const page = parseInt(searchParams.get('page') || '1');
     const offset = (page - 1) * limit;
@@ -41,6 +43,12 @@ export async function GET(request: NextRequest) {
     if (fulfillmentStatus) {
       sql += ` AND fulfillment_status = $${paramIndex}`;
       params.push(fulfillmentStatus);
+      paramIndex++;
+    }
+
+    if (customerId) {
+      sql += ` AND customer_id = $${paramIndex}`;
+      params.push(parseInt(customerId));
       paramIndex++;
     }
 
@@ -75,6 +83,12 @@ export async function GET(request: NextRequest) {
     if (fulfillmentStatus) {
       countSql += ` AND fulfillment_status = $${countParamIndex}`;
       countParams.push(fulfillmentStatus);
+      countParamIndex++;
+    }
+
+    if (customerId) {
+      countSql += ` AND customer_id = $${countParamIndex}`;
+      countParams.push(parseInt(customerId));
       countParamIndex++;
     }
 
@@ -185,6 +199,74 @@ export async function POST(request: NextRequest) {
     const body: CreateOrderRequest = await request.json();
     const storeId = user.store_id;
 
+    // Create or get customer if email is provided
+    let customerId = body.customer_id || null;
+    if (!customerId && body.email) {
+      // Check if customer exists
+      const existingCustomer = await queryOne<{ id: number; first_name: string | null; last_name: string | null; phone: string | null }>(
+        'SELECT id, first_name, last_name, phone FROM customers WHERE store_id = $1 AND email = $2',
+        [storeId, body.email]
+      );
+
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        // Update customer info if provided
+        if (body.name || body.phone) {
+          const nameParts = body.name ? body.name.split(' ').filter(Boolean) : [];
+          const firstName = nameParts[0] || existingCustomer.first_name || null;
+          const lastName = nameParts.slice(1).join(' ') || existingCustomer.last_name || null;
+          
+          await query(
+            `UPDATE customers 
+             SET first_name = COALESCE($1, first_name),
+                 last_name = COALESCE($2, last_name),
+                 phone = COALESCE($3, phone),
+                 updated_at = now()
+             WHERE id = $4 AND store_id = $5`,
+            [firstName, lastName, body.phone || null, customerId, storeId]
+          );
+
+          // Sync to contact
+          syncCustomerToContact(storeId, customerId, {
+            email: body.email,
+            first_name: firstName,
+            last_name: lastName,
+            phone: body.phone || existingCustomer.phone || null,
+            accepts_marketing: false,
+          }).catch((error) => {
+            console.warn('Failed to sync customer to contact:', error);
+          });
+        }
+      } else {
+        // Create new customer
+        const nameParts = body.name ? body.name.split(' ').filter(Boolean) : [];
+        const firstName = nameParts[0] || null;
+        const lastName = nameParts.slice(1).join(' ') || null;
+
+        const newCustomer = await queryOne<{ id: number; first_name: string | null; last_name: string | null; phone: string | null }>(
+          `INSERT INTO customers (store_id, first_name, last_name, email, phone, accepts_marketing, state)
+           VALUES ($1, $2, $3, $4, $5, false, 'enabled')
+           RETURNING id, first_name, last_name, phone`,
+          [storeId, firstName, lastName, body.email, body.phone || null]
+        );
+
+        if (newCustomer) {
+          customerId = newCustomer.id;
+          
+          // Sync customer to contact (async, don't block order creation)
+          syncCustomerToContact(storeId, customerId, {
+            email: body.email,
+            first_name: firstName,
+            last_name: lastName,
+            phone: body.phone || null,
+            accepts_marketing: false,
+          }).catch((error) => {
+            console.warn('Failed to sync customer to contact:', error);
+          });
+        }
+      }
+    }
+
     // Calculate totals
     const subtotalPrice = body.line_items.reduce((sum, item) => {
       return sum + parseFloat(item.price) * item.quantity;
@@ -241,7 +323,7 @@ export async function POST(request: NextRequest) {
       ) RETURNING *`,
       [
         storeId,
-        body.customer_id || null,
+        customerId,
         body.email,
         body.phone || null,
         body.name || null,
@@ -297,14 +379,14 @@ export async function POST(request: NextRequest) {
     };
 
     // Update customer statistics (total_spent and orders_count)
-    if (body.customer_id) {
+    if (customerId) {
       await query(
         `UPDATE customers 
          SET total_spent = COALESCE(total_spent, 0) + $1,
              orders_count = COALESCE(orders_count, 0) + 1,
              updated_at = now()
          WHERE id = $2 AND store_id = $3`,
-        [totalPrice, body.customer_id, storeId]
+        [totalPrice, customerId, storeId]
       );
     }
 
@@ -312,7 +394,7 @@ export async function POST(request: NextRequest) {
     await eventBus.emitEvent('order.created', {
       order: {
         id: orderResult.id,
-        customer_id: body.customer_id || null,
+        customer_id: customerId,
         order_number: orderNumber,
         order_name: orderName,
         total_price: totalPrice.toString(),

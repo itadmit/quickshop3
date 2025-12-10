@@ -111,7 +111,14 @@ export default function CategoryDetailsPage() {
       });
 
       if (category.products) {
-        setSelectedProducts(category.products.map((p: any, index: number) => {
+        // מיון לפי position כדי לשמור על הסדר הנכון
+        const sortedProducts = [...category.products].sort((a: any, b: any) => {
+          const posA = a.position !== undefined ? a.position : 999999;
+          const posB = b.position !== undefined ? b.position : 999999;
+          return posA - posB;
+        });
+        
+        setSelectedProducts(sortedProducts.map((p: any, index: number) => {
           // מיפוי נכון של תמונות
           let images: string[] = [];
           if (Array.isArray(p.images) && p.images.length > 0) {
@@ -306,9 +313,11 @@ export default function CategoryDetailsPage() {
         };
       }
 
-      // הוספת productIds אם זה ידני
+      // הוספת productIds אם זה ידני - לפי הסדר הנכון
       if (formData.type === 'MANUAL') {
-        payload.productIds = selectedProducts.map(p => p.product.id);
+        // מיון לפי position כדי לשמור על הסדר
+        const sortedProducts = [...selectedProducts].sort((a, b) => a.position - b.position);
+        payload.productIds = sortedProducts.map(p => p.product.id);
       }
       
       const response = await fetch(url, {
@@ -719,16 +728,32 @@ export default function CategoryDetailsPage() {
                             </Button>
                           </div>
                           {(() => {
+                            // נסה למצוא תמונה - תמונות יכולות להיות string או object
                             const firstImage = item.product.images?.[0];
-                            const imageUrl = typeof firstImage === 'string' 
-                              ? firstImage 
-                              : firstImage?.src || firstImage?.url || firstImage?.image_url;
+                            let imageUrl: string | null = null;
+                            
+                            if (firstImage) {
+                              if (typeof firstImage === 'string') {
+                                imageUrl = firstImage;
+                              } else if (typeof firstImage === 'object') {
+                                imageUrl = firstImage.src || firstImage.url || firstImage.image_url || null;
+                              }
+                            }
                             
                             return imageUrl ? (
                               <img
                                 src={imageUrl}
                                 alt={item.product.name || 'מוצר'}
                                 className="w-16 h-16 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+                                onError={(e) => {
+                                  // אם התמונה נכשלה בטעינה, החלף ב-placeholder
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const placeholder = document.createElement('div');
+                                  placeholder.className = 'w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0';
+                                  placeholder.innerHTML = '<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>';
+                                  target.parentNode?.insertBefore(placeholder, target.nextSibling);
+                                }}
                               />
                             ) : (
                               <div className="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0">
@@ -739,7 +764,16 @@ export default function CategoryDetailsPage() {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900">{item.product.name || 'ללא שם'}</p>
                             <p className="text-sm text-gray-500 mt-1">
-                              {item.product.price && typeof item.product.price === 'number' ? `₪${item.product.price.toFixed(2)}` : '₪0.00'}
+                              {(() => {
+                                // נסה למצוא מחיר - יכול להיות number או string
+                                let price = 0;
+                                if (item.product.price !== undefined && item.product.price !== null) {
+                                  price = typeof item.product.price === 'number' 
+                                    ? item.product.price 
+                                    : parseFloat(item.product.price) || 0;
+                                }
+                                return price > 0 ? `₪${price.toFixed(2)}` : '₪0.00';
+                              })()}
                               {item.product.sku && ` • מקט: ${item.product.sku}`}
                             </p>
                           </div>

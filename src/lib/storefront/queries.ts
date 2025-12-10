@@ -99,7 +99,9 @@ export async function getProductsList(
   }
 
   if (search) {
-    whereClause += ` AND (p.title ILIKE $${paramIndex} OR p.body_html ILIKE $${paramIndex})`;
+    whereClause += ` AND (p.title ILIKE $${paramIndex} OR p.body_html ILIKE $${paramIndex} OR EXISTS (
+      SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku IS NOT NULL AND pv.sku ILIKE $${paramIndex}
+    ))`;
     params.push(`%${search}%`);
     paramIndex++;
   }

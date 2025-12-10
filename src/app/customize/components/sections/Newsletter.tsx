@@ -199,7 +199,7 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={settings.form_settings?.email_placeholder || 'הכנס את כתובת המייל'}
-                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-shadow"
                 style={{ textAlign: 'right' }}
                 required
                 dir="ltr"
@@ -239,12 +239,12 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
                   type="checkbox"
                   checked={privacyConsent}
                   onChange={(e) => setPrivacyConsent(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-400"
                   required
                 />
                 <span className="text-sm" style={{ color: textColor }}>
                   {settings.privacy_text || 'אני מאשר/ת את'}{' '}
-                  <a href={settings.privacy_url || '/privacy-policy'} target="_blank" className="text-blue-600 hover:underline">
+                  <a href={settings.privacy_url || '/privacy-policy'} target="_blank" className="text-gray-600 hover:underline">
                     מדיניות הפרטיות
                   </a>
                 </span>
@@ -252,7 +252,7 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
             )}
 
             {submitStatus === 'error' && (
-              <p className="text-red-600 text-sm">אירעה שגיאה. אנא נסו שוב.</p>
+              <p className="text-rose-400 text-sm">אירעה שגיאה. אנא נסו שוב.</p>
             )}
           </form>
         </div>

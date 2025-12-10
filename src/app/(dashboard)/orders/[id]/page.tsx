@@ -18,7 +18,8 @@ import {
   HiRefresh,
   HiBan,
   HiDotsVertical,
-  HiExclamationCircle
+  HiExclamationCircle,
+  HiPencil
 } from 'react-icons/hi';
 import { OrderWithDetails } from '@/types/order';
 import { OrderTimeline } from '@/components/orders/OrderTimeline';
@@ -35,6 +36,9 @@ export default function OrderDetailsPage() {
   const [showFraudDialog, setShowFraudDialog] = useState(false);
   const [fraudReason, setFraudReason] = useState('');
   const [riskLevel, setRiskLevel] = useState<'fraud' | 'risk' | 'high-risk' | 'none'>('none');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<any>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -252,10 +256,38 @@ export default function OrderDetailsPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="p-6 space-y-6" dir="rtl">
+        <div className="animate-pulse space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-8 bg-gray-200 rounded w-32"></div>
+              <div className="h-4 bg-gray-200 rounded w-48"></div>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-10 w-20 bg-gray-200 rounded"></div>
+              <div className="h-10 w-20 bg-gray-200 rounded"></div>
+              <div className="h-10 w-24 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+          
+          {/* Status Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="h-20 bg-gray-200 rounded-lg"></div>
+            <div className="h-20 bg-gray-200 rounded-lg"></div>
+          </div>
+          
+          {/* Main Content Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="h-64 bg-gray-200 rounded-lg"></div>
+            </div>
+            <div className="space-y-6">
+              <div className="h-48 bg-gray-200 rounded-lg"></div>
+              <div className="h-48 bg-gray-200 rounded-lg"></div>
+              <div className="h-32 bg-gray-200 rounded-lg"></div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -271,6 +303,19 @@ export default function OrderDetailsPage() {
 
   return (
     <div className="p-6 space-y-6" dir="rtl">
+      <style jsx global>{`
+        @media print {
+          body {
+            background: white !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-break {
+            page-break-after: always;
+          }
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -281,14 +326,19 @@ export default function OrderDetailsPage() {
             נוצר ב-{new Date(order.created_at).toLocaleString('he-IL')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 no-print">
           <Button
             variant="ghost"
             onClick={() => router.back()}
           >
             חזרה
           </Button>
-          <Button variant="ghost">
+          <Button 
+            variant="ghost"
+            onClick={() => {
+              window.print();
+            }}
+          >
             <HiPrinter className="w-5 h-5" />
             הדפס
           </Button>
@@ -361,32 +411,181 @@ export default function OrderDetailsPage() {
           {/* Line Items */}
           <Card>
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">פריטי הזמנה</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">פריטי הזמנה</h2>
+                {!isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="no-print"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditData({
+                        ...editData,
+                        line_items: order.line_items?.map(item => ({
+                          id: item.id,
+                          quantity: item.quantity,
+                          price: item.price,
+                        })) || [],
+                      });
+                    }}
+                  >
+                    <HiPencil className="w-4 h-4 ml-1" />
+                    ערוך
+                  </Button>
+                )}
+              </div>
               <div className="space-y-4">
-                {order.line_items?.map((item) => (
-                  <div key={item.id} className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0">
-                    <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
-                      <span className="text-gray-400 text-xs">תמונה</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900">{item.title}</div>
-                      {item.variant_title && (
-                        <div className="text-sm text-gray-500">{item.variant_title}</div>
-                      )}
-                      {item.sku && (
-                        <div className="text-xs text-gray-400 mt-1">SKU: {item.sku}</div>
-                      )}
-                    </div>
-                    <div className="text-left">
-                      <div className="font-medium text-gray-900">
-                        {item.quantity} × ₪{parseFloat(item.price).toLocaleString('he-IL')}
+                {order.line_items?.map((item) => {
+                  // Filter out "Default Title" from variant_title and title
+                  const variantTitle = item.variant_title && item.variant_title !== 'Default Title' 
+                    ? item.variant_title 
+                    : null;
+                  
+                  // Remove "Default Title" from product title if it's appended
+                  let productTitle = item.title || '';
+                  if (productTitle.includes('Default Title')) {
+                    productTitle = productTitle.replace(/ - Default Title/g, '').replace(/Default Title - /g, '').replace(/Default Title/g, '').trim();
+                  }
+                  
+                  // Get image from item.image or from properties
+                  const itemImage = (item as any).image || null;
+                  
+                  const isEditingItem = isEditing && editData.line_items?.find((li: any) => li.id === item.id);
+                  
+                  return (
+                    <div key={item.id} className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0">
+                      {/* Image - Always show placeholder if no image */}
+                      <div className="w-16 h-16 flex-shrink-0 relative">
+                        {itemImage ? (
+                          <img
+                            src={itemImage}
+                            alt={productTitle}
+                            className="w-full h-full object-cover rounded border border-gray-200"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const placeholder = target.nextElementSibling as HTMLElement;
+                              if (placeholder) placeholder.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-full h-full bg-gray-100 rounded flex items-center justify-center ${itemImage ? 'hidden' : ''}`}>
+                          <span className="text-gray-400 text-xs">תמונה</span>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        ₪{(parseFloat(item.price) * item.quantity).toLocaleString('he-IL')}
+                      <div className="flex-1 min-w-0">
+                        {isEditingItem ? (
+                          <div className="space-y-2">
+                            <div className="font-medium text-gray-900">{productTitle}</div>
+                            {variantTitle && (
+                              <div className="text-sm text-gray-500">{variantTitle}</div>
+                            )}
+                            <div className="flex gap-2 items-center">
+                              <div className="flex-1">
+                                <Label className="text-xs">כמות</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={isEditingItem.quantity}
+                                  onChange={(e) => {
+                                    const newLineItems = editData.line_items.map((li: any) => 
+                                      li.id === item.id 
+                                        ? { ...li, quantity: parseInt(e.target.value) || 1 }
+                                        : li
+                                    );
+                                    setEditData({ ...editData, line_items: newLineItems });
+                                  }}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <Label className="text-xs">מחיר</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={isEditingItem.price}
+                                  onChange={(e) => {
+                                    const newLineItems = editData.line_items.map((li: any) => 
+                                      li.id === item.id 
+                                        ? { ...li, price: e.target.value }
+                                        : li
+                                    );
+                                    setEditData({ ...editData, line_items: newLineItems });
+                                  }}
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="font-medium text-gray-900">{productTitle}</div>
+                            {variantTitle && (
+                              <div className="text-sm text-gray-500">{variantTitle}</div>
+                            )}
+                            {item.sku && (
+                              <div className="text-xs text-gray-400 mt-1">מקט: {item.sku}</div>
+                            )}
+                          </>
+                        )}
                       </div>
+                      {!isEditingItem && (
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">
+                            {item.quantity} × ₪{parseFloat(item.price).toLocaleString('he-IL')}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ₪{(parseFloat(item.price) * item.quantity).toLocaleString('he-IL')}
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  );
+                })}
+                {isEditing && editData.line_items && (
+                  <div className="flex gap-2 pt-4 border-t border-gray-200 no-print">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          setSaving(true);
+                          const response = await fetch(`/api/orders/${orderId}/line-items`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              line_items: editData.line_items,
+                            }),
+                          });
+                          if (!response.ok) throw new Error('Failed to update');
+                          await loadOrder();
+                          setIsEditing(false);
+                          setEditData({});
+                        } catch (error) {
+                          console.error('Error updating line items:', error);
+                          alert('שגיאה בעדכון פריטי ההזמנה');
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving}
+                    >
+                      שמור שינויים
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditData({});
+                      }}
+                    >
+                      ביטול
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Totals */}
@@ -422,10 +621,10 @@ export default function OrderDetailsPage() {
           </Card>
 
           {/* Fulfillments */}
-          {order.fulfillments && order.fulfillments.length > 0 && (
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">ביצועים</h2>
+          <Card>
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">ביצועים</h2>
+              {order.fulfillments && order.fulfillments.length > 0 ? (
                 <div className="space-y-4">
                   {order.fulfillments.map((fulfillment) => (
                     <div key={fulfillment.id} className="border border-gray-200 rounded-lg p-4">
@@ -433,7 +632,11 @@ export default function OrderDetailsPage() {
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getFulfillmentStatusBadgeColor(fulfillment.status)}`}>
                           {fulfillment.status === 'success' ? 'בוצע' :
                            fulfillment.status === 'pending' ? 'ממתין' :
-                           fulfillment.status}
+                           fulfillment.status === 'open' ? 'פתוח' :
+                           fulfillment.status === 'cancelled' ? 'בוטל' :
+                           fulfillment.status === 'error' ? 'שגיאה' :
+                           fulfillment.status === 'failure' ? 'נכשל' :
+                           'בוצע'}
                         </span>
                         <span className="text-sm text-gray-500">
                           {new Date(fulfillment.created_at).toLocaleDateString('he-IL')}
@@ -457,9 +660,13 @@ export default function OrderDetailsPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  אין ביצועים להצגה
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* Refunds */}
           {order.refunds && order.refunds.length > 0 && (
@@ -493,94 +700,567 @@ export default function OrderDetailsPage() {
           {/* Customer Info */}
           <Card>
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">לקוח</h2>
-              <div className="space-y-2">
-                <div>
-                  <div className="text-sm text-gray-500">שם</div>
-                  <div className="font-medium text-gray-900">
-                    {order.name || order.customer?.first_name || 'לקוח אורח'}
-                  </div>
-                </div>
-                {order.email && (
-                  <div>
-                    <div className="text-sm text-gray-500">אימייל</div>
-                    <div className="text-gray-900">{order.email}</div>
-                  </div>
-                )}
-                {order.phone && (
-                  <div>
-                    <div className="text-sm text-gray-500">טלפון</div>
-                    <div className="text-gray-900">{order.phone}</div>
-                  </div>
-                )}
-                {order.customer_id && (
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">לקוח</h2>
+                {!isEditing && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="mt-4 w-full"
-                    onClick={() => router.push(`/customers/${order.customer_id}`)}
+                    className="no-print"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditData({
+                        name: order.name || '',
+                        email: order.email || '',
+                        phone: order.phone || '',
+                      });
+                    }}
                   >
-                    צפה בפרופיל הלקוח
+                    <HiPencil className="w-4 h-4 ml-1" />
+                    ערוך
                   </Button>
                 )}
               </div>
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label>שם</Label>
+                    <Input
+                      value={editData.name}
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>אימייל</Label>
+                    <Input
+                      type="email"
+                      value={editData.email}
+                      onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>טלפון</Label>
+                    <Input
+                      value={editData.phone}
+                      onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex gap-2 no-print">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          setSaving(true);
+                          const response = await fetch(`/api/orders/${orderId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              name: editData.name,
+                              email: editData.email,
+                              phone: editData.phone,
+                            }),
+                          });
+                          if (!response.ok) throw new Error('Failed to update');
+                          await loadOrder();
+                          setIsEditing(false);
+                          setEditData({});
+                        } catch (error) {
+                          console.error('Error updating order:', error);
+                          alert('שגיאה בעדכון ההזמנה');
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving}
+                    >
+                      שמור
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditData({});
+                      }}
+                    >
+                      ביטול
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div>
+                    <div className="text-sm text-gray-500">שם</div>
+                    <div className="font-medium text-gray-900">
+                      {order.name || order.customer?.first_name || 'לקוח אורח'}
+                    </div>
+                  </div>
+                  {order.email && (
+                    <div>
+                      <div className="text-sm text-gray-500">אימייל</div>
+                      <div className="text-gray-900">{order.email}</div>
+                    </div>
+                  )}
+                  {order.phone && (
+                    <div>
+                      <div className="text-sm text-gray-500">טלפון</div>
+                      <div className="text-gray-900">{order.phone}</div>
+                    </div>
+                  )}
+                  {order.customer_id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-4 w-full"
+                      onClick={() => router.push(`/customers/${order.customer_id}`)}
+                    >
+                      צפה בפרופיל הלקוח
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Payment Info */}
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">פרטי תשלום</h2>
+                {!isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="no-print"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditData({
+                        ...editData,
+                        gateway: order.gateway || '',
+                        payment_method: (order as any).note_attributes?.payment_method || order.gateway || '',
+                      });
+                    }}
+                  >
+                    <HiPencil className="w-4 h-4 ml-1" />
+                    ערוך
+                  </Button>
+                )}
+              </div>
+              {isEditing && editData.gateway !== undefined ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label>שיטת תשלום / אמצעי תשלום</Label>
+                    <Select
+                      value={editData.gateway || editData.payment_method || 'credit_card'}
+                      onValueChange={(value) => setEditData({ ...editData, gateway: value, payment_method: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="credit_card">כרטיס אשראי</SelectItem>
+                        <SelectItem value="paypal">PayPal</SelectItem>
+                        <SelectItem value="bank_transfer">העברה בנקאית</SelectItem>
+                        <SelectItem value="cash_on_delivery">מזומן בעת המשלוח</SelectItem>
+                        <SelectItem value="cash">מזומן</SelectItem>
+                        <SelectItem value="store_credit">קרדיט בחנות</SelectItem>
+                        <SelectItem value="bit">ביט</SelectItem>
+                        <SelectItem value="other">אחר</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2 no-print">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          setSaving(true);
+                          const noteAttributes = (order as any).note_attributes || {};
+                          noteAttributes.payment_method = editData.payment_method || editData.gateway;
+                          
+                          const response = await fetch(`/api/orders/${orderId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              gateway: editData.gateway,
+                              note_attributes: noteAttributes,
+                            }),
+                          });
+                          if (!response.ok) throw new Error('Failed to update');
+                          await loadOrder();
+                          setIsEditing(false);
+                          setEditData({});
+                        } catch (error) {
+                          console.error('Error updating order:', error);
+                          alert('שגיאה בעדכון ההזמנה');
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving}
+                    >
+                      שמור
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditData({});
+                      }}
+                    >
+                      ביטול
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm text-gray-500">שיטת תשלום / אמצעי תשלום</div>
+                    <div className="font-medium text-gray-900">
+                      {(order as any).note_attributes?.payment_method 
+                        ? ((order as any).note_attributes.payment_method === 'credit_card' ? 'כרטיס אשראי' :
+                           (order as any).note_attributes.payment_method === 'paypal' ? 'PayPal' :
+                           (order as any).note_attributes.payment_method === 'bank_transfer' ? 'העברה בנקאית' :
+                           (order as any).note_attributes.payment_method === 'cash_on_delivery' ? 'מזומן בעת המשלוח' :
+                           (order as any).note_attributes.payment_method === 'cash' ? 'מזומן' :
+                           (order as any).note_attributes.payment_method === 'store_credit' ? 'קרדיט בחנות' :
+                           (order as any).note_attributes.payment_method === 'bit' ? 'ביט' :
+                           (order as any).note_attributes.payment_method)
+                        : (order.gateway === 'credit_card' ? 'כרטיס אשראי' :
+                           order.gateway === 'paypal' ? 'PayPal' :
+                           order.gateway === 'bank_transfer' ? 'העברה בנקאית' :
+                           order.gateway === 'cash_on_delivery' ? 'מזומן בעת המשלוח' :
+                           order.gateway === 'cash' ? 'מזומן' :
+                           order.gateway === 'store_credit' ? 'קרדיט בחנות' :
+                           order.gateway === 'bit' ? 'ביט' :
+                           order.gateway || 'לא צוין')}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">סטטוס תשלום</div>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(order.financial_status)}`}>
+                      {order.financial_status === 'paid' ? 'שולם' :
+                       order.financial_status === 'pending' ? 'ממתין לתשלום' :
+                       order.financial_status === 'refunded' ? 'הוחזר' :
+                       order.financial_status === 'voided' ? 'בוטל' :
+                       order.financial_status}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
           {/* Shipping Address */}
-          {order.shipping_address && (
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">כתובת משלוח</h2>
-                <div className="text-sm text-gray-600 space-y-1">
-                  {order.shipping_address.first_name && (
-                    <div>{order.shipping_address.first_name} {order.shipping_address.last_name}</div>
-                  )}
-                  {order.shipping_address.address1 && (
-                    <div>{order.shipping_address.address1}</div>
-                  )}
-                  {order.shipping_address.address2 && (
-                    <div>{order.shipping_address.address2}</div>
-                  )}
-                  {order.shipping_address.city && (
-                    <div>{order.shipping_address.city}</div>
-                  )}
-                  {order.shipping_address.zip && (
-                    <div>{order.shipping_address.zip}</div>
-                  )}
-                  {order.shipping_address.country && (
-                    <div>{order.shipping_address.country}</div>
-                  )}
-                </div>
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">כתובת משלוח</h2>
+                {!isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="no-print"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditData({
+                        ...editData,
+                        shipping_address: order.shipping_address || {},
+                      });
+                    }}
+                  >
+                    <HiPencil className="w-4 h-4 ml-1" />
+                    ערוך
+                  </Button>
+                )}
+              </div>
+                {isEditing && editData.shipping_address ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>שם פרטי</Label>
+                        <Input
+                          value={editData.shipping_address.first_name || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            shipping_address: { ...editData.shipping_address, first_name: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>שם משפחה</Label>
+                        <Input
+                          value={editData.shipping_address.last_name || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            shipping_address: { ...editData.shipping_address, last_name: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>כתובת</Label>
+                      <Input
+                        value={editData.shipping_address.address1 || ''}
+                        onChange={(e) => setEditData({
+                          ...editData,
+                          shipping_address: { ...editData.shipping_address, address1: e.target.value }
+                        })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>עיר</Label>
+                        <Input
+                          value={editData.shipping_address.city || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            shipping_address: { ...editData.shipping_address, city: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>מיקוד</Label>
+                        <Input
+                          value={editData.shipping_address.zip || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            shipping_address: { ...editData.shipping_address, zip: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 no-print">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            setSaving(true);
+                            const response = await fetch(`/api/orders/${orderId}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({
+                                shipping_address: editData.shipping_address,
+                              }),
+                            });
+                            if (!response.ok) throw new Error('Failed to update');
+                            await loadOrder();
+                            setIsEditing(false);
+                            setEditData({});
+                          } catch (error) {
+                            console.error('Error updating order:', error);
+                            alert('שגיאה בעדכון ההזמנה');
+                          } finally {
+                            setSaving(false);
+                          }
+                        }}
+                        disabled={saving}
+                      >
+                        שמור
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsEditing(false);
+                          setEditData({});
+                        }}
+                      >
+                        ביטול
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-600 space-y-1">
+                    {order.shipping_address ? (
+                      <>
+                        {order.shipping_address.first_name && (
+                          <div>{order.shipping_address.first_name} {order.shipping_address.last_name}</div>
+                        )}
+                        {order.shipping_address.address1 && (
+                          <div>{order.shipping_address.address1}</div>
+                        )}
+                        {order.shipping_address.address2 && (
+                          <div>{order.shipping_address.address2}</div>
+                        )}
+                        {order.shipping_address.city && (
+                          <div>{order.shipping_address.city}</div>
+                        )}
+                        {order.shipping_address.zip && (
+                          <div>{order.shipping_address.zip}</div>
+                        )}
+                        {order.shipping_address.country && (
+                          <div>{order.shipping_address.country}</div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-gray-400">לא צוינה כתובת משלוח</div>
+                    )}
+                  </div>
+                )}
               </div>
             </Card>
-          )}
 
           {/* Billing Address */}
           {order.billing_address && (
             <Card>
               <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">כתובת חיוב</h2>
-                <div className="text-sm text-gray-600 space-y-1">
-                  {order.billing_address.first_name && (
-                    <div>{order.billing_address.first_name} {order.billing_address.last_name}</div>
-                  )}
-                  {order.billing_address.address1 && (
-                    <div>{order.billing_address.address1}</div>
-                  )}
-                  {order.billing_address.address2 && (
-                    <div>{order.billing_address.address2}</div>
-                  )}
-                  {order.billing_address.city && (
-                    <div>{order.billing_address.city}</div>
-                  )}
-                  {order.billing_address.zip && (
-                    <div>{order.billing_address.zip}</div>
-                  )}
-                  {order.billing_address.country && (
-                    <div>{order.billing_address.country}</div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">כתובת חיוב</h2>
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="no-print"
+                      onClick={() => {
+                        setIsEditing(true);
+                        setEditData({
+                          ...editData,
+                          billing_address: order.billing_address || {},
+                        });
+                      }}
+                    >
+                      <HiPencil className="w-4 h-4 ml-1" />
+                      ערוך
+                    </Button>
                   )}
                 </div>
+                {isEditing && editData.billing_address ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>שם פרטי</Label>
+                        <Input
+                          value={editData.billing_address.first_name || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            billing_address: { ...editData.billing_address, first_name: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>שם משפחה</Label>
+                        <Input
+                          value={editData.billing_address.last_name || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            billing_address: { ...editData.billing_address, last_name: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>כתובת</Label>
+                      <Input
+                        value={editData.billing_address.address1 || ''}
+                        onChange={(e) => setEditData({
+                          ...editData,
+                          billing_address: { ...editData.billing_address, address1: e.target.value }
+                        })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>עיר</Label>
+                        <Input
+                          value={editData.billing_address.city || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            billing_address: { ...editData.billing_address, city: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>מיקוד</Label>
+                        <Input
+                          value={editData.billing_address.zip || ''}
+                          onChange={(e) => setEditData({
+                            ...editData,
+                            billing_address: { ...editData.billing_address, zip: e.target.value }
+                          })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 no-print">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            setSaving(true);
+                            const response = await fetch(`/api/orders/${orderId}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({
+                                billing_address: editData.billing_address,
+                              }),
+                            });
+                            if (!response.ok) throw new Error('Failed to update');
+                            await loadOrder();
+                            setIsEditing(false);
+                            setEditData({});
+                          } catch (error) {
+                            console.error('Error updating order:', error);
+                            alert('שגיאה בעדכון ההזמנה');
+                          } finally {
+                            setSaving(false);
+                          }
+                        }}
+                        disabled={saving}
+                      >
+                        שמור
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsEditing(false);
+                          setEditData({});
+                        }}
+                      >
+                        ביטול
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-600 space-y-1">
+                    {order.billing_address.first_name && (
+                      <div>{order.billing_address.first_name} {order.billing_address.last_name}</div>
+                    )}
+                    {order.billing_address.address1 && (
+                      <div>{order.billing_address.address1}</div>
+                    )}
+                    {order.billing_address.address2 && (
+                      <div>{order.billing_address.address2}</div>
+                    )}
+                    {order.billing_address.city && (
+                      <div>{order.billing_address.city}</div>
+                    )}
+                    {order.billing_address.zip && (
+                      <div>{order.billing_address.zip}</div>
+                    )}
+                    {order.billing_address.country && (
+                      <div>{order.billing_address.country}</div>
+                    )}
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -589,32 +1269,36 @@ export default function OrderDetailsPage() {
           <Card>
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">פעולות</h2>
-              <div className="space-y-2">
+              <div className="space-y-0 no-print">
                 {order.financial_status !== 'refunded' && order.financial_status !== 'voided' && (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={createRefund}
-                    disabled={updatingStatus}
-                  >
-                    <HiRefresh className="w-5 h-5 ml-2" />
-                    החזר הזמנה
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start border-b border-gray-200 rounded-none"
+                      onClick={createRefund}
+                      disabled={updatingStatus}
+                    >
+                      <HiRefresh className="w-5 h-5 ml-2" />
+                      החזר הזמנה
+                    </Button>
+                  </>
                 )}
                 {order.financial_status !== 'voided' && (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-red-600 hover:text-red-700"
-                    onClick={() => updateStatus('voided')}
-                    disabled={updatingStatus}
-                  >
-                    <HiBan className="w-5 h-5 ml-2" />
-                    בטל הזמנה
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-red-600 hover:text-red-700 border-b border-gray-200 rounded-none"
+                      onClick={() => updateStatus('voided')}
+                      disabled={updatingStatus}
+                    >
+                      <HiBan className="w-5 h-5 ml-2" />
+                      בטל הזמנה
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${isFraudOrRisk() ? 'text-orange-600 hover:text-orange-700' : 'text-gray-700 hover:text-gray-900'}`}
+                  className={`w-full justify-start rounded-none ${isFraudOrRisk() ? 'text-orange-600 hover:text-orange-700' : 'text-gray-700 hover:text-gray-900'}`}
                   onClick={() => setShowFraudDialog(true)}
                   disabled={updatingStatus}
                 >
@@ -626,19 +1310,90 @@ export default function OrderDetailsPage() {
           </Card>
 
           {/* Notes */}
-          {order.note && (
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">הערות</h2>
-                <p className="text-sm text-gray-600">{order.note}</p>
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">הערות</h2>
+                {!isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="no-print"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditData({
+                        ...editData,
+                        note: order.note || '',
+                      });
+                    }}
+                  >
+                    <HiPencil className="w-4 h-4 ml-1" />
+                    ערוך
+                  </Button>
+                )}
               </div>
-            </Card>
-          )}
+              {isEditing && editData.note !== undefined ? (
+                <div className="space-y-4">
+                  <textarea
+                    value={editData.note}
+                    onChange={(e) => setEditData({ ...editData, note: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows={4}
+                    placeholder="הוסף הערה..."
+                  />
+                  <div className="flex gap-2 no-print">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          setSaving(true);
+                          const response = await fetch(`/api/orders/${orderId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              note: editData.note,
+                            }),
+                          });
+                          if (!response.ok) throw new Error('Failed to update');
+                          await loadOrder();
+                          setIsEditing(false);
+                          setEditData({});
+                        } catch (error) {
+                          console.error('Error updating order:', error);
+                          alert('שגיאה בעדכון ההזמנה');
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving}
+                    >
+                      שמור
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditData({});
+                      }}
+                    >
+                      ביטול
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">{order.note || 'אין הערות'}</p>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
 
       {/* Timeline */}
-      <OrderTimeline orderId={order.id} />
+      <div className="no-print">
+        <OrderTimeline orderId={order.id} />
+      </div>
 
       {/* Fraud/Risk Dialog */}
       <Dialog open={showFraudDialog} onOpenChange={setShowFraudDialog}>

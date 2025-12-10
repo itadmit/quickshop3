@@ -61,7 +61,7 @@ const AVAILABLE_SECTIONS: Array<{
   { type: 'best_sellers', name: 'מוצרים נמכרים', description: 'מוצרים נמכרים', icon: HiFire, category: 'Collections & Products' },
   
   // Content
-  { type: 'image_with_text', name: 'תמונה עם טקסט', description: 'תמונה עם טקסט', icon: HiPhotograph, category: 'Content' },
+  { type: 'image_with_text', name: 'מדיה עם טקסט', description: 'מדיה עם טקסט (תמונה או וידאו)', icon: HiPhotograph, category: 'Content' },
   { type: 'image_with_text_overlay', name: 'תמונה עם שכבת טקסט', description: 'תמונה עם שכבת טקסט', icon: HiPhotograph, category: 'Content' },
   { type: 'rich_text', name: 'טקסט עשיר', description: 'טקסט עשיר', icon: HiPencil, category: 'Content' },
   { type: 'video', name: 'וידאו', description: 'וידאו', icon: HiVideoCamera, category: 'Content' },

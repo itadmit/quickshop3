@@ -18,10 +18,12 @@ import {
   HiChevronLeft,
   HiChevronRight,
   HiSearch,
+  HiCheckCircle,
 } from 'react-icons/hi';
 import { OrderWithDetails } from '@/types/order';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
+import { OrderQuickView } from '@/components/orders/OrderQuickView';
 
 interface Pagination {
   page: number;
@@ -55,6 +57,9 @@ export default function OrdersPage() {
   const [newFulfillmentStatus, setNewFulfillmentStatus] = useState<string>('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [customStatuses, setCustomStatuses] = useState<Array<{id: number, name: string, display_name: string, color: string}>>([]);
+  const [quickViewOrder, setQuickViewOrder] = useState<OrderWithDetails | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [loadingQuickView, setLoadingQuickView] = useState<number | null>(null);
 
   useEffect(() => {
     // Cancel previous request if exists
@@ -314,6 +319,38 @@ export default function OrdersPage() {
     }
   };
 
+  const handleMarkAsRead = async (orderId: number) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/mark-read`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'הצלחה',
+          description: 'ההזמנה סומנה כנקראה',
+        });
+        loadOrders();
+        // Trigger custom event to update sidebar
+        window.dispatchEvent(new CustomEvent('orderMarkedAsRead'));
+      } else {
+        toast({
+          title: 'שגיאה',
+          description: 'לא הצלחנו לסמן את ההזמנה',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error marking order as read:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה בסימון ההזמנה',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -381,8 +418,13 @@ export default function OrdersPage() {
       key: 'order_name',
       label: 'מספר הזמנה',
       render: (order) => (
-        <div className="font-medium text-gray-900">
-          {order.order_name || `#${order.order_number || order.id}`}
+        <div className="flex items-center gap-2">
+          {!order.is_read && (
+            <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="הזמנה חדשה"></span>
+          )}
+          <div className={`font-medium ${!order.is_read ? 'text-gray-900 font-semibold' : 'text-gray-900'}`}>
+            {order.order_name || `#${order.order_number || order.id}`}
+          </div>
         </div>
       ),
     },
@@ -436,6 +478,36 @@ export default function OrdersPage() {
             hour: '2-digit',
             minute: '2-digit',
           })}
+        </div>
+      ),
+    },
+    {
+      key: 'quick_view',
+      label: '',
+      render: (order) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={async () => {
+              // Load full order details
+              try {
+                const response = await fetch(`/api/orders/${order.id}`, {
+                  credentials: 'include',
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  setQuickViewOrder(data.order);
+                  setQuickViewOpen(true);
+                }
+              } catch (error) {
+                console.error('Error loading order details:', error);
+              }
+            }}
+            className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-gray-900"
+            title="צפייה מהירה"
+          >
+            <HiEye className="w-4 h-4" />
+          </button>
         </div>
       ),
     },
@@ -550,8 +622,38 @@ export default function OrdersPage() {
         rowActions={(order) => {
           return (
             <>
-              {/* Desktop: Dropdown Menu */}
-              <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
+              {/* Desktop: Eye button and Dropdown Menu */}
+              <div className="hidden md:flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // Load full order details for quick view
+                    setLoadingQuickView(order.id);
+                    try {
+                      const response = await fetch(`/api/orders/${order.id}`, {
+                        credentials: 'include',
+                      });
+                      if (response.ok) {
+                        const data = await response.json();
+                        setQuickViewOrder(data.order);
+                        setQuickViewOpen(true);
+                      }
+                    } catch (error) {
+                      console.error('Error loading order details:', error);
+                    } finally {
+                      setLoadingQuickView(null);
+                    }
+                  }}
+                  disabled={loadingQuickView === order.id}
+                  className="p-2 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="צפייה מהירה"
+                >
+                  {loadingQuickView === order.id ? (
+                    <HiRefresh className="w-5 h-5 text-gray-600 animate-spin" />
+                  ) : (
+                    <HiEye className="w-5 h-5 text-gray-600" />
+                  )}
+                </button>
                 <DropdownMenu
                   trigger={
                     <button 
@@ -564,9 +666,13 @@ export default function OrdersPage() {
                   items={[
                     {
                       label: 'צפה בהזמנה',
-                      icon: <HiEye className="w-4 h-4" />,
                       onClick: () => router.push(`/orders/${order.id}`),
                     },
+                    ...(!order.is_read ? [{
+                      label: 'סמן כנקרא',
+                      icon: <HiCheckCircle className="w-4 h-4" />,
+                      onClick: () => handleMarkAsRead(order.id),
+                    }] : []),
                     {
                       label: 'הדפס הזמנה',
                       icon: <HiPrinter className="w-4 h-4" />,
@@ -604,7 +710,7 @@ export default function OrdersPage() {
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   <HiEye className="w-4 h-4 flex-shrink-0" />
-                  <span>צפה</span>
+                  <span>פרטים</span>
                 </button>
                 <button 
                   onClick={() => handlePrintOrder(order.id)}
@@ -810,6 +916,17 @@ export default function OrdersPage() {
           </Card>
         </div>
       )}
+
+      {/* Quick View Modal */}
+      <OrderQuickView
+        order={quickViewOrder}
+        open={quickViewOpen}
+        onClose={() => {
+          setQuickViewOpen(false);
+          setQuickViewOrder(null);
+        }}
+        onMarkAsRead={handleMarkAsRead}
+      />
     </div>
   );
 }

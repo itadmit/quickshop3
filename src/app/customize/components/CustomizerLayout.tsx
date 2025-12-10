@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Header, DeviceType } from './Header';
 import { SettingsAndStylePanel } from './SettingsAndStylePanel';
 import { ElementsSidebar } from './ElementsSidebar';
+import { TemplatesModal } from './TemplatesModal';
 import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
 import { EditorState, SectionSettings } from '@/lib/customizer/types';
 import { getSectionName } from '@/lib/customizer/sectionNames';
@@ -21,14 +22,14 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
       <div className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
-        type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+        type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-rose-50 border border-rose-200'
       }`}>
         {type === 'success' ? (
           <HiCheckCircle className="w-5 h-5 text-green-500" />
         ) : (
-          <HiXCircle className="w-5 h-5 text-red-500" />
+          <HiXCircle className="w-5 h-5 text-rose-400" />
         )}
-        <span className={`text-sm font-medium ${type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+        <span className={`text-sm font-medium ${type === 'success' ? 'text-green-800' : 'text-rose-800'}`}>
           {message}
         </span>
       </div>
@@ -50,6 +51,7 @@ export function CustomizerLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
   // Load initial page data
   useEffect(() => {
@@ -648,6 +650,65 @@ export function CustomizerLayout() {
     }
   }, [pageSections]);
 
+  const handleImportTemplate = useCallback((importedSections: SectionSettings[]) => {
+    try {
+      // Ensure header and footer are preserved if they exist
+      const currentHeader = pageSections.find(s => s.type === 'header');
+      const currentFooter = pageSections.find(s => s.type === 'footer');
+      
+      // Filter out header and footer from imported sections
+      const importedWithoutHeaderFooter = importedSections.filter(
+        s => s.type !== 'header' && s.type !== 'footer'
+      );
+      
+      // Build new sections array
+      const newSections: SectionSettings[] = [];
+      
+      // Add header if exists in current or imported
+      if (currentHeader) {
+        newSections.push(currentHeader);
+      } else {
+        const importedHeader = importedSections.find(s => s.type === 'header');
+        if (importedHeader) {
+          importedHeader.locked = true;
+          newSections.push(importedHeader);
+        }
+      }
+      
+      // Add imported sections
+      importedWithoutHeaderFooter.forEach((section, index) => {
+        newSections.push({
+          ...section,
+          order: newSections.length,
+          id: section.id || `section-${Date.now()}-${index}`
+        });
+      });
+      
+      // Add footer if exists in current or imported
+      if (currentFooter) {
+        newSections.push(currentFooter);
+      } else {
+        const importedFooter = importedSections.find(s => s.type === 'footer');
+        if (importedFooter) {
+          importedFooter.locked = true;
+          newSections.push(importedFooter);
+        }
+      }
+      
+      // Update order for all sections
+      newSections.forEach((section, index) => {
+        section.order = index;
+      });
+      
+      setPageSections(newSections);
+      setSelectedSectionId(null);
+      setToast({ message: 'התבנית יובאה בהצלחה!', type: 'success' });
+    } catch (error) {
+      console.error('Error importing template:', error);
+      setToast({ message: 'שגיאה בייבוא התבנית', type: 'error' });
+    }
+  }, [pageSections]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -680,9 +741,18 @@ export function CustomizerLayout() {
           }
         }}
         onPublish={handlePublish}
+        onTemplates={() => setIsTemplatesModalOpen(true)}
         device={editorState.device}
         onDeviceChange={handleDeviceChange}
         isPublishing={isPublishing}
+      />
+
+      {/* Templates Modal */}
+      <TemplatesModal
+        isOpen={isTemplatesModalOpen}
+        onClose={() => setIsTemplatesModalOpen(false)}
+        sections={pageSections}
+        onImport={handleImportTemplate}
       />
 
       {/* Main Content */}

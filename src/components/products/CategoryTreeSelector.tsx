@@ -42,6 +42,7 @@ export function CategoryTreeSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryParentId, setNewCategoryParentId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
@@ -122,7 +123,8 @@ export function CategoryTreeSelector({
         onCategoryNameChange(categoryId, '');
       }
     } else {
-      const newIds = [...selectedCategoryIds, categoryId];
+      // בתצוגה קומפקטית, נבחר רק קטגוריה אחת
+      const newIds = compact ? [categoryId] : [...selectedCategoryIds, categoryId];
       onSelectionChange(newIds);
       
       // מציאת שם הקטגוריה לעדכון
@@ -140,6 +142,11 @@ export function CategoryTreeSelector({
       const categoryName = findCategoryName(categories, categoryId);
       if (onCategoryNameChange && categoryName) {
         onCategoryNameChange(categoryId, categoryName);
+      }
+      
+      // סגירת הדיאלוג בתצוגה קומפקטית אחרי בחירה
+      if (compact) {
+        setCategoryDialogOpen(false);
       }
     }
   };
@@ -284,47 +291,92 @@ export function CategoryTreeSelector({
   };
 
   if (compact) {
-    // תצוגה קומפקטית לעריכה קבוצתית
+    // תצוגה קומפקטית לעריכה קבוצתית - רק מדבקה עם דיאלוג
+    const getCategoryPath = (cat: Category, allCats: Category[]): string => {
+      if (!cat.parent_id) return cat.title;
+      const allFlat = flattenCategories(allCats);
+      const parent = allFlat.find(c => c.id === cat.parent_id);
+      if (!parent) return cat.title;
+      return `${getCategoryPath(parent, allCats)} > ${cat.title}`;
+    };
+
+    const allFlatCategories = flattenCategories(categories);
+    const selectedCategory = allFlatCategories.find(c => selectedCategoryIds.includes(c.id));
+    const displayText = selectedCategory 
+      ? getCategoryPath(selectedCategory, categories)
+      : 'בחר קטגוריה';
+
     return (
-      <div className="space-y-2">
-        <div className="relative">
-          <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            type="text"
-            placeholder="חיפוש קטגוריות..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pr-10 h-9 text-sm"
-          />
-        </div>
+      <>
+        <button
+          type="button"
+          onClick={() => setCategoryDialogOpen(true)}
+          className={`h-7 w-full border rounded-md px-2 py-1 text-xs transition-colors flex items-center justify-between ${
+            selectedCategoryIds.length > 0
+              ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100'
+              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+          }`}
+        >
+          <span className="truncate">{displayText}</span>
+          <HiChevronDown className="w-3 h-3 flex-shrink-0 mr-1" />
+        </button>
 
-        {selectedCategoryIds.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {categories
-              .filter(c => selectedCategoryIds.includes(c.id))
-              .map(category => (
-                <span
-                  key={category.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs"
-                >
-                  {category.title}
-                </span>
-              ))}
-          </div>
-        )}
+        <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>בחר קטגוריה</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="relative">
+                <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  type="text"
+                  placeholder="חיפוש קטגוריות..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pr-10 h-9 text-sm"
+                />
+              </div>
 
-        <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2">
-          {loading ? (
-            <div className="text-center py-4 text-gray-500 text-sm">טוען קטגוריות...</div>
-          ) : filteredCategories.length === 0 ? (
-            <div className="text-center py-4 text-gray-500 text-sm">לא נמצאו קטגוריות</div>
-          ) : (
-            <div className="space-y-0.5">
-              {renderCategoryTree(filteredCategories)}
+              {selectedCategoryIds.length > 0 && (
+                <div className="flex flex-wrap gap-1 pb-2 border-b">
+                  {flattenCategories(categories)
+                    .filter(c => selectedCategoryIds.includes(c.id))
+                    .map(category => {
+                      const fullPath = getCategoryPath(category, categories);
+                      return (
+                        <span
+                          key={category.id}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs"
+                          title={fullPath}
+                        >
+                          {fullPath}
+                        </span>
+                      );
+                    })}
+                </div>
+              )}
+
+              <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-md p-2">
+                {loading ? (
+                  <div className="text-center py-4 text-gray-500 text-sm">טוען קטגוריות...</div>
+                ) : filteredCategories.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500 text-sm">לא נמצאו קטגוריות</div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {renderCategoryTree(filteredCategories)}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setCategoryDialogOpen(false)}>
+                סגור
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 

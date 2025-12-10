@@ -8,7 +8,7 @@ export const SECTION_NAMES: Record<string, string> = {
   'hero_banner': 'באנר ראשי',
   'featured_collections': 'קטגוריות פופולריות',
   'featured_products': 'מוצרים מומלצים',
-  'image_with_text': 'תמונה עם טקסט',
+  'image_with_text': 'מדיה עם טקסט',
   'rich_text': 'טקסט עשיר',
   'newsletter': 'ניוזלטר',
   'gallery': 'גלריה',

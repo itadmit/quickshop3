@@ -53,7 +53,7 @@ export function ColorPicker({ label, value, onChange }: ColorPickerProps) {
                 value={localValue}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all uppercase font-mono text-gray-600"
+                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 transition-all uppercase font-mono text-gray-600"
                 maxLength={7}
             />
              <div 

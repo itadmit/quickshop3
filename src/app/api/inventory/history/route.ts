@@ -15,28 +15,37 @@ export async function GET(request: NextRequest) {
     const variantId = searchParams.get('variant_id');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    // Get inventory history from system_logs or create a simple history from events
-    // For now, we'll query system_logs for inventory-related events
+    // Get inventory history from system_logs with product and variant details
     let queryStr = `
       SELECT 
-        id,
-        level,
-        source,
-        message,
-        context,
-        created_at
-      FROM system_logs
-      WHERE store_id = $1 
-        AND (source = 'inventory' OR message LIKE '%inventory%')
+        sl.id,
+        sl.level,
+        sl.source,
+        sl.message,
+        sl.context,
+        sl.created_at,
+        pv.id as variant_id,
+        pv.sku,
+        pv.title as variant_title,
+        pv.option1,
+        pv.option2,
+        pv.option3,
+        p.id as product_id,
+        p.title as product_title
+      FROM system_logs sl
+      LEFT JOIN product_variants pv ON (sl.context->>'variant_id')::int = pv.id
+      LEFT JOIN products p ON pv.product_id = p.id
+      WHERE sl.store_id = $1 
+        AND (sl.source = 'inventory' OR sl.message LIKE '%inventory%')
     `;
     const queryParams: any[] = [user.store_id];
 
     if (variantId) {
-      queryStr += ` AND (context->>'variant_id')::int = $${queryParams.length + 1}`;
+      queryStr += ` AND (sl.context->>'variant_id')::int = $${queryParams.length + 1}`;
       queryParams.push(parseInt(variantId));
     }
 
-    queryStr += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1}`;
+    queryStr += ` ORDER BY sl.created_at DESC LIMIT $${queryParams.length + 1}`;
     queryParams.push(limit);
 
     const history = await query(queryStr, queryParams);

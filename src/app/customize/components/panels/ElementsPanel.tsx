@@ -48,7 +48,7 @@ const AVAILABLE_SECTIONS: Array<{
   },
   {
     type: 'image_with_text',
-    name: 'תמונה עם טקסט',
+    name: 'מדיה עם טקסט',
     description: 'תמונה לצד טקסט',
     icon: HiPhotograph
   },
@@ -107,7 +107,7 @@ export function ElementsPanel({
               key={section.id}
               className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                 selectedSectionId === section.id
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-gray-900 bg-gray-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
               onClick={() => handleSectionClick(section.id)}
@@ -147,7 +147,7 @@ export function ElementsPanel({
                       e.stopPropagation();
                       onSectionDelete(section.id);
                     }}
-                    className="w-5 h-5 text-red-500 hover:text-red-700"
+                    className="w-5 h-5 text-red-500 hover:text-red-600"
                   >
                     <HiTrash className="w-4 h-4" />
                   </button>
@@ -247,7 +247,7 @@ const AVAILABLE_SECTIONS: Array<{
   },
   {
     type: 'image_with_text',
-    name: 'תמונה עם טקסט',
+    name: 'מדיה עם טקסט',
     description: 'תמונה לצד טקסט',
     icon: HiPhotograph
   },
@@ -306,7 +306,7 @@ export function ElementsPanel({
               key={section.id}
               className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                 selectedSectionId === section.id
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-gray-900 bg-gray-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
               onClick={() => handleSectionClick(section.id)}
@@ -346,7 +346,7 @@ export function ElementsPanel({
                       e.stopPropagation();
                       onSectionDelete(section.id);
                     }}
-                    className="w-5 h-5 text-red-500 hover:text-red-700"
+                    className="w-5 h-5 text-red-500 hover:text-red-600"
                   >
                     <HiTrash className="w-4 h-4" />
                   </button>

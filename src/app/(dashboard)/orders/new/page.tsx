@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { HiSave, HiX, HiPlus, HiTrash, HiSearch, HiUser } from 'react-icons/hi';
 import { ProductWithDetails, ProductVariant } from '@/types/product';
 import { CustomerWithDetails } from '@/types/customer';
+import { ContactWithDetails } from '@/types/contact';
 import { CreateOrderRequest } from '@/types/order';
 
 interface LineItem {
@@ -26,13 +27,14 @@ export default function NewOrderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
-  const [customers, setCustomers] = useState<CustomerWithDetails[]>([]);
+  const [contacts, setContacts] = useState<ContactWithDetails[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [showProductDialog, setShowProductDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithDetails | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [customerError, setCustomerError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<Partial<CreateOrderRequest>>({
     customer_id: undefined,
@@ -49,8 +51,19 @@ export default function NewOrderPage() {
 
   useEffect(() => {
     loadProducts();
-    loadCustomers();
+    loadContacts();
   }, []);
+
+  // Reload contacts when dialog opens or search changes
+  useEffect(() => {
+    if (showCustomerDialog) {
+      // Always reload contacts when dialog opens to get latest data
+      const timeoutId = setTimeout(() => {
+        loadContacts(customerSearch);
+      }, customerSearch ? 300 : 0); // No delay if no search term
+      return () => clearTimeout(timeoutId);
+    }
+  }, [customerSearch, showCustomerDialog]);
 
   const loadProducts = async () => {
     try {
@@ -65,16 +78,76 @@ export default function NewOrderPage() {
     }
   };
 
-  const loadCustomers = async () => {
+  const loadContacts = async (searchTerm?: string) => {
     try {
-      const response = await fetch('/api/customers?limit=100', {
+      setCustomerError(null);
+      const params = new URLSearchParams();
+      params.append('limit', '100');
+      if (searchTerm && searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+      const response = await fetch(`/api/contacts?${params.toString()}`, {
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to load customers');
-      const data = await response.json();
-      setCustomers(data.customers || []);
-    } catch (error) {
-      console.error('Error loading customers:', error);
+      
+      // Check response status first
+      if (!response.ok) {
+        let errorData: any = {};
+        const contentType = response.headers.get('content-type');
+        
+        // Try to parse error response if it's JSON
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            errorData = await response.json();
+          } catch (jsonError) {
+            console.error('Failed to parse error response as JSON:', jsonError);
+          }
+        } else {
+          // If not JSON, try to get text
+          try {
+            const text = await response.text();
+            if (text) {
+              errorData = { message: text };
+            }
+          } catch (textError) {
+            console.error('Failed to read error response as text:', textError);
+          }
+        }
+        
+        const errorMessage = errorData?.error || errorData?.message || 
+          (response.status === 401 ? 'אינך מחובר. אנא התחבר מחדש.' :
+           response.status === 403 ? 'אין לך הרשאה לגשת לאנשי קשר.' :
+           response.status === 500 ? 'שגיאת שרת. אנא נסה שוב מאוחר יותר.' :
+           `שגיאה בטעינת אנשי קשר: ${response.status} ${response.statusText}`);
+        
+        console.error('Failed to load contacts:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData?.error || errorData?.message || 'Unknown error',
+          errorData
+        });
+        
+        setCustomerError(errorMessage);
+        setContacts([]);
+        return;
+      }
+      
+      // Parse successful response
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError);
+        throw new Error('שגיאה בפענוח התשובה מהשרת');
+      }
+      
+      setContacts(data.contacts || []);
+      setCustomerError(null);
+    } catch (error: any) {
+      console.error('Error loading contacts:', error);
+      const errorMessage = error.message || 'שגיאה בטעינת אנשי קשר';
+      setCustomerError(errorMessage);
+      setContacts([]);
     }
   };
 
@@ -83,19 +156,16 @@ export default function NewOrderPage() {
     p.handle.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  const filteredCustomers = customers.filter(c => 
-    (c.email && c.email.toLowerCase().includes(customerSearch.toLowerCase())) ||
-    (c.first_name && c.first_name.toLowerCase().includes(customerSearch.toLowerCase())) ||
-    (c.last_name && c.last_name.toLowerCase().includes(customerSearch.toLowerCase()))
-  );
+  // Use contacts directly from API (already filtered)
+  const filteredContacts = contacts;
 
-  const handleSelectCustomer = (customer: CustomerWithDetails) => {
+  const handleSelectContact = (contact: ContactWithDetails) => {
     setFormData({
       ...formData,
-      customer_id: customer.id,
-      email: customer.email || '',
-      phone: customer.phone || '',
-      name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+      customer_id: contact.customer_id || undefined, // Use customer_id if exists, otherwise undefined
+      email: contact.email || '',
+      phone: contact.phone || '',
+      name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
     });
     setShowCustomerDialog(false);
     setCustomerSearch('');
@@ -220,7 +290,7 @@ export default function NewOrderPage() {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <Label>חיפוש לקוח</Label>
+                  <Label>חיפוש איש קשר</Label>
                   <div className="relative">
                     <Input
                       type="text"
@@ -235,7 +305,7 @@ export default function NewOrderPage() {
                 <div className="flex items-end">
                   <Button type="button" variant="ghost" onClick={() => setShowCustomerDialog(true)}>
                     <HiUser className="w-5 h-5 ml-2" />
-                    בחר לקוח
+                    בחר איש קשר
                   </Button>
                 </div>
               </div>
@@ -411,41 +481,67 @@ export default function NewOrderPage() {
       </form>
 
       {/* Customer Selection Dialog */}
-      <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+      <Dialog 
+        open={showCustomerDialog} 
+        onOpenChange={(open) => {
+          setShowCustomerDialog(open);
+          if (open) {
+            // Reload contacts when dialog opens to ensure latest data
+            loadContacts(customerSearch);
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>בחר לקוח</DialogTitle>
+            <DialogTitle>בחר איש קשר</DialogTitle>
           </DialogHeader>
           <div className="px-6 py-4">
             <Input
               type="text"
-              placeholder="חפש לקוח..."
+              placeholder="חפש איש קשר..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
               className="mb-4"
             />
+            {customerError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-sm text-red-800">{customerError}</div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => loadContacts(customerSearch)}
+                  className="mt-2 text-red-600 hover:text-red-700"
+                >
+                  נסה שוב
+                </Button>
+              </div>
+            )}
             <div className="max-h-96 overflow-y-auto space-y-2">
-              {filteredCustomers.length > 0 ? (
-                filteredCustomers.map((customer) => (
+              {filteredContacts.length > 0 ? (
+                filteredContacts.map((contact) => (
                   <div
-                    key={customer.id}
-                    onClick={() => handleSelectCustomer(customer)}
+                    key={contact.id}
+                    onClick={() => handleSelectContact(contact)}
                     className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                   >
                     <div className="font-medium text-gray-900">
-                      {customer.first_name} {customer.last_name}
+                      {contact.first_name} {contact.last_name}
                     </div>
-                    <div className="text-sm text-gray-500">{customer.email}</div>
-                    {customer.phone && (
-                      <div className="text-sm text-gray-500">{customer.phone}</div>
+                    <div className="text-sm text-gray-500">{contact.email}</div>
+                    {contact.phone && (
+                      <div className="text-sm text-gray-500">{contact.phone}</div>
+                    )}
+                    {contact.customer_id && (
+                      <div className="text-xs text-green-600 mt-1">לקוח קיים</div>
                     )}
                   </div>
                 ))
-              ) : (
+              ) : !customerError ? (
                 <div className="text-center py-8 text-gray-500">
-                  לא נמצאו לקוחות
+                  לא נמצאו אנשי קשר
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
           <DialogFooter>

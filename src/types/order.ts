@@ -54,6 +54,7 @@ export interface Order {
   user_id: number | null;
   billing_address: Record<string, any> | null;
   shipping_address: Record<string, any> | null;
+  is_read: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -85,6 +86,7 @@ export interface OrderLineItem {
   tax_lines: any[] | null;
   duties: any[] | null;
   discount_allocations: any[] | null;
+  image?: string | null;
   created_at: Date;
   updated_at: Date;
 }

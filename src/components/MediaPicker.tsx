@@ -192,6 +192,15 @@ export function MediaPicker({
         const file = fileArray[i];
         const tempId = tempFileIds[i];
 
+        // Validate video file size (20MB max)
+        const isVideo = file.type.startsWith('video/');
+        const maxVideoSize = 20 * 1024 * 1024; // 20MB in bytes
+        
+        if (isVideo && file.size > maxVideoSize) {
+          errors.push(`${file.name}: גודל הקובץ גדול מדי. מקסימום 20 מגה`);
+          continue;
+        }
+
         setUploadProgress((prev) => ({ ...prev, [tempId]: 0 }));
 
         const formData = new FormData();
@@ -231,9 +240,10 @@ export function MediaPicker({
       }
 
       if (uploadedFiles.length > 0) {
+        const mediaType = accept === 'video' ? 'וידאו' : accept === 'image' ? 'תמונות' : 'קבצים';
         toast({
           title: 'הצלחה',
-          description: `${uploadedFiles.length} תמונות הועלו בהצלחה${errors.length > 0 ? `, ${errors.length} נכשלו` : ''}`,
+          description: `${uploadedFiles.length} ${mediaType} הועלו בהצלחה${errors.length > 0 ? `, ${errors.length} נכשלו` : ''}`,
         });
         setFiles((prev) => [
           ...uploadedFiles.map((path: string) => {
@@ -277,7 +287,7 @@ export function MediaPicker({
       if (errors.length > 0 && uploadedFiles.length === 0) {
         toast({
           title: 'שגיאה',
-          description: errors[0] || 'אירעה שגיאה בהעלאת התמונות',
+          description: errors[0] || 'אירעה שגיאה בהעלאת הקבצים',
           variant: 'destructive',
         });
       }
@@ -285,7 +295,7 @@ export function MediaPicker({
       console.error('Error uploading files:', error);
       toast({
         title: 'שגיאה',
-        description: 'אירעה שגיאה בהעלאת התמונות',
+        description: 'אירעה שגיאה בהעלאת הקבצים',
         variant: 'destructive',
       });
     } finally {
@@ -299,7 +309,9 @@ export function MediaPicker({
   };
 
   const handleDelete = async (filePath: string) => {
-    if (!confirm("האם אתה בטוח שברצונך למחוק את התמונה?")) return
+    const file = files.find(f => f.path === filePath);
+    const isVideo = file?.mimeType?.startsWith('video/');
+    if (!confirm(`האם אתה בטוח שברצונך למחוק את ה-${isVideo ? 'וידאו' : 'תמונה'}?`)) return
 
     setDeleting((prev) => new Set(prev).add(filePath));
 
@@ -315,20 +327,22 @@ export function MediaPicker({
           newSet.delete(filePath);
           return newSet;
         });
+        const deletedFile = files.find(f => f.path === filePath);
+        const isVideo = deletedFile?.mimeType?.startsWith('video/');
         toast({
           title: 'הצלחה',
-          description: 'התמונה נמחקה בהצלחה',
+          description: `ה-${isVideo ? 'וידאו' : 'תמונה'} נמחק בהצלחה`,
         });
       } else {
         throw new Error('Failed to delete');
       }
     } catch (error) {
       console.error('Error deleting file:', error);
-      toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה במחיקת התמונה',
-        variant: 'destructive',
-      });
+        toast({
+          title: 'שגיאה',
+          description: 'אירעה שגיאה במחיקת הקובץ',
+          variant: 'destructive',
+        });
     } finally {
       setDeleting((prev) => {
         const newSet = new Set(prev);
@@ -357,9 +371,10 @@ export function MediaPicker({
       onSelect(selectedArray);
       onOpenChange(false);
     } else {
+      const mediaType = accept === 'video' ? 'וידאו' : accept === 'image' ? 'תמונה' : 'קובץ';
       toast({
         title: 'שגיאה',
-        description: 'אנא בחר תמונה',
+        description: `אנא בחר ${mediaType}`,
         variant: 'destructive',
       });
     }
@@ -496,11 +511,27 @@ export function MediaPicker({
                 <div className="border-2 border-dashed border-gray-300 rounded-lg mb-4 bg-gray-50/30 cursor-pointer hover:border-gray-400 hover:bg-gray-50/50 transition-all" onClick={() => fileInputRef.current?.click()}>
                   <div className="flex flex-col items-center justify-center text-center py-24">
                     <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                        <HiPhotograph className="w-8 h-8 text-gray-400" />
+                        {accept === 'video' ? (
+                          <HiVideoCamera className="w-8 h-8 text-gray-400" />
+                        ) : accept === 'image' ? (
+                          <HiPhotograph className="w-8 h-8 text-gray-400" />
+                        ) : (
+                          <HiUpload className="w-8 h-8 text-gray-400" />
+                        )}
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">אין תמונות עדיין</h3>
-                    <p className="text-sm text-gray-500 mb-4 max-w-md leading-relaxed">העלה תמונות מהמחשב שלך או גרור אותן לכאן כדי להתחיל</p>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>העלה תמונה</Button>
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">
+                      {accept === 'video' ? 'אין וידאו עדיין' : accept === 'image' ? 'אין תמונות עדיין' : 'אין קבצים עדיין'}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4 max-w-md leading-relaxed">
+                      {accept === 'video' 
+                        ? 'העלה וידאו מהמחשב שלך או גרור אותו לכאן כדי להתחיל (מקסימום 20 מגה)'
+                        : accept === 'image'
+                        ? 'העלה תמונות מהמחשב שלך או גרור אותן לכאן כדי להתחיל'
+                        : 'העלה קבצים מהמחשב שלך או גרור אותם לכאן כדי להתחיל'}
+                    </p>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                      {accept === 'video' ? 'העלה וידאו' : accept === 'image' ? 'העלה תמונה' : 'העלה קבצים'}
+                    </Button>
                   </div>
                 </div>
             ) : (
@@ -516,7 +547,11 @@ export function MediaPicker({
                 >
                   <div className="flex flex-col items-center justify-center pointer-events-none">
                     <p className="text-sm text-gray-600 mb-3">
-                      העלה תמונות מהמחשב שלך או גרור אותן לכאן
+                      {accept === 'video' 
+                        ? 'העלה וידאו מהמחשב שלך או גרור אותו לכאן (מקסימום 20 מגה)'
+                        : accept === 'image'
+                        ? 'העלה תמונות מהמחשב שלך או גרור אותן לכאן'
+                        : 'העלה קבצים מהמחשב שלך או גרור אותם לכאן'}
                     </p>
                     <Button
                       variant="default"

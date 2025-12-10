@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       // Search in title, handle, AND SKU from product_variants
       sql += ` AND (p.title ILIKE $${paramIndex} OR p.handle ILIKE $${paramIndex} OR EXISTS (
-        SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku ILIKE $${paramIndex}
+        SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku IS NOT NULL AND pv.sku ILIKE $${paramIndex}
       ))`;
       params.push(`%${search}%`);
       paramIndex++;
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       // Search in title, handle, AND SKU from product_variants
       countSql += ` AND (p.title ILIKE $${countParamIndex} OR p.handle ILIKE $${countParamIndex} OR EXISTS (
-        SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku ILIKE $${countParamIndex}
+        SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku IS NOT NULL AND pv.sku ILIKE $${countParamIndex}
       ))`;
       countParams.push(`%${search}%`);
       countParamIndex++;

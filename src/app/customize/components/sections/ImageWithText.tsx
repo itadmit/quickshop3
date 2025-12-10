@@ -114,10 +114,26 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
     <div className="w-full" style={{ fontFamily }}>
       <div className="container mx-auto px-4">
         <div className={`flex ${isMobileView ? 'flex-col' : `flex-col ${flexDirection}`} gap-8 md:gap-12 items-center`}>
-            {/* Image Side */}
+            {/* Media Side */}
             <div className={`w-full ${getImageWidthClass()}`}>
-                <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden shadow-sm">
-                    {imageBlock?.content?.image_url ? (
+                <div 
+                    className="relative bg-gray-100 rounded-lg overflow-hidden shadow-sm"
+                    style={{
+                        aspectRatio: imageBlock?.content?.media_height ? 'auto' : '4/3',
+                        height: imageBlock?.content?.media_height || 'auto'
+                    }}
+                >
+                    {imageBlock?.content?.video_url ? (
+                        <video 
+                            src={imageBlock.content.video_url} 
+                            className="w-full h-full object-cover"
+                            controls={imageBlock.content.video_controls !== false}
+                            autoPlay={imageBlock.content.video_autoplay !== false}
+                            muted={imageBlock.content.video_muted !== false}
+                            loop={imageBlock.content.video_loop === true}
+                            playsInline={imageBlock.content.video_playsinline !== false}
+                        />
+                    ) : imageBlock?.content?.image_url ? (
                         <img 
                             src={imageBlock.content.image_url} 
                             alt={imageBlock.content.alt_text || 'תמונה'} 
@@ -125,7 +141,7 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
                         />
                     ) : (
                         <div className="flex items-center justify-center w-full h-full text-gray-400">
-                            <span>בחר תמונה</span>
+                            <span>בחר מדיה</span>
                         </div>
                     )}
                 </div>

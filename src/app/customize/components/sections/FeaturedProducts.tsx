@@ -128,7 +128,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
               
               <div className={`space-y-1 flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
                 <h3 
-                    className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors"
+                    className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors"
                     style={{ color: textColor }}
                 >
                     מוצר לדוגמה {i}
@@ -180,7 +180,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                 
                 <div className={`space-y-1 flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
                   <h3 
-                      className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors"
+                      className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors"
                       style={{ color: textColor }}
                   >
                       מוצר לדוגמה {i}

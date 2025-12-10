@@ -49,7 +49,7 @@ export function Sidebar({
           onClick={() => setActivePanel('elements')}
           className={`flex-1 px-4 py-3 text-sm font-medium ${
             activePanel === 'elements'
-              ? 'text-blue-600 border-b-2 border-blue-600'
+              ? 'text-gray-900 border-b-2 border-gray-900'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
@@ -60,7 +60,7 @@ export function Sidebar({
           disabled={!selectedSection}
           className={`flex-1 px-4 py-3 text-sm font-medium ${
             activePanel === 'settings'
-              ? 'text-blue-600 border-b-2 border-blue-600'
+              ? 'text-gray-900 border-b-2 border-gray-900'
               : 'text-gray-600 hover:text-gray-900'
           } ${!selectedSection ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
@@ -71,7 +71,7 @@ export function Sidebar({
           disabled={!selectedSection}
           className={`flex-1 px-4 py-3 text-sm font-medium ${
             activePanel === 'style'
-              ? 'text-blue-600 border-b-2 border-blue-600'
+              ? 'text-gray-900 border-b-2 border-gray-900'
               : 'text-gray-600 hover:text-gray-900'
           } ${!selectedSection ? 'opacity-50 cursor-not-allowed' : ''}`}
         >

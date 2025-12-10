@@ -104,7 +104,7 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
                       </div>
                       
                       <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
-                        <h3 className="text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
+                        <h3 className="text-xl font-bold mb-1 group-hover:text-gray-700 transition-colors" style={{ color: textColor }}>
                             שם הקטגוריה {i}
                         </h3>
                         {settings.show_description !== false && (

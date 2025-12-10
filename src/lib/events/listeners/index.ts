@@ -9,6 +9,7 @@ import './inventoryListener';
 import './webhookListener';
 import './emailListener';
 import './premiumClubListener';
+import './contactSyncListener';
 
 // Add more listeners here as they are created:
 // import './analyticsListener';

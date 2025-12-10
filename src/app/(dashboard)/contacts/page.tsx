@@ -144,7 +144,14 @@ export default function ContactsPage() {
           description: 'איש הקשר נוצר בהצלחה',
         });
         setDialogOpen(false);
+        // Reset pagination to page 1
         setPagination((prev) => ({ ...prev, page: 1 }));
+        // Cancel any pending requests and reload contacts immediately with page 1
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        await loadContacts(abortControllerRef.current.signal, 1);
       } else {
         const error = await response.json();
         toast({
@@ -185,7 +192,7 @@ export default function ContactsPage() {
     };
   }, [debouncedSearchTerm, activeTab, emailConsentFilter, filters, pagination.page]);
 
-  const loadContacts = async (signal?: AbortSignal) => {
+  const loadContacts = async (signal?: AbortSignal, pageOverride?: number) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -207,8 +214,9 @@ export default function ContactsPage() {
       if (filters.created_before) params.append('created_before', filters.created_before);
       if (filters.has_customer !== undefined) params.append('has_customer', filters.has_customer.toString());
       
+      const pageToLoad = pageOverride !== undefined ? pageOverride : pagination.page;
       params.append('limit', pagination.limit.toString());
-      params.append('page', pagination.page.toString());
+      params.append('page', pageToLoad.toString());
 
       const response = await fetch(`/api/contacts?${params.toString()}`, {
         credentials: 'include',

@@ -49,7 +49,9 @@ export default async function ProductsPage({
     `SELECT COUNT(*)::text as count
      FROM products p
      WHERE p.store_id = $1 AND p.status = 'active'
-     ${search ? `AND (p.title ILIKE $2 OR p.body_html ILIKE $2)` : ''}`,
+     ${search ? `AND (p.title ILIKE $2 OR p.body_html ILIKE $2 OR EXISTS (
+       SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.sku IS NOT NULL AND pv.sku ILIKE $2
+     ))` : ''}`,
     search ? [storeId, `%${search}%`] : [storeId]
   ));
 

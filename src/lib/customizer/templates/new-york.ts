@@ -185,7 +185,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
     {
       id: 'about-section',
       type: 'image_with_text',
-      name: 'תמונה עם טקסט',
+      name: 'מדיה עם טקסט',
       visible: true,
       order: 4,
       locked: false,

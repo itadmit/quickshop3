@@ -191,12 +191,18 @@ export default function InventoryPage() {
             {variantDisplay && (
               <div className="text-sm text-gray-500">{variantDisplay}</div>
             )}
-            {item.sku && (
-              <div className="text-xs text-gray-400">מקט: {item.sku}</div>
-            )}
           </div>
         );
       },
+    },
+    {
+      key: 'sku',
+      label: 'מקט',
+      render: (item) => (
+        <div className="text-gray-900">
+          {item.sku || '-'}
+        </div>
+      ),
     },
     {
       key: 'available',
@@ -467,84 +473,116 @@ export default function InventoryPage() {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {history.map((item, index) => {
+                {history.map((item: any, index) => {
                   // נסה לפרסר את ה-context אם זה JSON string
                   let contextData: any = {};
                   try {
                     if (typeof item.context === 'string') {
-                      contextData = JSON.parse(item.context);
+                      // נסה לפרסר JSON
+                      const cleaned = item.context.replace(/^[^{]*{/, '{').replace(/}[^}]*$/, '}');
+                      contextData = JSON.parse(cleaned);
                     } else if (item.context) {
                       contextData = item.context;
                     }
                   } catch (e) {
-                    // אם זה לא JSON, נשתמש בזה כמו שהוא
+                    // אם זה לא JSON, ננסה למצוא את הנתונים ישירות מה-message
                     contextData = item.context || {};
                   }
 
-                  // נסה למצוא variant_id, quantity, old_quantity מה-context
-                  const variantId = contextData.variant_id || contextData.variantId;
+                  // נסה למצוא variant_id, quantity, old_quantity מה-context או מה-API response
+                  const variantId = item.variant_id || contextData.variant_id || contextData.variantId;
                   const quantity = contextData.quantity || contextData.new_quantity;
                   const oldQuantity = contextData.old_quantity || contextData.oldQuantity;
                   const reason = contextData.reason || contextData.reason_text || 'עדכון מלאי';
                   
-                  // מצא את המוצר לפי variant_id
-                  const relatedItem = variantId ? items.find(i => i.id === variantId) : null;
+                  // השתמש בנתונים מה-API response אם יש
+                  const productTitle = item.product_title || (variantId ? items.find(i => i.id === variantId)?.product_title : null) || 'מוצר לא ידוע';
+                  const variantTitle = item.variant_title || (variantId ? items.find(i => i.id === variantId)?.variant_title : null);
+                  const sku = item.sku || (variantId ? items.find(i => i.id === variantId)?.sku : null);
+                  const variantDisplay = variantTitle || (item.option1 || item.option2 || item.option3 
+                    ? getVariantDisplayName(item.variant_title, item.option1, item.option2, item.option3)
+                    : null);
+                  
+                  const quantityChange = quantity !== undefined && oldQuantity !== undefined 
+                    ? quantity - oldQuantity 
+                    : null;
                   
                   return (
                     <div key={item.id || index} className="p-4 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          {/* כותרת */}
-                          <div className="flex items-center gap-2 mb-2">
+                          {/* כותרת עם שם המוצר */}
+                          <div className="flex items-center gap-2 mb-3">
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
                               item.level === 'error'
                                 ? 'bg-red-100 text-red-800'
                                 : item.level === 'warn'
                                 ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
                             }`}>
                               {item.level === 'error' ? 'שגיאה' : item.level === 'warn' ? 'אזהרה' : 'עדכון'}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
-                              {relatedItem ? relatedItem.product_title : 'מלאי עודכן'}
+                            <span className="text-base font-semibold text-gray-900">
+                              {productTitle}
                             </span>
                           </div>
                           
-                          {/* פרטי השינוי */}
-                          {quantity !== undefined && (
-                            <div className="text-sm text-gray-700 mb-1">
-                              <span className="font-medium">כמות חדשה:</span> {quantity}
-                              {oldQuantity !== undefined && oldQuantity !== quantity && (
-                                <>
-                                  {' '}
-                                  <span className="text-gray-500">(לפני: {oldQuantity})</span>
-                                  {' '}
-                                  <span className={`font-semibold ${
-                                    quantity > oldQuantity ? 'text-green-600' : 'text-red-600'
-                                  }`}>
-                                    {quantity > oldQuantity ? '+' : ''}{quantity - oldQuantity}
-                                  </span>
-                                </>
+                          {/* פרטי הווריאנט */}
+                          {(variantDisplay || sku) && (
+                            <div className="mb-3 space-y-1">
+                              {variantDisplay && (
+                                <div className="text-sm text-gray-600">
+                                  <span className="font-medium">ווריאנט:</span> {variantDisplay}
+                                </div>
                               )}
+                              {sku && (
+                                <div className="text-sm text-gray-600">
+                                  <span className="font-medium">מקט:</span> {sku}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* פרטי השינוי בכמות */}
+                          {quantity !== undefined ? (
+                            <div className="mb-2 p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center gap-4 flex-wrap">
+                                {oldQuantity !== undefined && (
+                                  <div className="text-sm">
+                                    <span className="text-gray-500">לפני:</span>{' '}
+                                    <span className="font-semibold text-gray-700">{oldQuantity}</span>
+                                  </div>
+                                )}
+                                <div className="text-sm">
+                                  <span className="text-gray-500">אחרי:</span>{' '}
+                                  <span className="font-semibold text-gray-900 text-lg">{quantity}</span>
+                                </div>
+                                {quantityChange !== null && quantityChange !== 0 && (
+                                  <div className={`text-sm font-semibold ${
+                                    quantityChange > 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {quantityChange > 0 ? '+' : ''}{quantityChange}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mb-2 p-3 bg-gray-50 rounded-lg">
+                              <div className="text-sm text-gray-600">
+                                עדכון מלאי
+                              </div>
                             </div>
                           )}
                           
                           {/* סיבה */}
                           {reason && reason !== 'עדכון מלאי' && (
-                            <div className="text-sm text-gray-600 mb-1">
+                            <div className="text-sm text-gray-600 mb-2">
                               <span className="font-medium">סיבה:</span> {reason}
                             </div>
                           )}
                           
-                          {/* מקט אם יש */}
-                          {relatedItem?.sku && (
-                            <div className="text-xs text-gray-500 mb-1">
-                              מקט: {relatedItem.sku}
-                            </div>
-                          )}
-                          
                           {/* תאריך */}
-                          <div className="text-xs text-gray-400 mt-2">
+                          <div className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-100">
                             {new Date(item.created_at).toLocaleString('he-IL', {
                               year: 'numeric',
                               month: '2-digit',

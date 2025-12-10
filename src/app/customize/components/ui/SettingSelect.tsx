@@ -13,7 +13,7 @@ export function SettingSelect({ label, options, className = '', ...props }: Sett
       </label>
       <div className="relative">
         <select
-          className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all appearance-none cursor-pointer ${className}`}
+          className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 bg-white transition-all appearance-none cursor-pointer ${className}`}
           {...props}
         >
           {options.map((option) => (

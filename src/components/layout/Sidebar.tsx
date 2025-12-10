@@ -92,6 +92,7 @@ export function Sidebar() {
   const router = useRouter();
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות']);
   const [clickedLink, setClickedLink] = useState<string | null>(null);
+  const [unreadOrdersCount, setUnreadOrdersCount] = useState<number>(0);
 
   const isActive = (href: string) => pathname === href;
   
@@ -111,6 +112,38 @@ export function Sidebar() {
   // Clear clicked link when route changes
   useEffect(() => {
     setClickedLink(null);
+  }, [pathname]);
+
+  // Load unread orders count
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const response = await fetch('/api/orders/unread-count', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadOrdersCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error loading unread orders count:', error);
+      }
+    };
+
+    loadUnreadCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000);
+    
+    // Listen for order marked as read event
+    const handleOrderMarkedAsRead = () => {
+      loadUnreadCount();
+    };
+    window.addEventListener('orderMarkedAsRead', handleOrderMarkedAsRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('orderMarkedAsRead', handleOrderMarkedAsRead);
+    };
   }, [pathname]);
   
   const toggleMenu = (label: string) => {
@@ -169,25 +202,35 @@ export function Sidebar() {
                 </button>
                 {expandedMenus.includes(item.label) && (
                   <div className="pr-8 mt-1">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        onClick={(e) => handleNavigation(e, child.href)}
-                        className={`
-                          flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-all duration-150 group
-                          ${isActive(child.href)
-                            ? 'bg-gradient-primary text-white font-semibold shadow-sm'
-                            : clickedLink === child.href
-                            ? 'bg-emerald-50 border border-emerald-200'
-                            : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
-                          }
-                        `}
-                      >
-                        <child.icon className={`w-4 h-4 flex-shrink-0 transition-colors ${isActive(child.href) ? 'text-white' : 'text-gray-500'}`} />
-                        <span>{child.label}</span>
-                      </Link>
-                    ))}
+                    {item.children.map((child) => {
+                      const isOrdersLink = child.href === '/orders';
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={(e) => handleNavigation(e, child.href)}
+                          className={`
+                            flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all duration-150 group
+                            ${isActive(child.href)
+                              ? 'bg-gradient-primary text-white font-semibold shadow-sm'
+                              : clickedLink === child.href
+                              ? 'bg-emerald-50 border border-emerald-200'
+                              : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-3">
+                            <child.icon className={`w-4 h-4 flex-shrink-0 transition-colors ${isActive(child.href) ? 'text-white' : 'text-gray-500'}`} />
+                            <span>{child.label}</span>
+                          </div>
+                          {isOrdersLink && unreadOrdersCount > 0 && (
+                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                              {unreadOrdersCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

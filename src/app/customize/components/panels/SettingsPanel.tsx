@@ -102,18 +102,44 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           });
           setTargetBlockId(null);
       } else if (targetBlockId) {
-          // Update specific block - support desktop/mobile images
+          // Update specific block - support desktop/mobile images and video
           const newBlocks = [...(section.blocks || [])];
           const blockIndex = newBlocks.findIndex(b => b.id === targetBlockId);
           if (blockIndex >= 0) {
-              const imageKey = imageDeviceTarget === 'mobile' ? 'image_url_mobile' : 'image_url';
-              newBlocks[blockIndex] = {
-                  ...newBlocks[blockIndex],
-                  content: {
-                      ...newBlocks[blockIndex].content,
-                      [imageKey]: files[0]
+              const block = newBlocks[blockIndex];
+              
+              // For image_with_text, detect file type from extension if accept='all'
+              let detectedMediaType = mediaType;
+              if (section.type === 'image_with_text' && mediaType === 'image') {
+                  // Check if the file is actually a video by extension
+                  const isVideoFile = files[0].match(/\.(mp4|webm|ogg|mov|avi)$/i);
+                  if (isVideoFile) {
+                      detectedMediaType = 'video';
                   }
-              };
+              }
+              
+              if (detectedMediaType === 'video') {
+                  // For video, set video_url and clear image_url
+                  newBlocks[blockIndex] = {
+                      ...block,
+                      content: {
+                          ...block.content,
+                          video_url: files[0],
+                          image_url: ''
+                      }
+                  };
+              } else {
+                  // For image, set image_url and clear video_url
+                  const imageKey = imageDeviceTarget === 'mobile' ? 'image_url_mobile' : 'image_url';
+                  newBlocks[blockIndex] = {
+                      ...block,
+                      content: {
+                          ...block.content,
+                          [imageKey]: files[0],
+                          video_url: ''
+                      }
+                  };
+              }
               onUpdate({ blocks: newBlocks });
           }
           setTargetBlockId(null);
@@ -260,7 +286,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </button>
                         <button
                           onClick={() => handleSettingChange('logo', { ...section.settings?.logo, image_url: null })}
-                          className="p-2 bg-white rounded-full text-red-600 hover:bg-red-50"
+                          className="p-2 bg-white rounded-full text-red-500 hover:bg-red-50"
                           title="הסר תמונה"
                         >
                           <HiTrash className="w-4 h-4" />
@@ -274,7 +300,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         setTargetBlockId('header-logo');
                         setIsMediaPickerOpen(true);
                       }}
-                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center gap-2"
+                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all flex flex-col items-center gap-2"
                     >
                       <HiPhotograph className="w-8 h-8 text-gray-400" />
                       <span className="text-sm text-gray-600">העלה לוגו</span>
@@ -444,7 +470,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
                         >
                             <HiPhotograph className="w-5 h-5 text-gray-400" />
                             <span className="text-xs font-medium text-gray-700">תמונה</span>
@@ -456,7 +482,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
                         >
                             <HiVideoCamera className="w-5 h-5 text-gray-400" />
                             <span className="text-xs font-medium text-gray-700">סרטון</span>
@@ -498,7 +524,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
                         >
                             <HiPhotograph className="w-5 h-5 text-gray-400" />
                             <span className="text-xs font-medium text-gray-700">תמונה</span>
@@ -510,7 +536,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all gap-1.5"
+                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
                         >
                             <HiVideoCamera className="w-5 h-5 text-gray-400" />
                             <span className="text-xs font-medium text-gray-700">סרטון</span>
@@ -804,43 +830,193 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
              }
         };
 
+        // Check if media is video
+        const isVideo = imageBlock?.content?.video_url || 
+                       (imageBlock?.content?.image_url && imageBlock.content.image_url.match(/\.(mp4|webm|ogg|mov|avi)$/i));
+        const mediaUrl = imageBlock?.content?.video_url || imageBlock?.content?.image_url;
+
         return (
             <div className="space-y-1">
-                <SettingGroup title="תמונה">
+                <SettingGroup title="מדיה">
                     <div className="space-y-4">
+                        {/* Media Type Selector */}
+                        <SettingSelect
+                            label="סוג מדיה"
+                            value={isVideo ? 'video' : 'image'}
+                            onChange={(e) => {
+                                const newType = e.target.value;
+                                if (newType === 'video') {
+                                    // Switch to video - clear image_url, keep video_url if exists
+                                    updateBlockContent('image', 'image_url', '');
+                                } else {
+                                    // Switch to image - clear video_url, keep image_url if exists
+                                    updateBlockContent('image', 'video_url', '');
+                                }
+                            }}
+                            options={[
+                                { label: 'תמונה', value: 'image' },
+                                { label: 'וידאו', value: 'video' },
+                            ]}
+                        />
+
+                        {/* Media Preview */}
                         <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200 group">
-                            {imageBlock?.content?.image_url ? (
-                                <img 
-                                    src={imageBlock.content.image_url} 
-                                    alt="Selected" 
-                                    className="w-full h-full object-cover"
-                                />
+                            {mediaUrl ? (
+                                isVideo ? (
+                                    <video 
+                                        src={mediaUrl} 
+                                        className="w-full h-full object-cover"
+                                        controls={imageBlock?.content?.video_controls !== false}
+                                        autoPlay={imageBlock?.content?.video_autoplay !== false}
+                                        muted={imageBlock?.content?.video_muted !== false}
+                                        loop={imageBlock?.content?.video_loop === true}
+                                        playsInline={imageBlock?.content?.video_playsinline !== false}
+                                    />
+                                ) : (
+                                    <img 
+                                        src={mediaUrl} 
+                                        alt="Selected" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                )
                             ) : (
                                 <div className="flex items-center justify-center w-full h-full text-gray-400">
-                                    <HiPhotograph className="w-8 h-8" />
+                                    {isVideo ? (
+                                        <HiVideoCamera className="w-8 h-8" />
+                                    ) : (
+                                        <HiPhotograph className="w-8 h-8" />
+                                    )}
                                 </div>
                             )}
                             <button
                                 onClick={() => {
-                                    setMediaType('image');
+                                    setMediaType(isVideo ? 'video' : 'image');
                                     setTargetBlockId(imageBlock?.id || null);
                                     setIsMediaPickerOpen(true);
                                 }}
                                 className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-white font-medium"
                             >
-                                החלף תמונה
+                                {mediaUrl ? (isVideo ? 'החלף וידאו' : 'החלף תמונה') : (isVideo ? 'בחר וידאו' : 'בחר תמונה')}
                             </button>
                         </div>
-                        {imageBlock?.content?.image_url && (
+                        
+                        {/* File size warning for video */}
+                        {isVideo && (
+                            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                                גודל מקסימלי: 20 מגה
+                            </div>
+                        )}
+
+                        {mediaUrl && (
                              <button
-                                onClick={() => updateBlockContent('image', 'image_url', '')}
-                                className="text-red-600 text-sm hover:underline"
+                                onClick={() => {
+                                    if (isVideo) {
+                                        updateBlockContent('image', 'video_url', '');
+                                    } else {
+                                        updateBlockContent('image', 'image_url', '');
+                                    }
+                                }}
+                                className="text-red-500 text-sm hover:underline"
                             >
-                                הסר תמונה
+                                הסר {isVideo ? 'וידאו' : 'תמונה'}
                             </button>
+                        )}
+
+                        {/* Media Height Settings */}
+                        {mediaUrl && (
+                            <div className="space-y-3 pt-3 border-t border-gray-200">
+                                <label className="block text-sm font-medium text-gray-700">גובה מדיה</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        value={imageBlock?.content?.media_height?.replace(/[^0-9.]/g, '') || ''}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            const unit = imageBlock?.content?.media_height_unit || 'px';
+                                            updateBlockContent('image', 'media_height', value ? `${value}${unit}` : '');
+                                        }}
+                                        placeholder="400"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                                    />
+                                    <select
+                                        value={imageBlock?.content?.media_height_unit || 'px'}
+                                        onChange={(e) => {
+                                            const unit = e.target.value;
+                                            const value = imageBlock?.content?.media_height?.replace(/[^0-9.]/g, '') || '';
+                                            updateBlockContent('image', 'media_height_unit', unit);
+                                            if (value) {
+                                                updateBlockContent('image', 'media_height', `${value}${unit}`);
+                                            }
+                                        }}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                                    >
+                                        <option value="px">px</option>
+                                        <option value="vh">vh</option>
+                                        <option value="%">%</option>
+                                    </select>
+                                </div>
+                                <p className="text-xs text-gray-500">השאר ריק לאוטומטי (יחס 4:3)</p>
+                            </div>
                         )}
                     </div>
                 </SettingGroup>
+
+                {/* Video Settings */}
+                {isVideo && mediaUrl && (
+                    <SettingGroup title="הגדרות וידאו">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-700">אוטופליי</label>
+                                <input
+                                    type="checkbox"
+                                    checked={imageBlock?.content?.video_autoplay !== false}
+                                    onChange={(e) => updateBlockContent('image', 'video_autoplay', e.target.checked)}
+                                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                                />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-700">השתק</label>
+                                <input
+                                    type="checkbox"
+                                    checked={imageBlock?.content?.video_muted !== false}
+                                    onChange={(e) => updateBlockContent('image', 'video_muted', e.target.checked)}
+                                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                                />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-700">לולאה</label>
+                                <input
+                                    type="checkbox"
+                                    checked={imageBlock?.content?.video_loop === true}
+                                    onChange={(e) => updateBlockContent('image', 'video_loop', e.target.checked)}
+                                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                                />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-700">בקרות (נגן)</label>
+                                <input
+                                    type="checkbox"
+                                    checked={imageBlock?.content?.video_controls !== false}
+                                    onChange={(e) => updateBlockContent('image', 'video_controls', e.target.checked)}
+                                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                                />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-700">נגן אוטומטי במובייל</label>
+                                <input
+                                    type="checkbox"
+                                    checked={imageBlock?.content?.video_playsinline !== false}
+                                    onChange={(e) => updateBlockContent('image', 'video_playsinline', e.target.checked)}
+                                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                                />
+                            </div>
+                        </div>
+                    </SettingGroup>
+                )}
 
                 <SettingGroup title="תוכן טקסט">
                     <div className="space-y-4">
@@ -892,11 +1068,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'אוטומטי', value: 'auto' },
                             { label: 'מסך מלא', value: 'full_screen' },
                         ])}
-                        {renderSelect('מיקום תמונה', 'layout', [
-                            { label: 'תמונה מימין', value: 'image_right' },
-                            { label: 'תמונה משמאל', value: 'image_left' },
+                        {renderSelect('מיקום מדיה', 'layout', [
+                            { label: 'מדיה מימין', value: 'image_right' },
+                            { label: 'מדיה משמאל', value: 'image_left' },
                         ])}
-                         {renderSelect('רוחב תמונה', 'image_width', [
+                         {renderSelect('רוחב מדיה', 'image_width', [
                             { label: 'קטן (30%)', value: 'small' },
                             { label: 'בינוני (50%)', value: 'medium' },
                             { label: 'גדול (70%)', value: 'large' },
@@ -1009,7 +1185,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                 // Store callback to add images
                                 (window as any).__galleryAddImage = addGalleryImage;
                             }}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPhotograph className="w-5 h-5" />
                             הוסף תמונות
@@ -1165,7 +1341,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={() => addSlide()}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף שקופית
@@ -1211,7 +1387,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                                         setImageDeviceTarget('mobile');
                                                         setIsMediaPickerOpen(true);
                                                     }}
-                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all flex items-center justify-center"
+                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 transition-all flex items-center justify-center"
                                                     style={{ height: '120px' }}
                                                 >
                                                     <HiPhotograph className="w-6 h-6 text-gray-400" />
@@ -1237,7 +1413,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                             ) : (
                                                 <button
                                                     onClick={() => openSlideImagePicker(slide.id)}
-                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all flex items-center justify-center"
+                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 transition-all flex items-center justify-center"
                                                     style={{ height: '120px' }}
                                                 >
                                                     <HiPhotograph className="w-6 h-6 text-gray-400" />
@@ -1339,7 +1515,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={addTestimonial}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף המלצה
@@ -1435,7 +1611,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={addFaq}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף שאלה
@@ -1497,7 +1673,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                                 // Handle video update manually
                                                 handleSettingChange('video_url', '');
                                             }}
-                                            className="text-xs text-red-600 hover:underline"
+                                            className="text-xs text-red-500 hover:underline"
                                         >
                                             הסר וידאו
                                         </button>
@@ -1512,7 +1688,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                         // Update handleMediaSelect to check for video section
                                         (window as any).__videoSelect = (url: string) => handleSettingChange('video_url', url);
                                     }}
-                                    className="flex flex-col items-center gap-2 text-gray-500 hover:text-blue-600"
+                                    className="flex flex-col items-center gap-2 text-gray-500 hover:text-gray-700"
                                 >
                                     <HiVideoCamera className="w-8 h-8" />
                                     <span className="text-sm">בחר וידאו</span>
@@ -1673,7 +1849,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={() => addLogo()}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף לוגו
@@ -1704,7 +1880,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                         ) : (
                                             <button
                                                 onClick={() => openLogoImagePicker(logo.id)}
-                                                className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all flex items-center justify-center"
+                                                className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all flex items-center justify-center"
                                                 style={{ height: '100px' }}
                                             >
                                                 <HiPhotograph className="w-8 h-8 text-gray-400" />
@@ -1760,7 +1936,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       <div className="px-1 mt-8 border-t border-gray-100 pt-6">
           <button 
             onClick={handleReset}
-            className="w-full flex items-center justify-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 py-2 rounded-lg transition-colors text-sm font-medium"
+            className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors text-sm font-medium"
           >
             <HiRefresh className="w-4 h-4" />
             אפס הגדרות סקשן
@@ -1774,7 +1950,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         shopId={storeId || undefined}
         title={mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') : 'בחר וידאו'}
         multiple={section.type === 'gallery'}
-        accept={mediaType}
+        accept={section.type === 'image_with_text' ? 'all' : mediaType}
       />
     </div>
   );

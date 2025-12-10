@@ -20,14 +20,25 @@ export async function syncCustomerToContact(
 ): Promise<Contact | null> {
   try {
     // Get or create CUSTOMER category
-    const customerCategory = await queryOne<{ id: number }>(
+    let customerCategory = await queryOne<{ id: number }>(
       `SELECT id FROM contact_categories 
        WHERE store_id = $1 AND type = 'CUSTOMER'`,
       [storeId]
     );
 
     if (!customerCategory) {
-      console.warn(`CUSTOMER category not found for store ${storeId}`);
+      // Create CUSTOMER category if it doesn't exist
+      customerCategory = await queryOne<{ id: number }>(
+        `INSERT INTO contact_categories (store_id, type, name, color, created_at, updated_at)
+         VALUES ($1, 'CUSTOMER', 'לקוחות', '#10b981', now(), now())
+         ON CONFLICT (store_id, type) DO UPDATE SET updated_at = now()
+         RETURNING id`,
+        [storeId]
+      );
+    }
+
+    if (!customerCategory) {
+      console.warn(`Failed to create CUSTOMER category for store ${storeId}`);
       return null;
     }
 

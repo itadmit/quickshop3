@@ -107,7 +107,7 @@ export function SortableSectionItem({
                 e.stopPropagation();
                 onDelete(section.section_id);
               }}
-              className="p-1 hover:bg-red-100 rounded text-red-600"
+              className="p-1 hover:bg-red-100 rounded text-red-500"
               title="מחק"
             >
               <HiTrash className="w-4 h-4" />

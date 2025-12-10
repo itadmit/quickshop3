@@ -140,6 +140,13 @@ export interface BlockContent {
   product_ids?: number[];
   collection_ids?: number[];
   video_url?: string;
+  video_autoplay?: boolean;
+  video_muted?: boolean;
+  video_loop?: boolean;
+  video_controls?: boolean;
+  video_playsinline?: boolean;
+  media_height?: string; // גובה המדיה (תמונה/וידאו) - בפיקסלים, vh או אחוזים
+  media_height_unit?: 'px' | 'vh' | '%'; // יחידת הגובה
   heading?: string;
   subheading?: string;
   description?: string;

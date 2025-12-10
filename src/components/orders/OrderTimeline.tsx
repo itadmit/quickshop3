@@ -63,12 +63,24 @@ export function OrderTimeline({ orderId }: OrderTimelineProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setEvents([data.note, ...events]);
+        // Create timeline event from note response
+        if (data.note) {
+          const noteEvent = {
+            id: data.note.id,
+            event_type: 'order_note',
+            message: data.note.message,
+            created_at: data.note.created_at,
+            user_id: data.note.user_id,
+          };
+          setEvents([noteEvent, ...events]);
+        }
         setNewNote('');
         toast({
           title: 'הצלחה',
           description: 'ההערה נוספה בהצלחה',
         });
+        // Reload timeline to get updated list
+        await loadTimeline();
       } else {
         const error = await response.json();
         toast({

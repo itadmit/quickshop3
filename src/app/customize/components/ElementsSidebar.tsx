@@ -116,7 +116,7 @@ const AVAILABLE_SECTIONS: Array<{
   // Content
   {
     type: 'image_with_text',
-    name: 'תמונה עם טקסט',
+    name: 'מדיה עם טקסט',
     description: 'תמונה לצד טקסט',
     icon: HiPhotograph,
     category: 'content'
@@ -212,7 +212,7 @@ function SortableSectionItem({
       style={style as React.CSSProperties}
       className={`group flex items-center justify-between p-3 cursor-pointer transition-all ${
         isSelected
-          ? 'bg-blue-50 border-r-2 border-blue-600'
+          ? 'bg-gray-50 border-r-2 border-gray-900'
           : 'hover:bg-gray-50 border-r-2 border-transparent'
       } ${isLocked ? 'bg-gray-50/50' : ''} ${isDragging ? 'shadow-lg bg-white rounded-lg' : ''}`}
       onClick={onSelect}
@@ -231,7 +231,7 @@ function SortableSectionItem({
         )}
         
         <div className={`p-1.5 rounded-md ${
-          isSelected ? 'bg-blue-100 text-blue-600' : isLocked ? 'bg-gray-200 text-gray-600' : 'bg-gray-100 text-gray-500'
+          isSelected ? 'bg-gray-100 text-gray-900' : isLocked ? 'bg-gray-200 text-gray-600' : 'bg-gray-100 text-gray-500'
         }`}>
           {React.createElement(getSectionIcon(section.type), { className: "w-4 h-4" })}
         </div>
@@ -239,7 +239,7 @@ function SortableSectionItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className={`text-sm font-medium truncate ${
-              isSelected ? 'text-blue-900' : 'text-gray-700'
+              isSelected ? 'text-gray-900' : 'text-gray-700'
             }`}>
               {section.name}
             </p>
@@ -277,7 +277,7 @@ function SortableSectionItem({
               e.stopPropagation();
               onDelete();
             }}
-            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
             title="מחק"
           >
             <HiTrash className="w-4 h-4" />
@@ -348,7 +348,7 @@ export function ElementsSidebar({
       {/* Header */}
       <div className="p-4 border-b border-gray-100 flex justify-between items-center">
         <h3 className="text-sm font-semibold text-gray-900">שכבות</h3>
-        <button className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+        <button className="text-xs text-gray-900 hover:text-gray-700 font-medium">
           אפס הכל
         </button>
       </div>

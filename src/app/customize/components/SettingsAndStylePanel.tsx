@@ -35,7 +35,7 @@ export function SettingsAndStylePanel({
           disabled={!selectedSection}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all ${
             activePanel === 'settings'
-              ? 'text-gray-900 bg-white border-t-2 border-t-blue-600 border-x border-gray-100'
+              ? 'text-gray-900 bg-white border-t-2 border-t-gray-900 border-x border-gray-100'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/80'
           } ${!selectedSection ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
@@ -47,7 +47,7 @@ export function SettingsAndStylePanel({
           disabled={!selectedSection}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all ${
             activePanel === 'style'
-              ? 'text-gray-900 bg-white border-t-2 border-t-blue-600 border-x border-gray-100'
+              ? 'text-gray-900 bg-white border-t-2 border-t-gray-900 border-x border-gray-100'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/80'
           } ${!selectedSection ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
@@ -67,8 +67,8 @@ export function SettingsAndStylePanel({
                 </span>
              </div>
              {device !== 'desktop' && (
-               <div className="mb-4 bg-blue-50 text-blue-700 text-xs px-3 py-2 rounded-md flex items-center gap-2">
-                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
+               <div className="mb-4 bg-gray-50 text-gray-700 text-xs px-3 py-2 rounded-md flex items-center gap-2">
+                 <span className="w-2 h-2 rounded-full bg-gray-900 animate-pulse"/>
                  עורך תצוגת {device === 'mobile' ? 'מובייל' : 'טאבלט'}
                </div>
              )}
@@ -86,8 +86,8 @@ export function SettingsAndStylePanel({
                 <h3 className="text-lg font-semibold text-gray-900">עיצוב: {selectedSection.name}</h3>
              </div>
              {device !== 'desktop' && (
-               <div className="mb-4 bg-blue-50 text-blue-700 text-xs px-3 py-2 rounded-md flex items-center gap-2">
-                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
+               <div className="mb-4 bg-gray-50 text-gray-700 text-xs px-3 py-2 rounded-md flex items-center gap-2">
+                 <span className="w-2 h-2 rounded-full bg-gray-900 animate-pulse"/>
                  עורך תצוגת {device === 'mobile' ? 'מובייל' : 'טאבלט'}
                </div>
              )}

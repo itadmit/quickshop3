@@ -125,7 +125,7 @@ function SortableWidgetItem({
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 hover:bg-red-100 rounded text-gray-600 hover:text-red-600"
+            className="p-1.5 hover:bg-red-100 rounded text-gray-600 hover:text-red-500"
             title="מחק"
           >
             <HiTrash className="w-4 h-4" />

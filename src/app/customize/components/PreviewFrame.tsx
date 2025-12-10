@@ -99,11 +99,11 @@ export function PreviewFrame({
                 <div
                   className={`absolute inset-0 pointer-events-none transition-all duration-200 ${
                     selectedSectionId === section.id
-                      ? 'ring-2 ring-blue-500 z-50'
+                      ? 'ring-2 ring-gray-900 z-[100]'
                       : hoveredSectionId === section.id
-                      ? 'ring-2 ring-blue-300 z-40'
+                      ? 'ring-2 ring-gray-600 z-[90]'
                       : showOutlines
-                      ? 'ring-1 ring-gray-200 z-30'
+                      ? 'ring-1 ring-gray-200 z-[80]'
                       : ''
                   }`}
                   style={{
@@ -113,17 +113,17 @@ export function PreviewFrame({
 
                 {/* Section Controls - Always visible when selected or hovered */}
                 {(selectedSectionId === section.id || hoveredSectionId === section.id) && (
-                  <div className="absolute top-2 right-2 z-50 pointer-events-auto">
+                  <div className="absolute top-2 right-2 z-[100] pointer-events-auto">
                     <div className="flex items-center space-x-1 rtl:space-x-reverse">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           // Edit action
                         }}
-                        className="w-8 h-8 bg-blue-500 text-white rounded shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+                        className="w-8 h-8 bg-gray-900 text-white rounded shadow-lg flex items-center justify-center hover:bg-gray-800 transition-colors"
                         title="ערוך"
                       >
-                        <HiPencil className="w-4 h-4" />
+                        <HiPencil className="w-4 h-4 text-white" />
                       </button>
                       {!section.locked && onSectionDelete && (
                         <button

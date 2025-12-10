@@ -131,7 +131,7 @@ export function ModernToggle({ checked, onChange, label }: ModernToggleProps) {
         type="button"
         onClick={() => onChange(!checked)}
         className={`
-          relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+          relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
           ${checked ? 'bg-green-600' : 'bg-gray-200'}
         `}
         role="switch"
@@ -168,7 +168,7 @@ export function ModernSlider({ value, min, max, step = 1, onChange, unit }: Mode
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-600"
       />
       <div className="w-16 flex items-center justify-end border border-gray-300 rounded px-2 py-1 bg-white">
         <input

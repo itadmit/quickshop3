@@ -100,7 +100,7 @@ function SortableBlockItem({
         block.is_visible
           ? 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
           : 'border-gray-100 bg-gray-50 opacity-75'
-      } ${isDragging ? 'shadow-lg ring-2 ring-blue-500 ring-opacity-50 z-10' : ''}`}
+      } ${isDragging ? 'shadow-lg ring-2 ring-gray-400 ring-opacity-50 z-10' : ''}`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -146,7 +146,7 @@ function SortableBlockItem({
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 hover:bg-red-50 rounded-md text-gray-500 hover:text-red-600 transition-colors"
+            className="p-1.5 hover:bg-red-50 rounded-md text-gray-500 hover:text-red-500 transition-colors"
             title="מחק"
           >
             <HiTrash className="w-4 h-4" />

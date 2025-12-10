@@ -266,6 +266,30 @@ export async function PUT(
     const values: any[] = [];
     let paramIndex = 1;
 
+    if (body.name !== undefined) {
+      updates.push(`name = $${paramIndex}`);
+      values.push(body.name);
+      paramIndex++;
+    }
+
+    if (body.email !== undefined) {
+      updates.push(`email = $${paramIndex}`);
+      values.push(body.email);
+      paramIndex++;
+    }
+
+    if (body.phone !== undefined) {
+      updates.push(`phone = $${paramIndex}`);
+      values.push(body.phone);
+      paramIndex++;
+    }
+
+    if (body.gateway !== undefined) {
+      updates.push(`gateway = $${paramIndex}`);
+      values.push(body.gateway);
+      paramIndex++;
+    }
+
     if (body.note !== undefined) {
       updates.push(`note = $${paramIndex}`);
       values.push(body.note);
@@ -287,6 +311,12 @@ export async function PUT(
     if (body.shipping_address !== undefined) {
       updates.push(`shipping_address = $${paramIndex}`);
       values.push(JSON.stringify(body.shipping_address));
+      paramIndex++;
+    }
+
+    if (body.note_attributes !== undefined) {
+      updates.push(`note_attributes = $${paramIndex}`);
+      values.push(JSON.stringify(body.note_attributes));
       paramIndex++;
     }
 

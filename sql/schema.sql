@@ -479,6 +479,7 @@ CREATE TABLE orders (
   user_id INT, -- Staff user who created order
   billing_address JSONB, -- Full address object
   shipping_address JSONB, -- Full address object
+  is_read BOOLEAN DEFAULT false, -- Whether order has been read/viewed
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
@@ -491,6 +492,7 @@ CREATE INDEX idx_orders_financial_status ON orders(financial_status);
 CREATE INDEX idx_orders_fulfillment_status ON orders(fulfillment_status);
 CREATE INDEX idx_orders_order_number ON orders(store_id, order_number);
 CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
+CREATE INDEX idx_orders_is_read ON orders(store_id, is_read) WHERE is_read = false;
 
 -- Order Line Items (Shopify-like: Line Items)
 CREATE TABLE order_line_items (
@@ -2331,10 +2333,127 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- ============================================
--- 26. PREMIUM CLUB (מועדון פרימיום)
+-- 26. MARKETPLACE & PLUGINS (מרקטפלייס ותוספים)
+-- ============================================
+
+-- Plugins (תוספים)
+CREATE TABLE plugins (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE, -- null = גלובלי
+  -- company_id INT REFERENCES companies(id) ON DELETE CASCADE, -- null = גלובלי (אם יש טבלת companies)
+  
+  -- מידע בסיסי
+  name VARCHAR(200) NOT NULL,
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  description TEXT,
+  icon TEXT, -- URL לאייקון
+  version VARCHAR(50) DEFAULT '1.0.0',
+  author VARCHAR(200),
+  
+  -- סוג התוסף
+  type VARCHAR(50) NOT NULL CHECK (type IN ('CORE', 'SCRIPT')),
+  category VARCHAR(50) NOT NULL CHECK (category IN (
+    'ANALYTICS', 'MARKETING', 'PAYMENT', 'INVENTORY', 
+    'COMMUNICATION', 'OPERATIONS', 'CUSTOMIZATION', 'LOYALTY'
+  )),
+  
+  -- הגדרות הפעלה
+  is_active BOOLEAN DEFAULT false,
+  is_installed BOOLEAN DEFAULT false,
+  is_built_in BOOLEAN DEFAULT false, -- תוספים מובנים (לא ניתן להסיר)
+  
+  -- הגדרות תוסף סקריפט
+  script_url TEXT, -- URL לסקריפט (רק ל-SCRIPT plugins)
+  script_content TEXT, -- תוכן סקריפט ישיר (רק ל-SCRIPT plugins)
+  inject_location VARCHAR(50) CHECK (inject_location IN ('HEAD', 'BODY_START', 'BODY_END')),
+  
+  -- הגדרות תוסף ליבה
+  config_schema JSONB, -- Schema להגדרות התוסף (Zod schema)
+  config JSONB DEFAULT '{}'::jsonb, -- הגדרות התוסף הספציפיות
+  
+  -- תמחור
+  is_free BOOLEAN DEFAULT true,
+  price NUMERIC(10,2), -- מחיר חודשי (אם לא חינמי)
+  currency VARCHAR(10) DEFAULT 'ILS',
+  
+  -- ניהול על ידי סופר אדמין
+  is_editable BOOLEAN DEFAULT true,
+  is_deletable BOOLEAN DEFAULT false, -- רק תוספים לא מובנים
+  
+  -- Metadata
+  metadata JSONB DEFAULT '{}'::jsonb, -- מידע נוסף (תמונות, מסכים, וכו')
+  requirements JSONB, -- דרישות (מינימום גרסה, תוספים אחרים, וכו')
+  admin_notes TEXT, -- הערות לסופר אדמין
+  display_order INT DEFAULT 0, -- סדר תצוגה במרקטפלייס
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  installed_at TIMESTAMP WITHOUT TIME ZONE
+);
+
+CREATE INDEX idx_plugins_store_id ON plugins(store_id);
+CREATE INDEX idx_plugins_type ON plugins(type);
+CREATE INDEX idx_plugins_category ON plugins(category);
+CREATE INDEX idx_plugins_is_active ON plugins(is_active);
+CREATE INDEX idx_plugins_is_installed ON plugins(is_installed);
+CREATE INDEX idx_plugins_slug ON plugins(slug);
+CREATE INDEX idx_plugins_is_free ON plugins(is_free);
+
+COMMENT ON TABLE plugins IS 'מרקטפלייס תוספים - תוספים חינמיים ותשלום לחנויות';
+COMMENT ON COLUMN plugins.type IS 'CORE = תוסף ליבה משולב, SCRIPT = תוסף סקריפט קליל';
+COMMENT ON COLUMN plugins.config IS 'הגדרות התוסף הספציפיות לכל חנות';
+
+-- Plugin Subscriptions (מנויים לתוספים)
+CREATE TABLE plugin_subscriptions (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  plugin_id INT REFERENCES plugins(id) ON DELETE CASCADE,
+  
+  -- סטטוס
+  status VARCHAR(50) DEFAULT 'PENDING' CHECK (status IN (
+    'PENDING', 'ACTIVE', 'CANCELLED', 'EXPIRED', 'FAILED'
+  )),
+  is_active BOOLEAN DEFAULT false,
+  
+  -- תאריכים
+  start_date TIMESTAMP WITHOUT TIME ZONE,
+  end_date TIMESTAMP WITHOUT TIME ZONE,
+  next_billing_date TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- תשלום
+  payment_method VARCHAR(50), -- PayPlus, Stripe, וכו'
+  payment_details JSONB, -- פרטי תשלום
+  recurring_payment_uid VARCHAR(255), -- UID של הוראת הקבע ב-PayPlus
+  card_token VARCHAR(255), -- Token לכרטיס אשראי
+  
+  -- מחיר
+  monthly_price NUMERIC(10,2) NOT NULL,
+  last_payment_date TIMESTAMP WITHOUT TIME ZONE,
+  last_payment_amount NUMERIC(10,2),
+  
+  -- ביטול
+  cancelled_at TIMESTAMP WITHOUT TIME ZONE,
+  cancellation_reason TEXT,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(store_id, plugin_id)
+);
+
+CREATE INDEX idx_plugin_subscriptions_store_id ON plugin_subscriptions(store_id);
+CREATE INDEX idx_plugin_subscriptions_plugin_id ON plugin_subscriptions(plugin_id);
+CREATE INDEX idx_plugin_subscriptions_status ON plugin_subscriptions(status);
+CREATE INDEX idx_plugin_subscriptions_next_billing_date ON plugin_subscriptions(next_billing_date);
+
+COMMENT ON TABLE plugin_subscriptions IS 'מנויים לתוספים בתשלום - ניהול בילינג והוראת קבע';
+
+-- ============================================
+-- 27. PREMIUM CLUB (מועדון פרימיום) - כפלאגין
 -- ============================================
 
 -- Premium Club Configuration (הגדרות מועדון פרימיום)
+-- הערה: זה יועבר למערכת פלאגינים, אבל נשאיר את הטבלה לתאימות לאחור
 CREATE TABLE premium_club_config (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
@@ -2348,8 +2467,33 @@ CREATE TABLE premium_club_config (
 CREATE INDEX idx_premium_club_config_store_id ON premium_club_config(store_id);
 CREATE INDEX idx_premium_club_config_enabled ON premium_club_config(enabled);
 
-COMMENT ON TABLE premium_club_config IS 'הגדרות מועדון פרימיום - רמות (כסף, זהב, פלטינה), הנחות והטבות';
+COMMENT ON TABLE premium_club_config IS 'הגדרות מועדון פרימיום - רמות (כסף, זהב, פלטינה), הנחות והטבות (יועבר למערכת פלאגינים)';
 COMMENT ON COLUMN premium_club_config.config IS 'JSON עם: tiers (רמות), benefits (הטבות כלליות), notifications (התראות)';
+
+-- ============================================
+-- TRIGGERS & FUNCTIONS
+-- ============================================
+
+-- Function to initialize contact categories for a new store
+CREATE OR REPLACE FUNCTION initialize_contact_categories()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO contact_categories (store_id, type, name, color, created_at, updated_at)
+  VALUES 
+    (NEW.id, 'CUSTOMER', 'לקוחות', '#10b981', now(), now()),
+    (NEW.id, 'CLUB_MEMBER', 'חברי מועדון', '#3b82f6', now(), now()),
+    (NEW.id, 'NEWSLETTER', 'דיוור', '#f97316', now(), now()),
+    (NEW.id, 'CONTACT_FORM', 'יצירת קשר', '#a855f7', now(), now())
+  ON CONFLICT (store_id, type) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to initialize contact categories when a new store is created
+CREATE TRIGGER initialize_contact_categories_trigger
+  AFTER INSERT ON stores
+  FOR EACH ROW
+  EXECUTE FUNCTION initialize_contact_categories();
 
 -- ============================================
 -- END OF SCHEMA

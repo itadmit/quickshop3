@@ -35,9 +35,13 @@ export async function GET(request: NextRequest) {
     const createdBefore = searchParams.get('created_before'); // ISO date string
 
     let sql = `
-      SELECT c.*,
-             COUNT(DISTINCT o.id) as orders_count,
-             COALESCE(SUM(o.total_price::numeric), 0) as total_spent
+      SELECT c.id, c.store_id, c.email, c.first_name, c.last_name, c.phone,
+             c.accepts_marketing, c.accepts_marketing_updated_at, c.marketing_opt_in_level,
+             c.tax_exempt, c.tax_exemptions, c.note, c.state, c.verified_email,
+             c.multipass_identifier, c.tags, c.premium_club_tier, c.total_spent,
+             c.orders_count, c.created_at, c.updated_at,
+             COUNT(DISTINCT o.id) as orders_count_calc,
+             COALESCE(SUM(o.total_price::numeric), 0) as total_spent_calc
       FROM customers c
       LEFT JOIN orders o ON o.customer_id = c.id
       WHERE c.store_id = $1
@@ -94,7 +98,18 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
-    sql += ` GROUP BY c.id`;
+    // Cursor pagination filter (must be before GROUP BY)
+    if (cursor) {
+      sql += ` AND c.id < $${paramIndex}`;
+      params.push(cursor);
+      paramIndex++;
+    }
+
+    sql += ` GROUP BY c.id, c.store_id, c.email, c.first_name, c.last_name, c.phone,
+             c.accepts_marketing, c.accepts_marketing_updated_at, c.marketing_opt_in_level,
+             c.tax_exempt, c.tax_exemptions, c.note, c.state, c.verified_email,
+             c.multipass_identifier, c.tags, c.premium_club_tier, c.total_spent,
+             c.orders_count, c.created_at, c.updated_at`;
 
     // Orders count filters (must be after GROUP BY)
     if (minOrders || maxOrders) {
@@ -137,23 +152,117 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get total count for pagination
-    let countSql = sql.replace(/SELECT c\.\*,.*?FROM/, 'SELECT COUNT(DISTINCT c.id) as total FROM');
-    // Remove GROUP BY and HAVING from count query
-    const countSqlParts = countSql.split('GROUP BY');
-    const baseCountSql = countSqlParts[0];
-    const countParams = [...params];
+    // Get total count for pagination (before adding ORDER BY and LIMIT)
+    // Build count query from scratch with same WHERE conditions but without GROUP BY/HAVING
+    let countSql = `
+      SELECT COUNT(DISTINCT c.id) as total
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.id
+      WHERE c.store_id = $1
+    `;
+    const countParams: any[] = [storeId];
+    let countParamIndex = 2;
+
+    // Apply same filters as main query (but without cursor for count)
+    if (search) {
+      countSql += ` AND (
+        c.email ILIKE $${countParamIndex} OR 
+        c.first_name ILIKE $${countParamIndex} OR 
+        c.last_name ILIKE $${countParamIndex} OR
+        c.phone ILIKE $${countParamIndex}
+      )`;
+      countParams.push(`%${search}%`);
+      countParamIndex++;
+    }
+
+    if (state) {
+      countSql += ` AND c.state = $${countParamIndex}`;
+      countParams.push(state);
+      countParamIndex++;
+    }
+
+    if (acceptsMarketing !== null && acceptsMarketing !== undefined) {
+      countSql += ` AND c.accepts_marketing = $${countParamIndex}`;
+      countParams.push(acceptsMarketing === 'true');
+      countParamIndex++;
+    }
+
+    if (tag) {
+      countSql += ` AND EXISTS (
+        SELECT 1 FROM customer_tag_map 
+        WHERE customer_id = c.id 
+        AND tag_name = $${countParamIndex}
+      )`;
+      countParams.push(tag);
+      countParamIndex++;
+    }
+
+    if (createdAfter) {
+      countSql += ` AND c.created_at >= $${countParamIndex}`;
+      countParams.push(createdAfter);
+      countParamIndex++;
+    }
+    if (createdBefore) {
+      countSql += ` AND c.created_at <= $${countParamIndex}`;
+      countParams.push(createdBefore);
+      countParamIndex++;
+    }
+
+    // For count query, we need to apply HAVING filters if they exist
+    if (minOrders || maxOrders || minTotalSpent || maxTotalSpent) {
+      countSql += ` GROUP BY c.id HAVING`;
+      let hasHaving = false;
+      
+      if (minOrders || maxOrders) {
+        countSql += ` COUNT(DISTINCT o.id)`;
+        if (minOrders) {
+          countSql += ` >= $${countParamIndex}`;
+          countParams.push(parseInt(minOrders));
+          countParamIndex++;
+        }
+        if (maxOrders) {
+          if (minOrders) {
+            countSql += ` AND COUNT(DISTINCT o.id)`;
+          }
+          countSql += ` <= $${countParamIndex}`;
+          countParams.push(parseInt(maxOrders));
+          countParamIndex++;
+        }
+        hasHaving = true;
+      }
+
+      if (minTotalSpent || maxTotalSpent) {
+        if (hasHaving) {
+          countSql += ` AND`;
+        }
+        countSql += ` COALESCE(SUM(o.total_price::numeric), 0)`;
+        if (minTotalSpent) {
+          countSql += ` >= $${countParamIndex}`;
+          countParams.push(parseFloat(minTotalSpent));
+          countParamIndex++;
+        }
+        if (maxTotalSpent) {
+          if (minTotalSpent) {
+            countSql += ` AND COALESCE(SUM(o.total_price::numeric), 0)`;
+          }
+          countSql += ` <= $${countParamIndex}`;
+          countParams.push(parseFloat(maxTotalSpent));
+          countParamIndex++;
+        }
+      }
+    }
     
-    // Execute count query
-    const totalResult = await queryOne<{ total: string }>(baseCountSql, countParams);
+    // Execute count query - wrap in subquery to get count
+    const countQuery = countSql.includes('GROUP BY') 
+      ? `SELECT COUNT(*) as total FROM (${countSql}) as subquery`
+      : countSql;
+    
+    const totalResult = await queryOne<{ total: string }>(countQuery, countParams);
     const total = parseInt(totalResult?.total || '0');
     const totalPages = Math.ceil(total / limit);
 
-    // Cursor pagination (backward compatibility)
+    // Add ORDER BY and LIMIT/OFFSET
     if (cursor) {
-      sql += ` AND c.id < $${paramIndex}`;
-      params.push(cursor);
-      paramIndex++;
       sql += ` ORDER BY c.created_at DESC LIMIT $${paramIndex}`;
       params.push(limit);
     } else {
@@ -162,11 +271,11 @@ export async function GET(request: NextRequest) {
       params.push(limit, offset);
     }
 
-    const customers = await query<Customer & { orders_count: number; total_spent: string }>(sql, params);
+    const customers = await query<Customer & { orders_count_calc: number; total_spent_calc: string }>(sql, params);
 
     // Get addresses and notes for each customer
     const customersWithDetails: CustomerWithDetails[] = await Promise.all(
-      customers.map(async (customer) => {
+      customers.map(async (customer: any) => {
         const [addresses, notes] = await Promise.all([
           query<CustomerAddress>(
             'SELECT * FROM customer_addresses WHERE customer_id = $1 ORDER BY default_address DESC, created_at DESC',
@@ -182,8 +291,8 @@ export async function GET(request: NextRequest) {
           ...customer,
           addresses,
           notes,
-          orders_count: customer.orders_count,
-          total_spent: customer.total_spent,
+          orders_count: customer.orders_count_calc || 0,
+          total_spent: customer.total_spent_calc || '0',
         };
       })
     );
