@@ -143,8 +143,8 @@ export async function createOrder(input: CreateOrderInput) {
     'SELECT order_number FROM orders WHERE store_id = $1 ORDER BY order_number DESC LIMIT 1',
     [storeId]
   );
-  // אם אין הזמנות קודמות, מתחיל מ-1000
-  const orderNumber = lastOrder?.order_number 
+  // אם אין הזמנות קודמות או שהמספר הגבוה ביותר נמוך מ-1000, מתחיל מ-1000
+  const orderNumber = lastOrder?.order_number && lastOrder.order_number >= 1000
     ? lastOrder.order_number + 1 
     : 1000;
   const orderName = `#${orderNumber.toString().padStart(4, '0')}`;

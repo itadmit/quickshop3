@@ -191,12 +191,15 @@ export async function POST(request: NextRequest) {
     }, 0);
     const totalPrice = subtotalPrice; // TODO: Add tax, shipping, discounts
 
-    // Get next order number
+    // Get next order number - מתחיל מ-1000
     const lastOrder = await queryOne<{ order_number: number }>(
       'SELECT order_number FROM orders WHERE store_id = $1 ORDER BY order_number DESC LIMIT 1',
       [storeId]
     );
-    const orderNumber = lastOrder ? ((lastOrder.order_number || 0) + 1) : 1;
+    // אם אין הזמנות קודמות או שהמספר הגבוה ביותר נמוך מ-1000, מתחיל מ-1000
+    const orderNumber = lastOrder?.order_number && lastOrder.order_number >= 1000
+      ? lastOrder.order_number + 1 
+      : 1000;
     const orderName = `#${orderNumber.toString().padStart(4, '0')}`;
 
     // Parse discount codes and update usage count

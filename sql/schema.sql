@@ -436,7 +436,7 @@ CREATE TABLE orders (
   order_name VARCHAR(50), -- Display name like #1001
   order_handle VARCHAR(255) UNIQUE, -- Secure handle for order URL (encrypted/random)
   financial_status VARCHAR(50) DEFAULT 'pending', -- pending, authorized, partially_paid, paid, partially_refunded, refunded, voided
-  fulfillment_status VARCHAR(50), -- fulfilled, partial, restocked, null
+  fulfillment_status VARCHAR(50), -- pending, approved, paid, processing, shipped, delivered, canceled, returned, fulfilled, partial, restocked, null (or custom status name)
   total_price NUMERIC(12,2) NOT NULL,
   subtotal_price NUMERIC(12,2),
   total_tax NUMERIC(12,2) DEFAULT 0,

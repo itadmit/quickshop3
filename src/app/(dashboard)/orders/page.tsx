@@ -37,7 +37,6 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
-  const [financialStatusFilter, setFinancialStatusFilter] = useState<string>('');
   const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState<string>('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -53,9 +52,9 @@ export default function OrdersPage() {
   // Status change dialog
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [selectedOrderForStatus, setSelectedOrderForStatus] = useState<number | null>(null);
-  const [newFinancialStatus, setNewFinancialStatus] = useState<string>('');
   const [newFulfillmentStatus, setNewFulfillmentStatus] = useState<string>('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [customStatuses, setCustomStatuses] = useState<Array<{id: number, name: string, display_name: string, color: string}>>([]);
 
   useEffect(() => {
     // Cancel previous request if exists
@@ -68,20 +67,34 @@ export default function OrdersPage() {
     const signal = abortControllerRef.current.signal;
 
     loadOrders(signal);
+    loadCustomStatuses();
 
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, [debouncedSearchTerm, financialStatusFilter, fulfillmentStatusFilter, pagination.page]);
+  }, [debouncedSearchTerm, fulfillmentStatusFilter, pagination.page]);
+
+  const loadCustomStatuses = async () => {
+    try {
+      const response = await fetch('/api/order-statuses', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCustomStatuses(data.statuses || []);
+      }
+    } catch (error) {
+      console.error('Error loading custom statuses:', error);
+    }
+  };
 
   const loadOrders = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (debouncedSearchTerm) params.append('search', debouncedSearchTerm);
-      if (financialStatusFilter) params.append('financial_status', financialStatusFilter);
       if (fulfillmentStatusFilter) params.append('fulfillment_status', fulfillmentStatusFilter);
       params.append('limit', pagination.limit.toString());
       params.append('page', pagination.page.toString());
@@ -205,7 +218,6 @@ export default function OrdersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          financial_status: newFinancialStatus || null,
           fulfillment_status: newFulfillmentStatus || null,
         }),
       });
@@ -217,7 +229,6 @@ export default function OrdersPage() {
         });
         setIsStatusDialogOpen(false);
         setSelectedOrderForStatus(null);
-        setNewFinancialStatus('');
         setNewFulfillmentStatus('');
         loadOrders();
       } else {
@@ -319,6 +330,52 @@ export default function OrdersPage() {
     }
   };
 
+  const getFulfillmentStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-orange-100 text-orange-800';
+      case 'approved':
+        return 'bg-blue-100 text-blue-800';
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'processing':
+        return 'bg-purple-100 text-purple-800';
+      case 'shipped':
+        return 'bg-cyan-100 text-cyan-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'canceled':
+        return 'bg-red-100 text-red-800';
+      case 'returned':
+        return 'bg-gray-100 text-gray-800';
+      case 'fulfilled':
+        return 'bg-blue-100 text-blue-800';
+      case 'partial':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'restocked':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getFulfillmentStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'pending': 'ממתין',
+      'approved': 'מאושר',
+      'paid': 'שולם',
+      'processing': 'מעובד',
+      'shipped': 'נשלח',
+      'delivered': 'נמסר',
+      'canceled': 'בוטל',
+      'returned': 'הוחזר',
+      'fulfilled': 'בוצע',
+      'partial': 'חלקי',
+      'restocked': 'הוחזר למלאי',
+    };
+    return labels[status] || status;
+  };
+
   const columns: TableColumn<OrderWithDetails>[] = [
     {
       key: 'order_name',
@@ -344,32 +401,19 @@ export default function OrdersPage() {
       ),
     },
     {
-      key: 'financial_status',
-      label: 'סטטוס תשלום',
-      render: (order) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(order.financial_status)}`}>
-          {order.financial_status === 'paid' ? 'שולם' :
-           order.financial_status === 'pending' ? 'ממתין לתשלום' :
-           order.financial_status === 'refunded' ? 'הוחזר' :
-           order.financial_status === 'voided' ? 'בוטל' :
-           order.financial_status}
-        </span>
-      ),
-    },
-    {
       key: 'fulfillment_status',
       label: 'סטטוס ביצוע',
-      render: (order) => (
-        order.fulfillment_status ? (
-          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(order.fulfillment_status)}`}>
-            {order.fulfillment_status === 'fulfilled' ? 'בוצע' :
-             order.fulfillment_status === 'partial' ? 'חלקי' :
-             order.fulfillment_status}
+      render: (order) => {
+        const status = order.fulfillment_status;
+        if (!status) {
+          return <span className="text-gray-400 text-xs">לא בוצע</span>;
+        }
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${getFulfillmentStatusBadgeColor(status)}`}>
+            {getFulfillmentStatusLabel(status)}
           </span>
-        ) : (
-          <span className="text-gray-400 text-xs">לא בוצע</span>
-        )
-      ),
+        );
+      },
     },
     {
       key: 'total_price',
@@ -397,39 +441,6 @@ export default function OrdersPage() {
     },
   ];
 
-  const filters = [
-    {
-      type: 'select' as const,
-      label: 'סטטוס תשלום',
-      options: [
-        { value: '', label: 'הכל' },
-        { value: 'pending', label: 'ממתין לתשלום' },
-        { value: 'paid', label: 'שולם' },
-        { value: 'refunded', label: 'הוחזר' },
-        { value: 'voided', label: 'בוטל' },
-      ],
-      value: financialStatusFilter,
-      onChange: (value: string) => {
-        setFinancialStatusFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
-      },
-    },
-    {
-      type: 'select' as const,
-      label: 'סטטוס ביצוע',
-      options: [
-        { value: '', label: 'הכל' },
-        { value: 'fulfilled', label: 'בוצע' },
-        { value: 'partial', label: 'חלקי' },
-        { value: 'restocked', label: 'הוחזר למלאי' },
-      ],
-      value: fulfillmentStatusFilter,
-      onChange: (value: string) => {
-        setFulfillmentStatusFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
-      },
-    },
-  ];
 
   return (
     <div className="space-y-4 md:space-y-6" dir="rtl">
@@ -491,22 +502,6 @@ export default function OrdersPage() {
               />
             </div>
 
-            {/* Financial Status Filter */}
-            <select
-              value={financialStatusFilter}
-              onChange={(e) => {
-                setFinancialStatusFilter(e.target.value);
-                setPagination((prev) => ({ ...prev, page: 1 }));
-              }}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all w-full md:w-[180px] flex-shrink-0"
-            >
-              <option value="">כל הסטטוסים</option>
-              <option value="pending">ממתין לתשלום</option>
-              <option value="paid">שולם</option>
-              <option value="refunded">הוחזר</option>
-              <option value="voided">בוטל</option>
-            </select>
-
             {/* Fulfillment Status Filter */}
             <select
               value={fulfillmentStatusFilter}
@@ -514,12 +509,22 @@ export default function OrdersPage() {
                 setFulfillmentStatusFilter(e.target.value);
                 setPagination((prev) => ({ ...prev, page: 1 }));
               }}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all w-full md:w-[160px] flex-shrink-0"
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all w-full md:w-[180px] flex-shrink-0"
             >
               <option value="">כל הסטטוסים</option>
-              <option value="fulfilled">בוצע</option>
-              <option value="partial">חלקי</option>
-              <option value="restocked">הוחזר למלאי</option>
+              <option value="pending">ממתין</option>
+              <option value="approved">מאושר</option>
+              <option value="paid">שולם</option>
+              <option value="processing">מעובד</option>
+              <option value="shipped">נשלח</option>
+              <option value="delivered">נמסר</option>
+              <option value="canceled">בוטל</option>
+              <option value="returned">הוחזר</option>
+              {customStatuses.map((status) => (
+                <option key={status.id} value={status.name}>
+                  {status.display_name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -572,7 +577,6 @@ export default function OrdersPage() {
                       icon: <HiRefresh className="w-4 h-4" />,
                       onClick: () => {
                         setSelectedOrderForStatus(order.id);
-                        setNewFinancialStatus(order.financial_status);
                         setNewFulfillmentStatus(order.fulfillment_status || '');
                         setIsStatusDialogOpen(true);
                       },
@@ -668,37 +672,112 @@ export default function OrdersPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" dir="rtl">
           <Card className="max-w-md w-full">
             <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">החלף סטטוס הזמנה</h2>
-              <p className="text-gray-600 mb-4">בחר סטטוס חדש להזמנה</p>
-
-              <div className="space-y-4 py-4">
+              <div className="flex items-start justify-between mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">סטטוס תשלום</label>
-                  <select
-                    value={newFinancialStatus}
-                    onChange={(e) => setNewFinancialStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">לא משנה</option>
-                    <option value="pending">ממתין לתשלום</option>
-                    <option value="paid">שולם</option>
-                    <option value="refunded">הוחזר</option>
-                    <option value="voided">בוטל</option>
-                  </select>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">החלף סטטוס הזמנה</h2>
+                  <p className="text-gray-600 text-sm">בחר סטטוס חדש להזמנה</p>
                 </div>
+                <button
+                  onClick={() => {
+                    setIsStatusDialogOpen(false);
+                    setSelectedOrderForStatus(null);
+                    setNewFulfillmentStatus('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">סטטוס ביצוע</label>
-                  <select
-                    value={newFulfillmentStatus}
-                    onChange={(e) => setNewFulfillmentStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">לא משנה</option>
-                    <option value="fulfilled">בוצע</option>
-                    <option value="partial">חלקי</option>
-                    <option value="restocked">הוחזר למלאי</option>
-                  </select>
+              <div className="py-4">
+                <label className="block text-sm font-medium text-gray-700 mb-3">סטטוס ביצוע</label>
+                
+                {/* Status List */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                  {[
+                    { value: 'pending', label: 'ממתין', color: 'bg-orange-100 text-orange-800' },
+                    { value: 'approved', label: 'מאושר', color: 'bg-blue-100 text-blue-800' },
+                    { value: 'paid', label: 'שולם', color: 'bg-green-100 text-green-800' },
+                    { value: 'processing', label: 'מעובד', color: 'bg-purple-100 text-purple-800' },
+                    { value: 'shipped', label: 'נשלח', color: 'bg-cyan-100 text-cyan-800' },
+                    { value: 'delivered', label: 'נמסר', color: 'bg-green-100 text-green-800' },
+                    { value: 'canceled', label: 'בוטל', color: 'bg-red-100 text-red-800' },
+                    { value: 'returned', label: 'הוחזר', color: 'bg-gray-100 text-gray-800' },
+                  ].map((status) => {
+                    const isSelected = newFulfillmentStatus === status.value;
+                    const colorClass = status.color.split(' ')[0];
+                    return (
+                      <button
+                        key={status.value}
+                        type="button"
+                        onClick={() => setNewFulfillmentStatus(status.value)}
+                        className={`w-full px-4 py-3 text-right flex items-center gap-3 hover:bg-gray-50 transition-colors ${
+                          isSelected ? 'bg-gray-50' : ''
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg className="w-5 h-5 text-gray-900 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        {!isSelected && <div className="w-5 h-5 flex-shrink-0"></div>}
+                        <div className={`w-3 h-3 rounded-full ${colorClass}`}></div>
+                        <span className="flex-1 text-sm text-gray-900">{status.label}</span>
+                      </button>
+                    );
+                  })}
+                  
+                  {/* Custom Statuses */}
+                  {customStatuses.map((status) => {
+                    const isSelected = newFulfillmentStatus === status.name;
+                    // Parse color - can be hex, rgb, or tailwind class name
+                    const getDotColor = () => {
+                      if (!status.color) return 'bg-gray-500';
+                      // If it's a hex or rgb color
+                      if (status.color.startsWith('#') || status.color.startsWith('rgb')) {
+                        return status.color;
+                      }
+                      // Try to map common color names to tailwind classes
+                      const colorMap: Record<string, string> = {
+                        'orange': 'bg-orange-500',
+                        'blue': 'bg-blue-500',
+                        'green': 'bg-green-500',
+                        'purple': 'bg-purple-500',
+                        'cyan': 'bg-cyan-500',
+                        'red': 'bg-red-500',
+                        'gray': 'bg-gray-500',
+                        'yellow': 'bg-yellow-500',
+                      };
+                      return colorMap[status.color.toLowerCase()] || 'bg-gray-500';
+                    };
+                    const dotColor = getDotColor();
+                    const isHexOrRgb = dotColor.startsWith('#') || dotColor.startsWith('rgb');
+                    
+                    return (
+                      <button
+                        key={status.id}
+                        type="button"
+                        onClick={() => setNewFulfillmentStatus(status.name)}
+                        className={`w-full px-4 py-3 text-right flex items-center gap-3 hover:bg-gray-50 transition-colors ${
+                          isSelected ? 'bg-gray-50' : ''
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg className="w-5 h-5 text-gray-900 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        {!isSelected && <div className="w-5 h-5 flex-shrink-0"></div>}
+                        <div 
+                          className={`w-3 h-3 rounded-full ${!isHexOrRgb ? dotColor : ''}`}
+                          style={isHexOrRgb ? { backgroundColor: dotColor } : undefined}
+                        ></div>
+                        <span className="flex-1 text-sm text-gray-900">{status.display_name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -706,14 +785,13 @@ export default function OrdersPage() {
                 <Button variant="outline" onClick={() => {
                   setIsStatusDialogOpen(false);
                   setSelectedOrderForStatus(null);
-                  setNewFinancialStatus('');
                   setNewFulfillmentStatus('');
                 }}>
                   ביטול
                 </Button>
                 <Button
                   onClick={handleStatusChange}
-                  disabled={updatingStatus || (!newFinancialStatus && !newFulfillmentStatus)}
+                  disabled={updatingStatus || !newFulfillmentStatus}
                 >
                   {updatingStatus ? (
                     <>

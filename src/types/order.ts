@@ -11,7 +11,7 @@ export interface Order {
   order_name: string | null;
   order_handle: string | null; // Secure handle for order URL
   financial_status: 'pending' | 'authorized' | 'partially_paid' | 'paid' | 'partially_refunded' | 'refunded' | 'voided';
-  fulfillment_status: 'fulfilled' | 'partial' | 'restocked' | null;
+  fulfillment_status: 'pending' | 'approved' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'canceled' | 'returned' | 'fulfilled' | 'partial' | 'restocked' | string | null; // string for custom statuses
   total_price: string;
   subtotal_price: string | null;
   total_tax: string;
