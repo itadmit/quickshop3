@@ -6,6 +6,9 @@
 // סוגי תבניות
 export type TemplateType = 'home' | 'product' | 'collection' | 'cart' | 'checkout';
 
+// סוגי עמודים
+export type PageType = 'home' | 'product' | 'collection' | 'cart' | 'checkout' | 'page';
+
 // סוגי סקשנים
 export type SectionType =
   | 'hero'
@@ -26,13 +29,23 @@ export type SectionType =
   | 'map'
   | 'footer'
   | 'header'
-  | 'product_header'
+  // Product page sections
+  | 'product_title'
+  | 'product_price'
+  | 'product_description'
+  | 'product_variants'
+  | 'product_add_to_cart'
   | 'product_gallery'
-  | 'product_info'
+  | 'product_custom_fields'
+  | 'product_reviews'
   | 'related_products'
+  | 'recently_viewed'
+  // Collection page sections
   | 'collection_header'
+  | 'collection_description'
   | 'collection_filters'
-  | 'collection_products';
+  | 'collection_products'
+  | 'collection_pagination';
 
 // סוגי בלוקים בתוך סקשן
 export type BlockType = 'text' | 'image' | 'button' | 'product' | 'collection' | 'video';
