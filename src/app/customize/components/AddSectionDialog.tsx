@@ -5,10 +5,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import React from 'react';
 import { addSection } from '../actions';
-import { SectionType } from '@/lib/customizer/types';
+import { SectionType, PageType } from '@/lib/customizer/types';
+import { getPageSpecificSections } from '@/lib/customizer/templates/new-york';
 import {
   HiX,
   HiBell,
@@ -30,6 +31,14 @@ import {
   HiArrowDown,
   HiDeviceMobile,
   HiCode,
+  HiCurrencyDollar,
+  HiShoppingCart,
+  HiViewList,
+  HiFilter,
+  HiDocument,
+  HiColorSwatch,
+  HiAnnotation,
+  HiEye,
 } from 'react-icons/hi';
 
 interface AddSectionDialogProps {
@@ -38,6 +47,27 @@ interface AddSectionDialogProps {
   pageType: string;
   onSectionAdded: () => void;
 }
+
+// Icon mapping for section types
+const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  // Product page sections
+  product_gallery: HiPhotograph,
+  product_title: HiDocument,
+  product_price: HiCurrencyDollar,
+  product_variants: HiColorSwatch,
+  product_add_to_cart: HiShoppingCart,
+  product_description: HiPencil,
+  product_custom_fields: HiViewList,
+  product_reviews: HiAnnotation,
+  related_products: HiShoppingBag,
+  recently_viewed: HiEye,
+  // Collection page sections
+  collection_header: HiClipboardList,
+  collection_description: HiPencil,
+  collection_filters: HiFilter,
+  collection_products: HiChartBar,
+  collection_pagination: HiViewList,
+};
 
 const AVAILABLE_SECTIONS: Array<{
   type: SectionType;
@@ -53,34 +83,39 @@ const AVAILABLE_SECTIONS: Array<{
   { type: 'hero_banner', name: 'באנר Hero', description: 'באנר Hero בודד', icon: HiPhotograph, category: 'Hero & Header' },
   
   // Collections & Products
-  { type: 'collection_list', name: 'רשימת קטגוריות', description: 'רשימת קטגוריות', icon: HiCollection, category: 'Collections & Products' },
-  { type: 'featured_collection', name: 'קטגוריה מוצגת', description: 'קטגוריה מוצגת', icon: HiStar, category: 'Collections & Products' },
-  { type: 'featured_product', name: 'מוצר מוצג', description: 'מוצר מוצג', icon: HiShoppingBag, category: 'Collections & Products' },
-  { type: 'product_grid', name: 'גריד מוצרים', description: 'גריד מוצרים', icon: HiChartBar, category: 'Collections & Products' },
-  { type: 'new_arrivals', name: 'מוצרים חדשים', description: 'מוצרים חדשים', icon: HiSparkles, category: 'Collections & Products' },
-  { type: 'best_sellers', name: 'מוצרים נמכרים', description: 'מוצרים נמכרים', icon: HiFire, category: 'Collections & Products' },
+  { type: 'featured_collections', name: 'קטגוריות מוצגות', description: 'הצגת קטגוריות נבחרות', icon: HiCollection, category: 'Collections & Products' },
+  { type: 'featured_products', name: 'מוצרים מוצגים', description: 'הצגת מוצרים נבחרים', icon: HiShoppingBag, category: 'Collections & Products' },
   
   // Content
   { type: 'image_with_text', name: 'מדיה עם טקסט', description: 'מדיה עם טקסט (תמונה או וידאו)', icon: HiPhotograph, category: 'Content' },
-  { type: 'image_with_text_overlay', name: 'תמונה עם שכבת טקסט', description: 'תמונה עם שכבת טקסט', icon: HiPhotograph, category: 'Content' },
   { type: 'rich_text', name: 'טקסט עשיר', description: 'טקסט עשיר', icon: HiPencil, category: 'Content' },
   { type: 'video', name: 'וידאו', description: 'וידאו', icon: HiVideoCamera, category: 'Content' },
   { type: 'testimonials', name: 'ביקורות', description: 'ביקורות לקוחות', icon: HiChatAlt, category: 'Content' },
   { type: 'faq', name: 'שאלות נפוצות', description: 'שאלות נפוצות', icon: HiQuestionMarkCircle, category: 'Content' },
   { type: 'logo_list', name: 'רשימת לוגואים', description: 'הצגת לוגואי מותגים', icon: HiPhotograph, category: 'Content' },
+  { type: 'gallery', name: 'גלריה', description: 'גלריית תמונות', icon: HiPhotograph, category: 'Content' },
   
   // Marketing
   { type: 'newsletter', name: 'הרשמה לניוזלטר', description: 'הרשמה לניוזלטר', icon: HiMail, category: 'Marketing' },
-  { type: 'promo_banner', name: 'באנר פרסומי', description: 'באנר פרסומי', icon: HiTag, category: 'Marketing' },
-  { type: 'trust_badges', name: 'תגי אמון', description: 'תגי אמון', icon: HiShieldCheck, category: 'Marketing' },
   
   // Navigation & Footer
   { type: 'footer', name: 'כותרת תחתונה', description: 'כותרת תחתונה', icon: HiArrowDown, category: 'Navigation & Footer' },
-  { type: 'mobile_sticky_bar', name: 'בר תחתון למובייל', description: 'בר תחתון למובייל', icon: HiDeviceMobile, category: 'Navigation & Footer' },
   
   // Advanced
-  { type: 'custom_html', name: 'HTML מותאם', description: 'HTML מותאם', icon: HiCode, category: 'Advanced' },
+  { type: 'contact_form', name: 'טופס יצירת קשר', description: 'טופס ליצירת קשר', icon: HiMail, category: 'Advanced' },
 ];
+
+// Get page-specific category name
+function getPageSpecificCategoryName(pageType: string): string {
+  switch (pageType) {
+    case 'product':
+      return 'עמוד מוצר';
+    case 'collection':
+      return 'עמוד קטגוריה';
+    default:
+      return 'עמוד';
+  }
+}
 
 export function AddSectionDialog({
   open,
@@ -89,20 +124,48 @@ export function AddSectionDialog({
   onSectionAdded,
 }: AddSectionDialogProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('page-specific');
   const [adding, setAdding] = useState(false);
+
+  // Get page-specific sections from the template
+  const pageSpecificSections = useMemo(() => {
+    const sections = getPageSpecificSections(pageType);
+    return sections.map(s => ({
+      type: s.type as SectionType,
+      name: s.name,
+      description: s.description,
+      icon: SECTION_ICONS[s.type] || HiDocument,
+      category: 'page-specific'
+    }));
+  }, [pageType]);
+
+  // Combine page-specific sections with general sections
+  const allSections = useMemo(() => {
+    if (pageType === 'home') {
+      return AVAILABLE_SECTIONS;
+    }
+    return [...pageSpecificSections, ...AVAILABLE_SECTIONS];
+  }, [pageType, pageSpecificSections]);
 
   if (!open) return null;
 
-  const categories = ['all', ...Array.from(new Set(AVAILABLE_SECTIONS.map(s => s.category)))];
+  // Build categories list - page-specific first for product/collection pages
+  const pageSpecificCategoryName = getPageSpecificCategoryName(pageType);
+  const baseCategories = Array.from(new Set(AVAILABLE_SECTIONS.map(s => s.category)));
+  const categories = pageType === 'home' 
+    ? ['all', ...baseCategories]
+    : ['page-specific', 'all', ...baseCategories];
   
-  const filteredSections = AVAILABLE_SECTIONS.filter((section) => {
+  const filteredSections = allSections.filter((section) => {
     const matchesSearch = 
       section.name.includes(searchTerm) ||
       section.description.includes(searchTerm) ||
       section.type.includes(searchTerm);
     
-    const matchesCategory = selectedCategory === 'all' || section.category === selectedCategory;
+    const matchesCategory = 
+      selectedCategory === 'all' || 
+      section.category === selectedCategory ||
+      (selectedCategory === 'page-specific' && section.category === 'page-specific');
     
     return matchesSearch && matchesCategory;
   });
@@ -166,7 +229,7 @@ export function AddSectionDialog({
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {category === 'all' ? 'הכל' : category}
+                {category === 'all' ? 'הכל' : category === 'page-specific' ? `📌 ${pageSpecificCategoryName}` : category}
               </button>
             ))}
           </div>

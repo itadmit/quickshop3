@@ -2433,6 +2433,829 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           </div>
         );
 
+      // ========== Product Page Sections ==========
+      case 'product_gallery':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="פריסת גלריה">
+              <div className="space-y-4">
+                {renderSelect('סגנון גלריה', 'gallery_layout', [
+                  { label: 'תמונה גדולה עם תמונות ממוזערות', value: 'thumbnails' },
+                  { label: 'גלריה רשת', value: 'grid' },
+                  { label: 'קרוסלה', value: 'carousel' },
+                  { label: 'סליידר עמודה אחת', value: 'single' },
+                  { label: 'שתי עמודות', value: 'two_columns' },
+                ])}
+                
+                {getValue('gallery_layout', 'thumbnails') === 'thumbnails' && (
+                  <>
+                    {renderSelect('מיקום תמונות ממוזערות', 'thumbnail_position', [
+                      { label: 'מתחת לתמונה', value: 'bottom' },
+                      { label: 'בצד שמאל', value: 'left' },
+                      { label: 'בצד ימין', value: 'right' },
+                    ])}
+                    
+                    {renderSelect('גודל תמונות ממוזערות', 'thumbnail_size', [
+                      { label: 'קטן (60px)', value: 'small' },
+                      { label: 'בינוני (80px)', value: 'medium' },
+                      { label: 'גדול (100px)', value: 'large' },
+                    ])}
+                  </>
+                )}
+                
+                {getValue('gallery_layout', 'thumbnails') === 'grid' && (
+                  renderSelect('עמודות ברשת', 'grid_columns', [
+                    { label: '2 עמודות', value: 2 },
+                    { label: '3 עמודות', value: 3 },
+                    { label: '4 עמודות', value: 4 },
+                  ])
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="התנהגות">
+              <div className="space-y-4">
+                {renderSelect('הפעל זום בעכבר', 'enable_zoom', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('פתח בלייטבוקס בלחיצה', 'enable_lightbox', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הפעל וידאו', 'enable_video', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('enable_video', true) !== false && (
+                  renderSelect('הפעל וידאו אוטומטית', 'video_autoplay', [
+                    { label: 'כן', value: true },
+                    { label: 'לא', value: false },
+                  ])
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תמונות">
+              <div className="space-y-4">
+                {renderSelect('יחס גובה-רוחב', 'image_ratio', [
+                  { label: 'מותאם לתמונה', value: 'adapt' },
+                  { label: 'ריבוע (1:1)', value: 'square' },
+                  { label: 'לרוחב (4:3)', value: 'landscape' },
+                  { label: 'לאורך (3:4)', value: 'portrait' },
+                ])}
+                
+                {renderSelect('התאמת תמונה', 'image_fit', [
+                  { label: 'כיסוי (Cover)', value: 'cover' },
+                  { label: 'התאמה (Contain)', value: 'contain' },
+                ])}
+                
+                {renderSelect('רדיוס פינות', 'border_radius', [
+                  { label: 'ללא', value: '0' },
+                  { label: 'קטן', value: '4px' },
+                  { label: 'בינוני', value: '8px' },
+                  { label: 'גדול', value: '16px' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מובייל">
+              <div className="space-y-4">
+                {renderSelect('סגנון גלריה במובייל', 'mobile_layout', [
+                  { label: 'כמו דסקטופ', value: 'same' },
+                  { label: 'סליידר', value: 'carousel' },
+                  { label: 'ערימה אנכית', value: 'stack' },
+                ])}
+                
+                {renderSelect('הצג אינדיקטורים', 'show_dots', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_name':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כותרת">
+              <div className="space-y-4">
+                {renderSelect('גודל כותרת', 'title_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+                
+                {renderSelect('משקל פונט', 'font_weight', [
+                  { label: 'רגיל', value: 'normal' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'מודגש', value: 'bold' },
+                ])}
+                
+                {renderColorPicker('צבע כותרת', 'title_color')}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מידע נוסף">
+              <div className="space-y-4">
+                {renderSelect('הצג יצרן/מותג', 'show_vendor', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג מק"ט (SKU)', 'show_sku', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג דירוג', 'show_rating', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_rating', false) && (
+                  renderSelect('סגנון דירוג', 'rating_style', [
+                    { label: 'כוכבים', value: 'stars' },
+                    { label: 'מספר', value: 'number' },
+                    { label: 'כוכבים + מספר', value: 'both' },
+                  ])
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תגיות">
+              <div className="space-y-4">
+                {renderSelect('הצג תגית "חדש"', 'show_new_badge', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_new_badge', false) && (
+                  renderInput('ימים להצגת תגית "חדש"', 'new_badge_days', '30', 'number')
+                )}
+                
+                {renderSelect('הצג תגית "נמכר היטב"', 'show_bestseller_badge', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_price':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תצוגת מחיר">
+              <div className="space-y-4">
+                {renderSelect('גודל מחיר', 'price_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+                
+                {renderColorPicker('צבע מחיר', 'price_color')}
+                
+                {renderSelect('משקל פונט', 'font_weight', [
+                  { label: 'רגיל', value: 'normal' },
+                  { label: 'מודגש', value: 'bold' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מחיר השוואה (מבצע)">
+              <div className="space-y-4">
+                {renderSelect('הצג מחיר לפני הנחה', 'show_compare_price', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_compare_price', true) !== false && (
+                  <>
+                    {renderColorPicker('צבע מחיר לפני הנחה', 'compare_price_color')}
+                    
+                    {renderSelect('קו חוצה על מחיר ישן', 'strikethrough', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תגית הנחה">
+              <div className="space-y-4">
+                {renderSelect('הצג תגית הנחה', 'show_discount_badge', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_discount_badge', true) !== false && (
+                  <>
+                    {renderSelect('סגנון תגית', 'badge_style', [
+                      { label: 'אחוז הנחה (-20%)', value: 'percentage' },
+                      { label: 'חסכון בש"ח (חסוך ₪50)', value: 'amount' },
+                      { label: 'טקסט "מבצע!"', value: 'text' },
+                    ])}
+                    
+                    {renderColorPicker('צבע רקע תגית', 'badge_bg_color')}
+                    {renderColorPicker('צבע טקסט תגית', 'badge_text_color')}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מעמ ומשלוח">
+              <div className="space-y-4">
+                {renderSelect('הצג הודעת מעמ', 'show_tax_info', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג הודעת משלוח', 'show_shipping_info', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_shipping_info', false) && (
+                  renderInput('טקסט משלוח', 'shipping_text', 'משלוח חינם מעל ₪200')
+                )}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_variations':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="סגנון תצוגה">
+              <div className="space-y-4">
+                {renderSelect('סגנון בחירת וריאציות', 'variant_style', [
+                  { label: 'כפתורים', value: 'buttons' },
+                  { label: 'רשימה נפתחת', value: 'dropdown' },
+                  { label: 'רדיו (עיגולים)', value: 'radio' },
+                ])}
+                
+                {renderSelect('גודל כפתורים', 'button_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+                
+                {renderSelect('צורת כפתורים', 'button_shape', [
+                  { label: 'מלבני', value: 'square' },
+                  { label: 'מעוגל', value: 'rounded' },
+                  { label: 'עגול (לצבעים)', value: 'circle' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תצוגת צבעים">
+              <div className="space-y-4">
+                {renderSelect('הצג צבעים כסווטצ\'ים', 'show_color_swatches', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_color_swatches', true) !== false && (
+                  <>
+                    {renderSelect('גודל סווטצ\'ים', 'swatch_size', [
+                      { label: 'קטן (24px)', value: 'small' },
+                      { label: 'בינוני (32px)', value: 'medium' },
+                      { label: 'גדול (40px)', value: 'large' },
+                    ])}
+                    
+                    {renderSelect('הצג שם צבע בריחוף', 'show_color_name', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מלאי">
+              <div className="space-y-4">
+                {renderSelect('הצג סטטוס מלאי', 'show_stock_status', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_stock_status', false) && (
+                  <>
+                    {renderSelect('הצג כמות במלאי', 'show_stock_count', [
+                      { label: 'תמיד', value: 'always' },
+                      { label: 'כשנמוך', value: 'low' },
+                      { label: 'לעולם לא', value: 'never' },
+                    ])}
+                    
+                    {renderInput('סף מלאי נמוך', 'low_stock_threshold', '5', 'number')}
+                  </>
+                )}
+                
+                {renderSelect('השבת וריאציות שאזלו', 'disable_unavailable', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הסתר וריאציות שאזלו', 'hide_unavailable', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תמונות">
+              <div className="space-y-4">
+                {renderSelect('החלף תמונה בבחירת וריאציה', 'change_image_on_select', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_add_to_cart':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כפתור הוסף לסל">
+              <div className="space-y-4">
+                {renderInput('טקסט כפתור', 'button_text', 'הוסף לסל')}
+                
+                {renderSelect('סגנון כפתור', 'button_style', [
+                  { label: 'מלא (Solid)', value: 'solid' },
+                  { label: 'מסגרת (Outline)', value: 'outline' },
+                ])}
+                
+                {renderColorPicker('צבע רקע כפתור', 'button_bg_color')}
+                {renderColorPicker('צבע טקסט כפתור', 'button_text_color')}
+                
+                {renderSelect('רדיוס פינות', 'button_radius', [
+                  { label: 'ללא', value: '0' },
+                  { label: 'קטן', value: '4px' },
+                  { label: 'בינוני', value: '8px' },
+                  { label: 'מעוגל', value: '9999px' },
+                ])}
+                
+                {renderSelect('רוחב כפתור', 'button_width', [
+                  { label: 'רוחב מלא', value: 'full' },
+                  { label: 'אוטומטי', value: 'auto' },
+                ])}
+                
+                {renderSelect('הצג אייקון עגלה', 'show_cart_icon', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="בורר כמות">
+              <div className="space-y-4">
+                {renderSelect('הצג בורר כמות', 'show_quantity_selector', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_quantity_selector', true) !== false && (
+                  <>
+                    {renderSelect('סגנון בורר כמות', 'quantity_style', [
+                      { label: 'כפתורי +/-', value: 'buttons' },
+                      { label: 'שדה מספר', value: 'input' },
+                      { label: 'רשימה נפתחת', value: 'dropdown' },
+                    ])}
+                    
+                    {renderInput('כמות מקסימלית', 'max_quantity', '10', 'number')}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="כפתור קנה עכשיו">
+              <div className="space-y-4">
+                {renderSelect('הצג כפתור "קנה עכשיו"', 'show_buy_now', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_buy_now', true) !== false && (
+                  <>
+                    {renderInput('טקסט כפתור', 'buy_now_text', 'קנה עכשיו')}
+                    {renderColorPicker('צבע רקע', 'buy_now_bg_color')}
+                    {renderColorPicker('צבע טקסט', 'buy_now_text_color')}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="פעולות נוספות">
+              <div className="space-y-4">
+                {renderSelect('הצג כפתור "הוסף למועדפים"', 'show_wishlist', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג כפתור "השווה"', 'show_compare', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג כפתור שיתוף', 'show_share', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="התראות">
+              <div className="space-y-4">
+                {renderSelect('הצג הודעה לאחר הוספה', 'show_add_notification', [
+                  { label: 'פופאפ', value: 'popup' },
+                  { label: 'הודעה בעמוד', value: 'inline' },
+                  { label: 'ללא', value: 'none' },
+                ])}
+                
+                {renderSelect('הפעל "הודע כשיחזור למלאי"', 'enable_back_in_stock', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_description':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תצוגה">
+              <div className="space-y-4">
+                {renderSelect('סגנון תצוגה', 'display_style', [
+                  { label: 'פתוח', value: 'open' },
+                  { label: 'אקורדיון (מתקפל)', value: 'accordion' },
+                  { label: 'טאבים', value: 'tabs' },
+                ])}
+                
+                {renderInput('כותרת', 'title', 'תיאור המוצר')}
+                
+                {renderSelect('גודל כותרת', 'title_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תוכן">
+              <div className="space-y-4">
+                {renderSelect('הצג קרא עוד', 'show_read_more', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_read_more', false) && (
+                  renderInput('מספר תווים לתצוגה', 'truncate_length', '300', 'number')
+                )}
+                
+                {renderSelect('גודל פונט', 'font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+                
+                {renderColorPicker('צבע טקסט', 'text_color')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_custom_fields':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תצוגה">
+              <div className="space-y-4">
+                {renderSelect('סגנון תצוגה', 'display_style', [
+                  { label: 'טבלה', value: 'table' },
+                  { label: 'רשימה', value: 'list' },
+                  { label: 'רשת', value: 'grid' },
+                  { label: 'אקורדיון', value: 'accordion' },
+                ])}
+                
+                {renderInput('כותרת', 'title', 'מפרט טכני')}
+                
+                {renderSelect('הצג כותרת', 'show_title', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {getValue('display_style', 'table') === 'table' && (
+                  <>
+                    {renderSelect('רקע שורות לסירוגין', 'striped_rows', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                    
+                    {renderSelect('קווי מפריד', 'show_borders', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+                
+                {getValue('display_style', 'table') === 'grid' && (
+                  renderSelect('עמודות', 'grid_columns', [
+                    { label: '2 עמודות', value: 2 },
+                    { label: '3 עמודות', value: 3 },
+                    { label: '4 עמודות', value: 4 },
+                  ])
+                )}
+                
+                {renderColorPicker('צבע שם שדה', 'label_color')}
+                {renderColorPicker('צבע ערך שדה', 'value_color')}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="אייקונים">
+              <div className="space-y-4">
+                {renderSelect('הצג אייקונים', 'show_icons', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_reviews':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כללי">
+              <div className="space-y-4">
+                {renderInput('כותרת', 'title', 'ביקורות לקוחות')}
+                
+                {renderSelect('הצג סיכום דירוגים', 'show_rating_summary', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('show_rating_summary', true) !== false && (
+                  <>
+                    {renderSelect('סגנון סיכום', 'summary_style', [
+                      { label: 'מלא עם גרף', value: 'full' },
+                      { label: 'קומפקטי', value: 'compact' },
+                    ])}
+                    
+                    {renderSelect('הצג חלוקת כוכבים', 'show_rating_breakdown', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="רשימת ביקורות">
+              <div className="space-y-4">
+                {renderInput('ביקורות לעמוד', 'reviews_per_page', '5', 'number')}
+                
+                {renderSelect('מיון ברירת מחדל', 'default_sort', [
+                  { label: 'חדשות ביותר', value: 'newest' },
+                  { label: 'דירוג גבוה', value: 'highest' },
+                  { label: 'דירוג נמוך', value: 'lowest' },
+                  { label: 'מועילות', value: 'helpful' },
+                ])}
+                
+                {renderSelect('אפשר סינון', 'enable_filter', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג תמונות מביקורות', 'show_review_images', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="כתיבת ביקורת">
+              <div className="space-y-4">
+                {renderSelect('אפשר כתיבת ביקורת', 'allow_reviews', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {getValue('allow_reviews', true) !== false && (
+                  <>
+                    {renderSelect('דרוש אימות רכישה', 'require_purchase', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                    
+                    {renderSelect('אפשר העלאת תמונות', 'allow_images', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderColorPicker('צבע כוכבים', 'star_color')}
+                {renderColorPicker('צבע כוכבים ריקים', 'empty_star_color')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'related_products':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כללי">
+              <div className="space-y-4">
+                {renderInput('כותרת', 'title', 'מוצרים קשורים')}
+                
+                {renderSelect('גודל כותרת', 'title_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+                
+                {renderSelect('יישור כותרת', 'title_alignment', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מוצרים">
+              <div className="space-y-4">
+                {renderInput('מספר מוצרים', 'products_count', '4', 'number')}
+                
+                {renderSelect('מוצרים בשורה (דסקטופ)', 'columns_desktop', [
+                  { label: '2', value: 2 },
+                  { label: '3', value: 3 },
+                  { label: '4', value: 4 },
+                  { label: '5', value: 5 },
+                  { label: '6', value: 6 },
+                ])}
+                
+                {renderSelect('מוצרים בשורה (מובייל)', 'columns_mobile', [
+                  { label: '1', value: 1 },
+                  { label: '2', value: 2 },
+                ])}
+                
+                {renderSelect('מקור מוצרים', 'source', [
+                  { label: 'אוטומטי (קטגוריה)', value: 'auto' },
+                  { label: 'בחירה ידנית', value: 'manual' },
+                  { label: 'נרכשו יחד', value: 'bought_together' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תצוגת כרטיס מוצר">
+              <div className="space-y-4">
+                {renderSelect('הצג מחיר', 'show_price', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג דירוג', 'show_rating', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג כפתור הוספה מהירה', 'show_quick_add', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג תגיות מבצע', 'show_badges', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('סגנון תצוגה', 'layout_style', [
+                  { label: 'רשת', value: 'grid' },
+                  { label: 'סליידר', value: 'carousel' },
+                ])}
+                
+                {getValue('layout_style', 'grid') === 'carousel' && (
+                  <>
+                    {renderSelect('הצג חיצים', 'show_arrows', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                    
+                    {renderSelect('הצג נקודות', 'show_dots', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                    
+                    {renderSelect('גלילה אוטומטית', 'autoplay', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'product_recently_viewed':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כללי">
+              <div className="space-y-4">
+                {renderInput('כותרת', 'title', 'נצפו לאחרונה')}
+                
+                {renderSelect('גודל כותרת', 'title_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="מוצרים">
+              <div className="space-y-4">
+                {renderInput('מספר מוצרים להצגה', 'products_count', '4', 'number')}
+                
+                {renderSelect('מוצרים בשורה (דסקטופ)', 'columns_desktop', [
+                  { label: '2', value: 2 },
+                  { label: '3', value: 3 },
+                  { label: '4', value: 4 },
+                  { label: '5', value: 5 },
+                  { label: '6', value: 6 },
+                ])}
+                
+                {renderSelect('מוצרים בשורה (מובייל)', 'columns_mobile', [
+                  { label: '1', value: 1 },
+                  { label: '2', value: 2 },
+                ])}
+                
+                {renderSelect('הסתר מוצר נוכחי', 'hide_current', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תצוגת כרטיס מוצר">
+              <div className="space-y-4">
+                {renderSelect('הצג מחיר', 'show_price', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                
+                {renderSelect('הצג כפתור הוספה מהירה', 'show_quick_add', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('סגנון תצוגה', 'layout_style', [
+                  { label: 'רשת', value: 'grid' },
+                  { label: 'סליידר', value: 'carousel' },
+                ])}
+                
+                {getValue('layout_style', 'grid') === 'carousel' && (
+                  <>
+                    {renderSelect('הצג חיצים', 'show_arrows', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                    
+                    {renderSelect('הצג נקודות', 'show_dots', [
+                      { label: 'כן', value: true },
+                      { label: 'לא', value: false },
+                    ])}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
       default:
         return (
           <div className="p-6 text-center text-gray-500">

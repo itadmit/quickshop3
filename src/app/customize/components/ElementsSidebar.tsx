@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SectionSettings, SectionType } from '@/lib/customizer/types';
+import { getPageSpecificSections } from '@/lib/customizer/templates/new-york';
 import {
   DndContext,
   closestCenter,
@@ -49,16 +50,36 @@ interface ElementsSidebarProps {
   onSectionDelete: (sectionId: string) => void;
   onSectionMove: (sectionId: string, newPosition: number) => void;
   onSectionUpdate?: (sectionId: string, updates: Partial<SectionSettings>) => void;
+  pageType?: string;
 }
 
-type CategoryType = 'media' | 'store' | 'content' | 'marketing';
+type CategoryType = 'media' | 'store' | 'content' | 'marketing' | 'page-specific';
 
-const CATEGORIES: { id: CategoryType; name: string; icon: React.ComponentType<any> }[] = [
+const BASE_CATEGORIES: { id: CategoryType; name: string; icon: React.ComponentType<any> }[] = [
   { id: 'media', name: 'מדיה ותמונה', icon: HiPhotograph },
   { id: 'store', name: 'חנות ומוצרים', icon: HiCube },
   { id: 'content', name: 'תוכן ומידע', icon: HiDocumentText },
   { id: 'marketing', name: 'שיווק וקשר', icon: HiMail },
 ];
+
+// Icon mapping for page-specific sections
+const PAGE_SECTION_ICONS: Record<string, React.ComponentType<any>> = {
+  product_gallery: HiPhotograph,
+  product_title: HiDocumentText,
+  product_price: HiCube,
+  product_variants: HiViewList,
+  product_add_to_cart: HiCube,
+  product_description: HiDocumentText,
+  product_custom_fields: HiViewList,
+  product_reviews: HiChatAlt2,
+  related_products: HiCube,
+  recently_viewed: HiEye,
+  collection_header: HiClipboardList,
+  collection_description: HiDocumentText,
+  collection_filters: HiViewList,
+  collection_products: HiCube,
+  collection_pagination: HiViewList,
+};
 
 const AVAILABLE_SECTIONS: Array<{
   type: SectionType;
@@ -166,6 +187,107 @@ const AVAILABLE_SECTIONS: Array<{
     category: 'marketing'
   }
 ];
+
+// Add Section Menu Component
+interface AddSectionMenuProps {
+  pageType: string;
+  activeCategory: CategoryType | 'page-specific';
+  setActiveCategory: (category: CategoryType | 'page-specific') => void;
+  onAddSection: (type: SectionType) => void;
+}
+
+function AddSectionMenu({ pageType, activeCategory, setActiveCategory, onAddSection }: AddSectionMenuProps) {
+  // Get page-specific sections
+  const pageSpecificSections = useMemo(() => {
+    const sections = getPageSpecificSections(pageType);
+    return sections.map(s => ({
+      type: s.type as SectionType,
+      name: s.name,
+      description: s.description,
+      icon: PAGE_SECTION_ICONS[s.type] || HiDocumentText,
+      category: 'page-specific' as CategoryType
+    }));
+  }, [pageType]);
+
+  // Build categories - add page-specific for product/collection pages
+  const categories = useMemo(() => {
+    if (pageType === 'home') {
+      return BASE_CATEGORIES;
+    }
+    const pageSpecificCategory = {
+      id: 'page-specific' as CategoryType,
+      name: pageType === 'product' ? 'עמוד מוצר' : 'עמוד קטגוריה',
+      icon: HiCube
+    };
+    return [pageSpecificCategory, ...BASE_CATEGORIES];
+  }, [pageType]);
+
+  // Get sections to display based on active category
+  const sectionsToDisplay = useMemo(() => {
+    if (activeCategory === 'page-specific') {
+      return pageSpecificSections;
+    }
+    return AVAILABLE_SECTIONS.filter(s => s.category === activeCategory);
+  }, [activeCategory, pageSpecificSections]);
+
+  return (
+    <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[400px] w-[320px] -right-4">
+      {/* Categories Tabs */}
+      <div className="flex overflow-x-auto border-b border-gray-100 scrollbar-hide bg-gray-50/50 flex-shrink-0">
+        {categories.map(category => (
+          <button
+            key={category.id}
+            onClick={() => setActiveCategory(category.id)}
+            className={`flex flex-col items-center justify-center py-3 px-4 min-w-[70px] text-xs font-medium border-b-2 transition-colors ${
+              activeCategory === category.id
+                ? 'border-black text-black bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
+            }`}
+          >
+            {React.createElement(category.icon, { className: "w-5 h-5 mb-1" })}
+            {category.name.split(' ')[0]}
+          </button>
+        ))}
+      </div>
+
+      {/* Sections List */}
+      <div className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
+        <div className="space-y-1">
+          {sectionsToDisplay.map((section) => (
+            <button
+              key={section.type}
+              onClick={() => onAddSection(section.type)}
+              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-right group border border-transparent hover:border-gray-100"
+            >
+              <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm">
+                {React.createElement(section.icon, { className: "w-6 h-6" })}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
+                  {section.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {section.description}
+                </p>
+              </div>
+            </button>
+          ))}
+          
+          {sectionsToDisplay.length === 0 && (
+            <div className="py-8 text-center text-gray-400 text-sm">
+              אין סקשנים בקטגוריה זו
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Footer hint */}
+      <div className="p-2 bg-gray-50 border-t border-gray-100 text-center flex-shrink-0">
+        <p className="text-[10px] text-gray-400">בחר קטגוריה למעלה והוסף סקשן לעמוד</p>
+      </div>
+    </div>
+  );
+}
 
 // Sortable Section Item Component
 interface SortableSectionItemProps {
@@ -295,10 +417,13 @@ export function ElementsSidebar({
   onSectionAdd,
   onSectionDelete,
   onSectionMove,
-  onSectionUpdate
+  onSectionUpdate,
+  pageType = 'home'
 }: ElementsSidebarProps) {
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<CategoryType>('media');
+  const [activeCategory, setActiveCategory] = useState<CategoryType | 'page-specific'>(
+    pageType === 'home' ? 'media' : 'page-specific'
+  );
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -407,64 +532,12 @@ export function ElementsSidebar({
 
           {/* Add Menu Overlay */}
           {showAddMenu && (
-            <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[400px] w-[320px] -right-4">
-              
-              {/* Categories Tabs */}
-              <div className="flex overflow-x-auto border-b border-gray-100 scrollbar-hide bg-gray-50/50 flex-shrink-0">
-                {CATEGORIES.map(category => (
-                    <button
-                        key={category.id}
-                        onClick={() => setActiveCategory(category.id)}
-                        className={`flex flex-col items-center justify-center py-3 px-4 min-w-[70px] text-xs font-medium border-b-2 transition-colors ${
-                            activeCategory === category.id
-                                ? 'border-black text-black bg-white'
-                                : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
-                        }`}
-                    >
-                        {React.createElement(category.icon, { className: "w-5 h-5 mb-1" })}
-                        {category.name.split(' ')[0]}
-                    </button>
-                ))}
-              </div>
-
-              {/* Sections List */}
-              <div className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
-                <div className="space-y-1">
-                  {AVAILABLE_SECTIONS
-                    .filter(section => section.category === activeCategory)
-                    .map((section) => (
-                  <button
-                    key={section.type}
-                    onClick={() => handleAddSection(section.type)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-right group border border-transparent hover:border-gray-100"
-                  >
-                      <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm">
-                        {React.createElement(section.icon, { className: "w-6 h-6" })}
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
-                        {section.name}
-                      </p>
-                        <p className="text-xs text-gray-500">
-                        {section.description}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-                  
-                  {AVAILABLE_SECTIONS.filter(section => section.category === activeCategory).length === 0 && (
-                      <div className="py-8 text-center text-gray-400 text-sm">
-                          אין סקשנים בקטגוריה זו
-                      </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Footer hint */}
-              <div className="p-2 bg-gray-50 border-t border-gray-100 text-center flex-shrink-0">
-                  <p className="text-[10px] text-gray-400">בחר קטגוריה למעלה והוסף סקשן לעמוד</p>
-              </div>
-            </div>
+            <AddSectionMenu 
+              pageType={pageType}
+              activeCategory={activeCategory}
+              setActiveCategory={setActiveCategory}
+              onAddSection={handleAddSection}
+            />
           )}
         </div>
       </div>

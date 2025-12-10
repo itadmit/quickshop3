@@ -7,8 +7,8 @@ import { Header, DeviceType } from './Header';
 import { SettingsAndStylePanel } from './SettingsAndStylePanel';
 import { ElementsSidebar } from './ElementsSidebar';
 import { TemplatesModal } from './TemplatesModal';
-import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
-import { EditorState, SectionSettings } from '@/lib/customizer/types';
+import { NEW_YORK_TEMPLATE, getDefaultSectionsForPage } from '@/lib/customizer/templates/new-york';
+import { EditorState, SectionSettings, PageType } from '@/lib/customizer/types';
 import { getSectionName } from '@/lib/customizer/sectionNames';
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
 
@@ -52,29 +52,75 @@ export function CustomizerLayout() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [currentPageType, setCurrentPageType] = useState<PageType>('home');
+  
+  // Sample product for product page preview
+  const [sampleProduct, setSampleProduct] = useState<any>(null);
+  // Sample collection for collection page preview
+  const [sampleCollection, setSampleCollection] = useState<any>(null);
+  
+  // Store sections for each page type to preserve changes when switching
+  const [pageSectionsCache, setPageSectionsCache] = useState<Record<PageType, SectionSettings[]>>({
+    home: [],
+    product: [],
+    collection: [],
+    cart: [],
+    checkout: [],
+    page: []
+  });
 
   // Load initial page data
   useEffect(() => {
-    loadPageData();
+    loadPageData('home');
   }, []);
 
-  const loadPageData = useCallback(async () => {
+  const loadPageData = useCallback(async (pageType: PageType = 'home') => {
     try {
-      const response = await fetch('/api/customizer/pages?pageType=home');
+      setIsLoading(true);
+      
+      // Check if we have cached sections for this page type
+      if (pageSectionsCache[pageType] && pageSectionsCache[pageType].length > 0) {
+        setPageSections(pageSectionsCache[pageType]);
+        setCurrentPageType(pageType);
+        setIsLoading(false);
+        return;
+      }
+      
+      const response = await fetch(`/api/customizer/pages?pageType=${pageType}`);
       const data = await response.json();
 
       let sections: SectionSettings[] = [];
       if (data.sections && data.sections.length > 0) {
         sections = data.sections;
       } else {
-        // Load default New York template
-        sections = NEW_YORK_TEMPLATE.sections;
+        // Load default sections for this page type from New York template
+        sections = getDefaultSectionsForPage(pageType);
       }
 
       // Get store info and collections from API response
       const storeName = data.store?.name || 'החנות שלי';
       const storeLogo = data.store?.logo || null;
       const collections = data.collections || [];
+      
+      // Load sample product for product page preview
+      if (pageType === 'product' && !sampleProduct) {
+        try {
+          const productResponse = await fetch('/api/products?limit=1');
+          if (productResponse.ok) {
+            const productData = await productResponse.json();
+            if (productData.products && productData.products.length > 0) {
+              setSampleProduct(productData.products[0]);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading sample product:', error);
+        }
+      }
+      
+      // Load sample collection for collection page preview
+      if (pageType === 'collection' && !sampleCollection && collections.length > 0) {
+        setSampleCollection(collections[0]);
+      }
       
       // Store the store slug for preview
       if (data.store?.slug) {
@@ -310,19 +356,44 @@ export function CustomizerLayout() {
       console.log('Loaded sections:', sections.map(s => ({ id: s.id, type: s.type, visible: s.visible, hasSettings: !!s.settings })));
 
       setPageSections(sections);
+      setCurrentPageType(pageType);
+      
+      // Cache the sections for this page type
+      setPageSectionsCache(prev => ({
+        ...prev,
+        [pageType]: sections
+      }));
     } catch (error) {
       console.error('Error loading page data:', error);
-      // Fallback to default template with header/footer
-      const sections = [...NEW_YORK_TEMPLATE.sections];
+      // Fallback to default template for this page type
+      const sections = [...getDefaultSectionsForPage(pageType)];
       const headerIndex = sections.findIndex(s => s.type === 'header');
       const footerIndex = sections.findIndex(s => s.type === 'footer');
       if (headerIndex >= 0) sections[headerIndex].locked = true;
       if (footerIndex >= 0) sections[footerIndex].locked = true;
       setPageSections(sections);
+      setCurrentPageType(pageType);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pageSectionsCache]);
+  
+  // Handle page type change
+  const handlePageTypeChange = useCallback((newPageType: PageType) => {
+    if (newPageType === currentPageType) return;
+    
+    // Save current sections to cache before switching
+    setPageSectionsCache(prev => ({
+      ...prev,
+      [currentPageType]: pageSections
+    }));
+    
+    // Clear selection when switching pages
+    setSelectedSectionId(null);
+    
+    // Load the new page type
+    loadPageData(newPageType);
+  }, [currentPageType, pageSections, loadPageData]);
 
   const handleDeviceChange = useCallback((device: DeviceType) => {
     setEditorState(prev => ({ ...prev, device }));
@@ -685,7 +756,7 @@ export function CustomizerLayout() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          pageType: 'home',
+          pageType: currentPageType,
           sections: pageSections,
           isPublished: true
         }),
@@ -800,6 +871,8 @@ export function CustomizerLayout() {
         device={editorState.device}
         onDeviceChange={handleDeviceChange}
         isPublishing={isPublishing}
+        pageType={currentPageType}
+        onPageTypeChange={handlePageTypeChange}
       />
 
       {/* Templates Modal */}
@@ -822,6 +895,7 @@ export function CustomizerLayout() {
             onSectionDelete={handleSectionDelete}
             onSectionMove={handleSectionMove}
             onSectionUpdate={handleSectionUpdate}
+            pageType={currentPageType}
           />
         </div>
 
@@ -837,6 +911,9 @@ export function CustomizerLayout() {
             onSectionSelect={handleSectionSelect}
             onSectionUpdate={handleSectionUpdate}
             onSectionDelete={handleSectionDelete}
+            pageType={currentPageType}
+            sampleProduct={sampleProduct}
+            sampleCollection={sampleCollection}
           />
         </div>
 

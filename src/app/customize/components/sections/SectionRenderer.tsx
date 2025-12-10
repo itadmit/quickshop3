@@ -22,14 +22,30 @@ import { VideoSection } from './VideoSection';
 import { ContactForm } from './ContactForm';
 import { LogoList } from './LogoList';
 
+// Import product page section components
+import {
+  ProductGallerySection,
+  ProductTitleSection,
+  ProductPriceSection,
+  ProductVariantsSection,
+  ProductAddToCartSection,
+  ProductDescriptionSection,
+  ProductCustomFieldsSection,
+  ProductReviewsSection,
+  RelatedProductsSection,
+  RecentlyViewedSection
+} from './ProductPageSections';
+
 interface SectionRendererProps {
   section: SectionSettings;
   isSelected: boolean;
   onUpdate: (updates: Partial<SectionSettings>) => void;
   device?: DeviceType; // Add device prop
+  sampleProduct?: any; // Sample product for product page preview
+  sampleCollection?: any; // Sample collection for collection page preview
 }
 
-export function SectionRenderer({ section, isSelected, onUpdate, device = 'desktop' }: SectionRendererProps) {
+export function SectionRenderer({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection }: SectionRendererProps) {
   
   // Get responsive style
   const style = getResponsiveStyle(section, device);
@@ -215,6 +231,77 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     case 'footer':
       // Footer should not be wrapped with SectionWrapper padding/spacing
       return <Footer section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />;
+
+    // ========== Product Page Sections ==========
+    case 'product_gallery':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductGallerySection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_name':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductTitleSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_price':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductPriceSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_variations':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductVariantsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_add_to_cart':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductAddToCartSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_description':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductDescriptionSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_custom_fields':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductCustomFieldsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_reviews':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductReviewsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'related_products':
+      return (
+        <SectionWrapper className="py-8">
+          <RelatedProductsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_recently_viewed':
+      return (
+        <SectionWrapper className="py-8">
+          <RecentlyViewedSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
 
     default:
       // Generic section for unknown types

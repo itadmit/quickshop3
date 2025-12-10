@@ -31,15 +31,18 @@ export type SectionType =
   | 'header'
   // Product page sections
   | 'product_title'
+  | 'product_name'
   | 'product_price'
   | 'product_description'
   | 'product_variants'
+  | 'product_variations'
   | 'product_add_to_cart'
   | 'product_gallery'
   | 'product_custom_fields'
   | 'product_reviews'
   | 'related_products'
   | 'recently_viewed'
+  | 'product_recently_viewed'
   // Collection page sections
   | 'collection_header'
   | 'collection_description'
