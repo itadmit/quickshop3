@@ -81,7 +81,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
           )}
           {settings.show_view_all !== false && (
             <a 
-              href={settings.view_all_url || '/collections/all'}
+              href={settings.view_all_url || '/categories/all'}
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
             >
               {settings.view_all_text || 'לכל המוצרים'}

@@ -424,7 +424,7 @@ export async function addSection(data: AddSectionRequest) {
             heading: 'ברוכים הבאים',
             description: 'גלה את הקולקציה החדשה שלנו',
             button_text: 'קנה עכשיו',
-            button_link: '/collections/all'
+            button_link: '/categories/all'
           })
         ]
       );

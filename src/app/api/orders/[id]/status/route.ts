@@ -45,6 +45,23 @@ export async function POST(
       values.push(body.financial_status);
       paramIndex++;
 
+      // If status changed to voided, decrement usage_count for discount codes
+      if (body.financial_status === 'voided' && existingOrder.financial_status !== 'voided') {
+        // Get discount codes from order
+        if (existingOrder.discount_codes && Array.isArray(existingOrder.discount_codes)) {
+          for (const code of existingOrder.discount_codes) {
+            if (code && typeof code === 'string') {
+              await queryOne(
+                `UPDATE discount_codes 
+                 SET usage_count = GREATEST(0, usage_count - 1), updated_at = now()
+                 WHERE store_id = $1 AND code = $2`,
+                [user.store_id, code.toUpperCase()]
+              );
+            }
+          }
+        }
+      }
+
       // If status changed to paid, emit order.paid event
       if (body.financial_status === 'paid' && existingOrder.financial_status !== 'paid') {
         await eventBus.emitEvent('order.paid', {
@@ -66,6 +83,37 @@ export async function POST(
       updates.push(`fulfillment_status = $${paramIndex}`);
       values.push(body.fulfillment_status);
       paramIndex++;
+
+      // If status changed to canceled, decrement usage_count for discount codes
+      if (body.fulfillment_status === 'canceled' && existingOrder.fulfillment_status !== 'canceled') {
+        // Get discount codes from order
+        if (existingOrder.discount_codes && Array.isArray(existingOrder.discount_codes)) {
+          for (const code of existingOrder.discount_codes) {
+            if (code && typeof code === 'string') {
+              await queryOne(
+                `UPDATE discount_codes 
+                 SET usage_count = GREATEST(0, usage_count - 1), updated_at = now()
+                 WHERE store_id = $1 AND code = $2`,
+                [user.store_id, code.toUpperCase()]
+              );
+            }
+          }
+        }
+        
+        // Emit order.cancelled event
+        await eventBus.emitEvent('order.cancelled', {
+          order: {
+            id: existingOrder.id,
+            order_number: existingOrder.order_number,
+            order_name: existingOrder.order_name,
+            line_items: [], // Will be loaded by listener if needed
+          },
+        }, {
+          store_id: user.store_id,
+          source: 'api',
+          user_id: user.id,
+        });
+      }
 
       // If status changed to fulfilled, emit order.fulfilled event
       if (body.fulfillment_status === 'fulfilled' && existingOrder.fulfillment_status !== 'fulfilled') {

@@ -101,17 +101,42 @@ export async function PUT(
         quantity: available,
       }, {
         store_id: storeId,
-        source: 'api',
+        source: 'inventory',
         user_id: user.id,
       });
     }
 
+    const oldQuantity = existingVariant.inventory_quantity || 0;
+    const change = available - oldQuantity;
+
+    // Save inventory history directly to system_logs
+    await query(
+      `INSERT INTO system_logs (store_id, level, source, message, context)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        storeId,
+        'info',
+        'inventory',
+        `עדכון מלאי: ${change > 0 ? '+' : ''}${change} יחידות (${oldQuantity} → ${available})`,
+        JSON.stringify({
+          variant_id: variantId,
+          old_quantity: oldQuantity,
+          new_quantity: available,
+          change: change,
+          reason: 'manual_adjustment',
+          user_id: user.id,
+        })
+      ]
+    );
+
     await eventBus.emitEvent('inventory.updated', {
       variant_id: variantId,
       quantity: available,
+      old_quantity: oldQuantity,
+      change: change,
     }, {
       store_id: storeId,
-      source: 'api',
+      source: 'inventory',
       user_id: user.id,
     });
 

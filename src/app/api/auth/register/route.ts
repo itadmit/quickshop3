@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, query, queryOne } from '@/lib/db';
 import { hashPassword, generateToken, setSessionCookie } from '@/lib/auth';
 import { eventBus } from '@/lib/events/eventBus';
+// Initialize event listeners
+import '@/lib/events/listeners';
 
 // Generate Quickshop domain identifier
 function generateQuickshopDomain(storeName: string): string {
@@ -107,7 +109,6 @@ export async function POST(req: NextRequest) {
       const store = storeResult.rows[0];
 
       await client.query('COMMIT');
-
 
       // Generate token
       const token = await generateToken({

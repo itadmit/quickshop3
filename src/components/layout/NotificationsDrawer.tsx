@@ -18,32 +18,57 @@ interface NotificationsDrawerProps {
 }
 
 export function NotificationsDrawer({ isOpen, onClose }: NotificationsDrawerProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 1,
-      type: 'success',
-      title: 'הזמנה חדשה',
-      message: 'התקבלה הזמנה חדשה #1001 בסך ₪450',
-      time: 'לפני 5 דקות',
-      read: false,
-    },
-    {
-      id: 2,
-      type: 'info',
-      title: 'עדכון מערכת',
-      message: 'עדכון חדש זמין למערכת - עדכן עכשיו',
-      time: 'לפני שעה',
-      read: false,
-    },
-    {
-      id: 3,
-      type: 'warning',
-      title: 'מלאי נמוך',
-      message: 'מוצר "חולצה כחולה" נותר עם 3 יחידות בלבד',
-      time: 'לפני 3 שעות',
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load notifications from API
+  useEffect(() => {
+    if (isOpen) {
+      loadNotifications();
+    }
+  }, [isOpen]);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/notifications?limit=50', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const notificationsData = data.notifications || [];
+        
+        // Map API data to component format
+        const mappedNotifications: Notification[] = notificationsData.map((n: any) => ({
+          id: n.id,
+          type: n.notification_type?.includes('error') ? 'error' :
+                n.notification_type?.includes('warning') ? 'warning' :
+                n.notification_type?.includes('success') ? 'success' : 'info',
+          title: n.title,
+          message: n.message,
+          time: formatTimeAgo(n.created_at),
+          read: n.is_read || false,
+        }));
+        
+        setNotifications(mappedNotifications);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (date: string | Date) => {
+    const now = new Date();
+    const notificationDate = new Date(date);
+    const diffInSeconds = Math.floor((now.getTime() - notificationDate.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'עכשיו';
+    if (diffInSeconds < 3600) return `לפני ${Math.floor(diffInSeconds / 60)} דקות`;
+    if (diffInSeconds < 86400) return `לפני ${Math.floor(diffInSeconds / 3600)} שעות`;
+    return `לפני ${Math.floor(diffInSeconds / 86400)} ימים`;
+  };
 
   // Close on escape key
   useEffect(() => {
@@ -107,7 +132,11 @@ export function NotificationsDrawer({ isOpen, onClose }: NotificationsDrawerProp
 
         {/* Notifications List */}
         <div className="flex-1 overflow-y-auto">
-          {notifications.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <div className="animate-pulse">טוען...</div>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <HiInformationCircle className="w-12 h-12 mb-4 text-gray-300" />
               <p className="text-lg">אין עדכונים חדשים</p>
@@ -120,13 +149,26 @@ export function NotificationsDrawer({ isOpen, onClose }: NotificationsDrawerProp
                   className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
                     !notification.read ? 'bg-blue-50' : ''
                   }`}
-                  onClick={() => {
-                    // Mark as read
-                    setNotifications(prev =>
-                      prev.map(n =>
-                        n.id === notification.id ? { ...n, read: true } : n
-                      )
-                    );
+                  onClick={async () => {
+                    // Mark as read via API
+                    if (!notification.read) {
+                      try {
+                        await fetch(`/api/notifications/${notification.id}`, {
+                          method: 'PUT',
+                          credentials: 'include',
+                        });
+                        // Update local state
+                        setNotifications(prev =>
+                          prev.map(n =>
+                            n.id === notification.id ? { ...n, read: true } : n
+                          )
+                        );
+                        // Emit event to update sidebar count
+                        window.dispatchEvent(new Event('notificationMarkedAsRead'));
+                      } catch (error) {
+                        console.error('Error marking notification as read:', error);
+                      }
+                    }
                   }}
                 >
                   <div className="flex items-start gap-3">
@@ -152,8 +194,19 @@ export function NotificationsDrawer({ isOpen, onClose }: NotificationsDrawerProp
         {notifications.length > 0 && (
           <div className="p-4 border-t border-gray-200">
             <button
-              onClick={() => {
-                setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+              onClick={async () => {
+                try {
+                  await fetch('/api/notifications/read-all', {
+                    method: 'PUT',
+                    credentials: 'include',
+                  });
+                  // Update local state
+                  setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                  // Emit event to update sidebar count
+                  window.dispatchEvent(new Event('notificationMarkedAsRead'));
+                } catch (error) {
+                  console.error('Error marking all notifications as read:', error);
+                }
               }}
               className="w-full text-center text-sm text-gray-600 hover:text-gray-900 py-2"
             >

@@ -68,6 +68,52 @@ if (!QSTASH_TOKEN) {
   process.exit(1);
 }
 
+/**
+ * בדיקת הגדרות לאוטומציות
+ */
+async function checkAutomationsSetup(qstash, appUrl) {
+  try {
+    const resumeUrl = `${appUrl}/api/automations/resume`;
+    console.log(`   📍 Endpoint לאוטומציות: ${resumeUrl}`);
+    
+    // בדיקה שהטוקן תקין לשימוש ב-delay
+    if (QSTASH_TOKEN && QSTASH_TOKEN.length >= 20) {
+      console.log('   ✓ QStash Token מוגדר נכון');
+      console.log('   ✓ Token תקין לשימוש ב-delay באוטומציות');
+    } else {
+      console.log('   ⚠️  QStash Token לא תקין - אוטומציות עם המתנה לא יעבדו');
+    }
+    
+    // בדיקה שה-APP_URL מוגדר
+    if (appUrl && !appUrl.includes('localhost')) {
+      console.log('   ✓ APP_URL מוגדר נכון');
+    } else {
+      console.log('   ⚠️  APP_URL לא מוגדר או הוא localhost - אוטומציות לא יעבדו בפרודקשן');
+    }
+    
+    console.log('\n   📝 איך זה עובד:');
+    console.log('      • אוטומציות לא צריכות CRON job - הן משתמשות ב-QStash delay');
+    console.log('      • כשאוטומציה מגיעה לפעולת "המתן", היא שולחת בקשה ל-QStash עם delay');
+    console.log('      • QStash ממתין את הזמן (שניות, דקות, שעות, ימים, שבועות)');
+    console.log('      • אחרי ההמתנה, QStash קורא ל-/api/automations/resume');
+    console.log('      • האוטומציה ממשיכה אוטומטית מהמקום שבו עצרה');
+    console.log('\n   💡 דוגמה:');
+    console.log('      הזמנה נוצרה → המתן 2 שבועות → שלח מייל');
+    console.log('      האוטומציה תמתין 2 שבועות ואז תשלח את המייל אוטומטית');
+    
+    if (QSTASH_TOKEN && QSTASH_TOKEN.length >= 20 && appUrl && !appUrl.includes('localhost')) {
+      console.log('\n   ✅ הכל מוכן לאוטומציות עם המתנה!');
+    } else {
+      console.log('\n   ⚠️  יש בעיות בהגדרות - בדוק את ה-QSTASH_TOKEN וה-APP_URL');
+    }
+    console.log('');
+    
+  } catch (error) {
+    console.log(`   ⚠️  אזהרה: ${error.message}`);
+    console.log('   💡 ודא שה-APP_URL נכון ושהאתר זמין\n');
+  }
+}
+
 async function setupQStashCron() {
   // בדיקה שהטוקן תקין
   if (!QSTASH_TOKEN || QSTASH_TOKEN.length < 20) {
@@ -100,6 +146,12 @@ async function setupQStashCron() {
       url: `${APP_URL}/api/cron/update-discounts-status`,
       schedule: '0 * * * *', // כל שעה
       description: 'עדכון סטטוס הנחות וקופונים לפי תאריכים',
+    },
+    {
+      name: 'Cleanup OTP Codes',
+      url: `${APP_URL}/api/cron/cleanup-otp-codes`,
+      schedule: '0 2 * * *', // כל יום בשעה 02:00
+      description: 'ניקוי קודי OTP ישנים (פג תוקף, שימשו, או יותר מדי ניסיונות)',
     },
   ];
 
@@ -162,7 +214,12 @@ async function setupQStashCron() {
     }
 
     console.log('\n✅ כל ה-CRON Jobs הוגדרו בהצלחה!\n');
-    console.log('💡 ניתן לבדוק את הסטטוס ב-https://console.upstash.com/qstash/schedules\n');
+    
+    // בדיקת הגדרות לאוטומציות
+    console.log('🔍 בודק הגדרות לאוטומציות...\n');
+    await checkAutomationsSetup(qstash, APP_URL);
+    
+    console.log('\n💡 ניתן לבדוק את הסטטוס ב-https://console.upstash.com/qstash/schedules\n');
 
   } catch (error) {
     console.error('❌ שגיאה בהגדרת QStash CRON:', error.message);

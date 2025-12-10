@@ -45,9 +45,11 @@ export async function PUT(
     const values: any[] = [];
     let paramIndex = 1;
 
-    if (body.title !== undefined) {
+    // תמיכה גם ב-label וגם ב-title
+    if (body.title !== undefined || body.label !== undefined) {
+      const titleValue = body.title !== undefined ? body.title : body.label;
       updates.push(`title = $${paramIndex}`);
-      values.push(body.title);
+      values.push(titleValue);
       paramIndex++;
     }
 

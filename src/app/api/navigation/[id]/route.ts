@@ -96,6 +96,12 @@ export async function PUT(
       paramIndex++;
     }
 
+    if (body.display_on !== undefined) {
+      updates.push(`display_on = $${paramIndex}`);
+      values.push(body.display_on);
+      paramIndex++;
+    }
+
     if (updates.length === 0) {
       return NextResponse.json(quickshopItem('navigation_menu', existingMenu));
     }
@@ -103,13 +109,42 @@ export async function PUT(
     updates.push(`updated_at = now()`);
     values.push(menuId, storeId);
 
-    const menu = await queryOne(
-      `UPDATE navigation_menus 
-       SET ${updates.join(', ')}
-       WHERE id = $${paramIndex} AND store_id = $${paramIndex + 1}
-       RETURNING *`,
-      values
-    );
+    let menu;
+    try {
+      menu = await queryOne(
+        `UPDATE navigation_menus 
+         SET ${updates.join(', ')}
+         WHERE id = $${paramIndex} AND store_id = $${paramIndex + 1}
+         RETURNING *`,
+        values
+      );
+    } catch (error: any) {
+      // אם השדה display_on לא קיים, נסיר אותו מה-updates וננסה שוב
+      if (error.message?.includes('display_on') || error.message?.includes('column')) {
+        const displayOnIndex = updates.findIndex(u => u.includes('display_on'));
+        if (displayOnIndex !== -1) {
+          updates.splice(displayOnIndex, 1);
+          values.splice(displayOnIndex, 1);
+          paramIndex--;
+          // עדכון ה-paramIndex לכל ה-updates שאחרי
+          for (let i = displayOnIndex; i < updates.length; i++) {
+            updates[i] = updates[i].replace(/\$\d+/, `$${i + 1}`);
+          }
+        }
+        if (updates.length === 0) {
+          return NextResponse.json(quickshopItem('navigation_menu', existingMenu));
+        }
+        menu = await queryOne(
+          `UPDATE navigation_menus 
+           SET ${updates.join(', ')}
+           WHERE id = $${paramIndex} AND store_id = $${paramIndex + 1}
+           RETURNING *`,
+          values
+        );
+      } else {
+        throw error;
+      }
+    }
 
     await eventBus.emitEvent('navigation.menu.updated', {
       menu: menu,

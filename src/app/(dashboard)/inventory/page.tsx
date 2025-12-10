@@ -491,8 +491,16 @@ export default function InventoryPage() {
 
                   // נסה למצוא variant_id, quantity, old_quantity מה-context או מה-API response
                   const variantId = item.variant_id || contextData.variant_id || contextData.variantId;
-                  const quantity = contextData.quantity || contextData.new_quantity;
-                  const oldQuantity = contextData.old_quantity || contextData.oldQuantity;
+                  // השתמש בנתונים מה-API response ישירות (שנוספו ב-SELECT)
+                  const quantity = item.new_quantity !== null && item.new_quantity !== undefined 
+                    ? item.new_quantity 
+                    : (contextData.quantity || contextData.new_quantity);
+                  const oldQuantity = item.old_quantity !== null && item.old_quantity !== undefined
+                    ? item.old_quantity
+                    : (contextData.old_quantity || contextData.oldQuantity);
+                  const change = item.change !== null && item.change !== undefined
+                    ? item.change
+                    : (contextData.change || (quantity !== undefined && oldQuantity !== undefined ? quantity - oldQuantity : null));
                   const reason = contextData.reason || contextData.reason_text || 'עדכון מלאי';
                   
                   // השתמש בנתונים מה-API response אם יש
@@ -503,9 +511,11 @@ export default function InventoryPage() {
                     ? getVariantDisplayName(item.variant_title, item.option1, item.option2, item.option3)
                     : null);
                   
-                  const quantityChange = quantity !== undefined && oldQuantity !== undefined 
-                    ? quantity - oldQuantity 
-                    : null;
+                  const quantityChange = change !== null && change !== undefined
+                    ? change
+                    : (quantity !== undefined && oldQuantity !== undefined 
+                      ? quantity - oldQuantity 
+                      : null);
                   
                   return (
                     <div key={item.id || index} className="p-4 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors">

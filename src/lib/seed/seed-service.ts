@@ -6,6 +6,7 @@
 import { query, queryOne } from '@/lib/db';
 import { demoData } from './demo-data';
 import { eventBus } from '@/lib/events/eventBus';
+import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
 
 export class SeedService {
   constructor(private storeId: number) {}
@@ -122,7 +123,81 @@ export class SeedService {
       await this.seedPages();
       console.log(`✅ Created ${pagesCount} pages`);
 
-      // 10. Install New York Template
+      // 10. Popups
+      console.log('🎯 Creating popups...');
+      const popupsCount = demoData.popups?.length || 0;
+      await this.seedPopups();
+      console.log(`✅ Created ${popupsCount} popups`);
+
+      // 11. Automatic Discounts
+      console.log('🎁 Creating automatic discounts...');
+      const automaticDiscountsCount = demoData.automaticDiscounts?.length || 0;
+      await this.seedAutomaticDiscounts(productIds);
+      console.log(`✅ Created ${automaticDiscountsCount} automatic discounts`);
+
+      // 12. Gift Cards
+      console.log('💳 Creating gift cards...');
+      const giftCardsCount = demoData.giftCards?.length || 0;
+      await this.seedGiftCards();
+      console.log(`✅ Created ${giftCardsCount} gift cards`);
+
+      // 13. Blog Categories
+      console.log('📚 Creating blog categories...');
+      const blogCategoryIds = await this.seedBlogCategories();
+      console.log(`✅ Created ${blogCategoryIds.length} blog categories`);
+
+      // 14. Abandoned Carts
+      console.log('🛒 Creating abandoned carts...');
+      const abandonedCartsCount = demoData.abandonedCarts?.length || 0;
+      await this.seedAbandonedCarts(customerIds);
+      console.log(`✅ Created ${abandonedCartsCount} abandoned carts`);
+
+      // 15. Wishlists
+      console.log('❤️  Creating wishlists...');
+      const wishlistsCount = demoData.wishlists?.length || 0;
+      await this.seedWishlists(customerIds, productIds);
+      console.log(`✅ Created ${wishlistsCount} wishlists`);
+
+      // 16. Navigation Menus
+      console.log('🧭 Creating navigation menus...');
+      const navigationMenusCount = demoData.navigationMenus?.length || 0;
+      await this.seedNavigationMenus(collectionIds);
+      console.log(`✅ Created ${navigationMenusCount} navigation menus`);
+
+      // 17. Product Reviews
+      console.log('⭐ Creating product reviews...');
+      const reviewsCount = demoData.productReviews?.length || 0;
+      await this.seedProductReviews(customerIds, productIds);
+      console.log(`✅ Created ${reviewsCount} product reviews`);
+
+      // 18. Store Credits
+      console.log('💳 Creating store credits...');
+      const storeCreditsCount = demoData.storeCredits?.length || 0;
+      await this.seedStoreCredits(customerIds);
+      console.log(`✅ Created ${storeCreditsCount} store credits`);
+
+      // 19. Loyalty Program
+      console.log('🎁 Creating loyalty program...');
+      const loyaltyTiersCount = demoData.loyaltyTiers?.length || 0;
+      const loyaltyRulesCount = demoData.loyaltyRules?.length || 0;
+      const loyaltyTierIds = await this.seedLoyaltyTiers();
+      await this.seedLoyaltyRules();
+      await this.seedLoyaltyPoints(customerIds, loyaltyTierIds);
+      console.log(`✅ Created ${loyaltyTiersCount} loyalty tiers, ${loyaltyRulesCount} rules, and customer points`);
+
+      // 20. Contacts
+      console.log('📇 Creating contacts...');
+      const contactsCount = demoData.contacts?.length || 0;
+      await this.seedContacts();
+      console.log(`✅ Created ${contactsCount} contacts`);
+
+      // 21. Returns
+      console.log('↩️  Creating returns...');
+      const returnsCount = demoData.returns?.length || 0;
+      await this.seedReturns(customerIds);
+      console.log(`✅ Created ${returnsCount} returns`);
+
+      // 22. Install New York Template
       console.log('🎨 Installing New York template...');
       await this.installNewYorkTemplate();
       console.log('✅ New York template installed');
@@ -142,6 +217,19 @@ export class SeedService {
           shippingZones: shippingZonesCount,
           blogPosts: blogPostsCount,
           pages: pagesCount,
+          popups: popupsCount,
+          automaticDiscounts: automaticDiscountsCount,
+          giftCards: giftCardsCount,
+          blogCategories: blogCategoryIds.length,
+          abandonedCarts: abandonedCartsCount,
+          wishlists: wishlistsCount,
+          navigationMenus: navigationMenusCount,
+          productReviews: reviewsCount,
+          storeCredits: storeCreditsCount,
+          loyaltyTiers: loyaltyTiersCount,
+          loyaltyRules: loyaltyRulesCount,
+          contacts: contactsCount,
+          returns: returnsCount,
         },
       };
     } catch (error: any) {
@@ -697,6 +785,137 @@ export class SeedService {
   }
 
   /**
+   * יוצר Popups
+   */
+  private async seedPopups(): Promise<void> {
+    if (!demoData.popups || demoData.popups.length === 0) return;
+
+    for (const popupData of demoData.popups) {
+      await query(
+        `INSERT INTO popups (
+          store_id, name, title, content_html, trigger_type, trigger_value,
+          display_rules, is_active, starts_at, ends_at, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+        ON CONFLICT DO NOTHING`,
+        [
+          this.storeId,
+          popupData.name,
+          popupData.title || null,
+          popupData.content_html || null,
+          popupData.trigger_type,
+          popupData.trigger_value || null,
+          popupData.display_rules ? JSON.stringify(popupData.display_rules) : null,
+          popupData.is_active ?? true,
+          popupData.starts_at || null,
+          popupData.ends_at || null,
+        ]
+      );
+    }
+  }
+
+  /**
+   * יוצר Automatic Discounts (עם אפשרות למתנות אוטומטיות)
+   */
+  private async seedAutomaticDiscounts(productIds: number[]): Promise<void> {
+    if (!demoData.automaticDiscounts || demoData.automaticDiscounts.length === 0) return;
+
+    for (const discountData of demoData.automaticDiscounts) {
+      // אם יש gift_product_id, צריך למצוא מוצר מתאים
+      // אם gift_product_id הוא null ב-demoData, נשתמש במוצר הראשון (אם יש)
+      let giftProductId: number | null = null;
+      if ('gift_product_id' in discountData) {
+        if (discountData.gift_product_id !== null && discountData.gift_product_id !== undefined) {
+          // אם יש ערך ספציפי, נשתמש בו (אבל צריך לוודא שהוא קיים)
+          giftProductId = productIds.includes(discountData.gift_product_id) 
+            ? discountData.gift_product_id 
+            : (productIds.length > 0 ? productIds[0] : null);
+        } else if (discountData.name.includes('מתנה') && productIds.length > 0) {
+          // אם השם כולל "מתנה" ואין gift_product_id מוגדר, נשתמש במוצר הראשון
+          giftProductId = productIds[0];
+        }
+      }
+
+      const discount = await queryOne<{ id: number }>(
+        `INSERT INTO automatic_discounts (
+          store_id, name, description, discount_type, value,
+          minimum_order_amount, priority, is_active,
+          can_combine_with_codes, can_combine_with_other_automatic, max_combined_discounts,
+          buy_quantity, get_quantity, get_discount_type, applies_to_same_product,
+          gift_product_id, starts_at, ends_at, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, now(), now())
+        RETURNING id`,
+        [
+          this.storeId,
+          discountData.name,
+          discountData.description || null,
+          discountData.discount_type,
+          discountData.value || null,
+          discountData.minimum_order_amount || null,
+          discountData.priority || 0,
+          discountData.is_active ?? true,
+          discountData.can_combine_with_codes ?? true,
+          discountData.can_combine_with_other_automatic ?? false,
+          discountData.max_combined_discounts || 1,
+          discountData.buy_quantity || null,
+          discountData.get_quantity || null,
+          discountData.get_discount_type || null,
+          discountData.applies_to_same_product ?? true,
+          giftProductId,
+          discountData.starts_at || null,
+          discountData.ends_at || null,
+        ]
+      );
+
+      // אם יש product_ids, collection_ids, או tag_names - נוסיף אותם
+      if (discount && ('product_ids' in discountData && discountData.product_ids)) {
+        for (const productId of discountData.product_ids) {
+          if (productIds.includes(productId)) {
+            await query(
+              'INSERT INTO automatic_discount_products (automatic_discount_id, product_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [discount.id, productId]
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * יוצר Gift Cards
+   */
+  private async seedGiftCards(): Promise<void> {
+    if (!demoData.giftCards || demoData.giftCards.length === 0) return;
+
+    for (const giftCardData of demoData.giftCards) {
+      await query(
+        `INSERT INTO gift_cards (
+          store_id, code, initial_value, current_value, currency,
+          expires_at, is_active, note, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, now(), now())
+        ON CONFLICT (store_id, code) DO UPDATE SET
+          initial_value = EXCLUDED.initial_value,
+          current_value = EXCLUDED.current_value,
+          expires_at = EXCLUDED.expires_at,
+          is_active = EXCLUDED.is_active,
+          note = EXCLUDED.note,
+          updated_at = now()`,
+        [
+          this.storeId,
+          giftCardData.code,
+          giftCardData.initial_value,
+          giftCardData.currency || 'ILS',
+          giftCardData.expires_at || null,
+          giftCardData.is_active ?? true,
+          giftCardData.note || null,
+        ]
+      );
+    }
+  }
+
+  /**
    * מאפס את כל הנתונים של החנות
    */
   async resetStore() {
@@ -762,11 +981,585 @@ export class SeedService {
   }
 
   /**
+   * יוצר Blog Categories
+   */
+  private async seedBlogCategories(): Promise<number[]> {
+    if (!demoData.blogCategories || demoData.blogCategories.length === 0) return [];
+
+    const categoryIds: number[] = [];
+
+    for (const categoryData of demoData.blogCategories) {
+      const baseHandle = categoryData.handle || categoryData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      let handle = baseHandle;
+      let counter = 1;
+      while (true) {
+        const existing = await queryOne<{ id: number }>(
+          'SELECT id FROM blog_categories WHERE store_id = $1 AND handle = $2',
+          [this.storeId, handle]
+        );
+        if (!existing) break;
+        handle = `${baseHandle}-${counter}`;
+        counter++;
+      }
+
+      const category = await queryOne<{ id: number }>(
+        `INSERT INTO blog_categories (store_id, blog_id, name, handle, description, created_at)
+         VALUES ($1, $2, $3, $4, $5, now())
+         RETURNING id`,
+        [this.storeId, null, categoryData.name, handle, categoryData.description || null]
+      );
+
+      if (category) {
+        categoryIds.push(category.id);
+      }
+    }
+
+    return categoryIds;
+  }
+
+  /**
+   * יוצר Abandoned Carts
+   */
+  private async seedAbandonedCarts(customerIds: number[]): Promise<void> {
+    if (!demoData.abandonedCarts || demoData.abandonedCarts.length === 0) return;
+
+    for (const cartData of demoData.abandonedCarts) {
+      // מציאת לקוח לפי אימייל
+      const customer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+        [this.storeId, cartData.email]
+      );
+
+      const token = `abandoned_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      await query(
+        `INSERT INTO abandoned_carts (store_id, customer_id, email, token, cart_data, total_price, currency, abandoned_at, last_activity_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, now(), now())`,
+        [
+          this.storeId,
+          customer?.id || null,
+          cartData.email,
+          token,
+          JSON.stringify(cartData.cart_data),
+          cartData.total_price || 0,
+          'ILS',
+          cartData.abandoned_at || new Date().toISOString(),
+        ]
+      );
+    }
+  }
+
+  /**
+   * יוצר Wishlists
+   */
+  private async seedWishlists(customerIds: number[], productIds: number[]): Promise<void> {
+    if (!demoData.wishlists || demoData.wishlists.length === 0) return;
+
+    for (const wishlistData of demoData.wishlists) {
+      // מציאת לקוח לפי אימייל
+      const customer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+        [this.storeId, wishlistData.customer_email]
+      );
+
+      if (!customer) continue;
+
+      const wishlist = await queryOne<{ id: number }>(
+        `INSERT INTO wishlists (store_id, customer_id, name, is_public, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, now(), now())
+         RETURNING id`,
+        [this.storeId, customer.id, wishlistData.name, wishlistData.is_public ?? false]
+      );
+
+      if (!wishlist || !wishlistData.items) continue;
+
+      // הוספת פריטים לרשימת המתנה
+      for (const itemData of wishlistData.items) {
+        const product = await queryOne<{ id: number }>(
+          'SELECT id FROM products WHERE store_id = $1 AND title = $2 LIMIT 1',
+          [this.storeId, itemData.product_title]
+        );
+
+        if (product) {
+          // מציאת variant אם יש
+          let variantId: number | null = null;
+          if (itemData.variant_title && itemData.variant_title !== 'Default') {
+            const variant = await queryOne<{ id: number }>(
+              'SELECT id FROM product_variants WHERE product_id = $1 AND (option1 = $2 OR option2 = $2 OR option3 = $2) LIMIT 1',
+              [product.id, itemData.variant_title]
+            );
+            variantId = variant?.id || null;
+          }
+
+          await query(
+            `INSERT INTO wishlist_items (wishlist_id, product_id, variant_id, quantity, note, created_at)
+             VALUES ($1, $2, $3, $4, $5, now())
+             ON CONFLICT (wishlist_id, product_id, variant_id) DO NOTHING`,
+            [wishlist.id, product.id, variantId, itemData.quantity || 1, itemData.note || null]
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * יוצר Navigation Menus
+   */
+  private async seedNavigationMenus(collectionIds: number[]): Promise<void> {
+    if (!demoData.navigationMenus || demoData.navigationMenus.length === 0) return;
+
+    for (const menuData of demoData.navigationMenus) {
+      const baseHandle = menuData.handle || menuData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      let handle = baseHandle;
+      let counter = 1;
+      while (true) {
+        const existing = await queryOne<{ id: number }>(
+          'SELECT id FROM navigation_menus WHERE store_id = $1 AND handle = $2',
+          [this.storeId, handle]
+        );
+        if (!existing) break;
+        handle = `${baseHandle}-${counter}`;
+        counter++;
+      }
+
+      const menu = await queryOne<{ id: number }>(
+        `INSERT INTO navigation_menus (store_id, name, handle, position, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, now(), now())
+         RETURNING id`,
+        [this.storeId, menuData.name, handle, menuData.position || null]
+      );
+
+      if (!menu || !menuData.items) continue;
+
+      // הוספת פריטי תפריט
+      for (const itemData of menuData.items) {
+        let resourceId: number | null = null;
+
+        if (itemData.type === 'collection' && itemData.resource_handle) {
+          const collection = await queryOne<{ id: number }>(
+            'SELECT id FROM product_collections WHERE store_id = $1 AND handle = $2',
+            [this.storeId, itemData.resource_handle]
+          );
+          resourceId = collection?.id || null;
+        } else if (itemData.type === 'page' && itemData.resource_handle) {
+          const page = await queryOne<{ id: number }>(
+            'SELECT id FROM pages WHERE store_id = $1 AND handle = $2',
+            [this.storeId, itemData.resource_handle]
+          );
+          resourceId = page?.id || null;
+        } else if (itemData.type === 'product' && itemData.resource_handle) {
+          const product = await queryOne<{ id: number }>(
+            'SELECT id FROM products WHERE store_id = $1 AND handle = $2',
+            [this.storeId, itemData.resource_handle]
+          );
+          resourceId = product?.id || null;
+        }
+
+        await query(
+          `INSERT INTO navigation_menu_items (menu_id, parent_id, title, url, type, resource_id, position, is_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())`,
+          [
+            menu.id,
+            itemData.parent_id || null,
+            itemData.title,
+            itemData.url || null,
+            itemData.type,
+            resourceId,
+            itemData.position || 0,
+            itemData.is_active ?? true,
+          ]
+        );
+      }
+    }
+  }
+
+  /**
+   * יוצר Product Reviews
+   */
+  private async seedProductReviews(customerIds: number[], productIds: number[]): Promise<void> {
+    if (!demoData.productReviews || demoData.productReviews.length === 0) return;
+
+    for (const reviewData of demoData.productReviews) {
+      // מציאת מוצר לפי שם
+      const product = await queryOne<{ id: number }>(
+        'SELECT id FROM products WHERE store_id = $1 AND title = $2 LIMIT 1',
+        [this.storeId, reviewData.product_title]
+      );
+
+      if (!product) continue;
+
+      // מציאת לקוח לפי אימייל
+      let customerId: number | null = null;
+      if (reviewData.customer_email) {
+        const customer = await queryOne<{ id: number }>(
+          'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+          [this.storeId, reviewData.customer_email]
+        );
+        customerId = customer?.id || null;
+      }
+
+      await query(
+        `INSERT INTO product_reviews (store_id, product_id, customer_id, rating, title, review_text, reviewer_name, reviewer_email, is_verified_purchase, is_approved, is_published, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())`,
+        [
+          this.storeId,
+          product.id,
+          customerId,
+          reviewData.rating,
+          reviewData.title || null,
+          reviewData.review_text || null,
+          reviewData.reviewer_name || null,
+          reviewData.customer_email || null,
+          reviewData.is_verified_purchase ?? false,
+          reviewData.is_approved ?? false,
+          reviewData.is_published ?? false,
+        ]
+      );
+    }
+  }
+
+  /**
+   * יוצר Store Credits
+   */
+  private async seedStoreCredits(customerIds: number[]): Promise<void> {
+    if (!demoData.storeCredits || demoData.storeCredits.length === 0) return;
+
+    for (const creditData of demoData.storeCredits) {
+      // מציאת לקוח לפי אימייל
+      const customer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+        [this.storeId, creditData.customer_email]
+      );
+
+      if (!customer) continue;
+
+      await query(
+        `INSERT INTO store_credits (store_id, customer_id, balance, currency, expires_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, now(), now())
+         ON CONFLICT (store_id, customer_id) DO UPDATE SET
+           balance = EXCLUDED.balance,
+           expires_at = EXCLUDED.expires_at,
+           updated_at = now()`,
+        [
+          this.storeId,
+          customer.id,
+          creditData.balance,
+          creditData.currency || 'ILS',
+          creditData.expires_at || null,
+        ]
+      );
+    }
+  }
+
+  /**
+   * יוצר Loyalty Tiers
+   */
+  private async seedLoyaltyTiers(): Promise<number[]> {
+    if (!demoData.loyaltyTiers || demoData.loyaltyTiers.length === 0) return [];
+
+    const tierIds: number[] = [];
+
+    for (const tierData of demoData.loyaltyTiers) {
+      const tier = await queryOne<{ id: number }>(
+        `INSERT INTO customer_loyalty_tiers (store_id, name, tier_level, min_points, discount_percentage, benefits, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+         RETURNING id`,
+        [
+          this.storeId,
+          tierData.name,
+          tierData.tier_level,
+          tierData.min_points,
+          tierData.discount_percentage,
+          JSON.stringify(tierData.benefits || {}),
+        ]
+      );
+
+      if (tier) {
+        tierIds.push(tier.id);
+      }
+    }
+
+    return tierIds;
+  }
+
+  /**
+   * יוצר Loyalty Program Rules
+   */
+  private async seedLoyaltyRules(): Promise<void> {
+    if (!demoData.loyaltyRules || demoData.loyaltyRules.length === 0) return;
+
+    for (const ruleData of demoData.loyaltyRules) {
+      await query(
+        `INSERT INTO loyalty_program_rules (store_id, name, rule_type, points_amount, conditions, is_active, starts_at, ends_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())`,
+        [
+          this.storeId,
+          ruleData.name,
+          ruleData.rule_type,
+          ruleData.points_amount,
+          JSON.stringify(ruleData.conditions || {}),
+          ruleData.is_active ?? true,
+          ruleData.starts_at || null,
+          ruleData.ends_at || null,
+        ]
+      );
+    }
+  }
+
+  /**
+   * יוצר Loyalty Points ללקוחות
+   */
+  private async seedLoyaltyPoints(customerIds: number[], tierIds: number[]): Promise<void> {
+    if (customerIds.length === 0 || tierIds.length === 0) return;
+
+    // יצירת נקודות ללקוח הראשון (VIP)
+    const firstCustomerId = customerIds[0];
+    const firstTierId = tierIds.length > 0 ? tierIds[0] : null;
+
+    const loyaltyPoints = await queryOne<{ id: number }>(
+      `INSERT INTO customer_loyalty_points (store_id, customer_id, total_points, available_points, pending_points, tier_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+       ON CONFLICT (store_id, customer_id) DO UPDATE SET
+         total_points = EXCLUDED.total_points,
+         available_points = EXCLUDED.available_points,
+         tier_id = EXCLUDED.tier_id,
+         updated_at = now()
+       RETURNING id`,
+      [this.storeId, firstCustomerId, 500, 500, 0, firstTierId]
+    );
+
+    if (loyaltyPoints) {
+      // יצירת תנועת נקודות לדוגמה
+      await query(
+        `INSERT INTO loyalty_point_transactions (loyalty_points_id, points, transaction_type, description, created_at)
+         VALUES ($1, $2, $3, $4, now())`,
+        [loyaltyPoints.id, 500, 'earned', 'נקודות התחלתיות']
+      );
+    }
+  }
+
+  /**
+   * יוצר Contacts
+   */
+  private async seedContacts(): Promise<void> {
+    if (!demoData.contacts || demoData.contacts.length === 0) return;
+
+    for (const contactData of demoData.contacts) {
+      // בדיקה אם יש לקוח עם אותו אימייל
+      const customer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+        [this.storeId, contactData.email]
+      );
+
+      const contact = await queryOne<{ id: number }>(
+        `INSERT INTO contacts (store_id, customer_id, email, first_name, last_name, phone, company, notes, tags, email_marketing_consent, email_marketing_consent_at, source, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
+         ON CONFLICT DO NOTHING
+         RETURNING id`,
+        [
+          this.storeId,
+          customer?.id || null,
+          contactData.email,
+          contactData.first_name || null,
+          contactData.last_name || null,
+          contactData.phone || null,
+          contactData.company || null,
+          contactData.notes || null,
+          contactData.tags || [],
+          contactData.email_marketing_consent ?? false,
+          contactData.email_marketing_consent ? new Date().toISOString() : null,
+          contactData.source || 'manual',
+        ]
+      );
+
+      // הוספת קטגוריות ליצירת קשר אם יש
+      if (contact && contactData.tags && contactData.tags.length > 0) {
+        for (const tagName of contactData.tags) {
+          const category = await queryOne<{ id: number }>(
+            'SELECT id FROM contact_categories WHERE store_id = $1 AND name = $2',
+            [this.storeId, tagName]
+          );
+          if (category) {
+            await query(
+              'INSERT INTO contact_category_assignments (contact_id, category_id, created_at) VALUES ($1, $2, now()) ON CONFLICT DO NOTHING',
+              [contact.id, category.id]
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * יוצר Returns
+   */
+  private async seedReturns(customerIds: number[]): Promise<void> {
+    if (!demoData.returns || demoData.returns.length === 0) return;
+
+    for (const returnData of demoData.returns) {
+      // מציאת הזמנה לפי מספר הזמנה
+      const order = await queryOne<{ id: number }>(
+        'SELECT id FROM orders WHERE store_id = $1 AND order_number = $2',
+        [this.storeId, returnData.order_number]
+      );
+
+      if (!order) continue;
+
+      // מציאת לקוח לפי אימייל
+      const customer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+        [this.storeId, returnData.customer_email]
+      );
+
+      if (!customer) continue;
+
+      await query(
+        `INSERT INTO returns (store_id, order_id, customer_id, status, reason, items, refund_amount, refund_method, notes, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())`,
+        [
+          this.storeId,
+          order.id,
+          customer.id,
+          returnData.status || 'PENDING',
+          returnData.reason,
+          JSON.stringify(returnData.items || []),
+          returnData.refund_amount || null,
+          returnData.refund_method || null,
+          returnData.notes || null,
+        ]
+      );
+    }
+  }
+
+  /**
    * מתקין את תבנית New York לחנות
    */
   private async installNewYorkTemplate(): Promise<void> {
     try {
-      await installNewYorkTemplate({ storeId: this.storeId });
+      // 1. וודא שיש theme_template בשם 'new-york'
+      let themeTemplate = await queryOne<{ id: number }>(
+        `SELECT id FROM theme_templates WHERE name = 'new-york' LIMIT 1`
+      );
+
+      if (!themeTemplate) {
+        // צור את theme_template אם לא קיים
+        themeTemplate = await queryOne<{ id: number }>(
+          `INSERT INTO theme_templates (name, display_name, description, is_default, version)
+           VALUES ('new-york', 'ניו יורק', 'תבנית ברירת מחדל מודרנית', true, '1.0.0')
+           RETURNING id`
+        );
+      }
+
+      if (!themeTemplate) {
+        throw new Error('Failed to create or find New York theme template');
+      }
+
+      const templateId = themeTemplate.id;
+
+      // 2. בדוק אם כבר יש page_layout עבור home page
+      const existingLayout = await queryOne<{ id: number }>(
+        `SELECT id FROM page_layouts 
+         WHERE store_id = $1 AND page_type = 'home' AND page_handle IS NULL`,
+        [this.storeId]
+      );
+
+      let layoutId: number;
+
+      if (existingLayout) {
+        // עדכן את ה-layout הקיים
+        layoutId = existingLayout.id;
+        await query(
+          `UPDATE page_layouts 
+           SET template_id = $1, is_published = true, published_at = now(), updated_at = now()
+           WHERE id = $2`,
+          [templateId, layoutId]
+        );
+      } else {
+        // צור layout חדש
+        const newLayout = await queryOne<{ id: number }>(
+          `INSERT INTO page_layouts (store_id, template_id, page_type, is_published, published_at)
+           VALUES ($1, $2, 'home', true, now())
+           RETURNING id`,
+          [this.storeId, templateId]
+        );
+
+        if (!newLayout) {
+          throw new Error('Failed to create page layout');
+        }
+
+        layoutId = newLayout.id;
+      }
+
+      // 3. מחק סקשנים קיימים (אם יש)
+      await query(
+        `DELETE FROM page_sections WHERE page_layout_id = $1`,
+        [layoutId]
+      );
+
+      // 4. הוסף את הסקשנים מהתבנית
+      for (let i = 0; i < NEW_YORK_TEMPLATE.sections.length; i++) {
+        const section = NEW_YORK_TEMPLATE.sections[i];
+        
+        // שמור גם את settings וגם את style
+        const sectionData = {
+          ...section.settings,
+          style: section.style || {}
+        };
+        
+        const sectionResult = await queryOne<{ id: number }>(
+          `INSERT INTO page_sections 
+           (page_layout_id, section_type, section_id, position, is_visible, is_locked, settings_json)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id`,
+          [
+            layoutId,
+            section.type,
+            section.id,
+            section.order || i,
+            section.visible !== false,
+            section.locked || false,
+            JSON.stringify(sectionData)
+          ]
+        );
+
+        // הוסף בלוקים אם יש
+        if (section.blocks && section.blocks.length > 0 && sectionResult) {
+          for (let j = 0; j < section.blocks.length; j++) {
+            const block = section.blocks[j];
+            // שמור את כל המידע של הבלוק (content, style, settings)
+            const blockData = {
+              content: block.content || {},
+              style: block.style || {},
+              settings: block.settings || {}
+            };
+            await query(
+              `INSERT INTO section_blocks 
+               (section_id, block_type, block_id, position, settings_json)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [
+                sectionResult.id,
+                block.type,
+                block.id || `block-${j}`,
+                block.position || j,
+                JSON.stringify(blockData)
+              ]
+            );
+          }
+        }
+      }
+
+      // 5. שמור את theme_settings אם יש
+      if (NEW_YORK_TEMPLATE.theme_settings) {
+        await query(
+          `INSERT INTO store_theme_settings (store_id, template_id, published_settings_json, published_at)
+           VALUES ($1, $2, $3, now())
+           ON CONFLICT (store_id) 
+           DO UPDATE SET template_id = $2, published_settings_json = $3, published_at = now(), updated_at = now()`,
+          [this.storeId, templateId, JSON.stringify(NEW_YORK_TEMPLATE.theme_settings)]
+        );
+      }
+
+      console.log(`✅ New York template installed for store ${this.storeId}`);
     } catch (error: any) {
       console.error('Error installing New York template:', error);
       // Don't fail seed if template installation fails

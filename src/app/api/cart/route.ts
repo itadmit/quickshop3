@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { eventBus } from '@/lib/events/eventBus';
 
 const VISITOR_SESSION_COOKIE_NAME = 'quickshop3_visitor_session';
 
@@ -78,10 +79,19 @@ export async function POST(request: NextRequest) {
     }
 
     let visitorSessionId = request.cookies.get(VISITOR_SESSION_COOKIE_NAME)?.value;
+    let isNewCart = false;
 
     // Create visitor session if doesn't exist
     if (!visitorSessionId) {
       visitorSessionId = crypto.randomUUID();
+      isNewCart = true;
+    } else {
+      // Check if cart already exists
+      const existingCart = await queryOne<{ id: number }>(
+        `SELECT id FROM visitor_carts WHERE visitor_session_id = $1 AND store_id = $2`,
+        [visitorSessionId, storeId]
+      );
+      isNewCart = !existingCart;
     }
 
     // Save cart to database
@@ -92,6 +102,22 @@ export async function POST(request: NextRequest) {
        DO UPDATE SET items = $3, updated_at = now()`,
       [visitorSessionId, storeId, JSON.stringify(items)]
     );
+
+    // Emit cart.created event if this is a new cart
+    if (isNewCart && items.length > 0) {
+      const total = items.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
+      await eventBus.emitEvent('cart.created', {
+        cart: {
+          visitor_session_id: visitorSessionId,
+          items: items,
+          total: total,
+          item_count: items.reduce((sum: number, item: CartItem) => sum + item.quantity, 0),
+        },
+      }, {
+        store_id: parseInt(storeId),
+        source: 'api',
+      });
+    }
 
     // החזר את הפריטים שנשמרו כדי לוודא סינכרון
     const response = NextResponse.json({ success: true, items });

@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
@@ -117,9 +117,12 @@ export function UnifiedHeader({
   };
 
   // Navigation component
-  const Navigation = ({ vertical = false }: { vertical?: boolean }) => (
-    <nav className={`flex ${vertical ? 'flex-col' : 'items-center'}`} style={{ gap: vertical ? '12px' : `${navGap}px` }}>
-      {settings.navigation?.menu_items?.slice(0, 6).map((item: any, index: number) => {
+  const Navigation = ({ vertical = false }: { vertical?: boolean }) => {
+    // Always use desktop menu items for desktop navigation
+    const menuItems = settings.navigation?.menu_items || [];
+    return (
+      <nav className={`flex ${vertical ? 'flex-col' : 'items-center'}`} style={{ gap: vertical ? '12px' : `${navGap}px` }}>
+        {menuItems.slice(0, 6).map((item: any, index: number) => {
         const linkStyle = { 
           color: navColor,
           fontSize: fontSizeMap[navFontSize] || fontSizeMap.medium,
@@ -152,8 +155,9 @@ export function UnifiedHeader({
           </Link>
         );
       })}
-    </nav>
-  );
+      </nav>
+    );
+  };
 
   // Icon Button component
   const IconButton = ({ 
@@ -199,20 +203,20 @@ export function UnifiedHeader({
     if (isPreview) {
       if (split) {
         if (position === 'right') {
-          return settings.search?.enabled !== false ? (
+          return settings.search?.enabled === true ? (
             <IconButton title="חיפוש"><HiSearch className="w-5 h-5" /></IconButton>
           ) : null;
         }
         if (position === 'left') {
           return (
             <div className="flex items-center gap-1">
-              {settings.cart?.enabled !== false && (
+              {settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
               {settings.wishlist?.enabled && (
                 <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
               )}
-              {settings.user_account?.enabled !== false && (
+              {settings.user_account?.enabled === true && (
                 <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
               )}
             </div>
@@ -222,16 +226,16 @@ export function UnifiedHeader({
       
       return (
         <div className="flex items-center gap-1">
-          {settings.search?.enabled !== false && (
+          {settings.search?.enabled === true && (
             <IconButton title="חיפוש"><HiSearch className="w-5 h-5" /></IconButton>
           )}
-          {settings.cart?.enabled !== false && (
+          {settings.cart?.enabled === true && (
             <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
           )}
-          {settings.wishlist?.enabled && (
+          {settings.wishlist?.enabled === true && (
             <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
           )}
-          {!isMobileView && settings.user_account?.enabled !== false && (
+          {!isMobileView && settings.user_account?.enabled === true && (
             <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
           )}
           {isMobileView && (
@@ -246,18 +250,18 @@ export function UnifiedHeader({
     // Storefront mode - real components
     if (split) {
       if (position === 'right') {
-        return settings.search?.enabled !== false ? <SearchBar /> : null;
+        return settings.search?.enabled === true ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
       }
       if (position === 'left') {
         return (
           <div className="flex items-center gap-1">
-            {settings.cart?.enabled !== false && storeId && <SideCart storeId={storeId} />}
-            {settings.wishlist?.enabled && (
+            {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+            {settings.wishlist?.enabled === true && (
               <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
                 <HiHeart className="w-5 h-5" />
               </IconButton>
             )}
-            {settings.user_account?.enabled !== false && (
+            {settings.user_account?.enabled === true && (
               <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
                 <HiUser className="w-5 h-5" />
               </IconButton>
@@ -269,15 +273,15 @@ export function UnifiedHeader({
 
     return (
       <div className="flex items-center gap-1">
-        {settings.search?.enabled !== false && <SearchBar />}
-        <CountrySelector />
-        {settings.cart?.enabled !== false && storeId && <SideCart storeId={storeId} />}
-        {settings.wishlist?.enabled && (
+        {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
+        {settings.currency_selector?.enabled === true && <CountrySelector />}
+        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+        {settings.wishlist?.enabled === true && (
           <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
             <HiHeart className="w-5 h-5" />
           </IconButton>
         )}
-        {settings.user_account?.enabled !== false && (
+        {settings.user_account?.enabled === true && (
           <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
             <HiUser className="w-5 h-5" />
           </IconButton>
@@ -299,17 +303,23 @@ export function UnifiedHeader({
   );
 
   // Mobile Menu Dropdown
-  const MobileMenu = () => (
-    !isPreview && isMobileMenuOpen && (
-      <div 
-        className="md:hidden absolute top-full left-0 right-0 shadow-lg py-4 px-4 z-40 animate-in slide-in-from-top-2 duration-200"
-        style={{ 
-          backgroundColor: bgColor,
-          borderBottom: `1px solid ${borderColor}` 
-        }}
-      >
-        <nav className="flex flex-col gap-3">
-          {settings.navigation?.menu_items?.map((item: any, index: number) => (
+  const MobileMenu = () => {
+    // Use mobile menu items if available, otherwise use desktop menu items
+    const mobileMenuItems = settings.navigation?.menu_items_mobile && settings.navigation.menu_items_mobile.length > 0
+      ? settings.navigation.menu_items_mobile
+      : settings.navigation?.menu_items || [];
+    
+    return (
+      !isPreview && isMobileMenuOpen && (
+        <div 
+          className="md:hidden absolute top-full left-0 right-0 shadow-lg py-4 px-4 z-40 animate-in slide-in-from-top-2 duration-200"
+          style={{ 
+            backgroundColor: bgColor,
+            borderBottom: `1px solid ${borderColor}` 
+          }}
+        >
+          <nav className="flex flex-col gap-3">
+            {mobileMenuItems.map((item: any, index: number) => (
             <Link
               key={index}
               href={item.url?.startsWith('/') ? `/shops/${storeSlug}${item.url}` : item.url || '#'}
@@ -319,22 +329,23 @@ export function UnifiedHeader({
             >
               {item.label}
             </Link>
-          ))}
-          {settings.user_account?.enabled !== false && (
-            <Link
-              href={`/shops/${storeSlug}/account`}
-              className="flex items-center gap-2 font-medium text-lg py-2 mt-2"
-              style={{ color: navColor }}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <HiUser className="w-5 h-5" />
-              החשבון שלי
-            </Link>
-          )}
-        </nav>
-      </div>
-    )
-  );
+            ))}
+            {settings.user_account?.enabled === true && (
+              <Link
+                href={`/shops/${storeSlug}/account`}
+                className="flex items-center gap-2 font-medium text-lg py-2 mt-2"
+                style={{ color: navColor }}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <HiUser className="w-5 h-5" />
+                החשבון שלי
+              </Link>
+            )}
+          </nav>
+        </div>
+      )
+    );
+  };
 
   // Mobile view for customizer preview
   if (isPreview && isMobileView) {
@@ -364,8 +375,8 @@ export function UnifiedHeader({
             <Logo />
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
             <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled !== false && storeId && <SideCart storeId={storeId} />}
-              {isPreview && settings.cart?.enabled !== false && (
+              {!isPreview && settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+              {isPreview && settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
               <MobileMenuButton />
@@ -380,8 +391,8 @@ export function UnifiedHeader({
             <div className="hidden md:contents"><Navigation /></div>
             <Logo />
             <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled !== false && storeId && <SideCart storeId={storeId} />}
-              {isPreview && settings.cart?.enabled !== false && (
+              {!isPreview && settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+              {isPreview && settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
               <MobileMenuButton />
@@ -418,8 +429,8 @@ export function UnifiedHeader({
             <div className="hidden md:contents"><Navigation /></div>
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
             <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled !== false && storeId && <SideCart storeId={storeId} />}
-              {isPreview && settings.cart?.enabled !== false && (
+              {!isPreview && settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+              {isPreview && settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
               <MobileMenuButton />
@@ -429,14 +440,40 @@ export function UnifiedHeader({
     }
   };
 
+  // Sticky header shrink effect
+  const [isScrolled, setIsScrolled] = useState(false);
+  
+  // Sticky enabled defaults to true if not explicitly set to false
+  const isStickyEnabled = settings.sticky?.enabled !== false;
+  
+  useEffect(() => {
+    if (!isPreview && isStickyEnabled && settings.sticky?.shrink === 'shrink') {
+      const handleScroll = () => {
+        setIsScrolled(window.scrollY > 50);
+      };
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, [isPreview, isStickyEnabled, settings.sticky?.shrink]);
+
+  const headerHeight = isScrolled && settings.sticky?.shrink === 'shrink' 
+    ? (parseInt(heightDesktop) * 0.8) + 'px' 
+    : heightDesktop;
+
   return (
     <header 
-      className={`${settings.sticky?.enabled !== false ? 'sticky top-0' : 'relative'} z-50`}
-      style={{ backgroundColor: bgColor, ...getBorderStyles() }}
+      className={`${isStickyEnabled ? 'sticky top-0' : 'relative'} z-50 transition-all duration-300`}
+      style={{ 
+        backgroundColor: bgColor, 
+        ...getBorderStyles(),
+        ...(isScrolled && settings.sticky?.shrink === 'shrink' && {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        })
+      }}
     >
       <div 
         className="max-w-7xl mx-auto px-4 flex items-center justify-between"
-        style={{ minHeight: layoutStyle === 'logo_center_menu_below' ? 'auto' : heightDesktop }}
+        style={{ minHeight: layoutStyle === 'logo_center_menu_below' ? 'auto' : headerHeight }}
       >
         {renderDesktopLayout()}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuilding, HiMenu, HiCog, HiLogout, HiShoppingBag } from 'react-icons/hi';
+import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuilding, HiMenu, HiCog, HiLogout, HiShoppingBag, HiCube } from 'react-icons/hi';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { NotificationsDrawer } from './NotificationsDrawer';
@@ -24,6 +24,7 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
 
   // טעינת פרטי המשתמש
   useEffect(() => {
@@ -55,6 +56,38 @@ export function Header() {
       }
     };
     loadUser();
+  }, []);
+
+  // Load unread notifications count
+  useEffect(() => {
+    const loadUnreadNotificationsCount = async () => {
+      try {
+        const response = await fetch('/api/notifications/unread-count', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadNotificationsCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error loading unread notifications count:', error);
+      }
+    };
+
+    loadUnreadNotificationsCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadUnreadNotificationsCount, 30000);
+    
+    // Listen for notification marked as read event
+    const handleNotificationMarkedAsRead = () => {
+      loadUnreadNotificationsCount();
+    };
+    window.addEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
+    };
   }, []);
 
   // Close switcher when clicking outside
@@ -163,13 +196,14 @@ export function Header() {
 
       {/* Actions & Profile */}
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Marketplace (Coming Soon) */}
+        {/* Marketplace */}
         <button 
+          onClick={() => router.push('/settings/plugins')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:flex md:items-center md:gap-2 relative"
-          title="מרקט פלייס - בקרוב"
+          title="מרקטפלייס תוספים"
         >
-          <HiShoppingBag className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
-          <span className="text-xs text-gray-500 hidden lg:block">בקרוב</span>
+          <HiCube className="w-6 h-6 text-gray-600 group-hover:text-green-600 transition-colors" />
+          <span className="text-xs text-gray-700 hidden lg:block font-medium">תוספים</span>
         </button>
         
         {/* View Store */}
@@ -207,7 +241,11 @@ export function Header() {
           title="עדכונים"
         >
           <HiBell className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
-          <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+          {unreadNotificationsCount > 0 && (
+            <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+            </span>
+          )}
         </button>
         {/* Desktop: User Profile with Dropdown */}
         <div className="hidden md:flex items-center gap-3 pr-4 border-r border-gray-200 relative" ref={userMenuRef}>

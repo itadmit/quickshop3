@@ -22,7 +22,17 @@ export type EventTopic =
   // Transactions
   | 'transaction.created'
   | 'transaction.succeeded'
-  | 'transaction.failed';
+  | 'transaction.failed'
+  // Cart
+  | 'cart.created'
+  | 'cart.abandoned'
+  // Discounts
+  | 'discount.created'
+  | 'discount.updated'
+  | 'discount.deleted'
+  | 'automatic_discount.created'
+  | 'automatic_discount.updated'
+  | 'automatic_discount.deleted';
 
 // Event Payloads - Type-safe payloads לכל אירוע
 export interface EventPayloads {
@@ -45,5 +55,13 @@ export interface EventPayloads {
   'transaction.created': { transaction: any };
   'transaction.succeeded': { transaction: any };
   'transaction.failed': { transaction: any; error: string };
+  'cart.created': { cart: any };
+  'cart.abandoned': { cart: any };
+  'discount.created': { discount: any };
+  'discount.updated': { discount: any; changes?: Partial<any> };
+  'discount.deleted': { discount: any };
+  'automatic_discount.created': { discount: any };
+  'automatic_discount.updated': { discount: any; changes?: Partial<any> };
+  'automatic_discount.deleted': { discount: any };
 }
 

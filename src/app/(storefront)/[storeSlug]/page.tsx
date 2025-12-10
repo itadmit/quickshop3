@@ -113,7 +113,7 @@ export default async function StorefrontHomePage({
               {collections.map((collection) => (
                 <Link
                   key={collection.id}
-                  href={`/${storeSlug}/collections/${collection.handle}`}
+                  href={`/${storeSlug}/categories/${collection.handle}`}
                   className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow"
                 >
                   {collection.image_url ? (

@@ -38,7 +38,11 @@ APP_URL=https://your-domain.com
 npm run setup:qstash
 ```
 
-זה יגדיר CRON job שיקרא ל-`/api/cron/sync-visitors` כל 5 דקות.
+זה יגדיר את כל ה-CRON jobs:
+- **Sync Visitors** - כל 5 דקות
+- **Archive Products** - כל שעה
+- **Update Discounts Status** - כל שעה
+- **Cleanup OTP Codes** - כל יום בשעה 02:00
 
 ## ✅ בדיקה
 
@@ -61,16 +65,31 @@ curl -X POST https://qstash.upstash.io/v2/schedules \
   }'
 ```
 
-## 📊 מה ה-CRON עושה?
+## 📊 מה ה-CRON Jobs עושים?
 
-1. **קורא את כל המבקרים הפעילים מ-Redis**
-2. **מעביר אותם ל-PostgreSQL** (לפני שהם נמחקים אחרי 10 דקות)
-3. **מעדכן analytics_daily** (פעם ביום בשעה 00:00)
+### 1. Sync Visitors (כל 5 דקות)
+- קורא את כל המבקרים הפעילים מ-Redis
+- מעביר אותם ל-PostgreSQL (לפני שהם נמחקים אחרי 10 דקות)
+- מעדכן analytics_daily
+
+### 2. Archive Products (כל שעה)
+- מעביר מוצרים לארכיון אוטומטית לפי הגדרות
+
+### 3. Update Discounts Status (כל שעה)
+- מפעיל הנחות/קופונים שהגיע הזמן שלהם
+- מפסיק הנחות/קופונים שפג תוקף
+
+### 4. Cleanup OTP Codes (כל יום בשעה 02:00)
+- מוחק קודי OTP שפג תוקף לפני יותר מ-24 שעות
+- מוחק קודי OTP שכבר שימשו לפני יותר מ-7 ימים
+- מוחק קודי OTP עם יותר מדי ניסיונות שגויים לפני יותר מ-24 שעות
 
 ## ⚙️ תדירות
 
-- **מומלץ**: כל 5 דקות (`*/5 * * * *`)
-- **מינימום**: כל 10 דקות (לפני שהנתונים נמחקים מ-Redis)
+- **Sync Visitors**: כל 5 דקות (`*/5 * * * *`) - מומלץ, מינימום כל 10 דקות
+- **Archive Products**: כל שעה (`0 * * * *`)
+- **Update Discounts Status**: כל שעה (`0 * * * *`)
+- **Cleanup OTP Codes**: כל יום בשעה 02:00 (`0 2 * * *`)
 
 ## 🛠️ פתרון בעיות
 

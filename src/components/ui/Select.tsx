@@ -29,6 +29,17 @@ export function Select({ value, onValueChange, children }: SelectProps) {
     setSelectedLabel(label);
   };
 
+  // עדכון ה-label כשה-value משתנה מבחוץ
+  useEffect(() => {
+    if (value) {
+      // נחפש את ה-label מה-children
+      // זה יעבוד כי SelectItem מעדכן את ה-label כשהוא נבחר
+      setSelectedLabel(undefined); // נאפס כדי ש-SelectItem יעדכן מחדש
+    } else {
+      setSelectedLabel(undefined);
+    }
+  }, [value]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) {
@@ -79,8 +90,8 @@ export function SelectValue({ placeholder, children }: { placeholder?: string; c
   const context = useContext(SelectContext);
   if (!context) throw new Error('SelectValue must be used within Select');
 
-  // If children provided, use them (for custom display)
-  if (children) {
+  // If children provided, use them (for custom display) - זה עדיפות עליונה
+  if (children !== undefined && children !== null) {
     return <span className="text-sm text-gray-700">{children}</span>;
   }
 
@@ -89,7 +100,12 @@ export function SelectValue({ placeholder, children }: { placeholder?: string; c
     return <span className="text-sm text-gray-700">{context.selectedLabel}</span>;
   }
 
-  // אם אין label, נציג את ה-placeholder ולא את ה-value הגולמי
+  // אם אין label אבל יש value, נציג את ה-value (למקרה שלא נמצא label)
+  if (context.value) {
+    return <span className="text-sm text-gray-700">{context.value}</span>;
+  }
+
+  // אם אין label ואין value, נציג את ה-placeholder
   return <span className="text-sm text-gray-500">{placeholder || 'בחר...'}</span>;
 }
 

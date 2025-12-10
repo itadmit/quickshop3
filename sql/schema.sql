@@ -324,6 +324,9 @@ CREATE TABLE customers (
   first_name VARCHAR(100),
   last_name VARCHAR(100),
   phone VARCHAR(50),
+  id_number VARCHAR(20), -- מספר תעודת זהות
+  birth_date DATE, -- תאריך לידה
+  password_hash TEXT, -- Hashed password for customer login (optional - OTP is primary method)
   accepts_marketing BOOLEAN DEFAULT false,
   accepts_marketing_updated_at TIMESTAMP WITHOUT TIME ZONE,
   marketing_opt_in_level VARCHAR(50), -- single_opt_in, confirmed_opt_in, unknown
@@ -345,6 +348,9 @@ CREATE INDEX idx_customers_store_id ON customers(store_id);
 CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_customers_state ON customers(state);
 CREATE INDEX idx_customers_premium_club_tier ON customers(premium_club_tier);
+CREATE INDEX idx_customers_password_hash ON customers(password_hash) WHERE password_hash IS NOT NULL;
+CREATE INDEX idx_customers_id_number ON customers(id_number) WHERE id_number IS NOT NULL;
+CREATE INDEX idx_customers_birth_date ON customers(birth_date) WHERE birth_date IS NOT NULL;
 
 -- Customer Addresses (Shopify-like: Customer Addresses)
 CREATE TABLE customer_addresses (
@@ -683,6 +689,26 @@ CREATE INDEX idx_shipping_rate_cities_city ON shipping_rate_cities(city_name);
 -- 8. DISCOUNTS (Shopify-like: Discounts API)
 -- ============================================
 
+-- Influencers (משפיענים)
+CREATE TABLE influencers (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  name VARCHAR(200) NOT NULL,
+  email VARCHAR(200) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  instagram_handle VARCHAR(100),
+  tiktok_handle VARCHAR(100),
+  is_active BOOLEAN DEFAULT true,
+  last_login_at TIMESTAMP WITHOUT TIME ZONE,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id, email)
+);
+
+CREATE INDEX idx_influencers_store_id ON influencers(store_id);
+CREATE INDEX idx_influencers_email ON influencers(email);
+
 -- Discount Codes (with all conditions support)
 CREATE TABLE discount_codes (
   id SERIAL PRIMARY KEY,
@@ -715,6 +741,8 @@ CREATE TABLE discount_codes (
   get_discount_type VARCHAR(50), -- free, percentage, fixed_amount (על מה שמקבלים)
   get_discount_value NUMERIC(12,2), -- ערך ההנחה על מה שמקבלים (אם לא free)
   applies_to_same_product BOOLEAN DEFAULT true, -- האם זה חל על אותו מוצר
+  -- Gift Product (מתנה אוטומטית)
+  gift_product_id INT REFERENCES products(id) ON DELETE SET NULL, -- מוצר מתנה שיתווסף אוטומטית לעגלה כאשר הקופון מוחל
   -- Bundle fields (קנה X מוצרים ביחד)
   bundle_min_products INT, -- מינימום מוצרים בחבילה
   bundle_discount_type VARCHAR(50), -- percentage, fixed_amount
@@ -722,6 +750,7 @@ CREATE TABLE discount_codes (
   -- Volume fields (הנחה לפי כמות)
   volume_tiers JSONB, -- [{quantity: 5, discount_type: 'percentage', value: 10}, ...]
   is_active BOOLEAN DEFAULT true,
+  influencer_id INT REFERENCES influencers(id) ON DELETE SET NULL, -- קישור למשפיען (אם הקופון שייך למשפיען)
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   UNIQUE(store_id, code)
@@ -731,6 +760,7 @@ CREATE INDEX idx_discount_codes_store_id ON discount_codes(store_id);
 CREATE INDEX idx_discount_codes_code ON discount_codes(code);
 CREATE INDEX idx_discount_codes_active ON discount_codes(is_active, starts_at, ends_at);
 CREATE INDEX idx_discount_codes_priority ON discount_codes(priority DESC);
+CREATE INDEX idx_discount_codes_influencer_id ON discount_codes(influencer_id);
 
 -- Automatic Discounts (הנחות אוטומטיות)
 CREATE TABLE automatic_discounts (
@@ -763,6 +793,8 @@ CREATE TABLE automatic_discounts (
   get_discount_type VARCHAR(50), -- free, percentage, fixed_amount (על מה שמקבלים)
   get_discount_value NUMERIC(12,2), -- ערך ההנחה על מה שמקבלים (אם לא free)
   applies_to_same_product BOOLEAN DEFAULT true, -- האם זה חל על אותו מוצר
+  -- Gift Product (מתנה אוטומטית)
+  gift_product_id INT REFERENCES products(id) ON DELETE SET NULL, -- מוצר מתנה שיתווסף אוטומטית לעגלה כאשר ההנחה האוטומטית מוחלת
   -- Bundle fields (קנה X מוצרים ביחד)
   bundle_min_products INT, -- מינימום מוצרים בחבילה
   bundle_discount_type VARCHAR(50), -- percentage, fixed_amount
@@ -1365,6 +1397,41 @@ COMMENT ON COLUMN returns.items IS 'Array of { orderItemId, quantity, reason? }'
 COMMENT ON COLUMN returns.refund_method IS 'STORE_CREDIT = credit to customer account, REFUND = refund to payment method, EXCHANGE = exchange for different product';
 
 -- ============================================
+-- 18.6. OTP CODES (קודי התחברות חד-פעמיים)
+-- ============================================
+
+-- OTP Codes (One-Time Password) for customer authentication
+-- Supports both email and SMS OTP (SMS for future)
+CREATE TABLE otp_codes (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
+  email VARCHAR(255),
+  phone VARCHAR(50),
+  code VARCHAR(10) NOT NULL, -- 6-digit code
+  type VARCHAR(20) NOT NULL DEFAULT 'email', -- 'email' or 'sms'
+  expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  used_at TIMESTAMP WITHOUT TIME ZONE,
+  ip_address VARCHAR(100),
+  attempts INT DEFAULT 0,
+  max_attempts INT DEFAULT 5,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_otp_codes_store_id ON otp_codes(store_id);
+CREATE INDEX idx_otp_codes_customer_id ON otp_codes(customer_id);
+CREATE INDEX idx_otp_codes_email ON otp_codes(email);
+CREATE INDEX idx_otp_codes_phone ON otp_codes(phone);
+CREATE INDEX idx_otp_codes_code ON otp_codes(code);
+CREATE INDEX idx_otp_codes_expires_at ON otp_codes(expires_at);
+CREATE INDEX idx_otp_codes_used_at ON otp_codes(used_at) WHERE used_at IS NULL;
+
+COMMENT ON TABLE otp_codes IS 'One-Time Password codes for customer authentication';
+COMMENT ON COLUMN otp_codes.type IS 'email or sms - for future SMS support';
+COMMENT ON COLUMN otp_codes.attempts IS 'Number of failed verification attempts';
+COMMENT ON COLUMN otp_codes.max_attempts IS 'Maximum allowed attempts before code expires';
+
+-- ============================================
 -- 19. SIZE CHARTS (טבלת מידות)
 -- ============================================
 
@@ -1477,6 +1544,7 @@ CREATE TABLE automations (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
+  description TEXT, -- תיאור האוטומציה
   trigger_type VARCHAR(100) NOT NULL, -- order.created, customer.created, cart.abandoned, etc.
   trigger_conditions JSONB, -- תנאים נוספים
   actions JSONB NOT NULL, -- פעולות לביצוע (send_email, add_tag, update_status, etc.)
@@ -2494,6 +2562,27 @@ CREATE TRIGGER initialize_contact_categories_trigger
   AFTER INSERT ON stores
   FOR EACH ROW
   EXECUTE FUNCTION initialize_contact_categories();
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Triggers for plugins table
+CREATE TRIGGER update_plugins_updated_at
+  BEFORE UPDATE ON plugins
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Triggers for plugin_subscriptions table
+CREATE TRIGGER update_plugin_subscriptions_updated_at
+  BEFORE UPDATE ON plugin_subscriptions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- END OF SCHEMA

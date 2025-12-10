@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { HiSave, HiX, HiTag, HiTrash, HiPlus, HiChartBar, HiShoppingCart } from 'react-icons/hi';
+import { HiSave, HiX, HiTag, HiTrash, HiPlus, HiChartBar, HiShoppingCart, HiGift } from 'react-icons/hi';
 import { DiscountCode, UpdateDiscountCodeRequest } from '@/types/discount';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ProductSelector } from '@/components/discounts/ProductSelector';
 import { CollectionSelector } from '@/components/discounts/CollectionSelector';
 import { TagSelector } from '@/components/discounts/TagSelector';
+import { GiftProductSelector } from '@/components/discounts/GiftProductSelector';
 
 export default function EditDiscountPage() {
   const params = useParams();
@@ -70,6 +71,9 @@ export default function EditDiscountPage() {
       discount_type: 'percentage' | 'fixed_amount';
       value: number;
     }>;
+    // Gift Product (מתנה אוטומטית)
+    gift_product_id?: number | null;
+    gift_product?: any; // מוצר המתנה (לצורך תצוגה)
   }>({});
 
   useEffect(() => {
@@ -162,6 +166,9 @@ export default function EditDiscountPage() {
         bundle_discount_value: data.discount.bundle_discount_value || undefined,
         // Volume fields
         volume_tiers: data.discount.volume_tiers ? (typeof data.discount.volume_tiers === 'string' ? JSON.parse(data.discount.volume_tiers) : data.discount.volume_tiers) : undefined,
+        // Gift Product
+        gift_product_id: data.discount.gift_product_id || null,
+        gift_product: data.discount.gift_product || null,
       });
     } catch (error: any) {
       console.error('Error loading discount:', error);
@@ -275,6 +282,8 @@ export default function EditDiscountPage() {
         product_ids: formData.product_ids && formData.product_ids.length > 0 ? formData.product_ids : [],
         collection_ids: formData.collection_ids && formData.collection_ids.length > 0 ? formData.collection_ids : [],
         tag_names: formData.tag_names && formData.tag_names.length > 0 ? formData.tag_names : [],
+        // Gift Product
+        gift_product_id: formData.gift_product_id || null,
       };
 
       const response = await fetch(`/api/discounts/${discountId}`, {

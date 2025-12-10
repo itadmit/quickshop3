@@ -92,26 +92,127 @@ export default function DiscountsPage() {
     {
       key: 'discount_type',
       label: 'סוג הנחה',
-      render: (discount) => (
-        <span className="text-sm text-gray-700">
-          {discount.discount_type === 'percentage' ? 'אחוזים' :
-           discount.discount_type === 'fixed_amount' ? 'סכום קבוע' :
-           'משלוח חינם'}
-        </span>
-      ),
+      render: (discount) => {
+        const typeLabels: Record<string, string> = {
+          'percentage': 'אחוזים',
+          'fixed_amount': 'סכום קבוע',
+          'free_shipping': 'משלוח חינם',
+          'bogo': 'קנה X קבל Y (BOGO)',
+          'bundle': 'חבילה',
+          'volume': 'הנחת כמות',
+        };
+        return (
+          <span className="text-sm text-gray-700">
+            {typeLabels[discount.discount_type] || discount.discount_type}
+          </span>
+        );
+      },
     },
     {
       key: 'value',
       label: 'ערך',
-      render: (discount) => (
-        <div className="font-semibold text-gray-900">
-          {discount.discount_type === 'percentage' 
-            ? `${discount.value}%`
-            : discount.discount_type === 'fixed_amount'
-            ? `₪${parseFloat(discount.value || '0').toLocaleString('he-IL')}`
-            : 'חינם'}
-        </div>
-      ),
+      render: (discount) => {
+        if (discount.discount_type === 'percentage') {
+          return (
+            <div className="font-semibold text-gray-900">
+              {discount.value}%
+            </div>
+          );
+        }
+        if (discount.discount_type === 'fixed_amount') {
+          return (
+            <div className="font-semibold text-gray-900">
+              ₪{parseFloat(discount.value || '0').toLocaleString('he-IL')}
+            </div>
+          );
+        }
+        if (discount.discount_type === 'free_shipping') {
+          return (
+            <div className="font-semibold text-gray-900">
+              חינם
+            </div>
+          );
+        }
+        if (discount.discount_type === 'bogo') {
+          const buyQty = discount.buy_quantity || 1;
+          const getQty = discount.get_quantity || 1;
+          const getDiscountType = discount.get_discount_type || 'free';
+          const getDiscountValue = discount.get_discount_value;
+          
+          let valueText = `קנה ${buyQty} קבל ${getQty}`;
+          if (getDiscountType === 'free') {
+            valueText += ' חינם';
+          } else if (getDiscountType === 'percentage' && getDiscountValue) {
+            valueText += ` ב-${getDiscountValue}% הנחה`;
+          } else if (getDiscountType === 'fixed_amount' && getDiscountValue) {
+            valueText += ` ב-₪${parseFloat(getDiscountValue).toLocaleString('he-IL')}`;
+          }
+          
+          return (
+            <div className="font-semibold text-gray-900 text-sm">
+              {valueText}
+            </div>
+          );
+        }
+        if (discount.discount_type === 'bundle') {
+          const minProducts = discount.bundle_min_products || 0;
+          const bundleType = discount.bundle_discount_type;
+          const bundleValue = discount.bundle_discount_value;
+          
+          let valueText = `${minProducts}+ מוצרים`;
+          if (bundleType === 'percentage' && bundleValue) {
+            valueText += ` - ${bundleValue}%`;
+          } else if (bundleType === 'fixed_amount' && bundleValue) {
+            valueText += ` - ₪${parseFloat(bundleValue).toLocaleString('he-IL')}`;
+          }
+          
+          return (
+            <div className="font-semibold text-gray-900 text-sm">
+              {valueText}
+            </div>
+          );
+        }
+        if (discount.discount_type === 'volume') {
+          let tiers = discount.volume_tiers;
+          // Parse JSON string if needed
+          if (typeof tiers === 'string') {
+            try {
+              tiers = JSON.parse(tiers);
+            } catch (e) {
+              tiers = null;
+            }
+          }
+          if (tiers && Array.isArray(tiers) && tiers.length > 0) {
+            const firstTier = tiers[0];
+            const qty = firstTier.quantity || 0;
+            const tierType = firstTier.discount_type;
+            const tierValue = firstTier.value;
+            
+            let valueText = `${qty}+ יחידות`;
+            if (tierType === 'percentage') {
+              valueText += ` - ${tierValue}%`;
+            } else if (tierType === 'fixed_amount') {
+              valueText += ` - ₪${tierValue.toLocaleString('he-IL')}`;
+            }
+            
+            return (
+              <div className="font-semibold text-gray-900 text-sm">
+                {valueText}
+              </div>
+            );
+          }
+          return (
+            <div className="font-semibold text-gray-900 text-sm">
+              הנחת כמות
+            </div>
+          );
+        }
+        return (
+          <div className="font-semibold text-gray-900">
+            -
+          </div>
+        );
+      },
     },
     {
       key: 'usage_count',

@@ -60,10 +60,12 @@ export async function POST(
     const menuId = parseInt(id);
     const storeId = user.store_id;
     const body = await request.json();
-    const { title, url, type, resource_id, parent_id, position = 0 } = body;
+    const { title, label, url, type, resource_id, parent_id, position = 0 } = body;
 
-    if (!title || !type) {
-      return NextResponse.json({ error: 'title and type are required' }, { status: 400 });
+    // תמיכה גם ב-label וגם ב-title
+    const itemTitle = title || label;
+    if (!itemTitle || !type) {
+      return NextResponse.json({ error: 'title/label and type are required' }, { status: 400 });
     }
 
     // Verify menu exists
@@ -82,7 +84,7 @@ export async function POST(
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
       RETURNING *`,
-      [menuId, parent_id || null, title, url || null, type, resource_id || null, position]
+      [menuId, parent_id || null, itemTitle, url || null, type, resource_id || null, position]
     );
 
     return NextResponse.json(quickshopItem('navigation_menu_item', item));

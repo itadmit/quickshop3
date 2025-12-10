@@ -6,7 +6,11 @@ import { HiSearch, HiX } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextSkeleton } from '@/components/ui/Skeleton';
 
-export function SearchBar() {
+interface SearchBarProps {
+  placeholder?: string;
+}
+
+export function SearchBar({ placeholder }: SearchBarProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -15,6 +19,9 @@ export function SearchBar() {
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
   const { t, loading: translationsLoading } = useTranslation('storefront');
+  
+  // Use custom placeholder if provided, otherwise use translation
+  const searchPlaceholder = placeholder || (translationsLoading ? 'חפש מוצרים...' : (t('navigation.search_placeholder') || 'חפש מוצרים...'));
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -72,7 +79,7 @@ export function SearchBar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={translationsLoading ? 'חפש מוצרים...' : (t('navigation.search_placeholder') || 'חפש מוצרים...')}
+            placeholder={searchPlaceholder}
             className="w-64 px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
             aria-label={translationsLoading ? 'חפש' : t('navigation.search')}
           />

@@ -2,10 +2,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { loadActivePlugins } from '@/lib/plugins/loader';
+import { query } from '@/lib/db';
+import { PluginSubscription, Plugin } from '@/types/plugin';
 
 /**
- * GET /api/plugins/active - רשימת תוספים פעילים לחנות
+ * GET /api/plugins/active - רשימת תוספים פעילים לחנות עם פרטי מנוי
  */
 export async function GET(request: NextRequest) {
   try {
@@ -15,11 +16,25 @@ export async function GET(request: NextRequest) {
     }
 
     const storeId = user.store_id;
-    const plugins = await loadActivePlugins(storeId);
+
+    // קבלת כל המנויים הפעילים עם פרטי התוספים
+    const subscriptions = await query<PluginSubscription & { plugin_name: string; plugin_slug: string }>(
+      `SELECT 
+        ps.*,
+        p.name as plugin_name,
+        p.slug as plugin_slug
+      FROM plugin_subscriptions ps
+      JOIN plugins p ON p.id = ps.plugin_id
+      WHERE ps.store_id = $1 
+      AND ps.status = 'ACTIVE'
+      AND ps.is_active = true
+      ORDER BY ps.created_at DESC`,
+      [storeId]
+    );
 
     return NextResponse.json({
-      plugins,
-      total: plugins.length,
+      plugins: subscriptions,
+      total: subscriptions.length,
     });
   } catch (error: any) {
     console.error('Error fetching active plugins:', error);

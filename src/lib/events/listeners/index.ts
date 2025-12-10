@@ -10,6 +10,9 @@ import './webhookListener';
 import './emailListener';
 import './premiumClubListener';
 import './contactSyncListener';
+import './influencerListener';
+import './defaultPagesListener';
+import '../../automations/automationListener';
 
 // Add more listeners here as they are created:
 // import './analyticsListener';

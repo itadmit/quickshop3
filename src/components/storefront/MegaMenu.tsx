@@ -58,7 +58,7 @@ export function MegaMenu({ categories }: MegaMenuProps) {
             onMouseLeave={handleMouseLeave}
           >
             <Link
-              href={`/shops/${storeSlug}/collections/${category.handle}`}
+              href={`/shops/${storeSlug}/categories/${category.handle}`}
               className="text-gray-700 hover:text-gray-900 font-medium transition-colors py-2 block"
               aria-haspopup={category.children && category.children.length > 0 ? 'true' : undefined}
               aria-expanded={openDropdown === category.id ? 'true' : 'false'}
@@ -79,7 +79,7 @@ export function MegaMenu({ categories }: MegaMenuProps) {
                   {category.children.map((child) => (
                     <Link
                       key={child.id}
-                      href={`/shops/${storeSlug}/collections/${child.handle}`}
+                      href={`/shops/${storeSlug}/categories/${child.handle}`}
                       className="text-gray-700 hover:text-black transition-colors py-2 block"
                       role="menuitem"
                       onClick={() => {

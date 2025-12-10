@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Emit event
-    await eventBus.emit(
+    await eventBus.emitEvent(
       'automatic_discount.created',
       {
         discount: {

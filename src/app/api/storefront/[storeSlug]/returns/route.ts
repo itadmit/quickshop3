@@ -236,15 +236,15 @@ export async function POST(
     // יצירת אירוע (אם יש eventBus)
     try {
       const { eventBus } = await import('@/lib/events/eventBus');
-      await eventBus.emit('return.created', {
+      await eventBus.emitEvent('return.created', {
+        returnId: result.id,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        customerId: auth.customerId,
+        reason: data.reason,
+      }, {
         store_id: auth.store.id,
-        payload: {
-          returnId: result.id,
-          orderId: order.id,
-          orderNumber: order.order_number,
-          customerId: auth.customerId,
-          reason: data.reason,
-        },
+        source: 'api',
       });
     } catch (error) {
       console.error('Error emitting return.created event:', error);

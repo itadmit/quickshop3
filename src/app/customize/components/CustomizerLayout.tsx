@@ -106,7 +106,7 @@ export function CustomizerLayout() {
                 { label: 'בית', url: '/' },
                 ...collections.slice(0, 5).map((col: any) => ({
                   label: col.name,
-                  url: `/collections/${col.handle}`
+                  url: `/categories/${col.handle}`
                 })),
                 { label: 'אודות', url: '/pages/about' },
                 { label: 'צור קשר', url: '/pages/contact' }
@@ -118,6 +118,9 @@ export function CustomizerLayout() {
             },
             cart: {
               enabled: true
+            },
+            currency_selector: {
+              enabled: false
             },
             user_account: {
               enabled: true
@@ -144,7 +147,7 @@ export function CustomizerLayout() {
                 { label: 'בית', url: '/' },
                 ...collections.slice(0, 5).map((col: any) => ({
                   label: col.name,
-                  url: `/collections/${col.handle}`
+                  url: `/categories/${col.handle}`
                 })),
                 { label: 'אודות', url: '/pages/about' },
                 { label: 'צור קשר', url: '/pages/contact' }
@@ -159,6 +162,20 @@ export function CustomizerLayout() {
 
       // Add or update footer
       if (!hasFooter) {
+        // Try to get default footer menu via API
+        let footerMenuId = null;
+        try {
+          const menuResponse = await fetch('/api/navigation?position=footer&limit=1');
+          if (menuResponse.ok) {
+            const menuData = await menuResponse.json();
+            if (menuData.navigation_menus && menuData.navigation_menus.length > 0) {
+              footerMenuId = menuData.navigation_menus[0].id;
+            }
+          }
+        } catch (error) {
+          console.error('Error loading footer menu:', error);
+        }
+
         const footerSection: SectionSettings = {
           id: 'footer-fixed',
           type: 'footer',
@@ -169,42 +186,65 @@ export function CustomizerLayout() {
           blocks: [],
           style: {},
           settings: {
+            columns_count: 4,
             columns: [
               {
+                type: 'menu',
                 title: 'חברה',
-                links: [
-                  { label: 'אודותינו', url: '/pages/about' },
-                  { label: 'צור קשר', url: '/pages/contact' },
-                  { label: 'משלוחים', url: '/pages/shipping' },
-                  { label: 'החזרות', url: '/pages/returns' }
-                ]
+                menu_id: footerMenuId,
+                text: '',
+                image_url: '',
+                newsletter_title: '',
+                newsletter_content: '',
+                newsletter_button_bg: '#000000',
+                newsletter_button_text: '#FFFFFF'
               },
               {
+                type: 'menu',
                 title: 'מוצרים',
-                links: [
-                  { label: 'כל המוצרים', url: '/collections/all' },
-                  ...collections.slice(0, 3).map((col: any) => ({
-                    label: col.name,
-                    url: `/collections/${col.handle}`
-                  }))
-                ]
+                menu_id: footerMenuId,
+                text: '',
+                image_url: '',
+                newsletter_title: '',
+                newsletter_content: '',
+                newsletter_button_bg: '#000000',
+                newsletter_button_text: '#FFFFFF'
               },
               {
+                type: 'menu',
                 title: 'שירות לקוחות',
-                links: [
-                  { label: 'שאלות נפוצות', url: '/pages/faq' },
-                  { label: 'מדיניות פרטיות', url: '/pages/privacy' },
-                  { label: 'תנאי שימוש', url: '/pages/terms' }
-                ]
+                menu_id: footerMenuId,
+                text: '',
+                image_url: '',
+                newsletter_title: '',
+                newsletter_content: '',
+                newsletter_button_bg: '#000000',
+                newsletter_button_text: '#FFFFFF'
+              },
+              {
+                type: 'newsletter',
+                title: '',
+                menu_id: null,
+                text: '',
+                image_url: '',
+                newsletter_title: 'הישאר מעודכן',
+                newsletter_content: 'הירשם לניוזלטר שלנו וקבל עדכונים על מוצרים חדשים והנחות מיוחדות',
+                newsletter_button_bg: '#000000',
+                newsletter_button_text: '#FFFFFF'
               }
             ],
-            social_links: [
-              { platform: 'facebook', url: 'https://facebook.com' },
-              { platform: 'instagram', url: 'https://instagram.com' },
-              { platform: 'twitter', url: 'https://twitter.com' }
-            ],
-            copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`,
-            payment_methods: ['visa', 'mastercard', 'paypal']
+            social_links: {
+              enabled: true,
+              links: [
+                { platform: 'facebook', url: 'https://facebook.com' },
+                { platform: 'instagram', url: 'https://instagram.com' },
+                { platform: 'twitter', url: 'https://twitter.com' }
+              ]
+            },
+            currency_selector: {
+              enabled: false
+            },
+            copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
           }
         };
         sections.push(footerSection);
@@ -215,29 +255,44 @@ export function CustomizerLayout() {
           sections[footerIndex].locked = true;
           sections[footerIndex].name = 'כותרת תחתונה';
           
-          // Always update copyright with store name and update products column with collections
-          const existingColumns = sections[footerIndex].settings?.columns || [];
-          const updatedColumns = existingColumns.map((col: any) => {
-            if (col.title === 'מוצרים') {
-              return {
-                ...col,
-                links: [
-                  { label: 'כל המוצרים', url: '/collections/all' },
-                  ...collections.slice(0, 3).map((c: any) => ({
-                    label: c.name,
-                    url: `/collections/${c.handle}`
-                  }))
-                ]
-              };
-            }
-            return col;
-          });
+          // Ensure new footer structure with columns_count
+          const existingSettings = sections[footerIndex].settings || {};
           
-          sections[footerIndex].settings = {
-            ...sections[footerIndex].settings,
-            columns: updatedColumns.length > 0 ? updatedColumns : sections[footerIndex].settings?.columns,
-            copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
-          };
+          // If old structure (no columns_count), migrate to new structure
+          if (!existingSettings.columns_count) {
+            sections[footerIndex].settings = {
+              ...existingSettings,
+              columns_count: 4,
+              columns: [
+                ...(existingSettings.columns || []).slice(0, 3),
+                {
+                  type: 'newsletter',
+                  title: '',
+                  menu_id: null,
+                  text: '',
+                  image_url: '',
+                  newsletter_title: 'הישאר מעודכן',
+                  newsletter_content: 'הירשם לניוזלטר שלנו וקבל עדכונים על מוצרים חדשים והנחות מיוחדות',
+                  newsletter_button_bg: '#000000',
+                  newsletter_button_text: '#FFFFFF'
+                }
+              ],
+              social_links: existingSettings.social_links || {
+                enabled: true,
+                links: []
+              },
+              currency_selector: existingSettings.currency_selector || {
+                enabled: false
+              },
+              copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
+            };
+          } else {
+            // Just update copyright
+            sections[footerIndex].settings = {
+              ...existingSettings,
+              copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
+            };
+          }
           
           // Move footer to end if not already
           const footer = sections.splice(footerIndex, 1)[0];
@@ -303,7 +358,7 @@ export function CustomizerLayout() {
           heading: 'קולקציית קיץ 2024',
           subheading: 'הפריטים החמים ביותר לעונה',
           button_text: 'קנה עכשיו',
-          button_url: '/collections/all',
+          button_url: '/categories/all',
           height: 'medium',
           text_align: 'center',
           content_position_vertical: 'center',
@@ -400,7 +455,7 @@ export function CustomizerLayout() {
               heading: 'ברוכים הבאים לחנות החדשה',
               subheading: 'גלו את הקולקציה החדשה שלנו',
               button_text: 'קנה עכשיו',
-              button_url: '/collections/all',
+              button_url: '/categories/all',
               image_url: '' // Placeholder will be handled by component
             }
           },
@@ -411,7 +466,7 @@ export function CustomizerLayout() {
               heading: 'מבצעי קיץ חמים',
               subheading: 'עד 50% הנחה על כל הפריטים',
               button_text: 'למבצעים',
-              button_url: '/collections/sale',
+              button_url: '/categories/sale',
               image_url: ''
             }
           }

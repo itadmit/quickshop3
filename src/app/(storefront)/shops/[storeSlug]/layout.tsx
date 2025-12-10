@@ -4,8 +4,9 @@ import Script from 'next/script';
 import React from 'react';
 import { headers } from 'next/headers';
 import { PageViewTracker } from '@/components/storefront/PageViewTracker';
-import { CustomizerLayout } from '@/components/storefront/CustomizerLayout';
+import { CustomizerLayoutWrapper } from '@/components/storefront/CustomizerLayoutWrapper';
 import { LocaleSetter } from '@/components/storefront/LocaleSetter';
+import { PopupManager } from '@/components/storefront/PopupManager';
 import { getStoreBySlug } from '@/lib/utils/store';
 import { getActivePixels, getActiveTrackingCodes } from '@/lib/tracking/pixels';
 
@@ -143,9 +144,10 @@ export default async function StoreSlugLayout({
       
       {/* Layout Structure: Customizer Layout (Header + Content + Footer from Customizer) */}
       <PageViewTracker />
-      <CustomizerLayout storeSlug={storeSlug}>
+      <PopupManager storeId={store.id} />
+      <CustomizerLayoutWrapper storeSlug={storeSlug}>
         {children}
-      </CustomizerLayout>
+      </CustomizerLayoutWrapper>
 
       {/* Body Tracking Codes */}
       {bodyCodes

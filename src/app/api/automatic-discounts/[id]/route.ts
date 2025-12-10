@@ -201,7 +201,7 @@ export async function PUT(
     }
 
     // Emit event
-    await eventBus.emit(
+    await eventBus.emitEvent(
       'automatic_discount.updated',
       {
         discount: {
@@ -254,10 +254,12 @@ export async function DELETE(
     await query('DELETE FROM automatic_discounts WHERE id = $1 AND store_id = $2', [id, storeId]);
 
     // Emit event
-    await eventBus.emit(
+    await eventBus.emitEvent(
       'automatic_discount.deleted',
       {
-        discount_id: Number(id),
+        discount: {
+          id: Number(id),
+        },
       },
       {
         store_id: storeId,

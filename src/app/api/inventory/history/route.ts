@@ -31,9 +31,15 @@ export async function GET(request: NextRequest) {
         pv.option2,
         pv.option3,
         p.id as product_id,
-        p.title as product_title
+        p.title as product_title,
+        (sl.context->>'old_quantity')::int as old_quantity,
+        (sl.context->>'new_quantity')::int as new_quantity,
+        (sl.context->>'change')::int as change
       FROM system_logs sl
-      LEFT JOIN product_variants pv ON (sl.context->>'variant_id')::int = pv.id
+      LEFT JOIN product_variants pv ON COALESCE(
+        (sl.context->>'variant_id')::int,
+        (sl.context->'payload'->>'variant_id')::int
+      ) = pv.id
       LEFT JOIN products p ON pv.product_id = p.id
       WHERE sl.store_id = $1 
         AND (sl.source = 'inventory' OR sl.message LIKE '%inventory%')
@@ -41,7 +47,10 @@ export async function GET(request: NextRequest) {
     const queryParams: any[] = [user.store_id];
 
     if (variantId) {
-      queryStr += ` AND (sl.context->>'variant_id')::int = $${queryParams.length + 1}`;
+      queryStr += ` AND COALESCE(
+        (sl.context->>'variant_id')::int,
+        (sl.context->'payload'->>'variant_id')::int
+      ) = $${queryParams.length + 1}`;
       queryParams.push(parseInt(variantId));
     }
 

@@ -20,15 +20,16 @@ interface Collection {
 }
 
 interface StorefrontHeaderProps {
+  storeSlug?: string;
   storeName?: string;
   storeLogo?: string;
   collections?: Collection[];
 }
 
-export function StorefrontHeader({ storeName = 'החנות שלי', storeLogo, collections = [] }: StorefrontHeaderProps) {
+export function StorefrontHeader({ storeSlug: propStoreSlug, storeName = 'החנות שלי', storeLogo, collections = [] }: StorefrontHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const params = useParams();
-  const storeSlug = params?.storeSlug as string || '';
+  const storeSlug = propStoreSlug || (params?.storeSlug as string) || '';
   const storeId = useStoreId(); // Get storeId dynamically from URL
   
   // Translations

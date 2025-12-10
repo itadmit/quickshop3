@@ -28,7 +28,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         navigation: {
           menu_items: [
             { label: 'בית', url: '/' },
-            { label: 'מוצרים', url: '/collections/all' },
+            { label: 'מוצרים', url: '/categories/all' },
             { label: 'אודות', url: '/pages/about' },
             { label: 'צור קשר', url: '/pages/contact' }
           ]
@@ -39,6 +39,9 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         },
         cart: {
           enabled: true
+        },
+        currency_selector: {
+          enabled: false
         },
         user_account: {
           enabled: true
@@ -62,7 +65,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
             heading: 'ברוכים הבאים',
             subheading: 'לחנות החדשה שלנו',
             button_text: 'מעבר לחנות',
-            button_url: '/collections/all'
+            button_url: '/categories/all'
           },
           style: {
             text_align: 'center',
@@ -78,7 +81,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       ],
       style: {
         background: {
-          background_color: '#E5E7EB',
+          background_color: '#FFFFFF',
           background_image: '/images/library/New_york_desktop_image.jpg',
           background_image_mobile: '/images/library/New_york_mobile_image.jpeg',
           background_size: 'cover',
@@ -300,40 +303,65 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
       blocks: [],
       style: {},
       settings: {
+        columns_count: 4,
         columns: [
           {
+            type: 'menu',
             title: 'חברה',
-            links: [
-              { label: 'אודותינו', url: '/pages/about' },
-              { label: 'צור קשר', url: '/pages/contact' },
-              { label: 'משלוחים', url: '/pages/shipping' },
-              { label: 'החזרות', url: '/pages/returns' }
-            ]
+            menu_id: null,
+            text: '',
+            image_url: '',
+            newsletter_title: '',
+            newsletter_content: '',
+            newsletter_button_bg: '#000000',
+            newsletter_button_text: '#FFFFFF'
           },
           {
+            type: 'menu',
             title: 'מוצרים',
-            links: [
-              { label: 'כל המוצרים', url: '/collections/all' },
-              { label: 'מוצרים חדשים', url: '/collections/new' },
-              { label: 'מבצעים', url: '/collections/sale' }
-            ]
+            menu_id: null,
+            text: '',
+            image_url: '',
+            newsletter_title: '',
+            newsletter_content: '',
+            newsletter_button_bg: '#000000',
+            newsletter_button_text: '#FFFFFF'
           },
           {
+            type: 'menu',
             title: 'שירות לקוחות',
-            links: [
-              { label: 'שאלות נפוצות', url: '/pages/faq' },
-              { label: 'מדיניות פרטיות', url: '/pages/privacy' },
-              { label: 'תנאי שימוש', url: '/pages/terms' }
-            ]
+            menu_id: null,
+            text: '',
+            image_url: '',
+            newsletter_title: '',
+            newsletter_content: '',
+            newsletter_button_bg: '#000000',
+            newsletter_button_text: '#FFFFFF'
+          },
+          {
+            type: 'newsletter',
+            title: '',
+            menu_id: null,
+            text: '',
+            image_url: '',
+            newsletter_title: 'הישאר מעודכן',
+            newsletter_content: 'הירשם לניוזלטר שלנו וקבל עדכונים על מוצרים חדשים והנחות מיוחדות',
+            newsletter_button_bg: '#000000',
+            newsletter_button_text: '#FFFFFF'
           }
         ],
-        social_links: [
-          { platform: 'facebook', url: 'https://facebook.com' },
-          { platform: 'instagram', url: 'https://instagram.com' },
-          { platform: 'twitter', url: 'https://twitter.com' }
-        ],
-        copyright: '© 2024 כל הזכויות שמורות',
-        payment_methods: ['visa', 'mastercard', 'paypal']
+        social_links: {
+          enabled: true,
+          links: [
+            { platform: 'facebook', url: 'https://facebook.com' },
+            { platform: 'instagram', url: 'https://instagram.com' },
+            { platform: 'twitter', url: 'https://twitter.com' }
+          ]
+        },
+        currency_selector: {
+          enabled: false
+        },
+        copyright: '© 2024 כל הזכויות שמורות'
       }
     }
   ],

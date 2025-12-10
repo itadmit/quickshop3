@@ -7,6 +7,8 @@ export interface Customer {
   phone: string | null;
   first_name: string | null;
   last_name: string | null;
+  id_number: string | null;
+  birth_date: Date | null;
   accepts_marketing: boolean;
   marketing_opt_in_level: string | null;
   state: 'enabled' | 'disabled' | 'invited';

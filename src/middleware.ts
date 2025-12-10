@@ -7,6 +7,7 @@ import { parseUserAgent } from '@/lib/analytics/device-parser';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const SESSION_COOKIE_NAME = 'quickshop3_session';
+const INFLUENCER_SESSION_COOKIE = 'influencer_session';
 const VISITOR_SESSION_COOKIE_NAME = 'quickshop3_visitor_session';
 
 // Verify JWT token in Edge Runtime (using jose instead of jsonwebtoken)
@@ -15,6 +16,20 @@ async function verifyTokenEdge(token: string) {
     const secret = new TextEncoder().encode(JWT_SECRET);
     const { payload } = await jwtVerify(token, secret);
     return payload as { id: number; email: string; name: string; store_id: number };
+  } catch {
+    return null;
+  }
+}
+
+// Verify influencer token in Edge Runtime
+async function verifyInfluencerTokenEdge(token: string) {
+  try {
+    const secret = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    if ((payload as any).role === 'influencer') {
+      return payload as { id: number; email: string; store_id: number; role: 'influencer' };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -83,6 +98,22 @@ export async function middleware(request: NextRequest) {
     });
     return response;
   };
+
+  // Handle influencer login page
+  if (pathname === '/influencer/login') {
+    const influencerToken = request.cookies.get(INFLUENCER_SESSION_COOKIE)?.value ||
+                           request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (influencerToken) {
+      const influencer = await verifyInfluencerTokenEdge(influencerToken);
+      if (influencer) {
+        // Influencer is logged in, redirect to dashboard
+        return addCheckoutHeader(NextResponse.redirect(new URL('/influencer/dashboard', request.url)));
+      }
+    }
+    // Allow access to influencer login page
+    return addCheckoutHeader(NextResponse.next());
+  }
 
   // Handle login/register pages FIRST (before dashboard routes)
   if (pathname === '/login' || pathname === '/register') {
@@ -206,6 +237,8 @@ export async function middleware(request: NextRequest) {
           });
         });
         
+        // הוספת pathname ל-header כדי ש-CustomizerLayout יוכל לזהות את pageType
+        response.headers.set('x-pathname', pathname);
         return addCheckoutHeader(response);
       }
     } catch (error) {
@@ -214,10 +247,41 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // Protect dashboard routes (all routes except public routes and storefront)
+  // Protect influencer routes (except login)
+  const isInfluencerRoute = pathname.startsWith('/influencer/') && pathname !== '/influencer/login';
+  
+  if (isInfluencerRoute) {
+    const influencerToken = request.cookies.get(INFLUENCER_SESSION_COOKIE)?.value ||
+                           request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!influencerToken) {
+      // No token, redirect to influencer login
+      return addCheckoutHeader(NextResponse.redirect(new URL('/influencer/login', request.url)));
+    }
+    
+    const influencer = await verifyInfluencerTokenEdge(influencerToken);
+    if (!influencer) {
+      // Invalid token, clear it and redirect to influencer login
+      const response = NextResponse.redirect(new URL('/influencer/login', request.url));
+      response.cookies.delete(INFLUENCER_SESSION_COOKIE);
+      response.cookies.set(INFLUENCER_SESSION_COOKIE, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
+      return addCheckoutHeader(response);
+    }
+    // Influencer token is valid, allow access
+    return addCheckoutHeader(NextResponse.next());
+  }
+
+  // Protect dashboard routes (all routes except public routes, storefront, and influencer routes)
   const isDashboardRoute = !isPublicRoute && 
                           !pathname.startsWith('/api') &&
-                          !pathname.startsWith('/_next');
+                          !pathname.startsWith('/_next') &&
+                          !pathname.startsWith('/influencer');
 
   if (isDashboardRoute) {
     if (!token || !tokenValid || !user) {

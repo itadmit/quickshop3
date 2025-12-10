@@ -99,3 +99,19 @@ export function clearSessionCookie(response: NextResponse): NextResponse {
   return response;
 }
 
+// Generate JWT token for influencer
+export async function generateInfluencerToken(payload: {
+  id: number;
+  store_id: number;
+  email: string;
+  role: 'influencer';
+}): Promise<string> {
+  const secret = new TextEncoder().encode(JWT_SECRET);
+  const token = await new SignJWT(payload as any)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('30d') // 30 days
+    .setIssuedAt()
+    .sign(secret);
+  return token;
+}
+

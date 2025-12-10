@@ -69,18 +69,37 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const storeId = user.store_id;
-    const { name, handle, position } = body;
+    const { name, handle, position, display_on } = body;
 
     if (!name || !handle) {
       return NextResponse.json({ error: 'name and handle are required' }, { status: 400 });
     }
 
-    const menu = await queryOne(
-      `INSERT INTO navigation_menus (store_id, name, handle, position, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, now(), now())
-       RETURNING *`,
-      [storeId, name, handle, position || null]
-    );
+    // אם display_on לא מוגדר, נשתמש ב-both כברירת מחדל
+    const displayOn = display_on || 'both';
+
+    // ניסיון ליצור עם display_on, אם השדה לא קיים ננסה בלי
+    let menu;
+    try {
+      menu = await queryOne(
+        `INSERT INTO navigation_menus (store_id, name, handle, position, display_on, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, now(), now())
+         RETURNING *`,
+        [storeId, name, handle, position || null, displayOn]
+      );
+    } catch (error: any) {
+      // אם השדה לא קיים, ננסה בלי display_on
+      if (error.message?.includes('display_on') || error.message?.includes('column')) {
+        menu = await queryOne(
+          `INSERT INTO navigation_menus (store_id, name, handle, position, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, now(), now())
+           RETURNING *`,
+          [storeId, name, handle, position || null]
+        );
+      } else {
+        throw error;
+      }
+    }
 
     await eventBus.emitEvent('navigation.menu.created', {
       menu: menu,

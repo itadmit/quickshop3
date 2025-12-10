@@ -43,6 +43,10 @@ interface Store {
   name: string
   description: string | null
   logo: string | null
+  settings?: {
+    show_id_number?: boolean
+    show_birth_date?: boolean
+  }
 }
 
 interface Customer {
@@ -52,6 +56,8 @@ interface Customer {
   first_name: string | null
   last_name: string | null
   phone: string | null
+  id_number?: string | null
+  birth_date?: string | null
   premium_club_tier?: string | null
 }
 
@@ -274,6 +280,20 @@ export default function StorefrontAccountPage() {
       if (response.ok) {
         const data = await response.json()
         setStore(data)
+        
+        // Fetch store settings for showing/hiding fields
+        if (data.id) {
+          try {
+            const settingsResponse = await fetch(`/api/storefront/stores/${data.id}/settings`)
+            if (settingsResponse.ok) {
+              const settingsData = await settingsResponse.json()
+              setStore(prev => prev ? { ...prev, settings: settingsData.settings } : null)
+            }
+          } catch (err) {
+            // If settings fetch fails, use defaults
+            console.error('Error fetching store settings:', err)
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching shop info:", error)
@@ -713,6 +733,27 @@ export default function StorefrontAccountPage() {
                     <Label>טלפון</Label>
                     <p className="font-medium">{customer.phone || "-"}</p>
                   </div>
+                  
+                  {/* תעודת זהות ותאריך לידה - אם מוגדר להצגה */}
+                  {store?.settings?.show_id_number && (
+                    <div>
+                      <Label>מספר תעודת זהות</Label>
+                      <p className="font-medium">{customer.id_number || "-"}</p>
+                    </div>
+                  )}
+                  
+                  {store?.settings?.show_birth_date && customer.birth_date && (
+                    <div>
+                      <Label>תאריך לידה</Label>
+                      <p className="font-medium">
+                        {new Date(customer.birth_date).toLocaleDateString('he-IL', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  )}
                   
                   {/* רמת מועדון פרימיום עם פרוגרס בר */}
                   {loadingPremiumProgress ? (

@@ -26,7 +26,10 @@ import {
   HiUserGroup,
   HiGlobe,
   HiViewGrid,
-  HiColorSwatch
+  HiColorSwatch,
+  HiPuzzle,
+  HiCog,
+  HiLightningBolt
 } from 'react-icons/hi';
 
 export const MenuIcons = {
@@ -57,5 +60,7 @@ export const MenuIcons = {
   shipping: HiTruck,
   loyalty: HiUserGroup,
   webhooks: HiGlobe,
+  plugins: HiPuzzle,
+  automations: HiLightningBolt,
 };
 

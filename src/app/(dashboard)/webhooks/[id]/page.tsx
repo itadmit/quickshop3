@@ -202,6 +202,12 @@ export default function WebhookDetailsPage() {
     { value: 'product.deleted', label: 'מוצר נמחק' },
     { value: 'customer.created', label: 'לקוח נוצר' },
     { value: 'customer.updated', label: 'לקוח עודכן' },
+    { value: 'discount.created', label: 'קוד הנחה נוצר' },
+    { value: 'discount.updated', label: 'קוד הנחה עודכן' },
+    { value: 'discount.deleted', label: 'קוד הנחה נמחק' },
+    { value: 'automatic_discount.created', label: 'הנחה אוטומטית נוצרה' },
+    { value: 'automatic_discount.updated', label: 'הנחה אוטומטית עודכנה' },
+    { value: 'automatic_discount.deleted', label: 'הנחה אוטומטית נמחקה' },
     { value: '*', label: 'כל האירועים' },
   ];
 

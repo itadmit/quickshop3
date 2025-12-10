@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { SettingGroup } from '../ui/SettingGroup';
 import { SettingInput } from '../ui/SettingInput';
 import { SettingSelect } from '../ui/SettingSelect';
 import { ModernColorPicker } from '../SettingsUI';
 import { MediaPicker } from '@/components/MediaPicker';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
@@ -17,28 +18,89 @@ interface SettingsPanelProps {
   device: DeviceType;
 }
 
+interface NavigationMenu {
+  id: number;
+  name: string;
+  items?: Array<{ id: number; label?: string; title?: string; url: string }>;
+}
+
 export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps) {
   const storeId = useStoreId();
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [targetBlockId, setTargetBlockId] = useState<string | null>(null);
   const [imageDeviceTarget, setImageDeviceTarget] = useState<'desktop' | 'mobile'>('desktop'); // For desktop/mobile image selection
+  const [navigationMenus, setNavigationMenus] = useState<NavigationMenu[]>([]);
+  const [loadingMenus, setLoadingMenus] = useState(false);
 
-  // Helper to get value based on device
+  // Load navigation menus when header or footer section is selected
+  useEffect(() => {
+    if ((section.type === 'header' || section.type === 'footer') && storeId) {
+      loadNavigationMenus();
+    }
+  }, [section.type, storeId]);
+
+  const loadNavigationMenus = async () => {
+    if (loadingMenus) return;
+    setLoadingMenus(true);
+    try {
+      const response = await fetch('/api/navigation');
+      if (response.ok) {
+        const data = await response.json();
+        // API returns { navigation_menus: [...] }
+        setNavigationMenus(data.navigation_menus || []);
+      }
+    } catch (error) {
+      console.error('Error loading navigation menus:', error);
+    } finally {
+      setLoadingMenus(false);
+    }
+  };
+
+  // Helper to get value based on device (supports nested keys like "search.enabled")
   const getValue = (key: string, defaultValue: any = '') => {
+    const keys = key.split('.');
+    
     // If desktop, return direct settings
     if (device === 'desktop') {
-      return section.settings?.[key] ?? defaultValue;
+      let current: any = section.settings;
+      for (const k of keys) {
+        if (current && typeof current === 'object' && k in current) {
+          current = current[k];
+        } else {
+          return defaultValue;
+        }
+      }
+      return current ?? defaultValue;
     }
 
     // If mobile/tablet, try to get from responsive settings first
     const responsiveSettings = (section as any).responsive?.[device]?.settings;
-    if (responsiveSettings && responsiveSettings[key] !== undefined) {
-      return responsiveSettings[key];
+    if (responsiveSettings) {
+      let current: any = responsiveSettings;
+      for (const k of keys) {
+        if (current && typeof current === 'object' && k in current) {
+          current = current[k];
+        } else {
+          current = undefined;
+          break;
+        }
+      }
+      if (current !== undefined) {
+        return current;
+      }
     }
 
     // Fallback to desktop settings
-    return section.settings?.[key] ?? defaultValue;
+    let current: any = section.settings;
+    for (const k of keys) {
+      if (current && typeof current === 'object' && k in current) {
+        current = current[k];
+      } else {
+        return defaultValue;
+      }
+    }
+    return current ?? defaultValue;
   };
 
   // Helper to check if value is overridden in current device
@@ -49,28 +111,52 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   };
 
   const handleSettingChange = (key: string, value: any) => {
+    // Handle nested keys like "search.enabled"
+    const keys = key.split('.');
+    
     if (device === 'desktop') {
-      onUpdate({
-        settings: {
-          ...section.settings,
-          [key]: value
+      const newSettings = { ...section.settings };
+      let current: any = newSettings;
+      
+      // Navigate to the nested object
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
         }
+        current = current[keys[i]];
+      }
+      
+      // Set the final value
+      current[keys[keys.length - 1]] = value;
+      
+      onUpdate({
+        settings: newSettings
       });
     } else {
       // Update responsive settings
       const currentResponsive = (section as any).responsive || {};
       const deviceResponsive = currentResponsive[device] || {};
-      const deviceSettings = deviceResponsive.settings || {};
+      const deviceSettings = { ...(deviceResponsive.settings || {}) };
+      
+      let current: any = deviceSettings;
+      
+      // Navigate to the nested object
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
+        current = current[keys[i]];
+      }
+      
+      // Set the final value
+      current[keys[keys.length - 1]] = value;
 
       onUpdate({
         responsive: {
           ...currentResponsive,
           [device]: {
             ...deviceResponsive,
-            settings: {
-              ...deviceSettings,
-              [key]: value
-            }
+            settings: deviceSettings
           }
         }
       } as any);
@@ -100,6 +186,16 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
             ...section.settings?.logo, 
             image_url: files[0] 
           });
+          setTargetBlockId(null);
+      } else if (targetBlockId && targetBlockId.startsWith('footer-column-')) {
+          // Update footer column image
+          const columnIndex = parseInt(targetBlockId.replace('footer-column-', ''));
+          const columns = getValue('columns', []) || [];
+          const updatedColumns = [...columns];
+          if (updatedColumns[columnIndex]) {
+            updatedColumns[columnIndex] = { ...updatedColumns[columnIndex], image_url: files[0] };
+            handleSettingChange('columns', updatedColumns);
+          }
           setTargetBlockId(null);
       } else if (targetBlockId) {
           // Update specific block - support desktop/mobile images and video
@@ -209,18 +305,30 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
     </div>
   );
 
-  const renderSelect = (label: string, key: string, options: { label: string; value: any }[]) => {
+  const renderSelect = (label: string, key: string, options: { label: string; value: any }[], defaultValue: any = undefined) => {
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedOption = options.find(opt => String(opt.value) === e.target.value);
       const value = selectedOption ? selectedOption.value : e.target.value;
       handleSettingChange(key, value);
     };
     
+    const currentValue = getValue(key, defaultValue);
+    // Handle boolean values correctly - if currentValue is undefined/null, use defaultValue
+    let displayValue: string;
+    if (currentValue !== undefined && currentValue !== null && currentValue !== '') {
+      displayValue = String(currentValue);
+    } else if (defaultValue !== undefined && defaultValue !== null) {
+      displayValue = String(defaultValue);
+    } else {
+      // If no value and no default, try to find a default from options (usually the first one)
+      displayValue = String(options[0]?.value ?? '');
+    }
+    
     return (
       <div className="relative">
          <SettingSelect
             label={label}
-            value={String(getValue(key) ?? '')}
+            value={displayValue}
             onChange={handleChange}
             options={options}
           />
@@ -249,10 +357,15 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },
                 ])}
+                {getValue('search.enabled', true) !== false && renderInput('טקסט חיפוש (Placeholder)', 'search.placeholder', 'חפש מוצרים...')}
                 {renderSelect('הצג עגלה', 'cart.enabled', [
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },
                 ])}
+                {renderSelect('הצג בחירת שפה ומטבע', 'currency_selector.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], false)}
                 {renderSelect('הצג חשבון משתמש', 'user_account.enabled', [
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },
@@ -388,6 +501,70 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
             <SettingGroup title="תפריט ניווט">
               <div className="space-y-4">
+                {/* Desktop Menu Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">תפריט למחשב</label>
+                  <select
+                    value={getValue('navigation.menu_desktop', '') || ''}
+                    onChange={(e) => {
+                      const menuId = e.target.value ? parseInt(e.target.value) : null;
+                      const selectedMenu = navigationMenus.find(m => m.id === menuId);
+                      handleSettingChange('navigation', {
+                        ...section.settings?.navigation,
+                        menu_desktop: menuId,
+                        menu_items: selectedMenu?.items?.map(item => ({
+                          label: item.title || item.label || '',
+                          url: item.url || ''
+                        })) || section.settings?.navigation?.menu_items || []
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  >
+                    <option value="">-- בחר תפריט --</option>
+                    {loadingMenus ? (
+                      <option value="" disabled>טוען תפריטים...</option>
+                    ) : (
+                      navigationMenus.map((menu) => (
+                        <option key={menu.id} value={menu.id}>
+                          {menu.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* Mobile Menu Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">תפריט למובייל</label>
+                  <select
+                    value={getValue('navigation.menu_mobile', '') || ''}
+                    onChange={(e) => {
+                      const menuId = e.target.value ? parseInt(e.target.value) : null;
+                      const selectedMenu = navigationMenus.find(m => m.id === menuId);
+                      handleSettingChange('navigation', {
+                        ...section.settings?.navigation,
+                        menu_mobile: menuId,
+                        menu_items_mobile: selectedMenu?.items?.map(item => ({
+                          label: item.title || item.label || '',
+                          url: item.url || ''
+                        })) || section.settings?.navigation?.menu_items_mobile || []
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  >
+                    <option value="">-- בחר תפריט (אופציונלי - אם לא נבחר, ישתמש בתפריט למחשב) --</option>
+                    {loadingMenus ? (
+                      <option value="" disabled>טוען תפריטים...</option>
+                    ) : (
+                      navigationMenus.map((menu) => (
+                        <option key={menu.id} value={menu.id}>
+                          {menu.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
                 {renderSelect('גודל פונט תפריט', 'navigation.font_size', [
                   { label: 'קטן', value: 'small' },
                   { label: 'רגיל', value: 'medium' },
@@ -622,7 +799,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
             <SettingGroup title="כפתור">
               <div className="space-y-4">
                 {renderInput('טקסט כפתור', 'button_text', 'קנה עכשיו')}
-                {renderInput('קישור', 'button_url', '/collections/all', 'text', undefined, 'ltr')}
+                {renderInput('קישור', 'button_url', '/categories/all', 'text', undefined, 'ltr')}
               </div>
             </SettingGroup>
 
@@ -730,7 +907,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                       { label: 'לא', value: false },
                     ])}
                    {renderInput('טקסט הקישור', 'view_all_text', 'לכל המוצרים')}
-                   {renderInput('כתובת הקישור', 'view_all_url', '/collections/all')}
+                   {renderInput('כתובת הקישור', 'view_all_url', '/categories/all')}
                 </div>
              </SettingGroup>
           </div>
@@ -1917,6 +2094,351 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 </SettingGroup>
             </div>
           );
+
+      case 'footer':
+        const columnsCount = getValue('columns_count', 4);
+        const columns = getValue('columns', []) || [];
+        
+        // Ensure columns array matches columns_count
+        const ensureColumns = () => {
+          const currentColumns = [...columns];
+          while (currentColumns.length < columnsCount) {
+            currentColumns.push({ 
+              type: 'menu', 
+              title: '', 
+              menu_id: null, 
+              text: '', 
+              image_url: '',
+              newsletter_title: '',
+              newsletter_content: '',
+              newsletter_button_bg: '#000000',
+              newsletter_button_text: '#FFFFFF'
+            });
+          }
+          while (currentColumns.length > columnsCount) {
+            currentColumns.pop();
+          }
+          return currentColumns;
+        };
+
+        const updateColumn = (index: number, updates: any) => {
+          const updatedColumns = ensureColumns();
+          updatedColumns[index] = { ...updatedColumns[index], ...updates };
+          handleSettingChange('columns', updatedColumns);
+        };
+
+        const addColumn = () => {
+          const updatedColumns = ensureColumns();
+          updatedColumns.push({ type: 'menu', title: '', menu_id: null, text: '', image_url: '' });
+          handleSettingChange('columns', updatedColumns);
+          handleSettingChange('columns_count', updatedColumns.length);
+        };
+
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="עמודות">
+              <div className="space-y-4">
+                {renderSelect('מספר עמודות', 'columns_count', [
+                  { label: '1', value: 1 },
+                  { label: '2', value: 2 },
+                  { label: '3', value: 3 },
+                  { label: '4', value: 4 },
+                ])}
+              </div>
+            </SettingGroup>
+
+            {Array.from({ length: columnsCount }).map((_, index) => {
+              const currentColumns = ensureColumns();
+              const column = currentColumns[index] || { type: 'menu', title: '', menu_id: null, text: '', image_url: '' };
+              const columnType = column.type || 'menu';
+              
+              return (
+                <SettingGroup key={index} title={`עמודה ${index + 1}`}>
+                  <div className="space-y-4">
+                    {renderInput(`כותרת עמודה ${index + 1}`, `columns.${index}.title`, '', 'text', 'אופציונלי')}
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">סוג תוכן</label>
+                      <select
+                        value={columnType}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          const resetData: any = { type: newType };
+                          if (newType !== 'menu') resetData.menu_id = null;
+                          if (newType !== 'text') resetData.text = '';
+                          if (newType !== 'image') resetData.image_url = '';
+                          if (newType !== 'newsletter') {
+                            resetData.newsletter_title = '';
+                            resetData.newsletter_content = '';
+                            resetData.newsletter_button_bg = '#000000';
+                            resetData.newsletter_button_text = '#FFFFFF';
+                          }
+                          updateColumn(index, resetData);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      >
+                        <option value="menu">תפריט</option>
+                        <option value="text">טקסט</option>
+                        <option value="image">תמונה</option>
+                        <option value="newsletter">ניוזלטר</option>
+                      </select>
+                    </div>
+
+                    {columnType === 'newsletter' && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">כותרת</label>
+                          <input
+                            type="text"
+                            value={column.newsletter_title || ''}
+                            onChange={(e) => {
+                              const currentColumn = ensureColumns()[index] || {};
+                              updateColumn(index, { ...currentColumn, newsletter_title: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            placeholder="כותרת הניוזלטר"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">תוכן</label>
+                          <textarea
+                            value={column.newsletter_content || ''}
+                            onChange={(e) => {
+                              const currentColumn = ensureColumns()[index] || {};
+                              updateColumn(index, { ...currentColumn, newsletter_content: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm min-h-[80px]"
+                            placeholder="תוכן הניוזלטר"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">צבע רקע כפתור</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={column.newsletter_button_bg || '#000000'}
+                                onChange={(e) => {
+                                  const currentColumn = ensureColumns()[index] || {};
+                                  updateColumn(index, { ...currentColumn, newsletter_button_bg: e.target.value });
+                                }}
+                                className="w-12 h-10 border border-gray-200 rounded cursor-pointer flex-shrink-0"
+                              />
+                              <input
+                                type="text"
+                                value={column.newsletter_button_bg || '#000000'}
+                                onChange={(e) => {
+                                  const currentColumn = ensureColumns()[index] || {};
+                                  updateColumn(index, { ...currentColumn, newsletter_button_bg: e.target.value });
+                                }}
+                                className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                placeholder="#000000"
+                                dir="ltr"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">צבע טקסט כפתור</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={column.newsletter_button_text || '#FFFFFF'}
+                                onChange={(e) => {
+                                  const currentColumn = ensureColumns()[index] || {};
+                                  updateColumn(index, { ...currentColumn, newsletter_button_text: e.target.value });
+                                }}
+                                className="w-12 h-10 border border-gray-200 rounded cursor-pointer flex-shrink-0"
+                              />
+                              <input
+                                type="text"
+                                value={column.newsletter_button_text || '#FFFFFF'}
+                                onChange={(e) => {
+                                  const currentColumn = ensureColumns()[index] || {};
+                                  updateColumn(index, { ...currentColumn, newsletter_button_text: e.target.value });
+                                }}
+                                className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                placeholder="#FFFFFF"
+                                dir="ltr"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {columnType === 'menu' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">בחר תפריט</label>
+                        <select
+                          value={column.menu_id ? String(column.menu_id) : ''}
+                          onChange={(e) => {
+                            const menuId = e.target.value ? parseInt(e.target.value) : null;
+                            const currentColumn = ensureColumns()[index] || { type: 'menu', title: '', menu_id: null, text: '', image_url: '' };
+                            updateColumn(index, { ...currentColumn, menu_id: menuId });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        >
+                          <option value="">-- בחר תפריט --</option>
+                          {loadingMenus ? (
+                            <option value="" disabled>טוען תפריטים...</option>
+                          ) : (
+                            navigationMenus.map((menu) => (
+                              <option key={menu.id} value={menu.id}>
+                                {menu.name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    )}
+
+                    {columnType === 'text' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">הכנס טקסט</label>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <RichTextEditor
+                            value={column.text || ''}
+                            onChange={(html) => {
+                              const currentColumn = ensureColumns()[index] || {};
+                              updateColumn(index, { ...currentColumn, text: html });
+                            }}
+                            placeholder="הכנס את הטקסט כאן... ניתן להוסיף קישורים, שורות וכו'"
+                            className="min-h-[150px]"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {columnType === 'image' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">בחר תמונה</label>
+                        {column.image_url ? (
+                          <div className="relative group">
+                            <img 
+                              src={column.image_url} 
+                              alt="תמונה" 
+                              className="w-full h-32 object-cover bg-gray-100 rounded-lg"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setMediaType('image');
+                                  setTargetBlockId(`footer-column-${index}`);
+                                  setIsMediaPickerOpen(true);
+                                }}
+                                className="p-2 bg-white rounded-full text-gray-700 hover:bg-gray-100"
+                                title="החלף תמונה"
+                              >
+                                <HiRefresh className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => updateColumn(index, { image_url: '' })}
+                                className="p-2 bg-white rounded-full text-gray-700 hover:bg-gray-100"
+                                title="מחק תמונה"
+                              >
+                                <HiTrash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setMediaType('image');
+                              setTargetBlockId(`footer-column-${index}`);
+                              setIsMediaPickerOpen(true);
+                            }}
+                            className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all flex items-center justify-center py-8"
+                          >
+                            <HiPhotograph className="w-8 h-8 text-gray-400" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </SettingGroup>
+              );
+            })}
+
+            <SettingGroup title="רשתות חברתיות">
+              <div className="space-y-4">
+                {renderSelect('הצג רשתות חברתיות', 'social_links.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], true)}
+                
+                {getValue('social_links.enabled', true) !== false && (
+                  <div className="space-y-3 pt-2">
+                    {[
+                      { key: 'facebook', label: 'פייסבוק' },
+                      { key: 'instagram', label: 'אינסטגרם' },
+                      { key: 'tiktok', label: 'טיקטוק' },
+                      { key: 'whatsapp', label: 'וואטסאפ' },
+                      { key: 'snapchat', label: 'סנאפצ\'אט' },
+                      { key: 'pinterest', label: 'פינטרסט' },
+                      { key: 'youtube', label: 'יוטיוב' },
+                    ].map((social) => {
+                      const socialLinks = getValue('social_links.links', []) || [];
+                      const socialLink = socialLinks.find((s: any) => s.platform === social.key) || { platform: social.key, url: '' };
+                      const linkIndex = socialLinks.findIndex((s: any) => s.platform === social.key);
+                      
+                      return (
+                        <div key={social.key}>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {social.label}
+                            </label>
+                            <input
+                              type="text"
+                              value={socialLink.url || ''}
+                              onChange={(e) => {
+                                const updatedLinks = [...socialLinks];
+                                if (linkIndex >= 0) {
+                                  updatedLinks[linkIndex] = { ...updatedLinks[linkIndex], url: e.target.value };
+                                } else {
+                                  updatedLinks.push({ platform: social.key, url: e.target.value });
+                                }
+                                handleSettingChange('social_links', {
+                                  ...section.settings?.social_links,
+                                  enabled: getValue('social_links.enabled', true),
+                                  links: updatedLinks
+                                });
+                              }}
+                              placeholder={`קישור ל-${social.label}`}
+                              dir="ltr"
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="בורר שפות ומטבע">
+              <div className="space-y-4">
+                {renderSelect('הצג בחירת שפה ומטבע', 'currency_selector.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="כללי">
+              <div className="space-y-4">
+                {renderInput('זכויות יוצרים', 'copyright', `© ${new Date().getFullYear()} כל הזכויות שמורות`)}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="p-6 text-center text-gray-500">
+            <p>אין הגדרות זמינות לסוג סקשן זה</p>
+          </div>
+        );
     }
   };
 
@@ -1947,7 +2469,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         open={isMediaPickerOpen}
         onOpenChange={setIsMediaPickerOpen}
         onSelect={handleMediaSelect}
-        shopId={storeId || undefined}
+        shopId={storeId ? String(storeId) : undefined}
         title={mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') : 'בחר וידאו'}
         multiple={section.type === 'gallery'}
         accept={section.type === 'image_with_text' ? 'all' : mediaType}

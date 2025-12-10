@@ -22,6 +22,7 @@ export interface NavigationMenu {
   name: string;
   handle: string;
   position: string | null; // header, footer, sidebar
+  display_on?: 'desktop' | 'mobile' | 'both'; // איפה להציג את התפריט
   created_at: Date;
   updated_at: Date;
 }
@@ -30,6 +31,7 @@ export interface NavigationMenuItem {
   id: number;
   menu_id: number;
   title: string;
+  label?: string; // alias for title
   type: 'link' | 'page' | 'collection' | 'product';
   url: string | null;
   page_id: number | null;

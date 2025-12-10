@@ -1,6 +1,6 @@
 'use server';
 
-import { queryOne } from '@/lib/db';
+import { queryOne, query } from '@/lib/db';
 import { eventBus } from '@/lib/events/eventBus';
 import { sendWelcomeEmail } from '@/lib/customer-email';
 import { sendOrderReceiptEmail } from '@/lib/order-email';
@@ -33,6 +33,7 @@ interface CreateOrderInput {
   paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash' | 'store_credit';
   storeCreditAmount?: number; // סכום קרדיט לשימוש
   customFields?: Record<string, any>;
+  discountCodes?: string[]; // קודי קופונים שהוחלו על ההזמנה
 }
 
 export async function createOrder(input: CreateOrderInput) {
@@ -186,18 +187,36 @@ export async function createOrder(input: CreateOrderInput) {
     financialStatus = 'pending';
   }
 
+  // Parse and prepare discount codes
+  let discountCodesArray: string[] = [];
+  if (input.discountCodes && input.discountCodes.length > 0) {
+    discountCodesArray = input.discountCodes.filter(code => code && code.trim().length > 0);
+  }
+
+  // Update usage count for each discount code BEFORE creating order
+  if (discountCodesArray.length > 0) {
+    for (const code of discountCodesArray) {
+      await queryOne(
+        `UPDATE discount_codes 
+         SET usage_count = usage_count + 1, updated_at = now()
+         WHERE store_id = $1 AND code = $2 AND is_active = true`,
+        [storeId, code.toUpperCase()]
+      );
+    }
+  }
+
   const order = await queryOne<{ id: number; order_number: number; order_handle: string }>(
     `INSERT INTO orders (
       store_id, customer_id, order_number, order_name, order_handle,
       financial_status, fulfillment_status,
       total_price, subtotal_price, currency,
-      billing_address, shipping_address, email, phone, name, note, note_attributes, gateway
+      billing_address, shipping_address, email, phone, name, note, note_attributes, gateway, discount_codes
     )
     VALUES (
       $1, $2, $7, $8, $12,
       $14, 'unfulfilled',
       $3, $3, 'ILS',
-      $4, $4, $5, $9, $10, $6, $11, $13
+      $4, $4, $5, $9, $10, $6, $11, $13, $15
     )
     RETURNING id, order_number, order_handle`,
     [
@@ -215,6 +234,7 @@ export async function createOrder(input: CreateOrderInput) {
       orderHandle,
       input.paymentMethod || 'credit_card',
       financialStatus,
+      discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : null,
     ]
   );
 

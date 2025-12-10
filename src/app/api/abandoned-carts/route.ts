@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { quickshopList, quickshopItem } from '@/lib/utils/apiFormatter';
+import { eventBus } from '@/lib/events/eventBus';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -116,6 +117,24 @@ export async function POST(request: NextRequest) {
           currency,
         ]
       );
+    }
+
+    // Emit cart.abandoned event
+    if (!existing) {
+      await eventBus.emitEvent('cart.abandoned', {
+        cart: {
+          id: abandonedCart.id,
+          token: abandonedCart.token,
+          customer_id: abandonedCart.customer_id,
+          email: abandonedCart.email,
+          cart_data: cart_data,
+          total_price: total_price,
+          currency: currency,
+        },
+      }, {
+        store_id: storeId,
+        source: 'api',
+      });
     }
 
     return NextResponse.json(quickshopItem('abandoned_cart', abandonedCart));

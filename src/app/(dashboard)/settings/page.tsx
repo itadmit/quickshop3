@@ -26,7 +26,7 @@ interface Store {
   plan: string;
 }
 
-type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced' | 'meta-fields' | 'size-charts' | 'product-addons' | 'premium-club' | 'cron-status';
+type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced' | 'meta-fields' | 'size-charts' | 'product-addons' | 'premium-club' | 'cron-status' | 'subscription';
 
 export default function SettingsPage() {
   const { toast } = useOptimisticToast();
@@ -54,6 +54,9 @@ export default function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [showCreateApiKey, setShowCreateApiKey] = useState(false);
   const [newApiKeyName, setNewApiKeyName] = useState('');
+  const [activePlugins, setActivePlugins] = useState<any[]>([]);
+  const [totalPluginsPrice, setTotalPluginsPrice] = useState(0);
+  const [loadingPlugins, setLoadingPlugins] = useState(false);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -72,6 +75,9 @@ export default function SettingsPage() {
     }
     if (activeTab === 'api') {
       loadApiKeys();
+    }
+    if (activeTab === 'subscription') {
+      loadActivePlugins();
     }
   }, [activeTab]);
 
@@ -268,9 +274,66 @@ export default function SettingsPage() {
     }
   };
 
+  const loadActivePlugins = async () => {
+    try {
+      setLoadingPlugins(true);
+      const response = await fetch('/api/plugins/active', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setActivePlugins(data.plugins || []);
+        
+        // חישוב סכום כולל
+        const total = (data.plugins || []).reduce((sum: number, p: any) => {
+          return sum + (p.monthly_price || 0);
+        }, 0);
+        setTotalPluginsPrice(total);
+      }
+    } catch (error) {
+      console.error('Error loading active plugins:', error);
+    } finally {
+      setLoadingPlugins(false);
+    }
+  };
+
+  const handleCancelPlugin = async (pluginSlug: string) => {
+    if (!confirm('האם אתה בטוח שברצונך לבטל את המנוי? התוסף יישאר פעיל עד סוף החודש.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/plugins/${pluginSlug}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'הצלחה',
+          description: 'המנוי בוטל בהצלחה',
+        });
+        loadActivePlugins();
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'שגיאה',
+          description: error.error || 'לא ניתן לבטל את המנוי',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error cancelling plugin:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לבטל את המנוי',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const tabs: { id: SettingsTab; label: string; href?: string }[] = [
     { id: 'general', label: 'כללי' },
     { id: 'domain', label: 'דומיין' },
+    { id: 'subscription', label: 'מנוי' },
     { id: 'payments', label: 'תשלומים' },
     { id: 'shipping', label: 'משלוחים' },
     { id: 'email', label: 'מייל' },
@@ -661,6 +724,127 @@ export default function SettingsPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'subscription' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">מנוי ותוספים</h2>
+                    <p className="text-sm text-gray-600 mb-6">
+                      ניהול המנוי הבסיסי והתוספים הפעילים שלך
+                    </p>
+                  </div>
+
+                  {/* תוכנית בסיסית */}
+                  <Card>
+                    <div className="p-6">
+                      <h3 className="text-md font-semibold text-gray-900 mb-4">תוכנית בסיסית</h3>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formData.plan === 'free' && 'תוכנית חינמית'}
+                            {formData.plan === 'basic' && 'תוכנית בסיסית'}
+                            {formData.plan === 'pro' && 'תוכנית מקצועית'}
+                            {formData.plan === 'enterprise' && 'תוכנית ארגונית'}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {formData.plan === 'free' && 'גישה בסיסית לכל התכונות'}
+                            {formData.plan === 'basic' && 'תכונות מתקדמות לחנויות קטנות'}
+                            {formData.plan === 'pro' && 'תכונות מקצועיות לחנויות גדולות'}
+                            {formData.plan === 'enterprise' && 'תכונות מתקדמות ותמיכה 24/7'}
+                          </p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {formData.plan === 'free' && '₪0'}
+                            {formData.plan === 'basic' && '₪99'}
+                            {formData.plan === 'pro' && '₪299'}
+                            {formData.plan === 'enterprise' && '₪999'}
+                          </p>
+                          <p className="text-sm text-gray-600">/חודש</p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* תוספים פעילים */}
+                  <Card>
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-md font-semibold text-gray-900">תוספים פעילים</h3>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.href = '/settings/plugins'}
+                        >
+                          הוסף תוספים
+                        </Button>
+                      </div>
+
+                      {loadingPlugins ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+                          <p className="text-sm text-gray-500 mt-2">טוען תוספים...</p>
+                        </div>
+                      ) : activePlugins.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500 mb-4">אין תוספים פעילים</p>
+                          <Button
+                            variant="outline"
+                            onClick={() => window.location.href = '/settings/plugins'}
+                          >
+                            גש למרקטפלייס
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {activePlugins.map((plugin: any) => (
+                            <div
+                              key={plugin.id}
+                              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{plugin.plugin_name || 'תוסף'}</p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {plugin.status === 'ACTIVE' ? 'פעיל' : 'לא פעיל'}
+                                  {plugin.next_billing_date && (
+                                    <> • חיוב הבא: {new Date(plugin.next_billing_date).toLocaleDateString('he-IL')}</>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-left">
+                                  <p className="font-semibold text-gray-900">₪{plugin.monthly_price}</p>
+                                  <p className="text-xs text-gray-500">/חודש</p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCancelPlugin(plugin.plugin_slug || '')}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  בטל מנוי
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {activePlugins.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-lg font-semibold text-gray-900">סכום כולל תוספים:</span>
+                            <span className="text-2xl font-bold text-gray-900">₪{totalPluginsPrice.toFixed(2)}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-2 text-left">
+                            סכום זה מתווסף למנוי הבסיסי שלך
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
                 </div>
               )}
 

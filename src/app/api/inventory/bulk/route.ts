@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
       }
 
       try {
+        const oldQuantity = existingVariant.inventory_quantity || 0;
+        const change = available - oldQuantity;
+
         const updated = await queryOne(
           `UPDATE product_variants 
            SET inventory_quantity = $1, updated_at = now()
@@ -53,14 +56,36 @@ export async function POST(request: NextRequest) {
           [available, variant_id]
         );
 
+        // Save inventory history directly to system_logs
+        await query(
+          `INSERT INTO system_logs (store_id, level, source, message, context)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            user.store_id,
+            'info',
+            'inventory',
+            `עדכון מלאי: ${change > 0 ? '+' : ''}${change} יחידות (${oldQuantity} → ${available})${reason ? ` - ${reason}` : ''}`,
+            JSON.stringify({
+              variant_id: variant_id,
+              old_quantity: oldQuantity,
+              new_quantity: available,
+              change: change,
+              reason: reason || 'bulk_update',
+              user_id: user.id,
+            })
+          ]
+        );
+
         // Emit event
         await eventBus.emitEvent('inventory.updated', {
           variant_id: variant_id,
           quantity: available,
-          reason,
+          old_quantity: oldQuantity,
+          change: change,
+          reason: reason || 'bulk_update',
         }, {
           store_id: user.store_id,
-          source: 'api',
+          source: 'inventory',
           user_id: user.id,
         });
 

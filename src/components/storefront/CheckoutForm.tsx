@@ -241,6 +241,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         paymentMethod: formData.paymentMethod,
         storeCreditAmount: storeCreditAmount,
         customFields: formData.customFields,
+        discountCodes: discountCode ? [discountCode] : [], // ✅ מוסיף את קוד הקופון להזמנה
       });
 
       // Track Purchase event

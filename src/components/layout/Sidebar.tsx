@@ -19,7 +19,7 @@ const menuItems: MenuItem[] = [
   { label: 'בית', href: '/dashboard', icon: MenuIcons.home },
   { label: 'אנליטיקס', href: '/analytics', icon: MenuIcons.analytics },
   { label: 'עיצוב ותבניות', href: '/themes', icon: MenuIcons.themes },
-  { label: 'התראות', href: '/notifications', icon: MenuIcons.notifications, badge: 3 },
+  { label: 'התראות', href: '/notifications', icon: MenuIcons.notifications },
   {
     label: 'מכירות',
     href: '#',
@@ -49,6 +49,7 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'הנחות אוטומטיות', href: '/automatic-discounts', icon: MenuIcons.discounts },
       { label: 'קופונים', href: '/discounts', icon: MenuIcons.coupons },
+      { label: 'משפיענים', href: '/marketing/influencers', icon: MenuIcons.customers },
       { label: 'מועדון לקוחות', href: '/loyalty', icon: MenuIcons.loyalty },
       { label: 'כרטיסי מתנה', href: '/gift-cards', icon: MenuIcons.giftCards },
       { label: 'עגלות נטושות', href: '/abandoned-carts', icon: MenuIcons.abandonedCarts },
@@ -83,6 +84,8 @@ const menuItems: MenuItem[] = [
     icon: MenuIcons.webhooks,
     children: [
       { label: 'Webhooks', href: '/webhooks', icon: MenuIcons.webhooks },
+      { label: 'מרקטפלייס תוספים', href: '/settings/plugins', icon: MenuIcons.plugins },
+      { label: 'אוטומציות', href: '/automations', icon: MenuIcons.automations },
     ],
   },
 ];
@@ -90,9 +93,10 @@ const menuItems: MenuItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות', 'אינטגרציות']);
   const [clickedLink, setClickedLink] = useState<string | null>(null);
   const [unreadOrdersCount, setUnreadOrdersCount] = useState<number>(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
 
   const isActive = (href: string) => pathname === href;
   
@@ -143,6 +147,38 @@ export function Sidebar() {
     return () => {
       clearInterval(interval);
       window.removeEventListener('orderMarkedAsRead', handleOrderMarkedAsRead);
+    };
+  }, [pathname]);
+
+  // Load unread notifications count
+  useEffect(() => {
+    const loadUnreadNotificationsCount = async () => {
+      try {
+        const response = await fetch('/api/notifications/unread-count', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadNotificationsCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error loading unread notifications count:', error);
+      }
+    };
+
+    loadUnreadNotificationsCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadUnreadNotificationsCount, 30000);
+    
+    // Listen for notification marked as read event
+    const handleNotificationMarkedAsRead = () => {
+      loadUnreadNotificationsCount();
+    };
+    window.addEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
     };
   }, [pathname]);
   
@@ -252,7 +288,12 @@ export function Sidebar() {
                   <item.icon className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive(item.href) ? 'text-white' : 'text-gray-500'}`} />
                   <span>{item.label}</span>
                 </div>
-                {item.badge && (
+                {item.href === '/notifications' && unreadNotificationsCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                    {unreadNotificationsCount}
+                  </span>
+                )}
+                {item.badge && item.href !== '/notifications' && (
                   <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
                     {item.badge}
                   </span>
