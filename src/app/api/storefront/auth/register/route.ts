@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, query } from '@/lib/db';
+import { syncCustomerToContact } from '@/lib/contacts/sync-customer-to-contact';
+import { eventBus } from '@/lib/events/eventBus';
 
 export async function POST(req: NextRequest) {
   try {
@@ -126,6 +128,72 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to create customer');
     }
 
+    // Sync customer to contact and add as club member
+    if (customer.email) {
+      try {
+        // Sync customer to contact (creates contact with CUSTOMER category)
+        const contact = await syncCustomerToContact(store.id, customer.id, {
+          email: customer.email,
+          first_name: customer.first_name,
+          last_name: customer.last_name,
+          phone: customer.phone,
+          accepts_marketing: false,
+        });
+
+        // Add CLUB_MEMBER category to the contact
+        if (contact) {
+          // Get or create CLUB_MEMBER category
+          let clubMemberCategory = await queryOne<{ id: number }>(
+            `SELECT id FROM contact_categories 
+             WHERE store_id = $1 AND type = 'CLUB_MEMBER'`,
+            [store.id]
+          );
+
+          if (!clubMemberCategory) {
+            // Create CLUB_MEMBER category if it doesn't exist
+            clubMemberCategory = await queryOne<{ id: number }>(
+              `INSERT INTO contact_categories (store_id, type, name, color, created_at, updated_at)
+               VALUES ($1, 'CLUB_MEMBER', 'חברי מועדון', '#3b82f6', now(), now())
+               ON CONFLICT (store_id, type) DO UPDATE SET updated_at = now()
+               RETURNING id`,
+              [store.id]
+            );
+          }
+
+          if (clubMemberCategory) {
+            // Add CLUB_MEMBER category assignment
+            await query(
+              `INSERT INTO contact_category_assignments (contact_id, category_id)
+               VALUES ($1, $2)
+               ON CONFLICT (contact_id, category_id) DO NOTHING`,
+              [contact.id, clubMemberCategory.id]
+            );
+          }
+        }
+      } catch (error: any) {
+        console.error('Error syncing customer to contact:', error);
+        // Don't fail registration if contact sync fails
+      }
+    }
+
+    // Emit customer.created event
+    try {
+      await eventBus.emitEvent('customer.created', {
+        customer: {
+          id: customer.id,
+          email: customer.email,
+          first_name: customer.first_name,
+          last_name: customer.last_name,
+        },
+      }, {
+        store_id: store.id,
+        source: 'api',
+      });
+    } catch (error: any) {
+      console.error('Error emitting customer.created event:', error);
+      // Don't fail registration if event emission fails
+    }
+
     // Send OTP for immediate login (reuse send-otp logic)
     // We'll redirect to login page where they can request OTP
 
@@ -147,4 +215,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+
 

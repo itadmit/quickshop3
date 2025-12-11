@@ -619,7 +619,7 @@ export default function ContactDetailsPage() {
           </Card>
 
           {/* Customer Info */}
-          {contact.customer_id && contact.customer && (
+          {contact.customer_id && contact.customer ? (
             <Card>
               <div className="p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">לקוח</h2>
@@ -648,7 +648,57 @@ export default function ContactDetailsPage() {
                 </div>
               </div>
             </Card>
-          )}
+          ) : contact.email ? (
+            <Card>
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">לקוח</h2>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 mb-4">
+                    איש קשר זה עדיין לא קשור ללקוח במערכת. המרה ללקוח תאפשר לאימייל להתחבר דרך הפרונט.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={async () => {
+                      try {
+                        setSaving(true);
+                        const response = await fetch(`/api/contacts/${contactId}/convert-to-customer`, {
+                          method: 'POST',
+                          credentials: 'include',
+                        });
+
+                        if (!response.ok) {
+                          const error = await response.json();
+                          throw new Error(error.error || 'Failed to convert contact');
+                        }
+
+                        toast({
+                          title: 'הצלחה',
+                          description: 'איש הקשר הומר ללקוח בהצלחה. כעת האימייל יכול להתחבר דרך הפרונט.',
+                        });
+
+                        await loadContact();
+                      } catch (error: any) {
+                        console.error('Error converting contact:', error);
+                        toast({
+                          title: 'שגיאה',
+                          description: error.message || 'אירעה שגיאה בהמרת איש הקשר ללקוח',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                  >
+                    <HiRefresh className="w-4 h-4 ml-1" />
+                    {saving ? 'ממיר...' : 'המר ללקוח'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : null}
 
           {/* Source */}
           {contact.source && (

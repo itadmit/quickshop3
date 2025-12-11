@@ -9,6 +9,11 @@ export interface Page {
   author_id: number | null;
   published_at: Date | null;
   template_suffix: string | null;
+  template: 'STANDARD' | 'CHOICES_OF';
+  display_type: 'GRID' | 'LIST' | null;
+  selected_products: number[] | null;
+  coupon_code: string | null;
+  influencer_id: number | null;
   meta_title: string | null;
   meta_description: string | null;
   is_published: boolean;
@@ -82,6 +87,11 @@ export interface CreatePageRequest {
   title: string;
   handle?: string;
   body_html?: string;
+  template?: 'STANDARD' | 'CHOICES_OF';
+  display_type?: 'GRID' | 'LIST';
+  selected_products?: number[];
+  coupon_code?: string;
+  influencer_id?: number | null;
   meta_title?: string;
   meta_description?: string;
   is_published?: boolean;

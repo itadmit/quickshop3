@@ -326,7 +326,7 @@ export function CategoryTreeSelector({
             <DialogHeader>
               <DialogTitle>בחר קטגוריה</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-3 px-6 pb-4 pt-4">
               <div className="relative">
                 <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input

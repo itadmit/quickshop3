@@ -186,3 +186,5 @@ function EmptyCategory({ storeSlug, viewAllText }: EmptyCategoryProps) {
   );
 }
 
+
+

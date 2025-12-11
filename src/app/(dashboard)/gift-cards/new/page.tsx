@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { HiSave, HiX, HiGift } from 'react-icons/hi';
+import { HiSave, HiX, HiGift, HiMail, HiUser } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 export default function NewGiftCardPage() {
@@ -24,6 +24,12 @@ export default function NewGiftCardPage() {
     customer_id: '',
     order_id: '',
     note: '',
+    // פרטי נמען ושולח
+    recipient_email: '',
+    recipient_name: '',
+    sender_name: '',
+    message: '',
+    send_email: true,
     is_active: true,
   });
 
@@ -43,7 +49,7 @@ export default function NewGiftCardPage() {
     if (!formData.code || !formData.code.trim()) {
       toast({
         title: 'שגיאה',
-        description: 'קוד כרטיס המתנה הוא שדה חובה',
+        description: 'קוד הגיפט קארד הוא שדה חובה',
         variant: 'destructive',
       });
       return;
@@ -53,6 +59,15 @@ export default function NewGiftCardPage() {
       toast({
         title: 'שגיאה',
         description: 'ערך ראשוני חייב להיות גדול מ-0',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (formData.send_email && !formData.recipient_email) {
+      toast({
+        title: 'שגיאה',
+        description: 'אימייל נמען הוא חובה כאשר בוחרים לשלוח מייל',
         variant: 'destructive',
       });
       return;
@@ -69,6 +84,11 @@ export default function NewGiftCardPage() {
         customer_id: formData.customer_id ? parseInt(formData.customer_id) : null,
         order_id: formData.order_id ? parseInt(formData.order_id) : null,
         note: formData.note || null,
+        recipient_email: formData.recipient_email || null,
+        recipient_name: formData.recipient_name || null,
+        sender_name: formData.sender_name || null,
+        message: formData.message || null,
+        send_email: formData.send_email,
       };
 
       const response = await fetch('/api/gift-cards', {
@@ -80,21 +100,21 @@ export default function NewGiftCardPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'שגיאה ביצירת כרטיס מתנה');
+        throw new Error(error.error || 'שגיאה ביצירת גיפט קארד');
       }
 
       const data = await response.json();
       
       toast({
         title: 'הצלחה',
-        description: `כרטיס מתנה "${data.gift_card?.code || formData.code}" נוצר בהצלחה`,
+        description: `גיפט קארד "${data.gift_card?.code || formData.code}" נוצר בהצלחה`,
       });
 
       router.push('/gift-cards');
     } catch (error: any) {
       toast({
         title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה ביצירת כרטיס מתנה',
+        description: error.message || 'אירעה שגיאה ביצירת גיפט קארד',
         variant: 'destructive',
       });
     } finally {
@@ -106,8 +126,8 @@ export default function NewGiftCardPage() {
     <div className="p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">כרטיס מתנה חדש</h1>
-          <p className="text-gray-500 mt-1">צור כרטיס מתנה חדש</p>
+          <h1 className="text-2xl font-bold text-gray-900">גיפט קארד חדש</h1>
+          <p className="text-gray-500 mt-1">צור גיפט קארד חדש</p>
         </div>
         <Button
           variant="outline"
@@ -123,12 +143,12 @@ export default function NewGiftCardPage() {
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <HiGift className="w-5 h-5" />
-            פרטי כרטיס המתנה
+            פרטי הגיפט קארד
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="code">קוד כרטיס המתנה *</Label>
+              <Label htmlFor="code">קוד הגיפט קארד *</Label>
               <div className="flex gap-2 mt-1">
                 <Input
                   id="code"
@@ -163,7 +183,7 @@ export default function NewGiftCardPage() {
                 required
                 className="mt-1"
               />
-              <p className="text-sm text-gray-500 mt-1">הסכום הראשוני של כרטיס המתנה</p>
+              <p className="text-sm text-gray-500 mt-1">הסכום הראשוני של הגיפט קארד</p>
             </div>
 
             <div>
@@ -208,7 +228,7 @@ export default function NewGiftCardPage() {
                 placeholder="אופציונלי"
                 className="mt-1"
               />
-              <p className="text-sm text-gray-500 mt-1">קשור כרטיס מתנה ללקוח ספציפי</p>
+              <p className="text-sm text-gray-500 mt-1">קשור גיפט קארד ללקוח ספציפי</p>
             </div>
 
             <div>
@@ -222,7 +242,7 @@ export default function NewGiftCardPage() {
                 placeholder="אופציונלי"
                 className="mt-1"
               />
-              <p className="text-sm text-gray-500 mt-1">קשור כרטיס מתנה להזמנה ספציפית</p>
+              <p className="text-sm text-gray-500 mt-1">קשור גיפט קארד להזמנה ספציפית</p>
             </div>
 
             <div className="md:col-span-2">
@@ -231,7 +251,7 @@ export default function NewGiftCardPage() {
                 id="note"
                 value={formData.note}
                 onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                placeholder="הערות נוספות על כרטיס המתנה..."
+                placeholder="הערות נוספות על הגיפט קארד..."
                 rows={3}
                 className="mt-1"
               />
@@ -245,10 +265,82 @@ export default function NewGiftCardPage() {
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked as boolean })}
                 />
                 <Label htmlFor="is_active" className="cursor-pointer">
-                  כרטיס פעיל
+                  גיפט קארד פעיל
                 </Label>
               </div>
-              <p className="text-sm text-gray-500 mt-1">רק כרטיסים פעילים יכולים לשמש בהזמנות</p>
+              <p className="text-sm text-gray-500 mt-1">רק גיפט קארד פעילים יכולים לשמש בהזמנות</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <HiMail className="w-5 h-5" />
+            פרטי נמען ושולח
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="recipient_email">אימייל נמען</Label>
+              <Input
+                id="recipient_email"
+                type="email"
+                value={formData.recipient_email}
+                onChange={(e) => setFormData({ ...formData, recipient_email: e.target.value })}
+                placeholder="recipient@example.com"
+                className="mt-1"
+              />
+              <p className="text-sm text-gray-500 mt-1">אימייל של מקבל הגיפט קארד</p>
+            </div>
+
+            <div>
+              <Label htmlFor="recipient_name">שם נמען</Label>
+              <Input
+                id="recipient_name"
+                value={formData.recipient_name}
+                onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+                placeholder="שם הנמען"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="sender_name">שם שולח</Label>
+              <Input
+                id="sender_name"
+                value={formData.sender_name}
+                onChange={(e) => setFormData({ ...formData, sender_name: e.target.value })}
+                placeholder="שם השולח"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label htmlFor="message">הודעה אישית</Label>
+              <Textarea
+                id="message"
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                placeholder="הודעה אישית לנמען..."
+                rows={4}
+                className="mt-1"
+              />
+            </div>
+
+            <div className="md:col-span-2 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="send_email"
+                  checked={formData.send_email}
+                  onCheckedChange={(checked) => setFormData({ ...formData, send_email: checked as boolean })}
+                />
+                <Label htmlFor="send_email" className="cursor-pointer">
+                  שלח מייל לנמען עם פרטי הגיפט קארד
+                </Label>
+              </div>
+              <p className="text-sm text-gray-500 mt-1 mr-6">
+                אם מסומן, מייל עם פרטי הגיפט קארד יישלח אוטומטית לנמען
+              </p>
             </div>
           </div>
         </Card>
@@ -269,11 +361,13 @@ export default function NewGiftCardPage() {
             className="bg-emerald-500 hover:bg-emerald-600"
           >
             <HiSave className="w-4 h-4 ml-2" />
-            {loading ? 'שומר...' : 'שמור כרטיס מתנה'}
+            {loading ? 'שומר...' : 'שמור גיפט קארד'}
           </Button>
         </div>
       </form>
     </div>
   );
 }
+
+
 

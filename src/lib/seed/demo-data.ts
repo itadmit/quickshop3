@@ -715,7 +715,7 @@ export const demoData = {
       currency: 'ILS',
       expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // שנה מהיום
       is_active: true,
-      note: 'כרטיס מתנה לדמו',
+      note: 'גיפט קארד לדמו',
     },
     {
       code: 'GIFT50',
@@ -723,7 +723,7 @@ export const demoData = {
       currency: 'ILS',
       expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(), // 6 חודשים
       is_active: true,
-      note: 'כרטיס מתנה לדמו',
+      note: 'גיפט קארד לדמו',
     },
   ],
 

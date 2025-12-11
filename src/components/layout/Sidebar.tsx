@@ -51,7 +51,7 @@ const menuItems: MenuItem[] = [
       { label: 'קופונים', href: '/discounts', icon: MenuIcons.coupons },
       { label: 'משפיענים', href: '/marketing/influencers', icon: MenuIcons.customers },
       { label: 'מועדון לקוחות', href: '/loyalty', icon: MenuIcons.loyalty },
-      { label: 'כרטיסי מתנה', href: '/gift-cards', icon: MenuIcons.giftCards },
+      { label: 'גיפט קארד', href: '/gift-cards', icon: MenuIcons.giftCards },
       { label: 'עגלות נטושות', href: '/abandoned-carts', icon: MenuIcons.abandonedCarts },
       { label: 'רשימת המתנה', href: '/wishlist', icon: MenuIcons.wishlist },
     ],

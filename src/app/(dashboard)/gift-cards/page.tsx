@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable, TableColumn } from '@/components/ui/DataTable';
-import { HiPlus, HiPencil, HiTrash, HiGift } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiGift, HiCog } from 'react-icons/hi';
+import { Button } from '@/components/ui/Button';
 
 interface GiftCard {
   id: number;
@@ -88,50 +89,71 @@ export default function GiftCardsPage() {
   ];
 
   return (
-    <DataTable
-      title="כרטיסי מתנה"
-      description="נהל כרטיסי מתנה"
-      primaryAction={{
-        label: 'כרטיס מתנה חדש',
-        onClick: () => router.push('/gift-cards/new'),
-        icon: <HiPlus className="w-4 h-4" />,
-      }}
-      searchPlaceholder="חיפוש כרטיסי מתנה..."
-      onSearch={setSearchTerm}
-      columns={columns}
-      data={giftCards}
-      keyExtractor={(card) => card.id}
-      selectable
-      selectedItems={selectedCards}
-      onSelectionChange={(selected) => setSelectedCards(selected as Set<number>)}
-      rowActions={(card) => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">גיפט קארד</h1>
+          <p className="text-gray-500 mt-1">נהל גיפט קארד</p>
+        </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/gift-cards/${card.id}`);
-            }}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="ערוך"
+          <Button
+            variant="outline"
+            onClick={() => router.push('/settings?tab=gift-cards')}
+            className="flex items-center gap-2"
           >
-            <HiPencil className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-      )}
-      loading={loading}
-      emptyState={
-        <div className="text-center py-12">
-          <HiGift className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500 mb-4">אין כרטיסי מתנה</p>
-          <button
+            <HiCog className="w-4 h-4" />
+            הגדרות עיצוב
+          </Button>
+          <Button
             onClick={() => router.push('/gift-cards/new')}
-            className="text-green-600 hover:text-green-700 font-medium"
+            className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-2"
           >
-            צור כרטיס מתנה ראשון
-          </button>
+            <HiPlus className="w-4 h-4" />
+            גיפט קארד חדש
+          </Button>
         </div>
-      }
-    />
+      </div>
+
+      <DataTable
+        title=""
+        description=""
+        searchPlaceholder="חיפוש גיפט קארד..."
+        onSearch={setSearchTerm}
+        columns={columns}
+        data={giftCards}
+        keyExtractor={(card) => card.id}
+        selectable
+        selectedItems={selectedCards}
+        onSelectionChange={(selected) => setSelectedCards(selected as Set<number>)}
+        rowActions={(card) => (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/gift-cards/${card.id}`);
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="ערוך"
+            >
+              <HiPencil className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+        )}
+        loading={loading}
+        emptyState={
+          <div className="text-center py-12">
+            <HiGift className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500 mb-4">אין גיפט קארד</p>
+            <button
+              onClick={() => router.push('/gift-cards/new')}
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              צור גיפט קארד ראשון
+            </button>
+          </div>
+        }
+      />
+    </div>
   );
 }
 

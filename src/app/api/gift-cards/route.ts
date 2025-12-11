@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { quickshopList, quickshopItem } from '@/lib/utils/apiFormatter';
 import { eventBus } from '@/lib/events/eventBus';
+import { sendGiftCardEmail } from '@/lib/gift-card-email';
 // Initialize event listeners
 import '@/lib/events/listeners';
 
@@ -69,10 +70,27 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const storeId = user.store_id;
-    const { code, initial_value, currency = 'ILS', expires_at, customer_id, order_id, note } = body;
+    const { 
+      code, 
+      initial_value, 
+      currency = 'ILS', 
+      expires_at, 
+      customer_id, 
+      order_id, 
+      note,
+      recipient_email,
+      recipient_name,
+      sender_name,
+      message,
+      send_email = false
+    } = body;
 
     if (!code || !initial_value) {
       return NextResponse.json({ error: 'code and initial_value are required' }, { status: 400 });
+    }
+
+    if (send_email && !recipient_email) {
+      return NextResponse.json({ error: 'recipient_email is required when send_email is true' }, { status: 400 });
     }
 
     // Check if code already exists
@@ -88,9 +106,10 @@ export async function POST(request: NextRequest) {
     const giftCard = await queryOne(
       `INSERT INTO gift_cards (
         store_id, code, initial_value, current_value, currency, expires_at, 
-        customer_id, order_id, note, created_at, updated_at
+        customer_id, order_id, note, recipient_email, recipient_name, 
+        sender_name, message, send_email, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
       RETURNING *`,
       [
         storeId,
@@ -102,8 +121,23 @@ export async function POST(request: NextRequest) {
         customer_id || null,
         order_id || null,
         note || null,
+        recipient_email || null,
+        recipient_name || null,
+        sender_name || null,
+        message || null,
+        send_email || false,
       ]
     );
+
+    // שליחת מייל אם נדרש
+    if (send_email && recipient_email) {
+      try {
+        await sendGiftCardEmail(storeId, giftCard);
+      } catch (emailError: any) {
+        // לא נכשל את יצירת gift card אם שליחת המייל נכשלה
+        console.error('Error sending gift card email:', emailError);
+      }
+    }
 
     await eventBus.emitEvent('gift_card.created', {
       gift_card: giftCard,

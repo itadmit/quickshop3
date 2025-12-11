@@ -4,6 +4,7 @@ import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuildin
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { NotificationsDrawer } from './NotificationsDrawer';
+import { Tooltip } from '../ui/Tooltip';
 
 export function Header() {
   const router = useRouter();
@@ -197,56 +198,58 @@ export function Header() {
       {/* Actions & Profile */}
       <div className="flex items-center gap-2 md:gap-4">
         {/* Marketplace */}
-        <button 
-          onClick={() => router.push('/settings/plugins')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:flex md:items-center md:gap-2 relative"
-          title="מרקטפלייס תוספים"
-        >
-          <HiCube className="w-6 h-6 text-gray-600 group-hover:text-green-600 transition-colors" />
-          <span className="text-xs text-gray-700 hidden lg:block font-medium">תוספים</span>
-        </button>
+        <Tooltip content="תוספים">
+          <button 
+            onClick={() => router.push('/settings/plugins')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:flex md:items-center md:justify-center relative"
+          >
+            <HiCube className="w-6 h-6 text-gray-600 group-hover:text-green-600 transition-colors" />
+          </button>
+        </Tooltip>
         
         {/* View Store */}
-        <button 
-          onClick={async () => {
-            try {
-              // Get store slug from API
-              const response = await fetch('/api/settings/store', {
-                credentials: 'include',
-              });
-              if (response.ok) {
-                const data = await response.json();
-                const storeSlug = data.store?.slug || 'nike'; // Fallback to 'nike' if not found
-                window.open(`/shops/${storeSlug}`, '_blank');
-              } else {
-                // Fallback if API fails
+        <Tooltip content="צפייה בחנות">
+          <button 
+            onClick={async () => {
+              try {
+                // Get store slug from API
+                const response = await fetch('/api/settings/store', {
+                  credentials: 'include',
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  const storeSlug = data.store?.slug || 'nike'; // Fallback to 'nike' if not found
+                  window.open(`/shops/${storeSlug}`, '_blank');
+                } else {
+                  // Fallback if API fails
+                  window.open('/shops/nike', '_blank');
+                }
+              } catch (error) {
+                console.error('Error getting store slug:', error);
+                // Fallback if error
                 window.open('/shops/nike', '_blank');
               }
-            } catch (error) {
-              console.error('Error getting store slug:', error);
-              // Fallback if error
-              window.open('/shops/nike', '_blank');
-            }
-          }}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:block"
-          title="צפייה בחנות"
-        >
-          <HiEye className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
-        </button>
+            }}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-all group hidden md:block"
+          >
+            <HiEye className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
+          </button>
+        </Tooltip>
         
         {/* Notifications */}
-        <button 
-          onClick={() => setShowNotifications(true)}
-          className="p-2 hover:bg-gray-100 rounded-lg relative transition-all group"
-          title="עדכונים"
-        >
-          <HiBell className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
-          {unreadNotificationsCount > 0 && (
-            <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-              {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
-            </span>
-          )}
-        </button>
+        <Tooltip content="עדכונים">
+          <button 
+            onClick={() => setShowNotifications(true)}
+            className="p-2 hover:bg-gray-100 rounded-lg relative transition-all group"
+          >
+            <HiBell className="w-6 h-6 text-gray-600 group-hover:text-primary-green transition-colors" />
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+              </span>
+            )}
+          </button>
+        </Tooltip>
         {/* Desktop: User Profile with Dropdown */}
         <div className="hidden md:flex items-center gap-3 pr-4 border-r border-gray-200 relative" ref={userMenuRef}>
           <button

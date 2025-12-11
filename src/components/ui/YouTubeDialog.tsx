@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog } from '@/components/ui/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -141,101 +141,107 @@ export function YouTubeDialog({ open, onOpenChange, onInsert }: YouTubeDialogPro
       open={open}
       onOpenChange={onOpenChange}
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="youtube-url" className="block text-sm font-medium text-gray-700">
-            קישור YouTube
-          </label>
-          <Input
-            id="youtube-url"
-            placeholder="https://youtube.com/watch?v=... או https://youtu.be/..."
-            value={url}
-            onChange={(e) => handleUrlChange(e.target.value)}
-            dir="ltr"
-          />
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-          {videoId && !error && (
-            <p className="text-sm text-green-600">
-              ✓ מזהה סרטון: {videoId}
-            </p>
-          )}
-        </div>
+      <DialogContent maxWidth="2xl" onClose={() => onOpenChange(false)}>
+        <DialogHeader>
+          <DialogTitle>הוסף סרטון YouTube</DialogTitle>
+        </DialogHeader>
 
-        {/* תצוגה מקדימה */}
-        {videoId && (
+        <div className="px-6 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">תצוגה מקדימה</label>
-            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border">
-              <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${videoId}`}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0"
+            <label htmlFor="youtube-url" className="block text-sm font-medium text-gray-700">
+              קישור YouTube
+            </label>
+            <Input
+              id="youtube-url"
+              placeholder="https://youtube.com/watch?v=... או https://youtu.be/..."
+              value={url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              dir="ltr"
+            />
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
+            {videoId && !error && (
+              <p className="text-sm text-green-600">
+                ✓ מזהה סרטון: {videoId}
+              </p>
+            )}
+          </div>
+
+          {/* תצוגה מקדימה */}
+          {videoId && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">תצוגה מקדימה</label>
+              <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${videoId}`}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* הגדרות נוספות */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="width" className="block text-sm font-medium text-gray-700">רוחב (px)</label>
+              <Input
+                id="width"
+                type="number"
+                value={width}
+                onChange={(e) => setWidth(e.target.value)}
+                min="100"
+                max="1920"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="height" className="block text-sm font-medium text-gray-700">גובה (px)</label>
+              <Input
+                id="height"
+                type="number"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                min="100"
+                max="1080"
               />
             </div>
           </div>
-        )}
 
-        {/* הגדרות נוספות */}
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label htmlFor="width" className="block text-sm font-medium text-gray-700">רוחב (px)</label>
+            <label htmlFor="start-time" className="block text-sm font-medium text-gray-700">
+              זמן התחלה (אופציונלי)
+            </label>
             <Input
-              id="width"
-              type="number"
-              value={width}
-              onChange={(e) => setWidth(e.target.value)}
-              min="100"
-              max="1920"
+              id="start-time"
+              placeholder="לדוגמה: 1:30 או 90 או 1m30s"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
             />
+            <p className="text-xs text-gray-500">
+              הזמן שבו הסרטון יתחיל (דקות:שניות, שניות, או פורמט 1m30s)
+            </p>
           </div>
-          <div className="space-y-2">
-            <label htmlFor="height" className="block text-sm font-medium text-gray-700">גובה (px)</label>
-            <Input
-              id="height"
-              type="number"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              min="100"
-              max="1080"
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="autoplay"
+              checked={autoplay}
+              onChange={(e) => setAutoplay(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300"
             />
+            <label htmlFor="autoplay" className="text-sm font-medium text-gray-700 cursor-pointer">
+              הפעל אוטומטית (autoplay)
+            </label>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="start-time" className="block text-sm font-medium text-gray-700">
-            זמן התחלה (אופציונלי)
-          </label>
-          <Input
-            id="start-time"
-            placeholder="לדוגמה: 1:30 או 90 או 1m30s"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-          />
-          <p className="text-xs text-gray-500">
-            הזמן שבו הסרטון יתחיל (דקות:שניות, שניות, או פורמט 1m30s)
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="autoplay"
-            checked={autoplay}
-            onChange={(e) => setAutoplay(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300"
-          />
-          <label htmlFor="autoplay" className="text-sm font-medium text-gray-700 cursor-pointer">
-            הפעל אוטומטית (autoplay)
-          </label>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-4">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -248,8 +254,8 @@ export function YouTubeDialog({ open, onOpenChange, onInsert }: YouTubeDialogPro
           >
             הוסף סרטון
           </Button>
-        </div>
-      </div>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

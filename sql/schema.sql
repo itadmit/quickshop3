@@ -1039,7 +1039,7 @@ CREATE INDEX idx_admin_users_store_id ON admin_users(store_id);
 CREATE INDEX idx_admin_users_email ON admin_users(email);
 
 -- ============================================
--- 13. GIFT CARDS (כרטיסי מתנה)
+-- 13. GIFT CARDS (גיפט קארד)
 -- ============================================
 
 -- Gift Cards
@@ -1054,6 +1054,12 @@ CREATE TABLE gift_cards (
   customer_id INT REFERENCES customers(id),
   order_id INT REFERENCES orders(id), -- אם נוצר מהזמנה
   note TEXT,
+  -- פרטי נמען ושולח
+  recipient_email VARCHAR(255),
+  recipient_name VARCHAR(200),
+  sender_name VARCHAR(200),
+  message TEXT, -- הודעה אישית
+  send_email BOOLEAN DEFAULT false, -- האם לשלוח מייל
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -1152,6 +1158,11 @@ CREATE TABLE pages (
   author_id INT REFERENCES admin_users(id),
   published_at TIMESTAMP WITHOUT TIME ZONE,
   template_suffix VARCHAR(100),
+  template VARCHAR(50) DEFAULT 'STANDARD', -- STANDARD, CHOICES_OF
+  display_type VARCHAR(50), -- GRID, LIST (לשימוש עם CHOICES_OF)
+  selected_products INTEGER[], -- רשימת ID של מוצרים נבחרים (לשימוש עם CHOICES_OF)
+  coupon_code VARCHAR(100), -- קוד קופון להפעלה אוטומטית בדף
+  influencer_id INT REFERENCES influencers(id) ON DELETE SET NULL, -- שיוך למשפיען
   meta_title VARCHAR(255),
   meta_description TEXT,
   is_published BOOLEAN DEFAULT false,
@@ -1163,6 +1174,8 @@ CREATE TABLE pages (
 CREATE INDEX idx_pages_store_id ON pages(store_id);
 CREATE INDEX idx_pages_handle ON pages(handle);
 CREATE INDEX idx_pages_published ON pages(is_published, published_at);
+CREATE INDEX idx_pages_template ON pages(template);
+CREATE INDEX idx_pages_influencer_id ON pages(influencer_id);
 
 -- Navigation Menus (תפריטי ניווט)
 CREATE TABLE navigation_menus (

@@ -82,7 +82,8 @@ export default function NewOrderPage() {
     try {
       setCustomerError(null);
       const params = new URLSearchParams();
-      params.append('limit', '100');
+      params.append('limit', '10');
+      params.append('page', '1');
       if (searchTerm && searchTerm.trim()) {
         params.append('search', searchTerm.trim());
       }
@@ -519,24 +520,31 @@ export default function NewOrderPage() {
             )}
             <div className="max-h-96 overflow-y-auto space-y-2">
               {filteredContacts.length > 0 ? (
-                filteredContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    onClick={() => handleSelectContact(contact)}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="font-medium text-gray-900">
-                      {contact.first_name} {contact.last_name}
+                <>
+                  {filteredContacts.map((contact) => (
+                    <div
+                      key={contact.id}
+                      onClick={() => handleSelectContact(contact)}
+                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="font-medium text-gray-900">
+                        {contact.first_name} {contact.last_name}
+                      </div>
+                      <div className="text-sm text-gray-500">{contact.email}</div>
+                      {contact.phone && (
+                        <div className="text-sm text-gray-500">{contact.phone}</div>
+                      )}
+                      {contact.customer_id && (
+                        <div className="text-xs text-green-600 mt-1">לקוח קיים</div>
+                      )}
                     </div>
-                    <div className="text-sm text-gray-500">{contact.email}</div>
-                    {contact.phone && (
-                      <div className="text-sm text-gray-500">{contact.phone}</div>
-                    )}
-                    {contact.customer_id && (
-                      <div className="text-xs text-green-600 mt-1">לקוח קיים</div>
-                    )}
-                  </div>
-                ))
+                  ))}
+                  {filteredContacts.length === 10 && (
+                    <div className="text-center text-sm text-gray-500 pt-2">
+                      מוצגים 10 תוצאות ראשונות. השתמש בחיפוש כדי למצוא לקוחות ספציפיים.
+                    </div>
+                  )}
+                </>
               ) : !customerError ? (
                 <div className="text-center py-8 text-gray-500">
                   לא נמצאו אנשי קשר

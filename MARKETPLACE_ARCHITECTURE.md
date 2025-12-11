@@ -364,3 +364,5 @@ export interface PluginHook {
 
 **זה בדיוק כמו Shopify App Store! 🚀**
 
+
+

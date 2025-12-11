@@ -54,7 +54,7 @@ export default function EditGiftCardPage() {
         if (response.status === 404) {
           toast({
             title: 'שגיאה',
-            description: 'כרטיס מתנה לא נמצא',
+            description: 'גיפט קארד לא נמצא',
             variant: 'destructive',
           });
           router.push('/gift-cards');
@@ -81,7 +81,7 @@ export default function EditGiftCardPage() {
       console.error('Error loading gift card:', error);
       toast({
         title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה בטעינת כרטיס מתנה',
+        description: error.message || 'אירעה שגיאה בטעינת גיפט קארד',
         variant: 'destructive',
       });
     } finally {
@@ -110,21 +110,21 @@ export default function EditGiftCardPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'שגיאה בעדכון כרטיס מתנה');
+        throw new Error(error.error || 'שגיאה בעדכון גיפט קארד');
       }
 
       const data = await response.json();
       
       toast({
         title: 'הצלחה',
-        description: `כרטיס מתנה "${data.gift_card?.code || giftCard?.code}" עודכן בהצלחה`,
+        description: `גיפט קארד "${data.gift_card?.code || giftCard?.code}" עודכן בהצלחה`,
       });
 
       router.push('/gift-cards');
     } catch (error: any) {
       toast({
         title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה בעדכון כרטיס מתנה',
+        description: error.message || 'אירעה שגיאה בעדכון גיפט קארד',
         variant: 'destructive',
       });
     } finally {
@@ -133,7 +133,7 @@ export default function EditGiftCardPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק את כרטיס המתנה הזה?')) return;
+    if (!confirm('האם אתה בטוח שברצונך למחוק את הגיפט קארד הזה?')) return;
 
     try {
       const response = await fetch(`/api/gift-cards/${giftCardId}`, {
@@ -147,14 +147,14 @@ export default function EditGiftCardPage() {
 
       toast({
         title: 'הצלחה',
-        description: 'כרטיס מתנה נמחק בהצלחה',
+        description: 'גיפט קארד נמחק בהצלחה',
       });
 
       router.push('/gift-cards');
     } catch (error: any) {
       toast({
         title: 'שגיאה',
-        description: error.message || 'אירעה שגיאה במחיקת כרטיס מתנה',
+        description: error.message || 'אירעה שגיאה במחיקת גיפט קארד',
         variant: 'destructive',
       });
     }
@@ -179,8 +179,8 @@ export default function EditGiftCardPage() {
     <div className="p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">ערוך כרטיס מתנה</h1>
-          <p className="text-gray-500 mt-1">ערוך את פרטי כרטיס המתנה</p>
+          <h1 className="text-2xl font-bold text-gray-900">ערוך גיפט קארד</h1>
+          <p className="text-gray-500 mt-1">ערוך את פרטי הגיפט קארד</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -206,18 +206,18 @@ export default function EditGiftCardPage() {
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <HiGift className="w-5 h-5" />
-            פרטי כרטיס המתנה
+            פרטי הגיפט קארד
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label>קוד כרטיס המתנה</Label>
+              <Label>קוד הגיפט קארד</Label>
               <Input
                 value={giftCard.code}
                 disabled
                 className="mt-1 bg-gray-50"
               />
-              <p className="text-sm text-gray-500 mt-1">קוד כרטיס המתנה לא ניתן לשינוי</p>
+              <p className="text-sm text-gray-500 mt-1">קוד הגיפט קארד לא ניתן לשינוי</p>
             </div>
 
             <div>
@@ -258,7 +258,7 @@ export default function EditGiftCardPage() {
                 id="note"
                 value={formData.note}
                 onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                placeholder="הערות נוספות על כרטיס המתנה..."
+                placeholder="הערות נוספות על הגיפט קארד..."
                 rows={3}
                 className="mt-1"
               />
@@ -272,10 +272,10 @@ export default function EditGiftCardPage() {
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked as boolean })}
                 />
                 <Label htmlFor="is_active" className="cursor-pointer">
-                  כרטיס פעיל
+                  גיפט קארד פעיל
                 </Label>
               </div>
-              <p className="text-sm text-gray-500 mt-1">רק כרטיסים פעילים יכולים לשמש בהזמנות</p>
+              <p className="text-sm text-gray-500 mt-1">רק גיפט קארדים פעילים יכולים לשמש בהזמנות</p>
             </div>
           </div>
         </Card>
@@ -303,4 +303,6 @@ export default function EditGiftCardPage() {
     </div>
   );
 }
+
+
 

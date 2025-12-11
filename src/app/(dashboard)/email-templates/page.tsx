@@ -23,6 +23,7 @@ const TEMPLATE_TYPES = [
   { value: 'WELCOME', label: 'מייל ברכה' },
   { value: 'ORDER_SHIPPED', label: 'הזמנה נשלחה' },
   { value: 'ORDER_CANCELLED', label: 'הזמנה בוטלה' },
+  { value: 'RETURN_REQUEST_CONFIRMATION', label: 'אישור בקשת החזרה/החלפה' },
 ];
 
 export default function EmailTemplatesPage() {

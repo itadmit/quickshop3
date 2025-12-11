@@ -1,8 +1,8 @@
 import { queryOne } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
-import { ORDER_CONFIRMATION_TEMPLATE, WELCOME_TEMPLATE, ORDER_SHIPPED_TEMPLATE, ORDER_CANCELLED_TEMPLATE, ORDER_FULFILLED_TEMPLATE, ORDER_REFUNDED_TEMPLATE } from '@/lib/templates/default-emails';
+import { ORDER_CONFIRMATION_TEMPLATE, WELCOME_TEMPLATE, ORDER_SHIPPED_TEMPLATE, ORDER_CANCELLED_TEMPLATE, ORDER_FULFILLED_TEMPLATE, ORDER_REFUNDED_TEMPLATE, RETURN_REQUEST_CONFIRMATION_TEMPLATE } from '@/lib/templates/default-emails';
 
-export type EmailType = 'ORDER_CONFIRMATION' | 'WELCOME' | 'ORDER_SHIPPED' | 'ORDER_CANCELLED' | 'ORDER_FULFILLED' | 'ORDER_REFUNDED';
+export type EmailType = 'ORDER_CONFIRMATION' | 'WELCOME' | 'ORDER_SHIPPED' | 'ORDER_CANCELLED' | 'ORDER_FULFILLED' | 'ORDER_REFUNDED' | 'RETURN_REQUEST_CONFIRMATION';
 
 interface EmailVariables {
   [key: string]: string | number | boolean | undefined;
@@ -92,6 +92,8 @@ export class EmailEngine {
         return ORDER_FULFILLED_TEMPLATE;
       case 'ORDER_REFUNDED':
         return ORDER_REFUNDED_TEMPLATE;
+      case 'RETURN_REQUEST_CONFIRMATION':
+        return RETURN_REQUEST_CONFIRMATION_TEMPLATE;
       default:
         throw new Error(`Unknown email type: ${type}`);
     }

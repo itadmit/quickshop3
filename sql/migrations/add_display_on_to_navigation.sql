@@ -7,3 +7,5 @@ ADD COLUMN IF NOT EXISTS display_on VARCHAR(20) DEFAULT 'both' CHECK (display_on
 -- Update existing menus to have 'both' as default
 UPDATE navigation_menus SET display_on = 'both' WHERE display_on IS NULL;
 
+
+

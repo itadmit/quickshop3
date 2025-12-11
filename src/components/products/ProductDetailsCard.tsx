@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/Label';
 interface ProductDetailsData {
   sku: string;
   video: string;
+  vendor?: string | null;
 }
 
 interface ProductDetailsCardProps {
@@ -27,6 +28,15 @@ export function ProductDetailsCard({ data, onChange }: ProductDetailsCardProps) 
               value={data.sku}
               onChange={(e) => onChange({ sku: e.target.value })}
               placeholder="לדוגמה: TSH-001"
+            />
+          </div>
+          <div>
+            <Label htmlFor="vendor">ספק</Label>
+            <Input
+              id="vendor"
+              value={data.vendor || ''}
+              onChange={(e) => onChange({ vendor: e.target.value })}
+              placeholder="שם הספק"
             />
           </div>
           <div>

@@ -220,3 +220,5 @@ const finalPoints = basePoints * pointsMultiplier;
 **עדיפות:** 🔴 גבוהה  
 **אחראי:** TBD
 
+
+

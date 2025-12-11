@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { HiSave, HiX, HiTrash } from 'react-icons/hi';
 import { BlogPost } from '@/types/content';
 
@@ -190,14 +191,13 @@ export default function BlogPostDetailsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                תוכן הפוסט (HTML)
+                תוכן הפוסט
               </label>
-              <textarea
+              <RichTextEditor
                 value={formData.body_html}
-                onChange={(e) => setFormData({ ...formData, body_html: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, body_html: value })}
                 placeholder="תוכן הפוסט..."
-                rows={12}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+                className="border border-gray-300 rounded-lg"
               />
             </div>
 

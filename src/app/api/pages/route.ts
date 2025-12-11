@@ -103,17 +103,27 @@ export async function POST(request: NextRequest) {
     // Generate handle if not provided
     const handle = body.handle || await generateUniqueSlug(body.title, 'pages', user.store_id);
 
+    const template = body.template || 'STANDARD';
+    const displayType = body.template === 'CHOICES_OF' ? (body.display_type || 'GRID') : null;
+    const selectedProducts = body.template === 'CHOICES_OF' && body.selected_products ? body.selected_products : null;
+
     const page = await queryOne<Page>(
       `INSERT INTO pages (
-        store_id, title, handle, body_html, meta_title, meta_description,
+        store_id, title, handle, body_html, template, display_type, selected_products,
+        coupon_code, influencer_id, meta_title, meta_description,
         is_published, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
       RETURNING *`,
       [
         storeId,
         body.title,
         handle,
         body.body_html || null,
+        template,
+        displayType,
+        selectedProducts,
+        body.coupon_code || null,
+        body.influencer_id || null,
         body.meta_title || null,
         body.meta_description || null,
         body.is_published !== undefined ? body.is_published : false,

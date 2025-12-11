@@ -9,7 +9,6 @@ import { HiCube, HiGift } from 'react-icons/hi';
 interface BasicInfoData {
   name: string;
   description: string;
-  vendor?: string | null;
   isGiftCard?: boolean;
 }
 
@@ -17,11 +16,10 @@ interface BasicInfoCardProps {
   data: BasicInfoData;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
-  onVendorChange?: (vendor: string) => void;
   onIsGiftCardChange?: (isGiftCard: boolean) => void;
 }
 
-export function BasicInfoCard({ data, onNameChange, onDescriptionChange, onVendorChange, onIsGiftCardChange }: BasicInfoCardProps) {
+export function BasicInfoCard({ data, onNameChange, onDescriptionChange, onIsGiftCardChange }: BasicInfoCardProps) {
   return (
     <Card>
       <div className="p-6">
@@ -39,18 +37,6 @@ export function BasicInfoCard({ data, onNameChange, onDescriptionChange, onVendo
               placeholder="לדוגמה: חולצת טי שירט"
             />
           </div>
-
-          {onVendorChange && (
-            <div>
-              <Label htmlFor="vendor">ספק</Label>
-              <Input
-                id="vendor"
-                value={data.vendor || ''}
-                onChange={(e) => onVendorChange(e.target.value)}
-                placeholder="שם הספק"
-              />
-            </div>
-          )}
 
           <div>
             <Label htmlFor="description">תיאור</Label>
@@ -73,7 +59,7 @@ export function BasicInfoCard({ data, onNameChange, onDescriptionChange, onVendo
               />
               <Label htmlFor="isGiftCard" className="flex items-center gap-2 cursor-pointer">
                 <HiGift className="w-4 h-4" />
-                <span>זהו מוצר Gift Card (כרטיס מתנה)</span>
+                <span>זהו מוצר Gift Card (גיפט קארד)</span>
               </Label>
             </div>
           )}

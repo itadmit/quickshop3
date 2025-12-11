@@ -3,7 +3,7 @@ import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { getDefaultTemplates } from '@/lib/templates/default-emails';
 
-const TEMPLATE_TYPES = ['ORDER_CONFIRMATION', 'WELCOME', 'ORDER_SHIPPED', 'ORDER_CANCELLED'];
+const TEMPLATE_TYPES = ['ORDER_CONFIRMATION', 'WELCOME', 'ORDER_SHIPPED', 'ORDER_CANCELLED', 'RETURN_REQUEST_CONFIRMATION'];
 
 // GET /api/email-templates - Get all email templates for store (including defaults)
 export async function GET(request: NextRequest) {

@@ -233,6 +233,40 @@ export async function POST(
       throw new Error('Failed to create return');
     }
 
+    // שליחת מייל חיווי ללקוח
+    try {
+      // קבלת פרטי הלקוח
+      const customer = await queryOne<{
+        email: string;
+        first_name: string | null;
+        last_name: string | null;
+      }>(
+        'SELECT email, first_name, last_name FROM customers WHERE id = $1',
+        [auth.customerId]
+      );
+
+      if (customer && customer.email) {
+        const { EmailEngine } = await import('@/lib/services/email-engine');
+        const emailEngine = new EmailEngine(auth.store.id);
+        
+        // יצירת URL לסטטוס הבקשה
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const returnStatusUrl = `${baseUrl}/shops/${storeSlug}/account?tab=returns`;
+
+        await emailEngine.send('RETURN_REQUEST_CONFIRMATION', customer.email, {
+          customer_first_name: customer.first_name || 'לקוח/ה',
+          order_name: `#${order.order_number}`,
+          return_id: result.id.toString(),
+          return_reason: data.reason,
+          return_notes: data.notes || '',
+          return_status_url: returnStatusUrl,
+        });
+      }
+    } catch (error) {
+      console.error('Error sending return confirmation email:', error);
+      // לא נכשל את כל התהליך אם שליחת המייל נכשלה
+    }
+
     // יצירת אירוע (אם יש eventBus)
     try {
       const { eventBus } = await import('@/lib/events/eventBus');
@@ -265,7 +299,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.issues[0]?.message || 'שגיאת אימות' },
         { status: 400 }
       );
     }

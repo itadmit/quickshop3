@@ -180,3 +180,5 @@ export class QuickShopPaymentsProvider extends BasePaymentProvider {
 
 **התשתית מוכנה! 🎉**
 
+
+

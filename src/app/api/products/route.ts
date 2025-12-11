@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const categoryId = searchParams.get('categoryId');
+    const idsParam = searchParams.get('ids'); // Comma-separated product IDs
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const page = parseInt(searchParams.get('page') || '1');
@@ -56,6 +57,15 @@ export async function GET(request: NextRequest) {
       )`;
       params.push(parseInt(categoryId));
       paramIndex++;
+    }
+
+    if (idsParam) {
+      const ids = idsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (ids.length > 0) {
+        sql += ` AND p.id = ANY($${paramIndex}::int[])`;
+        params.push(ids);
+        paramIndex++;
+      }
     }
 
     // Build ORDER BY clause
@@ -100,6 +110,15 @@ export async function GET(request: NextRequest) {
       )`;
       countParams.push(parseInt(categoryId));
       countParamIndex++;
+    }
+
+    if (idsParam) {
+      const ids = idsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (ids.length > 0) {
+        countSql += ` AND p.id = ANY($${countParamIndex}::int[])`;
+        countParams.push(ids);
+        countParamIndex++;
+      }
     }
 
     const totalResult = await queryOne<{ total: string }>(countSql, countParams);

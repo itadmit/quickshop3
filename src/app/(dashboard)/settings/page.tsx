@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -9,6 +10,7 @@ import { ShippingSettings } from '@/components/settings/ShippingSettings';
 import { WebhooksSettings } from '@/components/settings/WebhooksSettings';
 import { EmailSettings } from '@/components/settings/EmailSettings';
 import { AdvancedSettings } from '@/components/settings/AdvancedSettings';
+import { GiftCardSettings } from '@/components/settings/GiftCardSettings';
 import { MediaPicker } from '@/components/MediaPicker';
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
@@ -26,13 +28,19 @@ interface Store {
   plan: string;
 }
 
-type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced' | 'meta-fields' | 'size-charts' | 'product-addons' | 'premium-club' | 'cron-status' | 'subscription';
+type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced' | 'meta-fields' | 'size-charts' | 'product-addons' | 'premium-club' | 'cron-status' | 'subscription' | 'gift-cards' | 'order-statuses';
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const { toast } = useOptimisticToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const tab = searchParams.get('tab') as SettingsTab | null;
+    return tab && ['general', 'domain', 'payments', 'shipping', 'email', 'gift-cards', 'integrations', 'users', 'api', 'advanced', 'meta-fields', 'size-charts', 'product-addons', 'premium-club', 'cron-status', 'subscription', 'order-statuses'].includes(tab) 
+      ? tab 
+      : 'general';
+  });
   const [store, setStore] = useState<Store | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -337,6 +345,7 @@ export default function SettingsPage() {
     { id: 'payments', label: 'תשלומים' },
     { id: 'shipping', label: 'משלוחים' },
     { id: 'email', label: 'מייל' },
+    { id: 'gift-cards', label: 'גיפט קארד' },
     { id: 'integrations', label: 'אינטגרציות' },
     { id: 'users', label: 'משתמשים' },
     { id: 'api', label: 'API' },
@@ -853,6 +862,8 @@ export default function SettingsPage() {
               {activeTab === 'shipping' && <ShippingSettings />}
 
               {activeTab === 'email' && <EmailSettings />}
+
+              {activeTab === 'gift-cards' && <GiftCardSettings />}
 
               {activeTab === 'integrations' && <WebhooksSettings />}
 

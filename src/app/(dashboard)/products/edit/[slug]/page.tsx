@@ -48,7 +48,7 @@ export default function EditProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    vendor: '',
+    vendor: '' as string | null,
     price: '',
     comparePrice: '',
     cost: '',
@@ -579,7 +579,6 @@ export default function EditProductPage() {
             data={{
               name: formData.name,
               description: formData.description,
-              vendor: formData.vendor || product.vendor || null,
             }}
             onNameChange={(name) => {
               setFormData(prev => ({ ...prev, name }));
@@ -588,10 +587,6 @@ export default function EditProductPage() {
             onDescriptionChange={(description) => {
               setFormData(prev => ({ ...prev, description }));
               setProduct(prev => prev ? { ...prev, body_html: description } : null);
-            }}
-            onVendorChange={(vendor) => {
-              setFormData(prev => ({ ...prev, vendor }));
-              setProduct(prev => prev ? { ...prev, vendor } : null);
             }}
           />
 
@@ -747,8 +742,14 @@ export default function EditProductPage() {
             data={{
               sku: formData.sku,
               video: formData.video,
+              vendor: formData.vendor || product.vendor || null,
             }}
-            onChange={(data) => setFormData(prev => ({ ...prev, ...data }))}
+            onChange={(data) => {
+              setFormData(prev => ({ ...prev, ...data }));
+              if (data.vendor !== undefined) {
+                setProduct(prev => prev ? { ...prev, vendor: data.vendor || null } : null);
+              }
+            }}
           />
 
           {/* Shipping */}

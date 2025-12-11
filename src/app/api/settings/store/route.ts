@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Handle themeSettings (email colors, sender name, etc.)
-    if (body.themeSettings !== undefined) {
+    if (body.themeSettings !== undefined || body.giftCardSettings !== undefined) {
       // Try to update store_settings table
       try {
         // Check if store_settings table exists
@@ -139,13 +139,24 @@ export async function PUT(request: NextRequest) {
             : {};
 
           // Merge themeSettings
-          const mergedSettings = {
+          const mergedSettings: any = {
             ...existingSettings,
-            themeSettings: {
+          };
+
+          if (body.themeSettings !== undefined) {
+            mergedSettings.themeSettings = {
               ...(existingSettings.themeSettings || {}),
               ...body.themeSettings,
-            },
-          };
+            };
+          }
+
+          // Merge giftCardSettings
+          if (body.giftCardSettings !== undefined) {
+            mergedSettings.giftCardSettings = {
+              ...(existingSettings.giftCardSettings || {}),
+              ...body.giftCardSettings,
+            };
+          }
 
           // Update or insert
           await query(
@@ -164,7 +175,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    if (updates.length === 0 && body.themeSettings === undefined) {
+    if (updates.length === 0 && body.themeSettings === undefined && body.giftCardSettings === undefined) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 

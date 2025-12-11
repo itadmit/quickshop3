@@ -74,19 +74,29 @@ export async function PUT(
       handle = await generateUniqueSlug(body.title, 'pages', user.store_id, pageId);
     }
 
+    const template = body.template !== undefined ? body.template : oldPage.template;
+    const displayType = template === 'CHOICES_OF' ? (body.display_type || oldPage.display_type || 'GRID') : null;
+    const selectedProducts = template === 'CHOICES_OF' && body.selected_products !== undefined ? body.selected_products : (template === 'CHOICES_OF' ? oldPage.selected_products : null);
+
     const page = await queryOne<Page>(
       `UPDATE pages 
-       SET title = $1, handle = $2, body_html = $3, meta_title = $4, 
-           meta_description = $5, is_published = $6, updated_at = now()
-       WHERE id = $7 AND store_id = $8
+       SET title = $1, handle = $2, body_html = $3, template = $4, display_type = $5,
+           selected_products = $6, coupon_code = $7, influencer_id = $8,
+           meta_title = $9, meta_description = $10, is_published = $11, updated_at = now()
+       WHERE id = $12 AND store_id = $13
        RETURNING *`,
       [
         body.title,
         handle,
-        body.body_html || null,
-        body.meta_title || null,
-        body.meta_description || null,
-        body.is_published !== undefined ? body.is_published : false,
+        body.body_html !== undefined ? body.body_html : oldPage.body_html,
+        template,
+        displayType,
+        selectedProducts,
+        body.coupon_code !== undefined ? body.coupon_code : oldPage.coupon_code,
+        body.influencer_id !== undefined ? body.influencer_id : oldPage.influencer_id,
+        body.meta_title !== undefined ? body.meta_title : oldPage.meta_title,
+        body.meta_description !== undefined ? body.meta_description : oldPage.meta_description,
+        body.is_published !== undefined ? body.is_published : oldPage.is_published,
         pageId,
         user.store_id,
       ]

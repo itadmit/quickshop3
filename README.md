@@ -992,14 +992,14 @@ quickshop3/
   - `role` - owner, admin, staff, limited_staff
   - `permissions` - הרשאות מותאמות (JSONB)
 
-#### 13. **Gift Cards (כרטיסי מתנה)** ✨
+#### 13. **Gift Cards (גיפט קארד)** ✨
 
-- **gift_cards** - כרטיסי מתנה
-  - `code` - קוד כרטיס מתנה
+- **gift_cards** - גיפט קארד
+  - `code` - קוד גיפט קארד
   - `initial_value`, `current_value` - ערך התחלתי ונוכחי
   - `expires_at` - תאריך תפוגה
   
-- **gift_card_transactions** - תנועות כרטיסי מתנה
+- **gift_card_transactions** - תנועות גיפט קארד
   - `transaction_type` - used, refunded, expired
 
 #### 14. **Abandoned Carts (עגלות נטושות)** ✨

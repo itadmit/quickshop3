@@ -583,6 +583,76 @@ export const ORDER_REFUNDED_TEMPLATE = {
 `
 };
 
+export const RETURN_REQUEST_CONFIRMATION_TEMPLATE = {
+  subject: 'בקשת ההחזרה/החלפה שלך התקבלה - הזמנה {{order_name}}',
+  body: `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>בקשת ההחזרה/החלפה שלך התקבלה</title>
+  ${EMAIL_STYLES}
+</head>
+<body>
+  <div class="wrapper">
+    <div class="email-container">
+      <div class="header">
+        {{shop_logo_or_name}}
+      </div>
+      
+      <div class="content">
+        <div class="greeting">שלום {{customer_first_name}},</div>
+        <p>תודה על פנייתך! קיבלנו את בקשת ההחזרה/החלפה שלך עבור ההזמנה <strong>{{order_name}}</strong>.</p>
+        
+        <div class="order-info" style="background-color: #f0f9ff; border-color: #bae6fd;">
+          <div class="order-header">
+            <div class="order-id">בקשת החזרה/החלפה #{{return_id}}</div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div class="info-title">סיבת הבקשה</div>
+            <div style="margin-top: 8px; font-size: 15px; color: #374151;">{{return_reason}}</div>
+          </div>
+
+          {{#if return_notes}}
+          <div style="margin-bottom: 16px;">
+            <div class="info-title">הערות נוספות</div>
+            <div style="margin-top: 8px; font-size: 15px; color: #374151;">{{return_notes}}</div>
+          </div>
+          {{/if}}
+
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <div class="info-title">סטטוס הבקשה</div>
+            <div style="margin-top: 8px;">
+              <span style="display: inline-block; background-color: #fef3c7; color: #92400e; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+                ממתין לאישור
+              </span>
+            </div>
+            <p style="margin-top: 12px; font-size: 14px; color: #6b7280;">
+              נבדוק את הבקשה שלך ונעדכן אותך בהקדם. בדרך כלל זה לוקח 1-2 ימי עסקים.
+            </p>
+          </div>
+        </div>
+
+        <div class="button-container">
+          <a href="{{return_status_url}}" class="button">צפה בסטטוס הבקשה</a>
+        </div>
+
+        <p>אם יש לך שאלות נוספות או מידע נוסף שתרצה להוסיף, אנחנו כאן בשבילך.</p>
+      </div>
+
+      <div class="footer">
+        <p>אם יש לך שאלות, השב למייל זה או צור קשר ב- <a href="mailto:{{shop_email}}">{{shop_email}}</a></p>
+        <p>© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`
+};
+
 /**
  * מחזיר את כל תבניות ברירת המחדל
  */
@@ -594,5 +664,6 @@ export function getDefaultTemplates() {
     ORDER_CANCELLED: ORDER_CANCELLED_TEMPLATE,
     ORDER_FULFILLED: ORDER_FULFILLED_TEMPLATE,
     ORDER_REFUNDED: ORDER_REFUNDED_TEMPLATE,
+    RETURN_REQUEST_CONFIRMATION: RETURN_REQUEST_CONFIRMATION_TEMPLATE,
   };
 }
