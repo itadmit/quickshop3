@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
-import { HiPlus, HiPencil, HiTrash, HiTable } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiTable, HiUpload, HiX } from 'react-icons/hi';
+import { MediaPicker } from '@/components/MediaPicker';
 
 interface SizeChart {
   id: number;
@@ -46,6 +47,8 @@ export default function SizeChartsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChart, setEditingChart] = useState<SizeChart | null>(null);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -378,15 +381,46 @@ export default function SizeChartsPage() {
 
             {/* Image URL */}
             <div className="space-y-2">
-              <Label htmlFor="image_url">קישור לתמונה (אופציונלי)</Label>
-              <Input
-                id="image_url"
-                value={formData.image_url}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, image_url: e.target.value }))
-                }
-                placeholder="https://example.com/image.jpg"
-              />
+              <Label htmlFor="image_url">תמונה (אופציונלי)</Label>
+              
+              {formData.image_url && (
+                <div className="relative inline-block">
+                  <img
+                    src={formData.image_url}
+                    alt="תמונת טבלת מידות"
+                    className="h-32 w-auto rounded-lg border border-gray-200 object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, image_url: '' }))}
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                  >
+                    <HiX className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
+                >
+                  <HiUpload className="w-4 h-4" />
+                  העלה תמונה
+                </button>
+                
+                <div className="flex-1">
+                  <Input
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, image_url: e.target.value }))
+                    }
+                    placeholder="או הדבק קישור לתמונה: https://example.com/image.jpg"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Scope */}
@@ -470,6 +504,21 @@ export default function SizeChartsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Media Picker */}
+      {showMediaPicker && (
+        <MediaPicker
+          onSelect={(files) => {
+            if (files.length > 0) {
+              setFormData((prev) => ({ ...prev, image_url: files[0] }));
+            }
+            setShowMediaPicker(false);
+          }}
+          onClose={() => setShowMediaPicker(false)}
+          multiple={false}
+          accept="image/*"
+        />
+      )}
     </>
   );
 }
