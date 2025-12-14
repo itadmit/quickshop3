@@ -7,6 +7,7 @@ import { Header, DeviceType } from './Header';
 import { SettingsAndStylePanel } from './SettingsAndStylePanel';
 import { ElementsSidebar } from './ElementsSidebar';
 import { TemplatesModal } from './TemplatesModal';
+import { GeneralSettingsModal } from './GeneralSettingsModal';
 import { NEW_YORK_TEMPLATE, getDefaultSectionsForPage } from '@/lib/customizer/templates/new-york';
 import { EditorState, SectionSettings, PageType } from '@/lib/customizer/types';
 import { getSectionName } from '@/lib/customizer/sectionNames';
@@ -52,6 +53,7 @@ export function CustomizerLayout() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [isGeneralSettingsModalOpen, setIsGeneralSettingsModalOpen] = useState(false);
   const [currentPageType, setCurrentPageType] = useState<PageType>('home');
   
   // Sample product for product page preview
@@ -868,6 +870,7 @@ export function CustomizerLayout() {
         }}
         onPublish={handlePublish}
         onTemplates={() => setIsTemplatesModalOpen(true)}
+        onGeneralSettings={() => setIsGeneralSettingsModalOpen(true)}
         device={editorState.device}
         onDeviceChange={handleDeviceChange}
         isPublishing={isPublishing}
@@ -881,6 +884,12 @@ export function CustomizerLayout() {
         onClose={() => setIsTemplatesModalOpen(false)}
         sections={pageSections}
         onImport={handleImportTemplate}
+      />
+
+      {/* General Settings Modal */}
+      <GeneralSettingsModal
+        isOpen={isGeneralSettingsModalOpen}
+        onClose={() => setIsGeneralSettingsModalOpen(false)}
       />
 
       {/* Main Content */}

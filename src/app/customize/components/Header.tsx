@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiUpload, HiDownload, HiChevronDown } from 'react-icons/hi';
+import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiUpload, HiDownload, HiChevronDown, HiCog } from 'react-icons/hi';
 import { cn } from '@/lib/utils';
 import { PageType } from '@/lib/customizer/types';
 
@@ -18,6 +18,7 @@ interface HeaderProps {
   onPreview: () => void;
   onPublish: () => void;
   onTemplates: () => void;
+  onGeneralSettings?: () => void;
   device: DeviceType;
   onDeviceChange: (device: DeviceType) => void;
   isPublishing?: boolean;
@@ -28,7 +29,8 @@ interface HeaderProps {
 export function Header({ 
   onPreview, 
   onPublish, 
-  onTemplates, 
+  onTemplates,
+  onGeneralSettings,
   device, 
   onDeviceChange, 
   isPublishing = false,
@@ -136,6 +138,16 @@ export function Header({
 
       <div className="flex items-center gap-2">
         {/* Action Buttons */}
+        {onGeneralSettings && (
+          <button
+            onClick={onGeneralSettings}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            title="הגדרות כלליות"
+          >
+            <HiCog className="w-4 h-4" />
+            <span className="hidden sm:inline">הגדרות כלליות</span>
+          </button>
+        )}
         <button
           onClick={onTemplates}
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
