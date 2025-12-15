@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     // Get images, variants, options, and collections for each product
     const productsWithDetails: ProductWithDetails[] = await Promise.all(
       products.map(async (product) => {
-        const [images, variants, options, collections] = await Promise.all([
+        const [images, variants, rawOptions, collections] = await Promise.all([
           query<ProductImage>(
             'SELECT * FROM product_images WHERE product_id = $1 ORDER BY position',
             [product.id]
@@ -137,8 +137,15 @@ export async function GET(request: NextRequest) {
             'SELECT * FROM product_variants WHERE product_id = $1 ORDER BY position',
             [product.id]
           ),
-          query<ProductOption>(
-            'SELECT * FROM product_options WHERE product_id = $1 ORDER BY position',
+          // Use same format as single product API - get options with values in one query
+          query<ProductOption & { values: any }>(
+            `SELECT po.*, 
+             COALESCE(
+               (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position) ORDER BY pov.position)
+                FROM product_option_values pov WHERE pov.option_id = po.id),
+               '[]'::json
+             ) as values
+             FROM product_options po WHERE po.product_id = $1 ORDER BY po.position`,
             [product.id]
           ),
           query<{ id: number; title: string; handle: string }>(
@@ -150,6 +157,72 @@ export async function GET(request: NextRequest) {
             [product.id]
           ),
         ]);
+
+        // Parse values if they come as string from PostgreSQL and normalize format
+        const options = rawOptions.map(option => {
+          let values = option.values;
+          
+          // If values is a string, parse it (PostgreSQL json_agg returns as string)
+          if (typeof values === 'string') {
+            try {
+              values = JSON.parse(values);
+            } catch {
+              values = [];
+            }
+          }
+          
+          // Ensure values is an array
+          if (!Array.isArray(values)) {
+            values = values ? [values] : [];
+          }
+          
+          // Extract just the value property from each item if it's an object
+          // Handle nested JSON strings (double-encoded or more)
+          const extractValueRecursively = (val: any, depth = 0): string => {
+            // Prevent infinite recursion
+            if (depth > 5) return '';
+            
+            if (!val) return '';
+            if (typeof val === 'number') return String(val);
+            if (typeof val === 'string') {
+              // If it's a JSON string, try to parse it recursively
+              if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+                try {
+                  const parsed = JSON.parse(val);
+                  // If parsed is an object with a 'value' property, recurse
+                  if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+                    return extractValueRecursively(parsed.value, depth + 1);
+                  }
+                  // If parsed is an object but no 'value', try to find it
+                  if (parsed && typeof parsed === 'object') {
+                    return extractValueRecursively(parsed.value || parsed.label || parsed.name || val, depth + 1);
+                  }
+                  return String(parsed);
+                } catch {
+                  // Not valid JSON, return as-is
+                  return val;
+                }
+              }
+              return val;
+            }
+            if (val && typeof val === 'object') {
+              // If object has a 'value' property, recurse on it
+              if (val.value !== undefined) {
+                return extractValueRecursively(val.value, depth + 1);
+              }
+              // Try other common property names
+              return extractValueRecursively(val.label || val.name || '', depth + 1);
+            }
+            return '';
+          };
+          
+          const normalizedValues = values
+            .map(extractValueRecursively)
+            .filter(Boolean)
+            .filter((v, idx, arr) => arr.indexOf(v) === idx); // Remove duplicates
+          
+          return { ...option, values: normalizedValues };
+        });
 
         return {
           ...product,

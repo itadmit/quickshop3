@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { HiDownload, HiTrash, HiExclamationCircle, HiCheckCircle } from 'react-icons/hi';
+import { Input } from '@/components/ui/Input';
+import { HiDownload, HiTrash, HiExclamationCircle, HiCheckCircle, HiClock, HiShoppingCart } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/Dialog';
 
@@ -13,6 +14,58 @@ export function AdvancedSettings() {
   const [resetting, setResetting] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [abandonedCartTimeoutHours, setAbandonedCartTimeoutHours] = useState(4);
+  const [savingTimeout, setSavingTimeout] = useState(false);
+
+  useEffect(() => {
+    // Load current settings
+    const loadSettings = async () => {
+      try {
+        const response = await fetch('/api/settings/store', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          const settings = data.store?.settings || {};
+          if (settings.abandonedCartTimeoutHours !== undefined) {
+            setAbandonedCartTimeoutHours(settings.abandonedCartTimeoutHours);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleSaveAbandonedCartTimeout = async () => {
+    try {
+      setSavingTimeout(true);
+      const response = await fetch('/api/settings/store', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          themeSettings: {
+            abandonedCartTimeoutHours,
+          },
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save settings');
+
+      toast({
+        title: 'הצלחה',
+        description: 'הגדרת עגלות נטושות נשמרה',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בשמירת הגדרות',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTimeout(false);
+    }
+  };
 
   const handleImportDemo = async () => {
     try {
@@ -111,6 +164,51 @@ export function AdvancedSettings() {
           כלים לניהול נתוני החנות - ייבוא נתוני דמו ואיפוס נתונים
         </p>
       </div>
+
+      {/* Abandoned Cart Settings */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <HiShoppingCart className="w-5 h-5 text-amber-600" />
+                עגלות נטושות
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                הגדר כמה זמן צריכה הזמנה להמתין לתשלום לפני שהיא נחשבת "נטושה"
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <HiClock className="w-5 h-5 text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">זמן המתנה:</span>
+            </div>
+            <Input
+              type="number"
+              min={1}
+              max={168}
+              value={abandonedCartTimeoutHours}
+              onChange={(e) => setAbandonedCartTimeoutHours(parseInt(e.target.value) || 4)}
+              className="w-24"
+            />
+            <span className="text-sm text-gray-600">שעות</span>
+          </div>
+          
+          <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+            <strong>הזמנות ממתינות לתשלום:</strong> הזמנות שנוצרו בתהליך הצ'קאאוט ולא שולמו תוך הזמן שהוגדר יופיעו ב"עגלות נטושות"
+          </p>
+          
+          <Button
+            onClick={handleSaveAbandonedCartTimeout}
+            disabled={savingTimeout}
+            size="sm"
+          >
+            {savingTimeout ? 'שומר...' : 'שמור הגדרה'}
+          </Button>
+        </div>
+      </Card>
 
       {/* Import Demo Data */}
       <Card>

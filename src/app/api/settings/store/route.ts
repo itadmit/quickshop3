@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest) {
       paramIndex++;
     }
 
-    // Handle themeSettings (email colors, sender name, etc.)
+    // Handle themeSettings (email colors, sender name, abandoned cart timeout, etc.)
     if (body.themeSettings !== undefined || body.giftCardSettings !== undefined) {
       // Try to update store_settings table
       try {
@@ -138,16 +138,25 @@ export async function PUT(request: NextRequest) {
             ? (typeof existing.settings === 'string' ? JSON.parse(existing.settings) : existing.settings)
             : {};
 
-          // Merge themeSettings
+          // Merge all settings at root level
           const mergedSettings: any = {
             ...existingSettings,
           };
 
           if (body.themeSettings !== undefined) {
-            mergedSettings.themeSettings = {
-              ...(existingSettings.themeSettings || {}),
-              ...body.themeSettings,
-            };
+            // Handle abandonedCartTimeoutHours at root level
+            if (body.themeSettings.abandonedCartTimeoutHours !== undefined) {
+              mergedSettings.abandonedCartTimeoutHours = body.themeSettings.abandonedCartTimeoutHours;
+            }
+            
+            // Merge other theme settings
+            const { abandonedCartTimeoutHours, ...otherThemeSettings } = body.themeSettings;
+            if (Object.keys(otherThemeSettings).length > 0) {
+              mergedSettings.themeSettings = {
+                ...(existingSettings.themeSettings || {}),
+                ...otherThemeSettings,
+              };
+            }
           }
 
           // Merge giftCardSettings

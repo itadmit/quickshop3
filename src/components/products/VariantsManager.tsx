@@ -216,11 +216,14 @@ function SortableOptionItem({
               variant="secondary"
               size="sm"
               onClick={(e) => {
-                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                const value = input.value.trim();
-                if (value) {
-                  onAddValue(optionIndex, value);
-                  input.value = "";
+                const wrapper = e.currentTarget.previousElementSibling as HTMLElement;
+                const input = wrapper?.querySelector('input') as HTMLInputElement;
+                if (input) {
+                  const value = input.value.trim();
+                  if (value) {
+                    onAddValue(optionIndex, value);
+                    input.value = "";
+                  }
                 }
               }}
             >
@@ -346,7 +349,42 @@ function SortableValueItem({
           style={{ backgroundColor: value.metadata.color }}
         />
       )}
-      <span>{value.value}</span>
+      <span>
+        {(() => {
+          // Helper function to extract value recursively from nested JSON
+          const extractValue = (val: any, depth = 0): string => {
+            if (depth > 5) return ''; // Prevent infinite recursion
+            if (!val) return '';
+            if (typeof val === 'string') {
+              // If it's a JSON string, try to parse it
+              if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+                try {
+                  const parsed = JSON.parse(val);
+                  if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+                    return extractValue(parsed.value, depth + 1);
+                  }
+                  if (parsed && typeof parsed === 'object') {
+                    return extractValue(parsed.value || parsed.label || parsed.name || val, depth + 1);
+                  }
+                  return String(parsed);
+                } catch {
+                  return val;
+                }
+              }
+              return val;
+            }
+            if (typeof val === 'number') return String(val);
+            if (val && typeof val === 'object') {
+              if (val.value !== undefined) {
+                return extractValue(val.value, depth + 1);
+              }
+              return extractValue(val.label || val.name || '', depth + 1);
+            }
+            return String(val);
+          };
+          return extractValue(value.value);
+        })()}
+      </span>
       <button
         onClick={onDelete}
         className="text-gray-500 hover:text-gray-700"

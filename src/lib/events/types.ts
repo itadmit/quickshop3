@@ -7,6 +7,7 @@ export type EventTopic =
   | 'order.cancelled'
   | 'order.fulfilled'
   | 'order.refunded'
+  | 'order.abandoned'
   // Products
   | 'product.created'
   | 'product.updated'
@@ -42,6 +43,7 @@ export interface EventPayloads {
   'order.cancelled': { order: any; reason: string };
   'order.fulfilled': { order: any; fulfillment: any };
   'order.refunded': { order: any; refund: any };
+  'order.abandoned': { order: any; hours_since_creation: number };
   'product.created': { product: any };
   'product.updated': { product: any; changes: Partial<any> };
   'product.deleted': { product: any };

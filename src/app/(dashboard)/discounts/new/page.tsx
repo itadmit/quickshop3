@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
-import { HiSave, HiX, HiTag, HiPlus } from 'react-icons/hi';
+import { HiSave, HiX, HiTag, HiPlus, HiGift } from 'react-icons/hi';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { CreateDiscountCodeRequest } from '@/types/discount';
@@ -15,6 +15,7 @@ import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ProductSelector } from '@/components/discounts/ProductSelector';
 import { CollectionSelector } from '@/components/discounts/CollectionSelector';
 import { TagSelector } from '@/components/discounts/TagSelector';
+import { GiftProductSelector } from '@/components/discounts/GiftProductSelector';
 
 export default function NewDiscountPage() {
   const router = useRouter();
@@ -62,6 +63,8 @@ export default function NewDiscountPage() {
       discount_type: 'percentage' | 'fixed_amount';
       value: number;
     }>;
+    // Gift Product
+    gift_product_id?: number | null;
   }>({
     code: '',
     discount_type: 'percentage',
@@ -100,6 +103,8 @@ export default function NewDiscountPage() {
     bundle_discount_value: undefined,
     // Volume defaults
     volume_tiers: [],
+    // Gift Product default
+    gift_product_id: null,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,6 +205,8 @@ export default function NewDiscountPage() {
         product_ids: formData.product_ids && formData.product_ids.length > 0 ? formData.product_ids : [],
         collection_ids: formData.collection_ids && formData.collection_ids.length > 0 ? formData.collection_ids : [],
         tag_names: formData.tag_names && formData.tag_names.length > 0 ? formData.tag_names : [],
+        // Gift Product
+        gift_product_id: formData.gift_product_id || null,
       };
 
       const response = await fetch('/api/discounts', {
@@ -719,6 +726,21 @@ export default function NewDiscountPage() {
               <p className="text-sm text-gray-500 mt-1">השאר ריק למגבלה ללא הגבלה</p>
             </div>
           </div>
+        </Card>
+
+        {/* Gift Product */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <HiGift className="w-5 h-5" />
+            מתנה אוטומטית
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            מוצר שיתווסף אוטומטית לעגלה כאשר קוד ההנחה מוחל
+          </p>
+          <GiftProductSelector
+            selectedProductId={formData.gift_product_id || null}
+            onProductChange={(productId) => setFormData({ ...formData, gift_product_id: productId })}
+          />
         </Card>
 
         {/* Customer Conditions */}

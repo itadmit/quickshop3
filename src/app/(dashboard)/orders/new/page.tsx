@@ -562,11 +562,11 @@ export default function NewOrderPage() {
 
       {/* Product Selection Dialog */}
       <Dialog open={showProductDialog} onOpenChange={setShowProductDialog}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="w-[700px] h-[600px]">
           <DialogHeader>
             <DialogTitle>הוסף מוצר</DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 flex-1 h-[450px]">
             <Input
               type="text"
               placeholder="חפש מוצר..."
@@ -576,36 +576,47 @@ export default function NewOrderPage() {
             />
             
             {selectedProduct ? (
-              <div className="space-y-4">
+              <div className="space-y-4 h-[380px]">
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="font-medium text-gray-900">{selectedProduct.title}</div>
                   {/* לפי האפיון: כל מוצר חייב לפחות variant אחד */}
-                  {/* הצג selector רק אם יש יותר מ-variant אחד או יש options */}
-                  {selectedProduct.variants && selectedProduct.variants.length > 1 && (
-                    <div className="mt-4">
-                      <Label>בחר וריאציה:</Label>
-                      <Select
-                        value={selectedVariant?.id?.toString()}
-                        onValueChange={(value) => {
-                          const variant = selectedProduct.variants?.find(v => v.id.toString() === value);
-                          setSelectedVariant(variant || null);
-                        }}
-                      >
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="בחר וריאציה">
-                            {selectedVariant ? `${selectedVariant.title} - ₪${parseFloat(selectedVariant.price).toLocaleString('he-IL')}` : 'בחר וריאציה'}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {selectedProduct.variants.map((variant) => (
-                            <SelectItem key={variant.id} value={variant.id.toString()}>
-                              {variant.title} - ₪{parseFloat(variant.price).toLocaleString('he-IL')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {/* הצג selector רק אם יש יותר מ-variant אחד שאינו Default Title */}
+                  {(() => {
+                    // סנן וריאציות שאינן Default Title
+                    const nonDefaultVariants = selectedProduct.variants?.filter(v => 
+                      v.title && v.title !== 'Default Title'
+                    ) || [];
+                    
+                    // אם יש וריאציות שאינן Default Title, הצג את הבורר
+                    if (nonDefaultVariants.length > 0) {
+                      return (
+                        <div className="mt-4">
+                          <Label>בחר וריאציה:</Label>
+                          <Select
+                            value={selectedVariant?.id?.toString()}
+                            onValueChange={(value) => {
+                              const variant = selectedProduct.variants?.find(v => v.id.toString() === value);
+                              setSelectedVariant(variant || null);
+                            }}
+                          >
+                            <SelectTrigger className="mt-2">
+                              <SelectValue placeholder="בחר וריאציה">
+                                {selectedVariant ? `${selectedVariant.title === 'Default Title' ? selectedProduct.title : selectedVariant.title} - ₪${parseFloat(selectedVariant.price).toLocaleString('he-IL')}` : 'בחר וריאציה'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {selectedProduct.variants?.filter(v => v.title && v.title !== 'Default Title').map((variant) => (
+                                <SelectItem key={variant.id} value={variant.id.toString()}>
+                                  {variant.title} - ₪{parseFloat(variant.price).toLocaleString('he-IL')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -621,43 +632,55 @@ export default function NewOrderPage() {
                   <Button
                     type="button"
                     onClick={handleAddProduct}
-                    disabled={selectedProduct.variants && selectedProduct.variants.length > 1 && !selectedVariant}
+                    disabled={(() => {
+                      const nonDefaultVariants = selectedProduct.variants?.filter(v => 
+                        v.title && v.title !== 'Default Title'
+                      ) || [];
+                      return nonDefaultVariants.length > 0 && !selectedVariant;
+                    })()}
                   >
                     הוסף להזמנה
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="max-h-96 overflow-y-auto space-y-2">
+              <div className="h-[380px] overflow-y-auto space-y-2">
                 {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        // לפי האפיון: כל מוצר חייב לפחות variant אחד
-                        // אם יש רק variant אחד, בחר אותו אוטומטית
-                        if (product.variants && product.variants.length === 1) {
-                          setSelectedVariant(product.variants[0]);
-                        } else if (product.variants && product.variants.length > 1) {
-                          // אם יש יותר מ-variant אחד, צריך לבחור ידנית
-                          setSelectedVariant(null);
-                        } else {
-                          // fallback - לא אמור לקרות לפי האפיון
-                          setSelectedVariant(null);
-                        }
-                      }}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    >
-                      <div className="font-medium text-gray-900">{product.title}</div>
-                      {/* הצג מידע רק אם יש יותר מ-variant אחד */}
-                      {product.variants && product.variants.length > 1 && (
-                        <div className="text-sm text-gray-500">
-                          {product.variants.length} וריאציות זמינות
-                        </div>
-                      )}
-                    </div>
-                  ))
+                  filteredProducts.map((product) => {
+                    // סנן וריאציות שאינן Default Title
+                    const nonDefaultVariants = product.variants?.filter(v => 
+                      v.title && v.title !== 'Default Title'
+                    ) || [];
+                    
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          // לפי האפיון: כל מוצר חייב לפחות variant אחד
+                          // אם אין וריאציות שאינן Default Title, בחר את הראשון
+                          if (nonDefaultVariants.length === 0 && product.variants && product.variants.length > 0) {
+                            setSelectedVariant(product.variants[0]);
+                          } else if (nonDefaultVariants.length === 1) {
+                            // אם יש רק וריאציה אחת שאינה Default Title, בחר אותה
+                            setSelectedVariant(nonDefaultVariants[0]);
+                          } else {
+                            // אם יש יותר מוריאציה אחת, צריך לבחור ידנית
+                            setSelectedVariant(null);
+                          }
+                        }}
+                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      >
+                        <div className="font-medium text-gray-900">{product.title}</div>
+                        {/* הצג מידע רק אם יש יותר מוריאציה אחת שאינה Default Title */}
+                        {nonDefaultVariants.length > 1 && (
+                          <div className="text-sm text-gray-500">
+                            {nonDefaultVariants.length} וריאציות זמינות
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     לא נמצאו מוצרים

@@ -24,6 +24,8 @@ import {
   HiChat,
   HiCheckCircle,
   HiXCircle,
+  HiUpload,
+  HiDownload,
 } from 'react-icons/hi';
 import { ContactWithDetails, ContactCategory } from '@/types/contact';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -76,6 +78,19 @@ export default function ContactsPage() {
     category_types: [] as string[],
     email_marketing_consent: false,
   });
+  
+  // Import/Export state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    imported: number;
+    updated: number;
+    errors: number;
+    errorDetails: string[];
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination
   const [pagination, setPagination] = useState<Pagination>({
@@ -323,6 +338,137 @@ export default function ContactsPage() {
     }
   };
 
+  // Import/Export handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.csv') && !file.name.endsWith('.CSV')) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש לבחור קובץ CSV בלבד',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setSelectedFile(file);
+      setImportResult(null);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש לבחור קובץ',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch('/api/contacts/import', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'שגיאה בייבוא אנשי קשר');
+      }
+
+      setImportResult(data);
+
+      if (data.imported > 0 || data.updated > 0) {
+        toast({
+          title: 'ייבוא הושלם',
+          description: `יובאו ${data.imported} אנשי קשר חדשים, עודכנו ${data.updated}${data.errors > 0 ? `, ${data.errors} שגיאות` : ''}`,
+        });
+        // Reset pagination and reload
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        await loadContacts(abortControllerRef.current.signal, 1);
+      } else if (data.errors > 0) {
+        toast({
+          title: 'ייבוא נכשל',
+          description: 'לא יובאו אנשי קשר. בדוק את השגיאות',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error importing contacts:', error);
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'אירעה שגיאה בייבוא אנשי הקשר',
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleCloseImportDialog = () => {
+    setImportDialogOpen(false);
+    setSelectedFile(null);
+    setImportResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (activeTab !== 'all') params.append('categoryType', activeTab);
+      if (emailConsentFilter !== 'all') params.append('emailMarketingConsent', emailConsentFilter);
+      if (filters.tag) params.append('tag', filters.tag);
+
+      const response = await fetch(`/api/contacts/export?${params.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('שגיאה בייצוא אנשי קשר');
+      }
+
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contacts_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'הצלחה',
+        description: 'קובץ אנשי הקשר הורד בהצלחה',
+      });
+    } catch (error: any) {
+      console.error('Error exporting contacts:', error);
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'אירעה שגיאה בייצוא אנשי הקשר',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getContactName = (contact: ContactWithDetails) => {
     if (contact.first_name || contact.last_name) {
       return `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
@@ -449,6 +595,23 @@ export default function ContactsPage() {
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="hidden md:flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setImportDialogOpen(true)}
+            >
+              <HiUpload className="w-4 h-4 ml-2" />
+              ייבוא
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleExport}
+              disabled={exporting}
+            >
+              <HiDownload className="w-4 h-4 ml-2" />
+              {exporting ? 'מייצא...' : 'ייצוא'}
+            </Button>
+          </div>
           <Button
             onClick={handleCreateNew}
             className="flex items-center gap-2"
@@ -832,6 +995,108 @@ export default function ContactsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Dialog */}
+      {importDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" dir="rtl">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">ייבוא אנשי קשר מקובץ CSV</h2>
+              <p className="text-gray-600 mb-4">
+                העלה קובץ CSV עם פרטי אנשי הקשר. השדה החובה הוא: אימייל (email)
+              </p>
+
+              <div className="space-y-4 py-4">
+                {/* File Upload Area */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="csv-file-input"
+                  />
+                  <div className="cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                    <HiUpload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-2">
+                      {selectedFile ? selectedFile.name : 'לחץ לבחירת קובץ CSV'}
+                    </p>
+                    <Button variant="outline" type="button">
+                      <HiUpload className="w-4 h-4 ml-2" />
+                      בחר קובץ
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2">פורמט הקובץ</h3>
+                  <p className="text-sm text-blue-800 mb-2">הקובץ צריך להכיל שורת כותרת עם השדות הבאים:</p>
+                  <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
+                    <li><strong>email</strong> או <strong>אימייל</strong> (חובה)</li>
+                    <li>first_name או שם פרטי</li>
+                    <li>last_name או שם משפחה</li>
+                    <li>phone או טלפון</li>
+                    <li>company או חברה</li>
+                    <li>notes או הערות</li>
+                    <li>tags או תגיות (מופרדות בנקודה פסיק ;)</li>
+                    <li>email_marketing_consent או אישור דיוור (כן/לא)</li>
+                  </ul>
+                </div>
+
+                {/* Import Results */}
+                {importResult && (
+                  <div className={`rounded-lg p-4 ${importResult.errors > 0 && importResult.imported === 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                    <h3 className={`text-sm font-semibold mb-2 ${importResult.errors > 0 && importResult.imported === 0 ? 'text-red-900' : 'text-green-900'}`}>
+                      תוצאות הייבוא
+                    </h3>
+                    <ul className="text-sm space-y-1">
+                      <li className="text-green-700">✓ יובאו: {importResult.imported} אנשי קשר חדשים</li>
+                      <li className="text-blue-700">✓ עודכנו: {importResult.updated} אנשי קשר קיימים</li>
+                      {importResult.errors > 0 && (
+                        <li className="text-red-700">✗ שגיאות: {importResult.errors}</li>
+                      )}
+                    </ul>
+                    {importResult.errorDetails && importResult.errorDetails.length > 0 && (
+                      <div className="mt-3 p-2 bg-white rounded border border-red-200 max-h-32 overflow-y-auto">
+                        <p className="text-xs font-medium text-red-800 mb-1">פירוט שגיאות:</p>
+                        <ul className="text-xs text-red-600 space-y-0.5">
+                          {importResult.errorDetails.map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="outline" onClick={handleCloseImportDialog} disabled={importing}>
+                  {importResult ? 'סגור' : 'ביטול'}
+                </Button>
+                {!importResult && (
+                  <Button onClick={handleImport} disabled={!selectedFile || importing}>
+                    {importing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></div>
+                        מייבא...
+                      </>
+                    ) : (
+                      <>
+                        <HiUpload className="w-4 h-4 ml-2" />
+                        ייבא אנשי קשר
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

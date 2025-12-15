@@ -94,7 +94,11 @@ export default function AutomaticDiscountsPage() {
         <span className="text-sm text-gray-700">
           {discount.discount_type === 'percentage' ? 'אחוזים' :
            discount.discount_type === 'fixed_amount' ? 'סכום קבוע' :
-           'משלוח חינם'}
+           discount.discount_type === 'free_shipping' ? 'משלוח חינם' :
+           discount.discount_type === 'bogo' ? 'קנה X קבל Y' :
+           discount.discount_type === 'bundle' ? 'הנחת חבילה' :
+           discount.discount_type === 'volume' ? 'הנחה לפי כמות' :
+           discount.discount_type}
         </span>
       ),
     },
@@ -107,7 +111,15 @@ export default function AutomaticDiscountsPage() {
             ? `${discount.value}%`
             : discount.discount_type === 'fixed_amount'
             ? `₪${parseFloat(discount.value || '0').toLocaleString('he-IL')}`
-            : 'חינם'}
+            : discount.discount_type === 'free_shipping'
+            ? 'חינם'
+            : discount.discount_type === 'bogo'
+            ? `קנה ${discount.buy_quantity || 1} קבל ${discount.get_quantity || 1}`
+            : discount.discount_type === 'bundle'
+            ? `${discount.bundle_discount_type === 'percentage' ? `${discount.bundle_discount_value}%` : `₪${discount.bundle_discount_value}`} על ${discount.bundle_min_products}+ מוצרים`
+            : discount.discount_type === 'volume'
+            ? 'לפי כמות'
+            : '-'}
         </div>
       ),
     },

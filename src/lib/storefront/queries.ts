@@ -323,6 +323,37 @@ export async function getProductByHandle(
         [option.id]
       );
 
+      // Helper function to extract value recursively from nested JSON
+      const extractValueRecursively = (val: any, depth = 0): string => {
+        if (depth > 5) return ''; // Prevent infinite recursion
+        if (!val) return '';
+        if (typeof val === 'number') return String(val);
+        if (typeof val === 'string') {
+          if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+            try {
+              const parsed = JSON.parse(val);
+              if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+                return extractValueRecursively(parsed.value, depth + 1);
+              }
+              if (parsed && typeof parsed === 'object') {
+                return extractValueRecursively(parsed.value || parsed.label || parsed.name || val, depth + 1);
+              }
+              return String(parsed);
+            } catch {
+              return val;
+            }
+          }
+          return val;
+        }
+        if (val && typeof val === 'object') {
+          if (val.value !== undefined) {
+            return extractValueRecursively(val.value, depth + 1);
+          }
+          return extractValueRecursively(val.label || val.name || '', depth + 1);
+        }
+        return '';
+      };
+
       return {
         id: option.id,
         name: option.name,
@@ -330,7 +361,7 @@ export async function getProductByHandle(
         position: option.position,
         values: values.map(v => ({
           id: v.id,
-          value: v.value,
+          value: extractValueRecursively(v.value),
           position: v.position,
           metadata: v.metadata ? (typeof v.metadata === 'string' ? JSON.parse(v.metadata) : v.metadata) : undefined,
         })),

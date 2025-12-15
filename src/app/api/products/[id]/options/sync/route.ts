@@ -56,11 +56,15 @@ export async function POST(
       // Insert option values
       if (option.values && option.values.length > 0) {
         for (let j = 0; j < option.values.length; j++) {
-          const value = option.values[j];
+          const val = option.values[j];
+          // Handle value as string or object with value/name property
+          const valueStr = typeof val === 'string' 
+            ? val 
+            : (val.value || val.name || String(val));
           await query(
             `INSERT INTO product_option_values (option_id, value, position, created_at)
              VALUES ($1, $2, $3, now())`,
-            [optionId, value.name || value, j + 1]
+            [optionId, valueStr, j + 1]
           );
         }
       }

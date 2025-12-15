@@ -120,18 +120,29 @@ export default function InfluencersPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        // Filter out coupons that are already assigned to other influencers
+        // Filter out coupons that are already assigned to OTHER influencers (not the current one being edited)
         const assignedCouponIds = new Set(
           influencers.flatMap(inf => {
             // If editing, exclude coupons of the current influencer being edited
+            // This allows them to appear in the list so they can be checked/unchecked
             if (editingInfluencer && inf.id === editingInfluencer.id) {
               return [];
             }
             return inf.coupons.map(c => c.id);
           })
         );
+        // Include all coupons that are either:
+        // 1. Not assigned to any influencer, OR
+        // 2. Already assigned to the current influencer being edited
         setAvailableCoupons(
-          (data.discounts || []).filter((c: any) => !assignedCouponIds.has(c.id))
+          (data.discounts || []).filter((c: any) => {
+            // If coupon is assigned to current influencer, include it
+            if (editingInfluencer && editingInfluencer.coupons.some(cp => cp.id === c.id)) {
+              return true;
+            }
+            // Otherwise, only include if not assigned to any other influencer
+            return !assignedCouponIds.has(c.id);
+          })
         );
       }
     } catch (error) {

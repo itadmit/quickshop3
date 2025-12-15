@@ -163,6 +163,37 @@ export function ProductVariantsSection({ section, product, onUpdate }: ProductSe
 
   const variantStyle = settings.variant_style || 'buttons';
 
+  // Helper function to extract value recursively from nested JSON
+  const extractValueRecursively = (val: any, depth = 0): string => {
+    if (depth > 5) return ''; // Prevent infinite recursion
+    if (!val) return '';
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'string') {
+      if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(val);
+          if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+            return extractValueRecursively(parsed.value, depth + 1);
+          }
+          if (parsed && typeof parsed === 'object') {
+            return extractValueRecursively(parsed.value || parsed.label || parsed.name || val, depth + 1);
+          }
+          return String(parsed);
+        } catch {
+          return val;
+        }
+      }
+      return val;
+    }
+    if (val && typeof val === 'object') {
+      if (val.value !== undefined) {
+        return extractValueRecursively(val.value, depth + 1);
+      }
+      return extractValueRecursively(val.label || val.name || '', depth + 1);
+    }
+    return '';
+  };
+
   return (
     <div className="py-4 space-y-4">
       {options.map((option: any, index: number) => (
@@ -173,26 +204,32 @@ export function ProductVariantsSection({ section, product, onUpdate }: ProductSe
           
           {variantStyle === 'dropdown' ? (
             <select className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-              {option.values?.map((value: any, vIndex: number) => (
-                <option key={vIndex} value={value.value || value}>
-                  {value.value || value}
-                </option>
-              ))}
+              {option.values?.map((value: any, vIndex: number) => {
+                const cleanValue = extractValueRecursively(value.value || value);
+                return (
+                  <option key={vIndex} value={cleanValue}>
+                    {cleanValue}
+                  </option>
+                );
+              })}
             </select>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {option.values?.slice(0, 6).map((value: any, vIndex: number) => (
-                <button
-                  key={vIndex}
-                  className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
-                    vIndex === 0 
-                      ? 'border-gray-900 bg-gray-900 text-white' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  {value.value || value}
-                </button>
-              ))}
+              {option.values?.slice(0, 6).map((value: any, vIndex: number) => {
+                const cleanValue = extractValueRecursively(value.value || value);
+                return (
+                  <button
+                    key={vIndex}
+                    className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
+                      vIndex === 0 
+                        ? 'border-gray-900 bg-gray-900 text-white' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    {cleanValue}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

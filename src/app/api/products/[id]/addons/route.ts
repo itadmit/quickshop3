@@ -36,7 +36,7 @@ export async function GET(
 
     // Get addons for this product
     const addons = await query(
-      `SELECT pa.*, pao.id as option_id, pao.label, pao.value, pao.price_modifier as option_price_modifier
+      `SELECT pa.*, pao.id as option_id, pao.label, pao.value, pao.price as option_price
        FROM product_addons pa
        INNER JOIN product_addon_map pam ON pa.id = pam.addon_id
        LEFT JOIN product_addon_options pao ON pa.id = pao.addon_id
@@ -65,7 +65,7 @@ export async function GET(
           id: row.option_id,
           label: row.label,
           value: row.value,
-          price_modifier: row.option_price_modifier,
+          price: row.option_price,
         });
       }
     });

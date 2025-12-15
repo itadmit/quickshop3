@@ -46,7 +46,7 @@ export async function GET(
     const productId = product.id;
 
     // Get related data
-    const [images, variantsRaw, options] = await Promise.all([
+    const [images, variantsRaw, rawOptions] = await Promise.all([
       query<ProductImage>(
         'SELECT * FROM product_images WHERE product_id = $1 ORDER BY position',
         [productId]
@@ -55,10 +55,13 @@ export async function GET(
         'SELECT * FROM product_variants WHERE product_id = $1 ORDER BY position',
         [productId]
       ),
-      query<ProductOption>(
+      query<ProductOption & { values: any }>(
         `SELECT po.*, 
-         (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position))
-          FROM product_option_values pov WHERE pov.option_id = po.id) as values
+         COALESCE(
+           (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position) ORDER BY pov.position)
+            FROM product_option_values pov WHERE pov.option_id = po.id),
+           '[]'::json
+         ) as values
          FROM product_options po WHERE po.product_id = $1 ORDER BY po.position`,
         [productId]
       ),
@@ -66,6 +69,69 @@ export async function GET(
 
     // המלאי כבר נמצא ב-product_variants.inventory_quantity
     const variants = variantsRaw;
+
+    // Parse and normalize option values (handle nested JSON strings)
+    const extractValueRecursively = (val: any, depth = 0): string => {
+      if (depth > 5) return ''; // Prevent infinite recursion
+      if (!val) return '';
+      if (typeof val === 'number') return String(val);
+      if (typeof val === 'string') {
+        if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+          try {
+            const parsed = JSON.parse(val);
+            if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+              return extractValueRecursively(parsed.value, depth + 1);
+            }
+            if (parsed && typeof parsed === 'object') {
+              return extractValueRecursively(parsed.value || parsed.label || parsed.name || val, depth + 1);
+            }
+            return String(parsed);
+          } catch {
+            return val;
+          }
+        }
+        return val;
+      }
+      if (val && typeof val === 'object') {
+        if (val.value !== undefined) {
+          return extractValueRecursively(val.value, depth + 1);
+        }
+        return extractValueRecursively(val.label || val.name || '', depth + 1);
+      }
+      return '';
+    };
+
+    const options = rawOptions.map(option => {
+      let values = option.values;
+      
+      // Parse if string
+      if (typeof values === 'string') {
+        try {
+          values = JSON.parse(values);
+        } catch {
+          values = [];
+        }
+      }
+      
+      // Ensure array
+      if (!Array.isArray(values)) {
+        values = values ? [values] : [];
+      }
+      
+      // Normalize values - extract actual value strings
+      const normalizedValues = values.map((v: any) => {
+        const extractedValue = extractValueRecursively(v);
+        // Return as object with id, value, position for compatibility
+        return {
+          id: v.id || (typeof v === 'object' && v.id ? v.id : Date.now()),
+          value: extractedValue,
+          position: v.position || 1,
+          metadata: v.metadata || {},
+        };
+      }).filter((v: any) => v.value); // Filter out empty values
+      
+      return { ...option, values: normalizedValues };
+    });
 
     // Get collections
     const collections = await query(

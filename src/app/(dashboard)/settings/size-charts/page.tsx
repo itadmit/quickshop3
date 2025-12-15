@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { HiPlus, HiPencil, HiTrash, HiTable, HiUpload, HiX } from 'react-icons/hi';
 import { MediaPicker } from '@/components/MediaPicker';
+import { useStoreId } from '@/hooks/useStoreId';
 
 interface SizeChart {
   id: number;
@@ -41,6 +42,7 @@ const CHART_TYPE_LABELS: Record<string, string> = {
 
 export default function SizeChartsPage() {
   const { toast } = useOptimisticToast();
+  const storeId = useStoreId();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sizeCharts, setSizeCharts] = useState<SizeChart[]>([]);
@@ -506,19 +508,21 @@ export default function SizeChartsPage() {
       </Dialog>
 
       {/* Media Picker */}
-      {showMediaPicker && (
-        <MediaPicker
-          onSelect={(files) => {
-            if (files.length > 0) {
-              setFormData((prev) => ({ ...prev, image_url: files[0] }));
-            }
-            setShowMediaPicker(false);
-          }}
-          onClose={() => setShowMediaPicker(false)}
-          multiple={false}
-          accept="image/*"
-        />
-      )}
+      <MediaPicker
+        open={showMediaPicker}
+        onOpenChange={setShowMediaPicker}
+        onSelect={(files) => {
+          if (files.length > 0) {
+            setFormData((prev) => ({ ...prev, image_url: files[0] }));
+          }
+          setShowMediaPicker(false);
+        }}
+        selectedFiles={formData.image_url ? [formData.image_url] : []}
+        shopId={String(storeId)}
+        multiple={false}
+        accept="image"
+        title="בחר תמונת טבלת מידות"
+      />
     </>
   );
 }

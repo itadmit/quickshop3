@@ -310,16 +310,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Generate unique order handle for payment links
+    const orderHandle = `order_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    
     // Create order
     const orderResult = await queryOne<Order>(
       `INSERT INTO orders (
         store_id, customer_id, email, phone, name,
-        order_number, order_name, financial_status, fulfillment_status,
+        order_number, order_name, order_handle, financial_status, fulfillment_status,
         total_price, subtotal_price, currency,
         billing_address, shipping_address, discount_codes, note, tags,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, now(), now()
       ) RETURNING *`,
       [
         storeId,
@@ -329,6 +332,7 @@ export async function POST(request: NextRequest) {
         body.name || null,
         orderNumber,
         orderName,
+        orderHandle,
         'pending',
         null,
         totalPrice.toString(),

@@ -172,31 +172,32 @@ export default function EditProductPage() {
       // hasVariants = true רק אם יש options או יותר מ-variant אחד
       setHasVariants((data.product.options?.length || 0) > 0 || (data.product.variants?.length || 0) > 1);
       
-      // Format availableDate for datetime-local input
-      let availableDateFormatted = '';
-      if (data.product.availableDate) {
-        const date = new Date(data.product.availableDate);
-        availableDateFormatted = date.toISOString().slice(0, 16);
-      }
+      // Helper function to format date for datetime-local input (in local timezone)
+      const formatDateForInput = (dateStr: string | Date | null | undefined): string => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        // Format in local timezone: YYYY-MM-DDTHH:MM
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      };
+
+      // Format availableDate for datetime-local input (in local timezone)
+      const availableDateFormatted = formatDateForInput(data.product.availableDate);
 
       // טעינת נתוני המוצר לטופס
       // לפי האפיון: כל מוצר חייב לפחות variant אחד
       const firstVariant = data.product.variants?.[0] || null;
       const prod = data.product as any;
       
-      // Format scheduled publish date
-      let scheduledPublishFormatted = '';
-      if (prod.published_at) {
-        const date = new Date(prod.published_at);
-        scheduledPublishFormatted = date.toISOString().slice(0, 16);
-      }
+      // Format scheduled publish date (in local timezone)
+      const scheduledPublishFormatted = formatDateForInput(prod.published_at);
 
-      // Format scheduled archive date
-      let scheduledArchiveFormatted = '';
-      if (prod.archived_at) {
-        const date = new Date(prod.archived_at);
-        scheduledArchiveFormatted = date.toISOString().slice(0, 16);
-      }
+      // Format scheduled archive date (in local timezone)
+      const scheduledArchiveFormatted = formatDateForInput(prod.archived_at);
       
       setFormData({
         name: prod.title || '',

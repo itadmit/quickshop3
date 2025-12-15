@@ -153,6 +153,12 @@ async function setupQStashCron() {
       schedule: '0 2 * * *', // כל יום בשעה 02:00
       description: 'ניקוי קודי OTP ישנים (פג תוקף, שימשו, או יותר מדי ניסיונות)',
     },
+    {
+      name: 'Check Abandoned Orders',
+      url: `${APP_URL}/api/cron/check-abandoned-orders`,
+      schedule: '0 * * * *', // כל שעה
+      description: 'בדיקת הזמנות נטושות (ממתינות לתשלום מעבר לזמן שהוגדר) ושליחת אירועים לאוטומציות',
+    },
   ];
 
   try {

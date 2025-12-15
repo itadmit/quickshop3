@@ -24,6 +24,7 @@ import { OrderWithDetails } from '@/types/order';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { OrderQuickView } from '@/components/orders/OrderQuickView';
+import { BulkPrintView } from '@/components/orders/BulkPrintView';
 
 interface Pagination {
   page: number;
@@ -60,6 +61,9 @@ export default function OrdersPage() {
   const [quickViewOrder, setQuickViewOrder] = useState<OrderWithDetails | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [loadingQuickView, setLoadingQuickView] = useState<number | null>(null);
+  const [showPrintView, setShowPrintView] = useState(false);
+  const [ordersToPrint, setOrdersToPrint] = useState<OrderWithDetails[]>([]);
+  const [loadingPrint, setLoadingPrint] = useState(false);
 
   useEffect(() => {
     // Cancel previous request if exists
@@ -80,6 +84,22 @@ export default function OrdersPage() {
       }
     };
   }, [debouncedSearchTerm, fulfillmentStatusFilter, pagination.page]);
+
+  // Handle print dialog close
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setShowPrintView(false);
+      setOrdersToPrint([]);
+      setLoadingPrint(false);
+    };
+
+    // Listen for afterprint event
+    window.addEventListener('afterprint', handleAfterPrint);
+    
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   const loadCustomStatuses = async () => {
     try {
@@ -259,7 +279,10 @@ export default function OrdersPage() {
     window.open(`/orders/${orderId}?print=true`, '_blank');
   };
 
-  const handlePrintMultipleOrders = () => {
+  const handlePrintMultipleOrders = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    
     if (selectedOrders.size === 0) {
       toast({
         title: 'שים לב',
@@ -269,19 +292,52 @@ export default function OrdersPage() {
       return;
     }
 
-    // Open each order in a separate tab for printing
-    const orderIds = Array.from(selectedOrders);
-    orderIds.forEach((orderId, index) => {
-      // Small delay between opening tabs to avoid browser blocking
-      setTimeout(() => {
-        window.open(`/orders/${orderId}?print=true`, '_blank');
-      }, index * 200);
-    });
+    setLoadingPrint(true);
 
-    toast({
-      title: 'הצלחה',
-      description: `${orderIds.length} הזמנות נפתחו להדפסה`,
-    });
+    // Get full details of selected orders
+    const orderIds = Array.from(selectedOrders);
+    const ordersToPrintData: OrderWithDetails[] = [];
+    
+    try {
+      // Load full order details for each selected order
+      for (const orderId of orderIds) {
+        const response = await fetch(`/api/orders/${orderId}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          ordersToPrintData.push(data.order);
+        }
+      }
+
+      if (ordersToPrintData.length === 0) {
+        toast({
+          title: 'שגיאה',
+          description: 'לא ניתן לטעון את פרטי ההזמנות',
+          variant: 'destructive',
+        });
+        setLoadingPrint(false);
+        return;
+      }
+
+      // Set orders to print and show print view
+      setOrdersToPrint(ordersToPrintData);
+      setShowPrintView(true);
+
+      // Wait for the print view to render, then trigger print
+      setTimeout(() => {
+        window.print();
+        setLoadingPrint(false);
+      }, 500);
+    } catch (error) {
+      console.error('Error loading orders for print:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה בטעינת ההזמנות להדפסה',
+        variant: 'destructive',
+      });
+      setLoadingPrint(false);
+    }
   };
 
   const handleRefund = async (orderId: number) => {
@@ -481,59 +537,43 @@ export default function OrdersPage() {
         </div>
       ),
     },
-    {
-      key: 'quick_view',
-      label: '',
-      render: (order) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={async () => {
-              // Load full order details
-              try {
-                const response = await fetch(`/api/orders/${order.id}`, {
-                  credentials: 'include',
-                });
-                if (response.ok) {
-                  const data = await response.json();
-                  setQuickViewOrder(data.order);
-                  setQuickViewOpen(true);
-                }
-              } catch (error) {
-                console.error('Error loading order details:', error);
-              }
-            }}
-            className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-gray-900"
-            title="צפייה מהירה"
-          >
-            <HiEye className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
   ];
 
 
   return (
-    <div className="space-y-4 md:space-y-6" dir="rtl">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">הזמנות</h1>
-          <p className="text-sm md:text-base text-gray-600">נהל ועקוב אחר כל ההזמנות שלך</p>
-        </div>
+    <>
+      <div className="space-y-4 md:space-y-6 orders-page-content" dir="rtl">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">הזמנות</h1>
+            <p className="text-sm md:text-base text-gray-600">נהל ועקוב אחר כל ההזמנות שלך</p>
+          </div>
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           {selectedOrders.size > 0 && (
             <>
               <Button
-                onClick={handlePrintMultipleOrders}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrintMultipleOrders(e);
+                }}
                 variant="default"
                 className="hidden md:flex"
+                disabled={loadingPrint}
               >
-                <HiPrinter className="w-4 h-4 ml-2" />
-                הדפס {selectedOrders.size} נבחרו
+                {loadingPrint ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></div>
+                    טוען...
+                  </>
+                ) : (
+                  <>
+                    <HiPrinter className="w-4 h-4 ml-2" />
+                    הדפס {selectedOrders.size} נבחרו
+                  </>
+                )}
               </Button>
               <Button
                 onClick={handleBulkDelete}
@@ -622,50 +662,54 @@ export default function OrdersPage() {
         rowActions={(order) => {
           return (
             <>
-              {/* Desktop: Eye button and Dropdown Menu */}
-              <div className="hidden md:flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    // Load full order details for quick view
-                    setLoadingQuickView(order.id);
-                    try {
-                      const response = await fetch(`/api/orders/${order.id}`, {
-                        credentials: 'include',
-                      });
-                      if (response.ok) {
-                        const data = await response.json();
-                        setQuickViewOrder(data.order);
-                        setQuickViewOpen(true);
-                      }
-                    } catch (error) {
-                      console.error('Error loading order details:', error);
-                    } finally {
-                      setLoadingQuickView(null);
-                    }
-                  }}
-                  disabled={loadingQuickView === order.id}
-                  className="p-2 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="צפייה מהירה"
-                >
-                  {loadingQuickView === order.id ? (
-                    <HiRefresh className="w-5 h-5 text-gray-600 animate-spin" />
-                  ) : (
-                    <HiEye className="w-5 h-5 text-gray-600" />
-                  )}
-                </button>
+              {/* Desktop: Dropdown Menu */}
+              <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu
                   trigger={
-                    <button 
-                      type="button"
-                      className="p-2 hover:bg-gray-100 rounded transition-colors"
-                    >
-                      <HiDotsVertical className="w-5 h-5 text-gray-600" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          // Load full order details for quick view
+                          setLoadingQuickView(order.id);
+                          try {
+                            const response = await fetch(`/api/orders/${order.id}`, {
+                              credentials: 'include',
+                            });
+                            if (response.ok) {
+                              const data = await response.json();
+                              setQuickViewOrder(data.order);
+                              setQuickViewOpen(true);
+                            }
+                          } catch (error) {
+                            console.error('Error loading order details:', error);
+                          } finally {
+                            setLoadingQuickView(null);
+                          }
+                        }}
+                        disabled={loadingQuickView === order.id}
+                        className="p-2 hover:bg-gray-100 rounded-r-none rounded-l transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="צפייה מהירה"
+                      >
+                        {loadingQuickView === order.id ? (
+                          <HiRefresh className="w-5 h-5 text-gray-600 animate-spin" />
+                        ) : (
+                          <HiEye className="w-5 h-5 text-gray-600" />
+                        )}
+                      </button>
+                      <button 
+                        type="button"
+                        className="p-2 hover:bg-gray-100 rounded-l-none rounded-r transition-colors"
+                      >
+                        <HiDotsVertical className="w-5 h-5 text-gray-600" />
+                      </button>
+                    </div>
                   }
                   items={[
                     {
                       label: 'צפה בהזמנה',
+                      icon: <HiEye className="w-4 h-4" />,
                       onClick: () => router.push(`/orders/${order.id}`),
                     },
                     ...(!order.is_read ? [{
@@ -927,6 +971,13 @@ export default function OrdersPage() {
         }}
         onMarkAsRead={handleMarkAsRead}
       />
-    </div>
+
+      </div>
+
+      {/* Bulk Print View - Hidden on screen, visible when printing */}
+      {showPrintView && ordersToPrint.length > 0 && (
+        <BulkPrintView orders={ordersToPrint} />
+      )}
+    </>
   );
 }

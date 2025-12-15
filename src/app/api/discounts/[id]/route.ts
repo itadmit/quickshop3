@@ -212,6 +212,12 @@ export async function PUT(
       paramIndex++;
     }
 
+    if (body.gift_product_id !== undefined) {
+      updates.push(`gift_product_id = $${paramIndex}`);
+      values.push(body.gift_product_id);
+      paramIndex++;
+    }
+
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
@@ -27,6 +27,7 @@ import { OrderTimeline } from '@/components/orders/OrderTimeline';
 export default function OrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const orderId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,22 @@ export default function OrderDetailsPage() {
       };
     }
   }, [orderId]);
+
+  // Auto-print when print=true is in URL
+  useEffect(() => {
+    const shouldPrint = searchParams.get('print') === 'true';
+    if (shouldPrint && !loading && order) {
+      // Wait a bit for page to fully render, then trigger print
+      const timer = setTimeout(() => {
+        window.print();
+        // Remove print parameter from URL after printing
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('print');
+        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, order, searchParams, router]);
 
   const loadOrder = async (signal?: AbortSignal) => {
     try {
@@ -302,7 +319,7 @@ export default function OrderDetailsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
+    <div className="p-6 space-y-6 print:p-0 print:space-y-4" dir="rtl">
       <style jsx global>{`
         @media print {
           body {

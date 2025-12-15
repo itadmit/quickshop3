@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { HiSave, HiX, HiSparkles, HiTrash } from 'react-icons/hi';
+import { HiSave, HiX, HiSparkles, HiTrash, HiPlus } from 'react-icons/hi';
 import { AutomaticDiscount, UpdateAutomaticDiscountRequest } from '@/types/discount';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { ProductSelector } from '@/components/discounts/ProductSelector';
@@ -441,7 +441,8 @@ export default function EditAutomaticDiscountPage() {
               </Select>
             </div>
 
-            {formData.discount_type !== 'free_shipping' && (
+            {/* Value field for percentage and fixed_amount */}
+            {(formData.discount_type === 'percentage' || formData.discount_type === 'fixed_amount') && (
               <div>
                 <Label htmlFor="value">
                   ערך ההנחה * 
@@ -458,6 +459,227 @@ export default function EditAutomaticDiscountPage() {
                   required
                   className="mt-1"
                 />
+              </div>
+            )}
+
+            {/* BOGO Fields */}
+            {formData.discount_type === 'bogo' && (
+              <>
+                <div>
+                  <Label htmlFor="buy_quantity">כמות לקנייה *</Label>
+                  <Input
+                    id="buy_quantity"
+                    type="number"
+                    min="1"
+                    value={formData.buy_quantity || ''}
+                    onChange={(e) => setFormData({ ...formData, buy_quantity: e.target.value })}
+                    placeholder="1"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="get_quantity">כמות לקבלה *</Label>
+                  <Input
+                    id="get_quantity"
+                    type="number"
+                    min="1"
+                    value={formData.get_quantity || ''}
+                    onChange={(e) => setFormData({ ...formData, get_quantity: e.target.value })}
+                    placeholder="1"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="get_discount_type">סוג הנחה על מה שמקבלים *</Label>
+                  <Select
+                    value={formData.get_discount_type || 'free'}
+                    onValueChange={(value: string) => 
+                      setFormData({ ...formData, get_discount_type: value as 'free' | 'percentage' | 'fixed_amount' })
+                    }
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="בחר" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">חינם</SelectItem>
+                      <SelectItem value="percentage">אחוזים (%)</SelectItem>
+                      <SelectItem value="fixed_amount">סכום קבוע (₪)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.get_discount_type !== 'free' && (
+                  <div>
+                    <Label htmlFor="get_discount_value">
+                      ערך ההנחה על מה שמקבלים * 
+                      {formData.get_discount_type === 'percentage' ? ' (%)' : ' (₪)'}
+                    </Label>
+                    <Input
+                      id="get_discount_value"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.get_discount_value || ''}
+                      onChange={(e) => setFormData({ ...formData, get_discount_value: e.target.value })}
+                      placeholder={formData.get_discount_type === 'percentage' ? '50' : '25'}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+                <div className="md:col-span-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="applies_to_same_product"
+                      checked={formData.applies_to_same_product !== false}
+                      onCheckedChange={(checked) => setFormData({ ...formData, applies_to_same_product: checked as boolean })}
+                    />
+                    <Label htmlFor="applies_to_same_product" className="cursor-pointer">
+                      חל על אותו מוצר
+                    </Label>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">אם לא מסומן, ההנחה תחול על מוצרים שונים</p>
+                </div>
+              </>
+            )}
+
+            {/* Bundle Fields */}
+            {formData.discount_type === 'bundle' && (
+              <>
+                <div>
+                  <Label htmlFor="bundle_min_products">מינימום מוצרים בחבילה *</Label>
+                  <Input
+                    id="bundle_min_products"
+                    type="number"
+                    min="2"
+                    value={formData.bundle_min_products || ''}
+                    onChange={(e) => setFormData({ ...formData, bundle_min_products: e.target.value })}
+                    placeholder="3"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bundle_discount_type">סוג הנחה על החבילה *</Label>
+                  <Select
+                    value={formData.bundle_discount_type || 'percentage'}
+                    onValueChange={(value: string) => 
+                      setFormData({ ...formData, bundle_discount_type: value as 'percentage' | 'fixed_amount' })
+                    }
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="בחר" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">אחוזים (%)</SelectItem>
+                      <SelectItem value="fixed_amount">סכום קבוע (₪)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="bundle_discount_value">
+                    ערך ההנחה על החבילה * 
+                    {formData.bundle_discount_type === 'percentage' ? ' (%)' : ' (₪)'}
+                  </Label>
+                  <Input
+                    id="bundle_discount_value"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.bundle_discount_value || ''}
+                    onChange={(e) => setFormData({ ...formData, bundle_discount_value: e.target.value })}
+                    placeholder={formData.bundle_discount_type === 'percentage' ? '15' : '50'}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Volume Fields */}
+            {formData.discount_type === 'volume' && (
+              <div className="md:col-span-2">
+                <Label>דרגות הנחה לפי כמות *</Label>
+                <div className="space-y-3 mt-2">
+                  {(formData.volume_tiers || []).map((tier, index) => (
+                    <div key={index} className="flex gap-2 items-start p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <Label className="text-xs text-gray-500">כמות מינימום</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={tier.quantity}
+                          onChange={(e) => {
+                            const newTiers = [...(formData.volume_tiers || [])];
+                            newTiers[index].quantity = parseInt(e.target.value) || 0;
+                            setFormData({ ...formData, volume_tiers: newTiers });
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-gray-500">סוג הנחה</Label>
+                        <Select
+                          value={tier.discount_type}
+                          onValueChange={(value: string) => {
+                            const newTiers = [...(formData.volume_tiers || [])];
+                            newTiers[index].discount_type = value as 'percentage' | 'fixed_amount';
+                            setFormData({ ...formData, volume_tiers: newTiers });
+                          }}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">אחוזים (%)</SelectItem>
+                            <SelectItem value="fixed_amount">סכום קבוע (₪)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-gray-500">ערך</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={tier.value}
+                          onChange={(e) => {
+                            const newTiers = [...(formData.volume_tiers || [])];
+                            newTiers[index].value = parseFloat(e.target.value) || 0;
+                            setFormData({ ...formData, volume_tiers: newTiers });
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newTiers = (formData.volume_tiers || []).filter((_, i) => i !== index);
+                          setFormData({ ...formData, volume_tiers: newTiers });
+                        }}
+                        className="mt-6"
+                      >
+                        <HiX className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const newTiers = [...(formData.volume_tiers || []), { quantity: 1, discount_type: 'percentage' as const, value: 0 }];
+                      setFormData({ ...formData, volume_tiers: newTiers });
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <HiPlus className="w-4 h-4" />
+                    הוסף דרגה
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">הדרגה הגבוהה ביותר שהכמות מגיעה אליה תוחל</p>
               </div>
             )}
 

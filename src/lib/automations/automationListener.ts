@@ -37,6 +37,11 @@ eventBus.on('order.refunded', async (event) => {
   await runAutomationsForEvent(event.store_id, 'order.refunded', event.payload);
 });
 
+eventBus.on('order.abandoned', async (event) => {
+  console.log(`[Automation] Triggered by order.abandoned event for store ${event.store_id}`);
+  await runAutomationsForEvent(event.store_id, 'order.abandoned', event.payload);
+});
+
 eventBus.on('product.created', async (event) => {
   console.log(`[Automation] Triggered by product.created event for store ${event.store_id}`);
   await runAutomationsForEvent(event.store_id, 'product.created', event.payload);

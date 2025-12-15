@@ -860,6 +860,21 @@ export default function EditDiscountPage() {
           </div>
         </Card>
 
+        {/* Gift Product */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <HiGift className="w-5 h-5" />
+            מתנה אוטומטית
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            מוצר שיתווסף אוטומטית לעגלה כאשר קוד ההנחה מוחל
+          </p>
+          <GiftProductSelector
+            selectedProductId={formData.gift_product_id || null}
+            onProductChange={(productId) => setFormData({ ...formData, gift_product_id: productId })}
+          />
+        </Card>
+
         {/* Customer Conditions */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">תנאי לקוח</h2>

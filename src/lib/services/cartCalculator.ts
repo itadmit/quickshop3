@@ -74,6 +74,8 @@ export interface DiscountCode {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Gift product
+  gift_product_id?: number | null;
   product_ids?: number[];
   collection_ids?: number[];
   tag_names?: string[];
@@ -269,6 +271,7 @@ export class CartCalculator {
         bundle_discount_type: string | null;
         bundle_discount_value: string | null;
         volume_tiers: any;
+        gift_product_id: number | null;
       }>(
         `SELECT 
           id, code, discount_type, value,
@@ -285,7 +288,7 @@ export class CartCalculator {
           day_of_week, hour_start, hour_end,
           buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
           bundle_min_products, bundle_discount_type, bundle_discount_value,
-          volume_tiers
+          volume_tiers, gift_product_id
         FROM discount_codes
         WHERE store_id = $1 AND code = $2 AND is_active = true`,
         [this.storeId, code.toUpperCase()]
@@ -400,6 +403,8 @@ export class CartCalculator {
         bundle_discount_value: discount.bundle_discount_value || null,
         // Volume fields
         volume_tiers: discount.volume_tiers ? (typeof discount.volume_tiers === 'string' ? JSON.parse(discount.volume_tiers) : discount.volume_tiers) : null,
+        // Gift product
+        gift_product_id: discount.gift_product_id,
         product_ids: productIds.map(p => p.product_id),
         collection_ids: collectionIds.map(c => c.collection_id),
         tag_names: tagNames.map(t => t.tag_name),
@@ -875,6 +880,59 @@ export class CartCalculator {
 
     // 4. איסוף מתנות אוטומטיות מההנחות שהוחלו
     const giftProducts: GiftProduct[] = [];
+    
+    // Helper function to load gift product
+    const loadGiftProduct = async (giftProductId: number, discountId: number, discountName: string) => {
+      try {
+        // טעינת פרטי המוצר והגרסה הראשונה שלו
+        const productResult = await query<{
+          id: number;
+          title: string;
+          image: string | null;
+        }>(
+          `SELECT id, title, image FROM products WHERE id = $1 AND store_id = $2`,
+          [giftProductId, this.storeId]
+        );
+
+        if (productResult.length > 0) {
+          const product = productResult[0];
+          
+          // טעינת הגרסה הראשונה של המוצר
+          const variantResult = await query<{
+            id: number;
+            title: string;
+            price: string;
+            image: string | null;
+          }>(
+            `SELECT id, title, price, image 
+             FROM product_variants 
+             WHERE product_id = $1 
+             ORDER BY id ASC 
+             LIMIT 1`,
+            [product.id]
+          );
+
+          if (variantResult.length > 0) {
+            const variant = variantResult[0];
+            giftProducts.push({
+              product_id: product.id,
+              variant_id: variant.id,
+              product_title: product.title,
+              variant_title: variant.title || 'Default',
+              price: parseFloat(variant.price),
+              image: variant.image || product.image || undefined,
+              discount_id: discountId,
+              discount_name: discountName,
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error loading gift product ${giftProductId}:`, error);
+        this.warnings.push(`לא ניתן לטעון מתנה מההנחה "${discountName}"`);
+      }
+    };
+
+    // איסוף מתנות מהנחות אוטומטיות
     const appliedAutomaticDiscountIds = allAppliedDiscounts
       .filter(d => d.source === 'automatic')
       .map(d => d.id);
@@ -882,53 +940,18 @@ export class CartCalculator {
     for (const discountId of appliedAutomaticDiscountIds) {
       const discount = this.automaticDiscounts.find(d => d.id === discountId);
       if (discount?.gift_product_id) {
-        try {
-          // טעינת פרטי המוצר והגרסה הראשונה שלו
-          const productResult = await query<{
-            id: number;
-            title: string;
-            image: string | null;
-          }>(
-            `SELECT id, title, image FROM products WHERE id = $1 AND store_id = $2`,
-            [discount.gift_product_id, this.storeId]
-          );
+        await loadGiftProduct(discount.gift_product_id, discount.id, discount.name);
+      }
+    }
 
-          if (productResult.length > 0) {
-            const product = productResult[0];
-            
-            // טעינת הגרסה הראשונה של המוצר
-            const variantResult = await query<{
-              id: number;
-              title: string;
-              price: string;
-              image: string | null;
-            }>(
-              `SELECT id, title, price, image 
-               FROM product_variants 
-               WHERE product_id = $1 
-               ORDER BY id ASC 
-               LIMIT 1`,
-              [product.id]
-            );
+    // איסוף מתנות מקודי הנחה (קופונים)
+    const appliedCodeDiscountIds = allAppliedDiscounts
+      .filter(d => d.source === 'code')
+      .map(d => d.id);
 
-            if (variantResult.length > 0) {
-              const variant = variantResult[0];
-              giftProducts.push({
-                product_id: product.id,
-                variant_id: variant.id,
-                product_title: product.title,
-                variant_title: variant.title || 'Default',
-                price: parseFloat(variant.price),
-                image: variant.image || product.image || undefined,
-                discount_id: discount.id,
-                discount_name: discount.name,
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error loading gift product ${discount.gift_product_id}:`, error);
-          this.warnings.push(`לא ניתן לטעון מתנה מההנחה "${discount.name}"`);
-        }
+    for (const discountId of appliedCodeDiscountIds) {
+      if (this.discountCode && this.discountCode.id === discountId && this.discountCode.gift_product_id) {
+        await loadGiftProduct(this.discountCode.gift_product_id, this.discountCode.id, this.discountCode.code);
       }
     }
 

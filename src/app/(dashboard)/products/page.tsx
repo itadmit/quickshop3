@@ -470,24 +470,54 @@ export default function ProductsPage() {
           <div className="text-sm text-gray-600">
             {product.options.map((option: ProductOption, i: number) => {
               let values = '';
-              if (Array.isArray(option.values)) {
-                values = option.values
-                  .map((v: any) => typeof v === 'string' ? v : (v.label || v.value || v.name || ''))
-                  .filter(Boolean)
-                  .join(', ');
-              } else if (typeof option.values === 'string') {
+              
+              // Helper function to extract value from any format (for backward compatibility)
+              const extractValue = (v: any): string => {
+                if (!v) return '';
+                if (typeof v === 'string') return v;
+                if (typeof v === 'number') return String(v);
+                if (typeof v === 'object') {
+                  return v.value || v.label || v.name || v.text || '';
+                }
+                return '';
+              };
+              
+              let optionValues = option.values;
+              
+              // If values is a string, try to parse it as JSON (backward compatibility)
+              if (typeof optionValues === 'string') {
+                console.log(`  - Values is string, attempting to parse...`);
                 try {
-                  const parsed = JSON.parse(option.values);
-                  if (Array.isArray(parsed)) {
-                    values = parsed
-                      .map((v: any) => typeof v === 'string' ? v : (v.label || v.value || v.name || ''))
-                      .filter(Boolean)
-                      .join(', ');
-                  }
-                } catch {
-                  values = option.values;
+                  optionValues = JSON.parse(optionValues);
+                  console.log(`  - Parsed successfully:`, JSON.stringify(optionValues, null, 2));
+                } catch (e) {
+                  console.log(`  - Parse failed:`, e);
+                  // If parsing fails, treat as single string value
+                  values = optionValues;
+                  return (
+                    <div key={i} className="text-xs">
+                      <span className="font-medium text-gray-700">{option.name}:</span>{' '}
+                      <span className="text-gray-600">{values || '-'}</span>
+                    </div>
+                  );
                 }
               }
+              
+              // Handle array of values
+              if (Array.isArray(optionValues)) {
+                const extractedValues = optionValues
+                  .map(extractValue)
+                  .filter(Boolean)
+                  .filter((v, idx, arr) => arr.indexOf(v) === idx); // Remove duplicates
+                values = extractedValues.join(', ');
+              } else if (optionValues && typeof optionValues === 'object') {
+                // Single object value (backward compatibility)
+                values = extractValue(optionValues);
+              } else if (optionValues !== null && optionValues !== undefined) {
+                // Primitive value
+                values = String(optionValues);
+              }
+              
               return (
                 <div key={i} className="text-xs">
                   <span className="font-medium text-gray-700">{option.name}:</span>{' '}

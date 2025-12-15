@@ -43,6 +43,7 @@ npm run setup:qstash
 - **Archive Products** - כל שעה
 - **Update Discounts Status** - כל שעה
 - **Cleanup OTP Codes** - כל יום בשעה 02:00
+- **Check Abandoned Orders** - כל שעה
 
 ## ✅ בדיקה
 
@@ -84,12 +85,19 @@ curl -X POST https://qstash.upstash.io/v2/schedules \
 - מוחק קודי OTP שכבר שימשו לפני יותר מ-7 ימים
 - מוחק קודי OTP עם יותר מדי ניסיונות שגויים לפני יותר מ-24 שעות
 
+### 5. Check Abandoned Orders (כל שעה)
+- בודק הזמנות עם `financial_status = 'pending'` שעברו את הזמן שהוגדר
+- הזמן ברירת מחדל: 4 שעות (ניתן לשנות בהגדרות מתקדמות)
+- שולח אירוע `order.abandoned` לטריגור אוטומציות
+- מסמן הזמנות שכבר טופלו למניעת כפילויות
+
 ## ⚙️ תדירות
 
 - **Sync Visitors**: כל 5 דקות (`*/5 * * * *`) - מומלץ, מינימום כל 10 דקות
 - **Archive Products**: כל שעה (`0 * * * *`)
 - **Update Discounts Status**: כל שעה (`0 * * * *`)
 - **Cleanup OTP Codes**: כל יום בשעה 02:00 (`0 2 * * *`)
+- **Check Abandoned Orders**: כל שעה (`0 * * * *`)
 
 ## 🛠️ פתרון בעיות
 

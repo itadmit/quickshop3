@@ -186,21 +186,55 @@ export function ProductVariantSelector({
     }
   };
 
+  // Helper function to extract value recursively from nested JSON
+  const extractValueRecursively = (val: any, depth = 0): string => {
+    if (depth > 5) return ''; // Prevent infinite recursion
+    if (!val) return '';
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'string') {
+      if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(val);
+          if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+            return extractValueRecursively(parsed.value, depth + 1);
+          }
+          if (parsed && typeof parsed === 'object') {
+            return extractValueRecursively(parsed.value || parsed.label || parsed.name || val, depth + 1);
+          }
+          return String(parsed);
+        } catch {
+          return val;
+        }
+      }
+      return val;
+    }
+    if (val && typeof val === 'object') {
+      if (val.value !== undefined) {
+        return extractValueRecursively(val.value, depth + 1);
+      }
+      return extractValueRecursively(val.label || val.name || '', depth + 1);
+    }
+    return '';
+  };
+
   // יצירת options list לכל option עם availability
   const getOptionsForSelector = (option: ProductOption, position: number) => {
     if (!option.values) return [];
     
     return option.values.map(val => {
+      // Extract clean value (handle nested JSON)
+      const cleanValue = extractValueRecursively(val.value || val);
+      
       // בדיקת זמינות - האם יש variant עם הערך הזה שזמין
       const hasAvailableVariant = variants.some(v => {
         const variantValue = getVariantOptionValue(v, position);
-        return variantValue === val.value && v.available > 0;
+        return variantValue === cleanValue && v.available > 0;
       });
       
       return {
         id: val.id,
-        name: val.value,
-        value: val.value,
+        name: cleanValue,
+        value: cleanValue,
         available: hasAvailableVariant,
         metadata: val.metadata,
       };
