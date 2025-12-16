@@ -32,19 +32,66 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
     );
   }
 
+  // Get all settings
   const layout = settings.layout || 'banner';
   const showImage = settings.show_image !== false;
   const showDescription = settings.show_description !== false;
   const showProductCount = settings.show_product_count !== false;
+  const textAlign = settings.text_align || 'right';
+  const contentPosition = settings.content_position || 'center';
+  const titleSize = settings.title_size || 'large';
+  const titleColor = settings.title_color || '#111827';
+  const descriptionColor = settings.description_color || '#4B5563';
+  const overlayColor = settings.overlay_color || '#000000';
+  const overlayOpacity = settings.overlay_opacity || '0.4';
+  const bannerHeight = settings.banner_height || 'medium';
+
+  // Title size classes
+  const titleSizeClasses = {
+    small: 'text-xl md:text-2xl',
+    medium: 'text-2xl md:text-3xl',
+    large: 'text-3xl md:text-4xl',
+    xl: 'text-4xl md:text-5xl',
+  }[titleSize] || 'text-3xl md:text-4xl';
+
+  // Text alignment classes
+  const textAlignClasses = {
+    right: 'text-right',
+    center: 'text-center',
+    left: 'text-left',
+  }[textAlign] || 'text-right';
+
+  // Banner height classes
+  const bannerHeightClasses = {
+    small: 'py-8 md:py-12',
+    medium: 'py-12 md:py-20',
+    large: 'py-16 md:py-28',
+    full: 'py-24 md:py-36',
+  }[bannerHeight] || 'py-12 md:py-20';
+
+  // Content position classes for vertical alignment
+  const contentPositionClasses = {
+    top: 'items-start',
+    center: 'items-center',
+    bottom: 'items-end',
+  }[contentPosition] || 'items-center';
 
   if (layout === 'simple') {
     return (
-      <div className="py-6">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+      <div className={`py-6 ${textAlignClasses}`}>
+        <h1 
+          className={`${titleSizeClasses} font-bold mb-2`}
+          style={{ color: titleColor }}
+        >
           {collection.title}
         </h1>
         {showDescription && collection.description && (
-          <p className="text-lg text-gray-600 mb-2">{collection.description}</p>
+          <p 
+            className="text-lg mb-2"
+            style={{ color: descriptionColor }}
+          >
+            {collection.description}
+          </p>
         )}
         {showProductCount && collection.product_count !== undefined && (
           <p className="text-sm text-gray-500">
@@ -57,7 +104,7 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
 
   if (layout === 'hero') {
     return (
-      <div className="relative py-16 md:py-24">
+      <div className={`relative ${bannerHeightClasses} flex ${contentPositionClasses}`}>
         {showImage && collection.image_url && (
           <div className="absolute inset-0 z-0">
             <img
@@ -65,15 +112,24 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
               alt={collection.title}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/40" />
+            <div 
+              className="absolute inset-0" 
+              style={{ backgroundColor: overlayColor, opacity: parseFloat(overlayOpacity) }}
+            />
           </div>
         )}
-        <div className="relative z-10 text-center text-white">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+        <div className={`relative z-10 w-full ${textAlignClasses} text-white px-4`}>
+          <h1 
+            className={`${titleSizeClasses} font-bold mb-4`}
+            style={{ color: showImage ? '#FFFFFF' : titleColor }}
+          >
             {collection.title}
           </h1>
           {showDescription && collection.description && (
-            <p className="text-lg md:text-xl mb-4 max-w-2xl mx-auto">
+            <p 
+              className="text-lg md:text-xl mb-4 max-w-2xl mx-auto"
+              style={{ color: showImage ? 'rgba(255,255,255,0.9)' : descriptionColor }}
+            >
               {collection.description}
             </p>
           )}
@@ -89,7 +145,7 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
 
   // Default: banner layout
   return (
-    <div className="py-8">
+    <div className={`py-8 ${textAlignClasses}`}>
       {showImage && collection.image_url && (
         <div className="mb-6">
           <img
@@ -99,11 +155,19 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
           />
         </div>
       )}
-      <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+      <h1 
+        className={`${titleSizeClasses} font-bold mb-4`}
+        style={{ color: titleColor }}
+      >
         {collection.title}
       </h1>
       {showDescription && collection.description && (
-        <p className="text-lg text-gray-600 mb-2">{collection.description}</p>
+        <p 
+          className="text-lg mb-2"
+          style={{ color: descriptionColor }}
+        >
+          {collection.description}
+        </p>
       )}
       {showProductCount && collection.product_count !== undefined && (
         <p className="text-sm text-gray-500">
@@ -117,23 +181,55 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
 // Collection Description Section
 export function CollectionDescriptionSection({ section, collection, onUpdate }: CollectionSectionProps) {
   const settings = section.settings || {};
+  const { t } = useTranslation('storefront');
+  const [showingFull, setShowingFull] = React.useState(false);
   
   if (!collection || !collection.description) {
     return null;
   }
 
+  // Get all settings
   const showFull = settings.show_full === true;
   const maxChars = settings.max_characters || 200;
-  const description = showFull 
-    ? collection.description 
-    : collection.description.substring(0, maxChars) + (collection.description.length > maxChars ? '...' : '');
+  const readMoreText = settings.read_more_text || t('common.read_more') || 'קרא עוד';
+  const textSize = settings.text_size || 'medium';
+  const textAlign = settings.text_align || 'right';
+  const textColor = settings.text_color || '#4B5563';
+
+  // Text size classes
+  const textSizeClasses = {
+    small: 'text-sm',
+    medium: 'text-base',
+    large: 'text-lg',
+  }[textSize] || 'text-base';
+
+  // Text alignment classes
+  const textAlignClasses = {
+    right: 'text-right',
+    center: 'text-center',
+    left: 'text-left',
+  }[textAlign] || 'text-right';
+
+  const shouldTruncate = !showFull && collection.description.length > maxChars && !showingFull;
+  const displayDescription = shouldTruncate
+    ? collection.description.substring(0, maxChars) + '...'
+    : collection.description;
 
   return (
-    <div className="py-4">
+    <div className={`py-4 ${textAlignClasses}`}>
       <div 
-        className="prose prose-sm max-w-none text-gray-600"
-        dangerouslySetInnerHTML={{ __html: description }}
+        className={`prose max-w-none ${textSizeClasses}`}
+        style={{ color: textColor }}
+        dangerouslySetInnerHTML={{ __html: displayDescription }}
       />
+      {!showFull && collection.description.length > maxChars && (
+        <button
+          onClick={() => setShowingFull(!showingFull)}
+          className="mt-2 text-sm font-medium text-gray-900 hover:text-gray-700 underline"
+        >
+          {showingFull ? (t('common.show_less') || 'הצג פחות') : readMoreText}
+        </button>
+      )}
     </div>
   );
 }
@@ -145,20 +241,26 @@ export function CollectionFiltersSection({ section, collection, onUpdate }: Coll
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const layout = settings.layout || 'sidebar';
+  // Get all settings
+  const layout = settings.layout || 'horizontal';
   const showPriceFilter = settings.show_price_filter !== false;
   const showAvailabilityFilter = settings.show_availability_filter !== false;
   const showVendorFilter = settings.show_vendor_filter !== false;
+  const showTypeFilter = settings.show_type_filter !== false;
   const showSort = settings.show_sort !== false;
+  const defaultSort = settings.default_sort || 'newest';
+  const filterBgColor = settings.filter_bg_color || '#FFFFFF';
+  const filterTextColor = settings.filter_text_color || '#374151';
+  const activeFilterColor = settings.active_filter_color || '#111827';
 
   // Get current filter values from URL
-  const currentSort = searchParams.get('sort') || 'newest';
+  const currentSort = searchParams.get('sort') || defaultSort;
   const currentPriceRange = searchParams.get('price') || 'all';
   const currentAvailability = searchParams.get('availability') || 'all';
 
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === 'all' || value === 'newest') {
+    if (value === 'all' || value === defaultSort) {
       params.delete(key);
     } else {
       params.set(key, value);
@@ -168,18 +270,31 @@ export function CollectionFiltersSection({ section, collection, onUpdate }: Coll
     router.push(`?${params.toString()}`);
   };
 
+  const selectStyle = {
+    backgroundColor: filterBgColor,
+    color: filterTextColor,
+    borderColor: '#D1D5DB',
+  };
+
   return (
-    <div className="py-4">
+    <div 
+      className="py-4 rounded-lg"
+      style={{ backgroundColor: filterBgColor }}
+    >
       <div className="flex flex-wrap items-center gap-4">
         {showSort && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label 
+              className="text-sm font-medium"
+              style={{ color: filterTextColor }}
+            >
               {t('collection.sort') || 'מיון'}:
             </label>
             <select 
               value={currentSort}
               onChange={(e) => handleFilterChange('sort', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-2 border rounded-lg text-sm"
+              style={selectStyle}
             >
               <option value="newest">{t('collection.sort_newest') || 'חדש ביותר'}</option>
               <option value="oldest">{t('collection.sort_oldest') || 'ישן ביותר'}</option>
@@ -187,19 +302,24 @@ export function CollectionFiltersSection({ section, collection, onUpdate }: Coll
               <option value="price-high">{t('collection.sort_price_high') || 'מחיר: גבוה לנמוך'}</option>
               <option value="name-asc">{t('collection.sort_name_asc') || 'שם: א-ב'}</option>
               <option value="name-desc">{t('collection.sort_name_desc') || 'שם: ב-א'}</option>
+              <option value="popularity">{t('collection.sort_popularity') || 'פופולריות'}</option>
             </select>
           </div>
         )}
         
         {showPriceFilter && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label 
+              className="text-sm font-medium"
+              style={{ color: filterTextColor }}
+            >
               {t('collection.price_range') || 'טווח מחירים'}:
             </label>
             <select 
               value={currentPriceRange}
               onChange={(e) => handleFilterChange('price', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-2 border rounded-lg text-sm"
+              style={selectStyle}
             >
               <option value="all">{t('collection.all_prices') || 'כל המחירים'}</option>
               <option value="0-100">₪0 - ₪100</option>
@@ -212,13 +332,17 @@ export function CollectionFiltersSection({ section, collection, onUpdate }: Coll
         
         {showAvailabilityFilter && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label 
+              className="text-sm font-medium"
+              style={{ color: filterTextColor }}
+            >
               {t('collection.availability') || 'זמינות'}:
             </label>
             <select 
               value={currentAvailability}
               onChange={(e) => handleFilterChange('availability', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-2 border rounded-lg text-sm"
+              style={selectStyle}
             >
               <option value="all">{t('collection.all') || 'הכל'}</option>
               <option value="in_stock">{t('product.in_stock') || 'במלאי'}</option>
@@ -238,9 +362,33 @@ export function CollectionProductsSection({ section, collection, products = [], 
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
   
+  // Get all settings
   const productsPerRow = settings.products_per_row || 4;
+  const productsPerRowTablet = settings.products_per_row_tablet || 3;
   const productsPerRowMobile = settings.products_per_row_mobile || 2;
-  const cardStyle = settings.card_style || 'default';
+  const productsPerPage = settings.products_per_page || 12;
+  const cardStyle = settings.card_style || 'minimal';
+  const showShadow = settings.show_shadow !== false;
+  const showBorder = settings.show_border === true;
+  const imageRatio = settings.image_ratio || 'square';
+  const gap = settings.gap || 'medium';
+  const showPrice = settings.show_price !== false;
+  const showComparePrice = settings.show_compare_price !== false;
+  const showVendor = settings.show_vendor === true;
+  const showRating = settings.show_rating === true;
+  const showBadges = settings.show_badges !== false;
+  const showColorSwatches = settings.show_color_swatches !== false;
+  const showQuickView = settings.show_quick_view !== false;
+  const showAddToCart = settings.show_add_to_cart === true;
+  const showWishlist = settings.show_wishlist === true;
+  const emptyText = settings.empty_text || t('collection.no_products') || 'אין מוצרים בקטגוריה זו כרגע';
+
+  // Gap classes
+  const gapClasses = {
+    small: 'gap-3',
+    medium: 'gap-6',
+    large: 'gap-8',
+  }[gap] || 'gap-6';
 
   // Use client component for dynamic loading with filters
   if (collection?.handle && storeId) {
@@ -259,23 +407,18 @@ export function CollectionProductsSection({ section, collection, products = [], 
     return (
       <div className="py-12 text-center">
         <p className="text-gray-500 text-lg mb-4">
-          {t('collection.no_products') || 'אין מוצרים בקטגוריה זו כרגע'}
+          {emptyText}
         </p>
       </div>
     );
   }
 
-  const gridCols = {
-    2: 'grid-cols-2',
-    3: 'grid-cols-3',
-    4: 'grid-cols-2 md:grid-cols-4',
-    5: 'grid-cols-2 md:grid-cols-5',
-    6: 'grid-cols-2 md:grid-cols-6',
-  }[productsPerRow] || 'grid-cols-2 md:grid-cols-4';
+  // Responsive grid classes
+  const gridCols = `grid-cols-${productsPerRowMobile} md:grid-cols-${productsPerRowTablet} lg:grid-cols-${productsPerRow}`;
 
   return (
     <div className="py-8">
-      <div className={`grid ${gridCols} gap-6`}>
+      <div className={`grid ${gridCols} ${gapClasses}`}>
         {products.map((product: any) => {
           // Shopify logic: Every product has at least one variant
           // Price always comes from variants[0] (or from product.price if it's already calculated)
@@ -287,6 +430,7 @@ export function CollectionProductsSection({ section, collection, products = [], 
             price: product.price || 0,
             compare_at_price: product.compare_at_price,
             colors: product.colors,
+            vendor: product.vendor,
           };
           
           return (
@@ -294,7 +438,7 @@ export function CollectionProductsSection({ section, collection, products = [], 
               key={product.id} 
               product={productForCard}
               storeSlug={storeSlug}
-              variant="minimal"
+              variant={cardStyle === 'minimal' ? 'minimal' : cardStyle === 'detailed' ? 'card' : 'default'}
             />
           );
         })}
@@ -310,6 +454,25 @@ export function CollectionPaginationSection({ section, collection, onUpdate }: C
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  // Get all settings
+  const style = settings.style || 'numbers';
+  const loadMoreText = settings.load_more_text || t('collection.load_more') || 'טען עוד מוצרים';
+  const showPageNumbers = settings.show_page_numbers !== false;
+  const showPrevNext = settings.show_prev_next !== false;
+  const nextText = settings.next_text || t('pagination.next') || 'הבא';
+  const prevText = settings.prev_text || t('pagination.previous') || 'הקודם';
+  const alignment = settings.alignment || 'center';
+  const buttonBgColor = settings.button_bg_color || '#FFFFFF';
+  const buttonTextColor = settings.button_text_color || '#374151';
+  const activeButtonColor = settings.active_button_color || '#111827';
+
+  // Alignment classes
+  const alignmentClasses = {
+    right: 'justify-end',
+    center: 'justify-center',
+    left: 'justify-start',
+  }[alignment] || 'justify-center';
+
   // Get pagination data from props (passed from CustomizerLayout)
   // For now, we'll use URL params to determine current page
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
@@ -319,7 +482,6 @@ export function CollectionPaginationSection({ section, collection, onUpdate }: C
   const productsPerPage = 20;
   const totalProducts = collection?.product_count || 0;
   const totalPages = Math.ceil(totalProducts / productsPerPage);
-  const style = settings.style || 'numbers';
 
   if (totalPages <= 1) {
     return null;
@@ -337,19 +499,37 @@ export function CollectionPaginationSection({ section, collection, onUpdate }: C
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const buttonStyle = {
+    backgroundColor: buttonBgColor,
+    color: buttonTextColor,
+    borderColor: '#D1D5DB',
+  };
+
+  const activeButtonStyle = {
+    backgroundColor: activeButtonColor,
+    color: '#FFFFFF',
+    borderColor: activeButtonColor,
+  };
+
   if (style === 'load_more') {
     return (
-      <div className="py-8 text-center">
+      <div className={`py-8 flex ${alignmentClasses}`}>
         {currentPage < totalPages && (
           <button 
             onClick={() => handlePageChange(currentPage + 1)}
-            className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-3 border rounded-lg hover:opacity-80 transition-colors"
+            style={buttonStyle}
           >
-            {settings.load_more_text || t('collection.load_more') || 'טען עוד מוצרים'}
+            {loadMoreText}
           </button>
         )}
       </div>
     );
+  }
+
+  if (style === 'infinite') {
+    // Infinite scroll handled by client component
+    return null;
   }
 
   // Default: numbers pagination
@@ -367,36 +547,35 @@ export function CollectionPaginationSection({ section, collection, onUpdate }: C
   }
 
   return (
-    <div className="py-8 flex justify-center items-center gap-2">
-      {currentPage > 1 && (
+    <div className={`py-8 flex ${alignmentClasses} items-center gap-2`}>
+      {showPrevNext && currentPage > 1 && (
         <button 
           onClick={() => handlePageChange(currentPage - 1)}
-          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border rounded-lg hover:opacity-80 transition-colors"
+          style={buttonStyle}
         >
-          {t('pagination.previous') || 'הקודם'}
+          {prevText}
         </button>
       )}
       
-      {pages.map((page) => (
+      {showPageNumbers && pages.map((page) => (
         <button
           key={page}
           onClick={() => handlePageChange(page)}
-          className={`px-4 py-2 border rounded-lg transition-colors ${
-            page === currentPage
-              ? 'bg-gray-900 text-white border-gray-900'
-              : 'border-gray-300 hover:bg-gray-50'
-          }`}
+          className="px-4 py-2 border rounded-lg transition-colors"
+          style={page === currentPage ? activeButtonStyle : buttonStyle}
         >
           {page}
         </button>
       ))}
       
-      {currentPage < totalPages && (
+      {showPrevNext && currentPage < totalPages && (
         <button 
           onClick={() => handlePageChange(currentPage + 1)}
-          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border rounded-lg hover:opacity-80 transition-colors"
+          style={buttonStyle}
         >
-          {t('pagination.next') || 'הבא'}
+          {nextText}
         </button>
       )}
     </div>
