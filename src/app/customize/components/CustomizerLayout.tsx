@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PreviewFrame } from './PreviewFrame';
 import { Sidebar } from './Sidebar';
 import { Header, DeviceType } from './Header';
@@ -42,6 +42,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export function CustomizerLayout() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   
   const [editorState, setEditorState] = useState<EditorState>({
     device: 'desktop',
@@ -388,7 +389,7 @@ export function CustomizerLayout() {
     }
   }, [pageSectionsCache]);
   
-  // Handle page type change
+  // Handle page type change - also updates URL
   const handlePageTypeChange = useCallback((newPageType: PageType) => {
     if (newPageType === currentPageType) return;
     
@@ -404,9 +405,14 @@ export function CustomizerLayout() {
     // Clear page handle when switching page types
     setCurrentPageHandle(null);
     
+    // Update URL to reflect new page type
+    const storeId = searchParams.get('storeId');
+    const newUrl = `/customize?storeId=${storeId}&pageType=${newPageType}`;
+    router.push(newUrl, { scroll: false });
+    
     // Load the new page type (without specific handle)
     loadPageData(newPageType, null);
-  }, [currentPageType, pageSections, loadPageData]);
+  }, [currentPageType, pageSections, loadPageData, searchParams, router]);
 
   const handleDeviceChange = useCallback((device: DeviceType) => {
     setEditorState(prev => ({ ...prev, device }));
