@@ -33,9 +33,9 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/categories/')) {
     const match = pathWithoutStore.match(/^\/categories\/([^/]+)/);
     if (match) {
-      return { pageType: 'category', pageHandle: match[1] };
+      return { pageType: 'collection', pageHandle: match[1] };
     }
-    return { pageType: 'categories' };
+    return { pageType: 'collections' };
   }
   
   // דף תוכן
@@ -69,16 +69,14 @@ export async function CustomizerLayoutWrapper({
   // זיהוי pageType מה-pathname
   const { pageType, pageHandle } = getPageTypeFromPath(pathname);
   
-  // Debug log (רק בפיתוח)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[CustomizerLayoutWrapper] Pathname:', pathname, 'PageType:', pageType, 'PageHandle:', pageHandle);
-  }
+  // Decode pageHandle for Hebrew URLs
+  const decodedPageHandle = pageHandle ? decodeURIComponent(pageHandle) : undefined;
   
   return (
     <CustomizerLayout 
       storeSlug={storeSlug}
       pageType={pageType}
-      pageHandle={pageHandle}
+      pageHandle={decodedPageHandle}
     >
       {children}
     </CustomizerLayout>

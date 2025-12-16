@@ -3,6 +3,7 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiPhotograph } from 'react-icons/hi';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface GalleryProps {
   section: SectionSettings;
@@ -13,6 +14,7 @@ export function Gallery({ section, onUpdate }: GalleryProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
+  const { t } = useTranslation('storefront');
   
   // Get image blocks
   const imageBlocks = blocks.filter(b => b.type === 'image');
@@ -81,7 +83,7 @@ export function Gallery({ section, onUpdate }: GalleryProps) {
               }) : (
                 <div className="text-center text-gray-400 py-12">
                   <HiPhotograph className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p>אין תמונות בגלריה. הוסף תמונות דרך ההגדרות.</p>
+                  <p>{t('gallery.no_images') || 'אין תמונות בגלריה. הוסף תמונות דרך ההגדרות.'}</p>
                 </div>
               )}
             </div>

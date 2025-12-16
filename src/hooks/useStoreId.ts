@@ -8,30 +8,34 @@ const CART_STORE_SLUG_KEY = 'quickshop_cart_store_slug';
 
 /**
  * Hook לקבלת storeId מה-URL
- * Quickshop: storeId נקבע לפי storeSlug מה-URL
- * משתמש ב-API endpoint במקום server function ישיר
+ * פשוט כמו Shopify: מיידי מ-localStorage, אסינכרוני מ-API
  */
 export function useStoreId(): number | null {
   const params = useParams();
   const storeSlug = params?.storeSlug as string | undefined;
-  const [storeId, setStoreId] = useState<number | null>(null);
+  
+  // Initialize from localStorage immediately (synchronous)
+  const [storeId, setStoreId] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    
+    // If we have a slug, check if it matches localStorage
+    if (storeSlug) {
+      const storedSlug = localStorage.getItem(CART_STORE_SLUG_KEY);
+      const storedId = localStorage.getItem(CART_STORE_ID_KEY);
+      if (storedSlug === storeSlug && storedId) {
+        return parseInt(storedId);
+      }
+    }
+    
+    // Fallback to stored ID or default
+    const stored = localStorage.getItem(CART_STORE_ID_KEY);
+    return stored ? parseInt(stored) : 1;
+  });
 
   useEffect(() => {
-    if (!storeSlug) {
-      // Fallback to localStorage
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem(CART_STORE_ID_KEY);
-        if (stored) {
-          setStoreId(parseInt(stored));
-        } else {
-          // Default to 1
-          setStoreId(1);
-        }
-      }
-      return;
-    }
+    if (!storeSlug) return;
 
-    // Check if we already have the storeId for this slug
+    // Check if we already have the correct storeId
     if (typeof window !== 'undefined') {
       const storedSlug = localStorage.getItem(CART_STORE_SLUG_KEY);
       const storedId = localStorage.getItem(CART_STORE_ID_KEY);
@@ -42,18 +46,15 @@ export function useStoreId(): number | null {
       }
     }
 
-    // Get store ID from API (client-side)
+    // Get store ID from API
     fetch(`/api/stores/${storeSlug}/id`)
       .then((res) => {
-        if (res.ok) {
-          return res.json();
-        }
+        if (res.ok) return res.json();
         throw new Error('Failed to get store ID');
       })
       .then((data) => {
         if (data.storeId) {
           setStoreId(data.storeId);
-          // Save to localStorage
           if (typeof window !== 'undefined') {
             localStorage.setItem(CART_STORE_ID_KEY, String(data.storeId));
             localStorage.setItem(CART_STORE_SLUG_KEY, storeSlug);
@@ -61,16 +62,8 @@ export function useStoreId(): number | null {
         }
       })
       .catch(() => {
-        // Fallback to localStorage
-        if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem(CART_STORE_ID_KEY);
-          if (stored) {
-            setStoreId(parseInt(stored));
-          } else {
-            // Default to 1
-            setStoreId(1);
-          }
-        }
+        // Fallback to default
+        setStoreId(1);
       });
   }, [storeSlug]);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PreviewFrame } from './PreviewFrame';
 import { Sidebar } from './Sidebar';
 import { Header, DeviceType } from './Header';
@@ -11,6 +12,7 @@ import { GeneralSettingsModal } from './GeneralSettingsModal';
 import { NEW_YORK_TEMPLATE, getDefaultSectionsForPage } from '@/lib/customizer/templates/new-york';
 import { EditorState, SectionSettings, PageType } from '@/lib/customizer/types';
 import { getSectionName } from '@/lib/customizer/sectionNames';
+import { DEMO_PRODUCT, DEMO_COLLECTION, DEMO_COLLECTION_PRODUCTS } from '@/lib/customizer/demoData';
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
 
 // Toast Component
@@ -39,6 +41,8 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 }
 
 export function CustomizerLayout() {
+  const searchParams = useSearchParams();
+  
   const [editorState, setEditorState] = useState<EditorState>({
     device: 'desktop',
     zoom: 100,
@@ -55,11 +59,12 @@ export function CustomizerLayout() {
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
   const [isGeneralSettingsModalOpen, setIsGeneralSettingsModalOpen] = useState(false);
   const [currentPageType, setCurrentPageType] = useState<PageType>('home');
+  const [currentPageHandle, setCurrentPageHandle] = useState<string | null>(null);
   
-  // Sample product for product page preview
-  const [sampleProduct, setSampleProduct] = useState<any>(null);
-  // Sample collection for collection page preview
-  const [sampleCollection, setSampleCollection] = useState<any>(null);
+  // Sample product for product page preview (start with demo data)
+  const [sampleProduct, setSampleProduct] = useState<any>(DEMO_PRODUCT);
+  // Sample collection for collection page preview (start with demo data)
+  const [sampleCollection, setSampleCollection] = useState<any>(DEMO_COLLECTION);
   
   // Store sections for each page type to preserve changes when switching
   const [pageSectionsCache, setPageSectionsCache] = useState<Record<PageType, SectionSettings[]>>({
@@ -71,24 +76,37 @@ export function CustomizerLayout() {
     page: []
   });
 
-  // Load initial page data
+  // Load initial page data from URL params or default to 'home'
   useEffect(() => {
-    loadPageData('home');
-  }, []);
+    const pageTypeParam = searchParams.get('pageType') as PageType | null;
+    const pageHandleParam = searchParams.get('pageHandle');
+    
+    const initialPageType = pageTypeParam || 'home';
+    const initialPageHandle = pageHandleParam || null;
+    
+    setCurrentPageHandle(initialPageHandle);
+    loadPageData(initialPageType, initialPageHandle);
+  }, [searchParams]);
 
-  const loadPageData = useCallback(async (pageType: PageType = 'home') => {
+  const loadPageData = useCallback(async (pageType: PageType = 'home', pageHandle: string | null = null) => {
     try {
       setIsLoading(true);
       
-      // Check if we have cached sections for this page type
-      if (pageSectionsCache[pageType] && pageSectionsCache[pageType].length > 0) {
+      // Check if we have cached sections for this page type (only if no specific handle)
+      if (!pageHandle && pageSectionsCache[pageType] && pageSectionsCache[pageType].length > 0) {
         setPageSections(pageSectionsCache[pageType]);
         setCurrentPageType(pageType);
         setIsLoading(false);
         return;
       }
       
-      const response = await fetch(`/api/customizer/pages?pageType=${pageType}`);
+      // Build URL with optional pageHandle
+      let apiUrl = `/api/customizer/pages?pageType=${pageType}`;
+      if (pageHandle) {
+        apiUrl += `&handle=${encodeURIComponent(pageHandle)}`;
+      }
+      
+      const response = await fetch(apiUrl);
       const data = await response.json();
 
       let sections: SectionSettings[] = [];
@@ -104,24 +122,14 @@ export function CustomizerLayout() {
       const storeLogo = data.store?.logo || null;
       const collections = data.collections || [];
       
-      // Load sample product for product page preview
-      if (pageType === 'product' && !sampleProduct) {
-        try {
-          const productResponse = await fetch('/api/products?limit=1');
-          if (productResponse.ok) {
-            const productData = await productResponse.json();
-            if (productData.products && productData.products.length > 0) {
-              setSampleProduct(productData.products[0]);
-            }
-          }
-        } catch (error) {
-          console.error('Error loading sample product:', error);
-        }
+      // Use demo product for product page preview (always use demo in customizer)
+      if (pageType === 'product') {
+        setSampleProduct(DEMO_PRODUCT);
       }
       
-      // Load sample collection for collection page preview
-      if (pageType === 'collection' && !sampleCollection && collections.length > 0) {
-        setSampleCollection(collections[0]);
+      // Use demo collection for collection page preview (always use demo in customizer)
+      if (pageType === 'collection') {
+        setSampleCollection(DEMO_COLLECTION);
       }
       
       // Store the store slug for preview
@@ -292,7 +300,7 @@ export function CustomizerLayout() {
             currency_selector: {
               enabled: false
             },
-            copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
+            copyright: `מופעל על ידי Quick Shop - פלטפורמה להקמת חנויות וירטואליות © ${new Date().getFullYear()}`
           }
         };
         sections.push(footerSection);
@@ -332,13 +340,13 @@ export function CustomizerLayout() {
               currency_selector: existingSettings.currency_selector || {
                 enabled: false
               },
-              copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
+              copyright: `מופעל על ידי Quick Shop - פלטפורמה להקמת חנויות וירטואליות © ${new Date().getFullYear()}`
             };
           } else {
             // Just update copyright
             sections[footerIndex].settings = {
               ...existingSettings,
-              copyright: `© ${new Date().getFullYear()} ${storeName} - כל הזכויות שמורות`
+              copyright: `מופעל על ידי Quick Shop - פלטפורמה להקמת חנויות וירטואליות © ${new Date().getFullYear()}`
             };
           }
           
@@ -393,8 +401,11 @@ export function CustomizerLayout() {
     // Clear selection when switching pages
     setSelectedSectionId(null);
     
-    // Load the new page type
-    loadPageData(newPageType);
+    // Clear page handle when switching page types
+    setCurrentPageHandle(null);
+    
+    // Load the new page type (without specific handle)
+    loadPageData(newPageType, null);
   }, [currentPageType, pageSections, loadPageData]);
 
   const handleDeviceChange = useCallback((device: DeviceType) => {

@@ -3,6 +3,7 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiStar, HiShoppingBag } from 'react-icons/hi';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface FeaturedProductsProps {
   section: SectionSettings;
@@ -13,6 +14,7 @@ interface FeaturedProductsProps {
 export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedProductsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
+  const { t } = useTranslation('storefront');
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
@@ -84,7 +86,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
               href={settings.view_all_url || '/categories/all'}
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
             >
-              {settings.view_all_text || 'לכל המוצרים'}
+              {settings.view_all_text || t('sections.featured_products.view_all') || 'לכל המוצרים'}
               <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -112,7 +114,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                 </div>
                 {settings.show_badges && (
                     <div className="absolute top-2 right-2 bg-black text-white px-2 py-1 text-xs font-bold uppercase tracking-wider rounded-sm">
-                        חדש
+                        {t('product.badge.new') || 'חדש'}
                     </div>
                 )}
                 {/* Hover overlay */}
@@ -121,7 +123,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                 {/* Quick Add Button (Optional visual enhancement) */}
                 <div className="absolute bottom-4 left-0 right-0 px-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
                     <button className="w-full bg-white text-black py-2 rounded shadow text-sm font-medium hover:bg-gray-100">
-                        הוסף לסל
+                        {t('product.add_to_cart') || 'הוסף לסל'}
                     </button>
                 </div>
               </div>
@@ -131,7 +133,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                     className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors"
                     style={{ color: textColor }}
                 >
-                    מוצר לדוגמה {i}
+                    {t('sections.featured_products.sample_product', { number: i }) || `מוצר לדוגמה ${i}`}
                 </h3>
                 
                 {settings.show_rating && (
@@ -164,7 +166,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                   </div>
                   {settings.show_badges && (
                       <div className="absolute top-2 right-2 bg-black text-white px-2 py-1 text-xs font-bold uppercase tracking-wider rounded-sm">
-                          חדש
+                          {t('product.badge.new') || 'חדש'}
                       </div>
                   )}
                   {/* Hover overlay */}
@@ -173,7 +175,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                   {/* Quick Add Button (Optional visual enhancement) */}
                   <div className="absolute bottom-4 left-0 right-0 px-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
                       <button className="w-full bg-white text-black py-2 rounded shadow text-sm font-medium hover:bg-gray-100">
-                          הוסף לסל
+                          {t('product.add_to_cart') || 'הוסף לסל'}
                       </button>
                   </div>
                 </div>
@@ -183,7 +185,7 @@ export function FeaturedProducts({ section, onUpdate, editorDevice }: FeaturedPr
                       className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors"
                       style={{ color: textColor }}
                   >
-                      מוצר לדוגמה {i}
+                      {t('sections.featured_products.sample_product', { number: i }) || `מוצר לדוגמה ${i}`}
                   </h3>
                   
                   {settings.show_rating && (

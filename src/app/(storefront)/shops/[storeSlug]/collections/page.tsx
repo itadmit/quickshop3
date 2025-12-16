@@ -42,7 +42,7 @@ export default async function CollectionsPage({
           {collections.map((collection) => (
             <Link
               key={collection.id}
-              href={`/shops/${storeSlug}/collections/${collection.handle}`}
+              href={`/shops/${storeSlug}/categories/${collection.handle}`}
               className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow"
             >
               {collection.image_url ? (

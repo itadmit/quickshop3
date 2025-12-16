@@ -28,12 +28,19 @@ async function getPage(handle: string, storeId: number) {
   let products = null;
   if (page.template === 'CHOICES_OF' && page.selected_products && page.selected_products.length > 0) {
     products = await query<any>(
-      `SELECT id, title as name, handle as slug, 
-              (SELECT MIN(CAST(price AS DECIMAL)) FROM product_variants WHERE product_id = products.id) as price,
-              (SELECT MIN(CAST(compare_price AS DECIMAL)) FROM product_variants WHERE product_id = products.id) as compare_price,
-              images, description, inventory_qty, availability
-       FROM products 
-       WHERE store_id = $1 AND id = ANY($2::int[]) AND status = 'PUBLISHED' AND is_hidden = false`,
+      `SELECT 
+         p.id, 
+         p.title as name, 
+         p.handle as slug,
+         (SELECT MIN(CAST(price AS DECIMAL)) FROM product_variants WHERE product_id = p.id) as price,
+         (SELECT MIN(CAST(compare_price AS DECIMAL)) FROM product_variants WHERE product_id = p.id) as compare_price,
+         (SELECT id FROM product_variants WHERE product_id = p.id ORDER BY position LIMIT 1) as variant_id,
+         p.images, 
+         p.description, 
+         p.inventory_qty, 
+         p.availability
+       FROM products p
+       WHERE p.store_id = $1 AND p.id = ANY($2::int[]) AND p.status = 'active'`,
       [storeId, page.selected_products]
     );
     

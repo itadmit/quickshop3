@@ -16,6 +16,14 @@ interface CartCalculationInput {
 }
 import { useCart } from './useCart';
 
+// Global state to track pending discount code loads across all instances
+// This prevents multiple instances from making duplicate API calls
+const globalDiscountCodeLoading: { [storeId: number]: boolean } = {};
+
+// Global state to track pending cart calculations across all instances
+// This prevents multiple instances from making duplicate calculation requests
+const globalCartCalculating: { [key: string]: boolean } = {};
+
 interface UseCartCalculatorOptions {
   storeId: number;
   cartItems?: CartItem[]; // אם לא מועבר, ייטען מ-useCart
@@ -55,6 +63,63 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         return;
       }
 
+      // Check if another instance is already loading for this storeId
+      if (globalDiscountCodeLoading[options.storeId]) {
+        // Wait a bit and check sessionStorage for cached value
+        const cached = sessionStorage.getItem(`discount_code_${options.storeId}`);
+        if (cached !== null) {
+          setDiscountCode(cached);
+          setIsLoadingDiscountCode(false);
+          return;
+        }
+        // If no cache, wait and retry after a short delay
+        setTimeout(() => {
+          loadDiscountCode();
+        }, 300);
+        return;
+      }
+
+      // Check sessionStorage first for cached value
+      const cached = sessionStorage.getItem(`discount_code_${options.storeId}`);
+      if (cached !== null) {
+        setDiscountCode(cached);
+        setIsLoadingDiscountCode(false);
+        // Still load from server in background to ensure consistency, but don't block
+        // Only one instance should load from server
+        if (!globalDiscountCodeLoading[options.storeId]) {
+          globalDiscountCodeLoading[options.storeId] = true;
+          // Load from server in background without blocking UI
+          fetch(`/api/cart/discount-code?storeId=${options.storeId}`, {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
+          })
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              return { discountCode: '' };
+            })
+            .then(data => {
+              const serverCode = data.discountCode || '';
+              if (serverCode !== cached) {
+                setDiscountCode(serverCode);
+                sessionStorage.setItem(`discount_code_${options.storeId}`, serverCode);
+              }
+            })
+            .catch(() => {
+              // Ignore errors in background load
+            })
+            .finally(() => {
+              globalDiscountCodeLoading[options.storeId] = false;
+            });
+        }
+        return;
+      }
+
+      globalDiscountCodeLoading[options.storeId] = true;
+      setIsLoadingDiscountCode(true);
+
       try {
         const response = await fetch(
           `/api/cart/discount-code?storeId=${options.storeId}`,
@@ -70,18 +135,28 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           const serverCode = data.discountCode || '';
           // Always sync with server - this ensures consistency after refresh
           setDiscountCode(serverCode);
+          // Cache in sessionStorage for other instances
+          sessionStorage.setItem(`discount_code_${options.storeId}`, serverCode);
         } else {
           setDiscountCode('');
+          sessionStorage.setItem(`discount_code_${options.storeId}`, '');
         }
       } catch (error) {
         console.error('Error loading discount code:', error);
         setDiscountCode('');
+        sessionStorage.setItem(`discount_code_${options.storeId}`, '');
       } finally {
         setIsLoadingDiscountCode(false);
+        globalDiscountCodeLoading[options.storeId] = false;
       }
     };
 
-    loadDiscountCode();
+    // Debounce to prevent multiple simultaneous calls
+    const timeoutId = setTimeout(() => {
+      loadDiscountCode();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [options.storeId]);
 
   // חישוב העגלה - SINGLE SOURCE OF TRUTH
@@ -114,6 +189,15 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       return;
     }
 
+    // Create a unique key for this calculation based on cart items and discount
+    const calcKey = `${options.storeId}_${cartItems.map(i => `${i.variant_id}:${i.quantity}`).join(',')}_${discountCode || ''}`;
+    
+    // If another instance is already calculating the same thing, skip
+    if (globalCartCalculating[calcKey]) {
+      return;
+    }
+
+    globalCartCalculating[calcKey] = true;
     setLoading(true);
     try {
       const input = {
@@ -138,9 +222,15 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
       // Call API route - SINGLE SOURCE OF TRUTH
       // כל החישובים נעשים ב-/api/cart/calculate
+      // IMPORTANT: No cache - always get fresh prices for discounts and promotions
       const response = await fetch('/api/cart/calculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+        cache: 'no-store', // Prevent any caching
         body: JSON.stringify({
           storeId: options.storeId,
           items: input.items,
@@ -234,15 +324,65 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       });
     } finally {
       setLoading(false);
+      delete globalCartCalculating[calcKey];
     }
   }, [cartItems, discountCode, options.shippingRate, options.storeId, options.customerId, options.customerSegment, options.customerOrdersCount, options.customerLifetimeValue]);
 
-  // חישוב אוטומטי כשהעגלה משתנה
+  // Ref to track pending calculations to prevent duplicate calls
+  const calculatingRef = useRef(false);
+  
+  // Create a unique key for this calculation request to prevent duplicates across instances
+  const getCalculationKey = () => {
+    const itemsKey = cartItems.map(i => `${i.variant_id}-${i.quantity}`).join(',');
+    return `${options.storeId}-${itemsKey}-${discountCode || ''}-${options.shippingRate?.id || ''}`;
+  };
+  
+  // חישוב אוטומטי כשהעגלה משתנה - עם debounce חכם למניעת קריאות כפולות
   // ✅ תיקון: תלוי ב-cartItems עצמו ולא רק ב-length כדי לזהות שינויים בכמויות
+  // ✅ שיפור: אם אין calculation קיים, נחשב מיד (ללא debounce) כדי לא לפגוע ב-UX
+  // ⚠️ IMPORTANT: Always recalculate from server - no cache for prices due to discounts and promotions
   useEffect(() => {
-    if (options.autoCalculate !== false) {
-      recalculate();
+    if (options.autoCalculate === false) return;
+    
+    const calculationKey = getCalculationKey();
+    
+    // Check if another instance is already calculating the same cart
+    if (globalCartCalculating[calculationKey]) {
+      return; // Don't retry, just skip completely
     }
+    
+    // Prevent duplicate calculations in this instance
+    if (calculatingRef.current) {
+      return;
+    }
+    
+    // אם אין calculation קיים, נחשב מיד (ללא debounce) כדי לא לפגוע ב-UX
+    // Always calculate from server - never use cached prices
+    if (!calculation && cartItems.length > 0) {
+      calculatingRef.current = true;
+      globalCartCalculating[calculationKey] = true;
+      recalculate().finally(() => {
+        calculatingRef.current = false;
+        delete globalCartCalculating[calculationKey];
+      });
+      return;
+    }
+    
+    // אם יש calculation קיים, נשתמש ב-debounce כדי למנוע קריאות כפולות
+    // ⚠️ IMPORTANT: Always recalculate from server - never use cached calculation
+    // Debounce only prevents multiple simultaneous requests, but always fetches fresh data
+    const timeoutId = setTimeout(() => {
+      if (!calculatingRef.current && !globalCartCalculating[calculationKey]) {
+        calculatingRef.current = true;
+        globalCartCalculating[calculationKey] = true;
+        recalculate().finally(() => {
+          calculatingRef.current = false;
+          delete globalCartCalculating[calculationKey];
+        });
+      }
+    }, 500); // Increased debounce to 500ms to reduce requests
+    
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItems, discountCode, options.shippingRate?.id, options.storeId]);
 
@@ -286,6 +426,8 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       if (result.valid) {
         const upperCode = code.toUpperCase();
         setDiscountCode(upperCode);
+        // Cache in sessionStorage for other instances
+        sessionStorage.setItem(`discount_code_${options.storeId}`, upperCode);
         
         // Save to server (session)
         try {
@@ -330,6 +472,8 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       
       // Update state immediately after successful server removal
       setDiscountCode('');
+      // Clear from sessionStorage for other instances
+      sessionStorage.setItem(`discount_code_${options.storeId}`, '');
       
       // Force immediate recalculation with empty discount code
       // This ensures UI updates immediately without waiting for useEffect

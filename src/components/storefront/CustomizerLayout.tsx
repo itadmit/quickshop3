@@ -7,8 +7,11 @@ import React from 'react';
 import { getPageLayout } from '@/lib/customizer/getPageConfig';
 import { getStoreIdBySlug, getStoreBySlug } from '@/lib/utils/store';
 import { StorefrontSectionRenderer } from './StorefrontSectionRenderer';
-import { NEW_YORK_TEMPLATE } from '@/lib/customizer/templates/new-york';
+import { NEW_YORK_TEMPLATE, getDefaultSectionsForPage } from '@/lib/customizer/templates/new-york';
 import { query } from '@/lib/db';
+import { getProductByHandle, getProductsList } from '@/lib/storefront/queries';
+import { getCollectionByHandle } from '@/lib/storefront/queries';
+import { ProductPageProvider } from '@/contexts/ProductPageContext';
 
 interface CustomizerLayoutProps {
   storeSlug: string;
@@ -40,9 +43,11 @@ export async function CustomizerLayout({
   if (pageLayout && pageLayout.sections && pageLayout.sections.length > 0) {
     sections = pageLayout.sections;
   } else {
-    // Use default template if no custom layout exists
-    sections = NEW_YORK_TEMPLATE.sections;
+    // Use default template for specific page type if no custom layout exists
+    // This ensures product pages get product sections, collection pages get collection sections, etc.
+    sections = getDefaultSectionsForPage(pageType);
   }
+  
 
   // Helper function to load menu items from database
   const loadMenuItems = async (menuId: number | null | undefined) => {
@@ -127,18 +132,75 @@ export async function CustomizerLayout({
     }
   }
 
+  // Load product/collection data if needed
+  let product = null;
+  let collection = null;
+  let products: any[] = [];
+
+  if (pageType === 'product' && pageHandle) {
+    try {
+      // pageHandle is already decoded by CustomizerLayoutWrapper
+      product = await getProductByHandle(pageHandle, storeId);
+    } catch (error) {
+      console.error('Error loading product for customizer:', error);
+    }
+  }
+
+  if (pageType === 'collection' && pageHandle) {
+    try {
+      // Special handling for "all" collection - show all products
+      if (pageHandle === 'all') {
+        products = await getProductsList(storeId, { limit: 20, offset: 0 });
+        collection = {
+          id: 0,
+          title: 'כל המוצרים',
+          handle: 'all',
+          description: '',
+          image_url: null,
+          product_count: products.length
+        };
+      } else {
+        const collectionData = await getCollectionByHandle(pageHandle, storeId, { limit: 20, offset: 0 });
+        collection = collectionData.collection;
+        products = collectionData.products || [];
+      }
+    } catch (error) {
+      console.error('Error loading collection for customizer:', error);
+    }
+  }
+
   // Filter only header and footer for layout wrapper
   const headerSection = sections.find((s: any) => s.type === 'header' && s.visible !== false);
   const footerSection = sections.find((s: any) => s.type === 'footer' && s.visible !== false);
   
-  // Get content sections (everything except header/footer) - only for home page
-  // For other pages (product, category, etc.), we only show header/footer and let children render the content
-  // This ensures that product/category pages don't show customizer content sections
-  const contentSections = (pageType === 'home' || pageType === undefined) 
-    ? sections.filter((s: any) => 
-        s.type !== 'header' && s.type !== 'footer' && s.visible !== false
-      )
-    : [];
+  // Get content sections based on page type
+  // For home page: show all content sections
+  // For product/collection pages: show customizer sections (product/collection specific)
+  // For other pages: only header/footer
+  let contentSections: any[] = [];
+  
+  if (pageType === 'home' || pageType === undefined) {
+    // Home page: show all content sections
+    contentSections = sections.filter((s: any) => 
+      s.type !== 'header' && s.type !== 'footer' && s.visible !== false
+    );
+  } else if (pageType === 'product' || pageType === 'collection') {
+    // Product/Collection pages: show customizer sections (excluding header/footer)
+    contentSections = sections.filter((s: any) => 
+      s.type !== 'header' && s.type !== 'footer' && s.visible !== false
+    );
+  }
+
+  // Determine if we should show customizer sections or children
+  // For product pages: show customizer sections ONLY if product data is loaded
+  // For collection pages: show customizer sections ONLY if collection data is loaded
+  // For other pages: always show customizer sections (or children if no sections)
+  const shouldShowCustomizerContent = 
+    (pageType === 'product' && product) ||
+    (pageType === 'collection' && collection) ||
+    (pageType !== 'product' && pageType !== 'collection' && contentSections.length > 0);
+  
+  const shouldShowChildren = !shouldShowCustomizerContent || contentSections.length === 0;
 
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
@@ -149,19 +211,97 @@ export async function CustomizerLayout({
       
       {/* Main Content */}
       <main className="flex-1">
-        {/* Render content sections from customizer */}
-        {contentSections.map((section: any) => (
-          <StorefrontSectionRenderer key={section.id} section={section} />
-        ))}
+        {/* Wrap product page sections with ProductPageProvider for shared state */}
+        {pageType === 'product' && product ? (
+          <ProductPageProvider product={product}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {/* 2-Column Layout for Product Page (Desktop/Tablet) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 lg:gap-12">
+                {/* Left Column - Gallery */}
+                <div className="space-y-4">
+                  {contentSections
+                    .filter((s: any) => s.type === 'product_gallery')
+                    .map((section: any) => (
+                      <StorefrontSectionRenderer 
+                        key={section.id} 
+                        section={section}
+                        product={product}
+                        storeId={storeId}
+                      />
+                    ))}
+                </div>
+                
+                {/* Right Column - Product Info */}
+                <div className="space-y-4">
+                  {contentSections
+                    .filter((s: any) => ['product_title', 'product_name', 'product_price', 'product_variants', 'product_variations', 'product_add_to_cart', 'product_description', 'product_custom_fields'].includes(s.type))
+                    .map((section: any) => (
+                      <StorefrontSectionRenderer 
+                        key={section.id} 
+                        section={section}
+                        product={product}
+                        storeId={storeId}
+                      />
+                    ))}
+                </div>
+              </div>
+              
+              {/* Full Width Sections - Reviews, Related, Recently Viewed */}
+              <div className="mt-12 space-y-8">
+                {contentSections
+                  .filter((s: any) => ['product_reviews', 'related_products', 'recently_viewed', 'product_recently_viewed'].includes(s.type))
+                  .map((section: any) => (
+                    <StorefrontSectionRenderer 
+                      key={section.id} 
+                      section={section}
+                      product={product}
+                      storeId={storeId}
+                    />
+                  ))}
+              </div>
+            </div>
+          </ProductPageProvider>
+        ) : pageType === 'collection' && collection ? (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Collection page with customizer sections */}
+            {contentSections.map((section: any) => (
+              <StorefrontSectionRenderer 
+                key={section.id} 
+                section={section}
+                product={product}
+                collection={collection}
+                products={products}
+                storeId={storeId}
+              />
+            ))}
+          </div>
+        ) : shouldShowCustomizerContent ? (
+          <>
+            {/* Render content sections from customizer */}
+            {contentSections.map((section: any) => (
+              <StorefrontSectionRenderer 
+                key={section.id} 
+                section={section}
+                product={product}
+                collection={collection}
+                products={products}
+                storeId={storeId}
+              />
+            ))}
+          </>
+        ) : null}
         
-        {/* Page-specific content (children) */}
-        {children}
+        {/* For 'other' pages (login, register, account, etc.) - show children as main content */}
+        {pageType === 'other' && children}
       </main>
 
       {/* Footer from Customizer */}
       {footerSection && (
         <StorefrontSectionRenderer section={footerSection} />
       )}
+      
+      {/* For non-'other' pages - show children after footer (for fixed elements like AdminEditBar) */}
+      {pageType !== 'other' && children}
     </div>
   );
 }

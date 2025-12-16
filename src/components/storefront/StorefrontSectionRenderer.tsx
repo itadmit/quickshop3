@@ -24,16 +24,43 @@ import { FAQ } from '@/app/customize/components/sections/FAQ';
 import { VideoSection } from '@/app/customize/components/sections/VideoSection';
 import { ContactForm } from '@/app/customize/components/sections/ContactForm';
 import { LogoList } from '@/app/customize/components/sections/LogoList';
+// Product page section components
+import {
+  ProductGallerySection,
+  ProductTitleSection,
+  ProductPriceSection,
+  ProductVariantsSection,
+  ProductAddToCartSection,
+  ProductDescriptionSection,
+  ProductCustomFieldsSection,
+  ProductReviewsSection,
+  RelatedProductsSection,
+  RecentlyViewedSection
+} from '@/app/customize/components/sections/ProductPageSections';
+// Collection page section components
+import {
+  CollectionHeaderSection,
+  CollectionDescriptionSection,
+  CollectionFiltersSection,
+  CollectionProductsSection,
+  CollectionPaginationSection
+} from '@/app/customize/components/sections/CollectionPageSections';
 // Unified Header for storefront with real SideCart
 import { UnifiedHeader } from './UnifiedHeader';
 import { useStoreId } from '@/hooks/useStoreId';
+import { ProductPageProvider } from '@/contexts/ProductPageContext';
 
 interface StorefrontSectionRendererProps {
   section: SectionSettings;
+  product?: any; // Product data for product page sections
+  collection?: any; // Collection data for collection page sections
+  products?: any[]; // Products list for collection page
+  storeId?: number; // Store ID for collection sections
 }
 
-export function StorefrontSectionRenderer({ section }: StorefrontSectionRendererProps) {
-  const storeId = useStoreId();
+export function StorefrontSectionRenderer({ section, product, collection, products, storeId: propStoreId }: StorefrontSectionRendererProps) {
+  const contextStoreId = useStoreId();
+  const storeId = propStoreId || contextStoreId;
   
   // Get responsive settings (always desktop for storefront)
   const settings = getResponsiveSettings(section, 'desktop');
@@ -233,6 +260,117 @@ export function StorefrontSectionRenderer({ section }: StorefrontSectionRenderer
 
     case 'footer':
       return <Footer section={responsiveSection} onUpdate={noopUpdate} />;
+
+    // ========== Product Page Sections ==========
+    // Note: ProductPageProvider is wrapped at CustomizerLayout level for all product sections
+    case 'product_gallery':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductGallerySection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_title':
+    case 'product_name':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductTitleSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_price':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductPriceSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_variants':
+    case 'product_variations':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductVariantsSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_add_to_cart':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductAddToCartSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_description':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductDescriptionSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_custom_fields':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductCustomFieldsSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_reviews':
+      return (
+        <SectionWrapper className="py-4">
+          <ProductReviewsSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
+        </SectionWrapper>
+      );
+
+    case 'related_products':
+      return (
+        <SectionWrapper className="py-8">
+          <RelatedProductsSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
+        </SectionWrapper>
+      );
+
+    case 'recently_viewed':
+    case 'product_recently_viewed':
+      return (
+        <SectionWrapper className="py-8">
+          <RecentlyViewedSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
+        </SectionWrapper>
+      );
+
+    // ========== Collection Page Sections ==========
+    case 'collection_header':
+      return (
+        <SectionWrapper className="py-8">
+          <CollectionHeaderSection section={responsiveSection} collection={collection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_description':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionDescriptionSection section={responsiveSection} collection={collection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_filters':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionFiltersSection section={responsiveSection} collection={collection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_products':
+      return (
+        <SectionWrapper className="py-8">
+          <CollectionProductsSection section={responsiveSection} collection={collection} products={products} onUpdate={noopUpdate} storeId={storeId || undefined} />
+        </SectionWrapper>
+      );
+
+    case 'collection_pagination':
+      return (
+        <SectionWrapper className="py-8">
+          <CollectionPaginationSection section={responsiveSection} collection={collection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
 
     default:
       return null;

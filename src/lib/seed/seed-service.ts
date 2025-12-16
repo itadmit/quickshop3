@@ -449,14 +449,15 @@ export class SeedService {
             );
           }
         } else {
-          // אם אין variants, יוצר variant ברירת מחדל
+          // אם אין variants אבל יש options, יוצר variant ברירת מחדל
           await queryOne<{ id: number }>(
-            `INSERT INTO product_variants (product_id, price, compare_at_price, sku, 
+            `INSERT INTO product_variants (product_id, title, price, compare_at_price, sku, 
              taxable, inventory_quantity, weight, position, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 1, now(), now())
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, now(), now())
              RETURNING id`,
             [
               productId,
+              'Default Title',
               productData.price || 0,
               productData.compare_at_price || null,
               productData.sku || null,
@@ -466,6 +467,24 @@ export class SeedService {
             ]
           );
         }
+      } else {
+        // מוצר בלי options - יוצר variant ברירת מחדל (כמו בשופיפי - כל מוצר חייב לפחות variant אחד)
+        await queryOne<{ id: number }>(
+          `INSERT INTO product_variants (product_id, title, price, compare_at_price, sku, 
+           taxable, inventory_quantity, weight, position, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, now(), now())
+           RETURNING id`,
+          [
+            productId,
+            'Default Title',
+            productData.price || 0,
+            productData.compare_at_price || null,
+            productData.sku || null,
+            productData.taxable ?? true,
+            productData.inventory_quantity || 0,
+            productData.weight || null,
+          ]
+        );
       }
 
       // Emit event

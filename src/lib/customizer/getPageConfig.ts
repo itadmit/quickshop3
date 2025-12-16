@@ -135,8 +135,6 @@ export async function getPageLayout(storeId: number, pageType: string, pageHandl
 
     const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle]);
 
-    console.log('[getPageLayout] Store ID:', storeId, 'Page Type:', pageType, 'Found layouts:', layoutResult.length);
-
     if (layoutResult.length === 0) {
       return null;
     }

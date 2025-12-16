@@ -17,6 +17,7 @@ interface Product {
   description: string | null;
   inventory_qty: number;
   availability: string;
+  variant_id?: number; // Default variant ID
 }
 
 interface Page {
@@ -58,10 +59,39 @@ export function ChoicesOfPageClient({ page, products, storeSlug }: ChoicesOfPage
 
   const handleAddToCart = async (product: Product) => {
     try {
-      await addToCart({
-        productId: product.id,
+      // If we don't have variant_id, we need to fetch it first
+      let variantId = product.variant_id;
+      
+      if (!variantId) {
+        // Fetch the first variant for this product
+        const response = await fetch(`/api/products/${product.id}/variants`);
+        if (response.ok) {
+          const data = await response.json();
+          const variants = data.variants || [];
+          if (variants.length > 0) {
+            variantId = variants[0].id;
+          }
+        }
+      }
+      
+      if (!variantId) {
+        console.error('No variant found for product:', product.id);
+        return;
+      }
+      
+      const success = await addToCart({
+        variant_id: variantId,
+        product_id: product.id,
+        product_title: product.name,
+        variant_title: 'Default Title',
+        price: product.price,
         quantity: 1,
+        image: product.images && product.images.length > 0 ? product.images[0] : undefined,
       });
+      
+      if (!success) {
+        console.error('Failed to add product to cart');
+      }
     } catch (error) {
       console.error('Error adding to cart:', error);
     }

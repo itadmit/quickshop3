@@ -7,6 +7,7 @@ import { SiTiktok, SiSnapchat } from 'react-icons/si';
 import { CountrySelector } from '@/components/storefront/CountrySelector';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -22,6 +23,7 @@ export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterPr
   const showCurrencySelector = settings.currency_selector?.enabled === true;
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+  const { t } = useTranslation('storefront');
   
   const columnsCount = settings.columns_count || 4;
   const columns = settings.columns || [];
@@ -115,13 +117,13 @@ export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterPr
                         </li>
                       ))
                     ) : (
-                      <li className="text-gray-500 text-sm">טוען תפריט...</li>
+                      <li className="text-gray-500 text-sm">{t('footer.loading_menu') || 'טוען תפריט...'}</li>
                     )}
                   </ul>
                 )}
                 
                 {columnType === 'menu' && !column.menu_id && (
-                  <p className="text-gray-500 text-sm">לא נבחר תפריט</p>
+                  <p className="text-gray-500 text-sm">{t('footer.no_menu_selected') || 'לא נבחר תפריט'}</p>
                 )}
                 
                 {columnType === 'text' && (
@@ -164,7 +166,7 @@ export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterPr
                     >
                       <input
                         type="email"
-                        placeholder="הכנס את כתובת המייל"
+                        placeholder={t('newsletter.email_placeholder') || 'הכנס את כתובת המייל'}
                         className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
                         dir="ltr"
                       />
@@ -176,7 +178,7 @@ export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterPr
                           color: column.newsletter_button_text || '#FFFFFF'
                         }}
                       >
-                        שלח
+                        {t('footer.send') || 'שלח'}
                       </button>
                     </form>
                   </div>
@@ -195,7 +197,7 @@ export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterPr
               </div>
             )}
             
-            <p className="text-center text-sm">{settings.copyright || `© ${new Date().getFullYear()} כל הזכויות שמורות`}</p>
+            <p className="text-center text-sm">{settings.copyright || t('footer.powered_by') || `מופעל על ידי Quick Shop - פלטפורמה להקמת חנויות וירטואליות © ${new Date().getFullYear()}`}</p>
             
             {/* Social Links */}
             {settings.social_links?.enabled !== false && settings.social_links?.links && settings.social_links.links.length > 0 && (

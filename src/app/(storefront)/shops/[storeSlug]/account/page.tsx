@@ -35,7 +35,6 @@ import {
   HiGift,
 } from "react-icons/hi"
 import Link from "next/link"
-import { StorefrontHeader } from "@/components/storefront/StorefrontHeader"
 import { Skeleton, TextSkeleton } from "@/components/ui/Skeleton"
 
 interface Store {
@@ -576,28 +575,11 @@ export default function StorefrontAccountPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col" dir="rtl">
-        <StorefrontHeader
-          storeName={store?.name || 'החנות שלי'}
-          storeLogo={store?.logo || undefined}
-        />
-        <main className="flex-1">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              <div className="h-40 bg-gray-200 rounded"></div>
-            </div>
-          </div>
-        </main>
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <p className="text-gray-600 text-sm">
-                &copy; {new Date().getFullYear()} {store?.name || "חנות"}. כל הזכויות שמורות.
-              </p>
-            </div>
-          </div>
-        </footer>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-40 bg-gray-200 rounded"></div>
+        </div>
       </div>
     )
   }
@@ -607,15 +589,7 @@ export default function StorefrontAccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col" dir="rtl">
-      {/* Header */}
-      <StorefrontHeader
-        storeName={store?.name || 'החנות שלי'}
-        storeLogo={store?.logo || undefined}
-      />
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">חשבון שלי</h1>
@@ -1437,7 +1411,6 @@ export default function StorefrontAccountPage() {
             )}
           </div>
         </div>
-      </main>
 
       {/* Add/Edit Address Dialog */}
       <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>
@@ -1970,16 +1943,6 @@ export default function StorefrontAccountPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <p className="text-gray-600 text-sm">
-              &copy; {new Date().getFullYear()} {store?.name || "חנות"}. כל הזכויות שמורות.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

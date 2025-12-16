@@ -14,6 +14,10 @@ export interface ProductListItem {
   price: number;
   compare_at_price: number | null;
   available: number;
+  colors?: Array<{
+    value: string;
+    color?: string; // Hex color code
+  }>;
 }
 
 export interface ProductDetails extends ProductListItem {
@@ -159,10 +163,54 @@ export async function getProductsList(
     [...params, limit, offset]
   );
 
-  // Map to use inventory_quantity as available
+  // If no products, return empty
+  if (products.length === 0) {
+    return [];
+  }
+
+  // Batch query to get color options for all products
+  const productIds = products.map(p => p.id);
+  const colorOptions = await query<{
+    product_id: number;
+    value: string;
+    metadata: string | null;
+  }>(
+    `SELECT 
+      po.product_id,
+      pov.value,
+      pov.metadata::text
+    FROM product_options po
+    INNER JOIN product_option_values pov ON pov.option_id = po.id
+    WHERE po.product_id = ANY($1::int[]) 
+      AND po.type = 'color'
+    ORDER BY pov.position`,
+    [productIds]
+  );
+
+  // Group colors by product
+  const colorsMap = new Map<number, Array<{ value: string; color?: string }>>();
+  for (const opt of colorOptions) {
+    if (!colorsMap.has(opt.product_id)) {
+      colorsMap.set(opt.product_id, []);
+    }
+    let colorHex: string | undefined;
+    if (opt.metadata) {
+      try {
+        const meta = JSON.parse(opt.metadata);
+        colorHex = meta.color;
+      } catch {}
+    }
+    colorsMap.get(opt.product_id)!.push({
+      value: opt.value,
+      color: colorHex,
+    });
+  }
+
+  // Map to use inventory_quantity as available and add colors
   return products.map(p => ({
     ...p,
     available: p.inventory_quantity || 0,
+    colors: colorsMap.get(p.id) || undefined,
   }));
 }
 
@@ -175,8 +223,17 @@ export async function getProductByHandle(
   storeId: number,
   customerTier?: string | null
 ): Promise<ProductDetails | null> {
-  // Decode URL-encoded handle (for Hebrew slugs)
-  const decodedHandle = decodeURIComponent(handle);
+  // Handle might already be decoded, so only decode if it looks encoded
+  let decodedHandle = handle;
+  try {
+    // Check if it looks URL-encoded (contains %)
+    if (handle.includes('%')) {
+      decodedHandle = decodeURIComponent(handle);
+    }
+  } catch {
+    // If decoding fails, use original
+    decodedHandle = handle;
+  }
   
   // Build WHERE clause with tier filtering
   let whereClause = 'p.store_id = $1 AND p.handle = $2 AND p.status = \'active\'';

@@ -117,8 +117,12 @@ export default function CartPage() {
                   const item = calculatedItem.item;
                   const hasDiscount = calculatedItem.lineDiscount > 0;
                   
+                  // בדיקה אם זה מוצר מתנה (gift product)
+                  const isGiftProduct = item.properties?.some(prop => prop.name === 'מתנה');
+                  const giftDiscountName = item.properties?.find(prop => prop.name === 'מתנה')?.value;
+                  
                   return (
-                    <div key={item.variant_id} className="p-6 flex items-center gap-6">
+                    <div key={item.variant_id} className={`p-6 flex items-center gap-6 ${isGiftProduct ? 'bg-green-50 border-l-4 border-green-500' : ''}`}>
                       {/* Product Image */}
                       <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         {item.image ? (
@@ -139,13 +143,27 @@ export default function CartPage() {
 
                       {/* Product Info */}
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-1">{item.product_title}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-gray-900">{item.product_title}</h3>
+                          {isGiftProduct && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full">
+                              {t('cart.gift')}
+                            </span>
+                          )}
+                        </div>
                         
-                        {/* מטא-דאטה מתחת לכותרת: אפשרויות, variant title, וכו' */}
+                        {/* חיווי למוצר מתנה */}
+                        {isGiftProduct && giftDiscountName && (
+                          <p className="text-sm text-green-700 font-medium mb-1">
+                            {t('cart.gift_from_discount', { discount: giftDiscountName })}
+                          </p>
+                        )}
+                        
+                        {/* מטא-דאטה מתחת לכותרת: אפשרויות, variant title, וכו' - ללא המאפיין "מתנה" */}
                         <div className="mt-1 space-y-1">
                           {item.properties && item.properties.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
-                              {item.properties.map((prop, idx) => (
+                              {item.properties.filter(prop => prop.name !== 'מתנה').map((prop, idx) => (
                                 <span key={idx} className="text-xs text-gray-600">
                                   <span className="font-medium">{prop.name}:</span> {prop.value}
                                 </span>
@@ -157,46 +175,67 @@ export default function CartPage() {
                         </div>
                       </div>
 
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleQuantityChange(item.variant_id, item.quantity - 1)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          aria-label="הפחת כמות"
-                          disabled={item.quantity <= 1}
-                        >
-                          <HiMinus className="w-4 h-4" />
-                        </button>
-                        <span className="w-12 text-center font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => handleQuantityChange(item.variant_id, item.quantity + 1)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          aria-label="הוסף כמות"
-                        >
-                          <HiPlus className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {/* Quantity Controls - מוצרי מתנה קבועים בכמות 1 */}
+                      {isGiftProduct ? (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-green-100 border border-green-300 rounded-lg">
+                          <span className="text-sm font-medium text-green-800">{t('cart.quantity_fixed')}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleQuantityChange(item.variant_id, item.quantity - 1)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label={t('cart.decrease_quantity')}
+                            disabled={item.quantity <= 1}
+                          >
+                            <HiMinus className="w-4 h-4" />
+                          </button>
+                          <span className="w-12 text-center font-medium">{item.quantity}</span>
+                          <button
+                            onClick={() => handleQuantityChange(item.variant_id, item.quantity + 1)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label={t('cart.increase_quantity')}
+                          >
+                            <HiPlus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
 
                       {/* Item Total - המחיר מופיע רק כאן, ליד הכמות */}
-                      <div className="text-left min-w-[100px] flex flex-col items-end">
+                      <div className="text-left min-w-[120px] flex flex-col items-end gap-1">
                         {hasDiscount ? (
                           <>
                             <p className="text-sm text-gray-400 line-through">₪{calculatedItem.lineTotal.toFixed(2)}</p>
                             <p className="text-lg font-bold text-gray-900">₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}</p>
+                            {/* תווית הנחות אוטומטיות */}
+                            {calculatedItem.appliedDiscounts && calculatedItem.appliedDiscounts.length > 0 && (
+                              <div className="flex flex-col gap-1 items-end">
+                                {calculatedItem.appliedDiscounts
+                                  .filter(discount => discount.source === 'automatic')
+                                  .map((discount, idx) => (
+                                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full whitespace-nowrap">
+                                      {discount.name}
+                                    </span>
+                                  ))
+                                }
+                              </div>
+                            )}
                           </>
                         ) : (
                           <p className="text-lg font-bold text-gray-900">₪{calculatedItem.lineTotal.toFixed(2)}</p>
                         )}
                       </div>
 
-                      {/* Remove Button */}
-                      <button
-                        onClick={() => handleRemove(item.variant_id)}
-                        className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
-                        aria-label={translationsLoading ? 'מחק' : t('cart.remove')}
-                      >
-                        <HiTrash className="w-5 h-5" />
-                      </button>
+                      {/* Remove Button - מוסתר למוצרי מתנה */}
+                      {!isGiftProduct && (
+                        <button
+                          onClick={() => handleRemove(item.variant_id)}
+                          className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                          aria-label={translationsLoading ? 'מחק' : t('cart.remove')}
+                        >
+                          <HiTrash className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   );
                 })

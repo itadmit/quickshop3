@@ -12,12 +12,10 @@ import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
 import { SectionSettings } from '@/lib/customizer/types';
 
-// Dynamic imports for real components (only used in storefront)
-import dynamic from 'next/dynamic';
-
-const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { ssr: false });
-const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { ssr: false });
-const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { ssr: false });
+// Regular imports - we'll use isMounted to prevent hydration mismatch
+import { SideCart } from '@/components/storefront/SideCart';
+import { SearchBar } from '@/components/storefront/SearchBar';
+import { CountrySelector } from '@/components/storefront/CountrySelector';
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -37,8 +35,14 @@ export function UnifiedHeader({
   storeId
 }: UnifiedHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+
+  // Fix hydration mismatch - only render client-side components after mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   const settings = section.settings || {};
   const style = section.style || {};
@@ -247,15 +251,15 @@ export function UnifiedHeader({
       );
     }
 
-    // Storefront mode - real components
+    // Storefront mode - real components (only after mount to prevent hydration mismatch)
     if (split) {
       if (position === 'right') {
-        return settings.search?.enabled === true ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
+        return settings.search?.enabled === true && isMounted ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
       }
       if (position === 'left') {
         return (
           <div className="flex items-center gap-1">
-            {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+            {settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
             {settings.wishlist?.enabled === true && (
               <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
                 <HiHeart className="w-5 h-5" />
@@ -273,9 +277,9 @@ export function UnifiedHeader({
 
     return (
       <div className="flex items-center gap-1">
-        {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
-        {settings.currency_selector?.enabled === true && <CountrySelector />}
-        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+        {settings.search?.enabled === true && isMounted && <SearchBar placeholder={settings.search?.placeholder} />}
+        {settings.currency_selector?.enabled === true && isMounted && <CountrySelector />}
+        {settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
         {settings.wishlist?.enabled === true && (
           <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
             <HiHeart className="w-5 h-5" />
@@ -375,7 +379,7 @@ export function UnifiedHeader({
             <Logo />
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
             <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+              {!isPreview && settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
               {isPreview && settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
@@ -391,7 +395,7 @@ export function UnifiedHeader({
             <div className="hidden md:contents"><Navigation /></div>
             <Logo />
             <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+              {!isPreview && settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
               {isPreview && settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
@@ -408,7 +412,7 @@ export function UnifiedHeader({
               <Logo />
               <div className="hidden md:flex"><Icons split position="left" /></div>
               <div className="md:hidden flex items-center gap-2">
-                {!isPreview && settings.cart?.enabled !== false && storeId && <SideCart storeId={storeId} />}
+                {!isPreview && settings.cart?.enabled !== false && storeId && isMounted && <SideCart storeId={storeId} />}
                 {isPreview && settings.cart?.enabled !== false && (
                   <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
                 )}
@@ -429,7 +433,7 @@ export function UnifiedHeader({
             <div className="hidden md:contents"><Navigation /></div>
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
             <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+              {!isPreview && settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
               {isPreview && settings.cart?.enabled === true && (
                 <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}

@@ -27,18 +27,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // לוגים לדיבוג (רק ב-development)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Cart calculate request:', {
-        storeId,
-        storeIdType: typeof storeId,
-        itemsCount: items?.length,
-        items: items?.slice(0, 2), // רק 2 פריטים ראשונים ללוג
-        firstItem: items?.[0],
-        discountCode,
-        shippingRate,
-      });
-    }
 
     // בדיקת תקינות storeId (חייב להיות מספר חיובי)
     const storeIdNum = typeof storeId === 'string' ? parseInt(storeId, 10) : Number(storeId);
@@ -154,10 +142,18 @@ export async function POST(req: NextRequest) {
     const result = await calculator.calculate();
 
     // Include discountCode in response so client can sync
-    return NextResponse.json({
+    // IMPORTANT: No cache for prices and calculations - always fresh data for discounts and promotions
+    const response = NextResponse.json({
       ...result,
       discountCode: discountCode || null, // Include current discount code in response
     });
+    
+    // Prevent caching of price calculations
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error: any) {
     console.error('Cart calculation error:', error);
     console.error('Error stack:', error.stack);

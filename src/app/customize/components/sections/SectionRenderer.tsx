@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiCube } from 'react-icons/hi';
 import { UnifiedHeader, DeviceType } from '@/components/storefront/UnifiedHeader';
@@ -35,6 +35,15 @@ import {
   RelatedProductsSection,
   RecentlyViewedSection
 } from './ProductPageSections';
+import { DEMO_COLLECTION_PRODUCTS } from '@/lib/customizer/demoData';
+// Import collection page section components
+import {
+  CollectionHeaderSection,
+  CollectionDescriptionSection,
+  CollectionFiltersSection,
+  CollectionProductsSection,
+  CollectionPaginationSection
+} from './CollectionPageSections';
 
 interface SectionRendererProps {
   section: SectionSettings;
@@ -45,11 +54,12 @@ interface SectionRendererProps {
   sampleCollection?: any; // Sample collection for collection page preview
 }
 
-export function SectionRenderer({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection }: SectionRendererProps) {
+// Memoized SectionRenderer - only re-renders when section content changes, NOT when isSelected changes
+function SectionRendererInner({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection }: SectionRendererProps) {
   
-  // Get responsive style
-  const style = getResponsiveStyle(section, device);
-  const settings = getResponsiveSettings(section, device);
+  // Memoize style and settings to prevent unnecessary recalculations
+  const style = useMemo(() => getResponsiveStyle(section, device), [section, device]);
+  const settings = useMemo(() => getResponsiveSettings(section, device), [section, device]);
 
   // Base section wrapper with common styles
   const SectionWrapper = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
@@ -240,6 +250,7 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
         </SectionWrapper>
       );
 
+    case 'product_title':
     case 'product_name':
       return (
         <SectionWrapper className="py-2">
@@ -254,6 +265,7 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
         </SectionWrapper>
       );
 
+    case 'product_variants':
     case 'product_variations':
       return (
         <SectionWrapper className="py-2">
@@ -285,21 +297,57 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     case 'product_reviews':
       return (
         <SectionWrapper className="py-4">
-          <ProductReviewsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+          <ProductReviewsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} isPreview={true} />
         </SectionWrapper>
       );
 
     case 'related_products':
       return (
         <SectionWrapper className="py-8">
-          <RelatedProductsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+          <RelatedProductsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} isPreview={true} />
         </SectionWrapper>
       );
 
     case 'product_recently_viewed':
       return (
         <SectionWrapper className="py-8">
-          <RecentlyViewedSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+          <RecentlyViewedSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} isPreview={true} />
+        </SectionWrapper>
+      );
+
+    // ========== Collection Page Sections ==========
+    case 'collection_header':
+      return (
+        <SectionWrapper className="py-8">
+          <CollectionHeaderSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_description':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionDescriptionSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_filters':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionFiltersSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_products':
+      return (
+        <SectionWrapper className="py-8">
+          <CollectionProductsSection section={responsiveSection} collection={sampleCollection} products={DEMO_COLLECTION_PRODUCTS} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_pagination':
+      return (
+        <SectionWrapper className="py-8">
+          <CollectionPaginationSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
         </SectionWrapper>
       );
 
@@ -318,3 +366,19 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
       );
   }
 }
+
+// Custom comparison function - ignore isSelected to prevent unnecessary re-renders
+function arePropsEqual(prevProps: SectionRendererProps, nextProps: SectionRendererProps): boolean {
+  // Only re-render if these change (ignore isSelected)
+  return (
+    prevProps.section === nextProps.section &&
+    prevProps.device === nextProps.device &&
+    prevProps.sampleProduct === nextProps.sampleProduct &&
+    prevProps.sampleCollection === nextProps.sampleCollection
+    // NOTE: onUpdate is excluded intentionally as it's a new function each render
+    // NOTE: isSelected is excluded intentionally to prevent re-renders on selection change
+  );
+}
+
+// Export memoized version
+export const SectionRenderer = memo(SectionRendererInner, arePropsEqual);

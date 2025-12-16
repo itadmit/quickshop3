@@ -48,7 +48,13 @@ export async function GET(request: NextRequest) {
         ? cartData.items 
         : [];
 
-    return NextResponse.json({ items });
+    // IMPORTANT: No cache for cart - prices may change due to discounts and promotions
+    const response = NextResponse.json({ items });
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error: any) {
     console.error('Error getting cart:', error);
     return NextResponse.json(
@@ -87,8 +93,9 @@ export async function POST(request: NextRequest) {
       isNewCart = true;
     } else {
       // Check if cart already exists
-      const existingCart = await queryOne<{ id: number }>(
-        `SELECT id FROM visitor_carts WHERE visitor_session_id = $1 AND store_id = $2`,
+      // Note: visitor_carts table uses composite PRIMARY KEY (visitor_session_id, store_id), no 'id' column
+      const existingCart = await queryOne<{ visitor_session_id: string }>(
+        `SELECT visitor_session_id FROM visitor_carts WHERE visitor_session_id = $1 AND store_id = $2`,
         [visitorSessionId, storeId]
       );
       isNewCart = !existingCart;

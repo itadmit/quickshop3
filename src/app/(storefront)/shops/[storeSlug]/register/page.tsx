@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/Label"
 import { useOptimisticToast } from "@/hooks/useOptimisticToast"
 import { HiMail, HiArrowLeft, HiUser, HiPhone, HiIdentification, HiCalendar } from "react-icons/hi"
 import Link from "next/link"
-import { StorefrontHeader } from "@/components/storefront/StorefrontHeader"
 import { Skeleton } from "@/components/ui/Skeleton"
 
 interface Store {
@@ -157,26 +156,19 @@ export default function StorefrontRegisterPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50" dir="rtl">
-        <StorefrontHeader 
-          storeSlug={storeSlug}
-          storeName={undefined}
-          storeLogo={undefined}
-        />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full space-y-8">
-            <div className="text-center space-y-4">
-              <Skeleton className="h-16 w-32 mx-auto" />
-              <Skeleton className="h-8 w-64 mx-auto" />
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ))}
-            </div>
+      <div className="flex items-center justify-center min-h-[60vh] py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center space-y-4">
+            <Skeleton className="h-16 w-32 mx-auto" />
+            <Skeleton className="h-8 w-64 mx-auto" />
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -184,14 +176,7 @@ export default function StorefrontRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <StorefrontHeader 
-        storeSlug={storeSlug}
-        storeName={store?.name}
-        storeLogo={store?.logo || undefined}
-      />
-      
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center min-h-[60vh] py-8 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-md w-full space-y-6 sm:space-y-8">
           {/* Header Section */}
           <div className="text-center space-y-3 sm:space-y-4">
@@ -436,7 +421,6 @@ export default function StorefrontRegisterPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }
 

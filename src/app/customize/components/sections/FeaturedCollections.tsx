@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface FeaturedCollectionsProps {
   section: SectionSettings;
@@ -12,6 +13,7 @@ interface FeaturedCollectionsProps {
 export function FeaturedCollections({ section, onUpdate, editorDevice }: FeaturedCollectionsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
+  const { t } = useTranslation('storefront');
   
   const itemsPerRow = settings.items_per_row || 3;
   const sliderItemsDesktop = settings.slider_items_desktop || 4.5;
@@ -66,14 +68,14 @@ export function FeaturedCollections({ section, onUpdate, editorDevice }: Feature
             className={`text-2xl md:text-3xl font-bold`}
             style={{ color: textColor }}
           >
-            {settings.title || 'קטגוריות פופולריות'}
+            {settings.title || t('sections.featured_collections.title') || 'קטגוריות פופולריות'}
           </h2>
           {settings.show_view_all !== false && (
             <a 
               href={settings.view_all_url || '/collections'}
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
             >
-              {settings.view_all_text || 'לכל הקטגוריות'}
+              {settings.view_all_text || t('sections.featured_collections.view_all') || 'לכל הקטגוריות'}
               <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

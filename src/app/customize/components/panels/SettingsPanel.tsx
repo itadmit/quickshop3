@@ -2427,7 +2427,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
             <SettingGroup title="כללי">
               <div className="space-y-4">
-                {renderInput('זכויות יוצרים', 'copyright', `© ${new Date().getFullYear()} כל הזכויות שמורות`)}
+                {renderInput('זכויות יוצרים', 'copyright', `מופעל על ידי Quick Shop - פלטפורמה להקמת חנויות וירטואליות © ${new Date().getFullYear()}`)}
               </div>
             </SettingGroup>
           </div>

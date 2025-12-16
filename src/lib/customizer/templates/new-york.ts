@@ -361,7 +361,7 @@ export const NEW_YORK_TEMPLATE: Omit<PageTemplate, 'id' | 'store_id' | 'created_
         currency_selector: {
           enabled: false
         },
-        copyright: '© 2024 כל הזכויות שמורות'
+        copyright: ''
       }
     }
   ],
@@ -449,7 +449,7 @@ function getFooterSection(order: number): SectionSettings {
       ],
       social_links: { enabled: true, links: [] },
       currency_selector: { enabled: false },
-      copyright: '© 2024 כל הזכויות שמורות'
+      copyright: ''
     }
   };
 }
@@ -474,7 +474,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   },
   {
     id: 'product-title',
-    type: 'product_title',
+    type: 'product_name',
     name: 'שם המוצר',
     visible: true,
     order: 2,

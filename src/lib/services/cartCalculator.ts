@@ -120,6 +120,8 @@ export interface AutomaticDiscount {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Gift product
+  gift_product_id?: number | null;
   product_ids?: number[];
   collection_ids?: number[];
   tag_names?: string[];
@@ -435,16 +437,26 @@ export class CartCalculator {
       // Build date filter - if customer has early access, include future discounts
       let dateFilter = '';
       let dateParams: any[] = [];
+      
       if (hasEarlyAccess) {
         // With early access, only filter by end date (don't filter by start date)
+        // Parameters: $1=storeId, $2=now, $3=currentDay, $4=currentHour
         dateFilter = `AND (ends_at IS NULL OR ends_at >= $2)`;
         dateParams = [now];
       } else {
         // Without early access, filter by both start and end dates
+        // Parameters: $1=storeId, $2=now (starts_at), $3=now (ends_at), $4=currentDay, $5=currentHour
         dateFilter = `AND (starts_at IS NULL OR starts_at <= $2)
-          AND (ends_at IS NULL OR ends_at >= $2)`;
-        dateParams = [now];
+          AND (ends_at IS NULL OR ends_at >= $3)`;
+        dateParams = [now, now]; // Two parameters for two date checks
       }
+
+      // Calculate parameter indices for day_of_week and hour checks
+      // After storeId ($1) and dateParams, next params are currentDay and currentHour
+      // If hasEarlyAccess: $1=storeId, $2=now, $3=currentDay, $4=currentHour
+      // If !hasEarlyAccess: $1=storeId, $2=now(starts_at), $3=now(ends_at), $4=currentDay, $5=currentHour
+      const dayParamIndex = dateParams.length + 2; // $3 or $4
+      const hourParamIndex = dateParams.length + 3; // $4 or $5
 
       const discounts = await query<{
         id: number;
@@ -478,6 +490,7 @@ export class CartCalculator {
         bundle_discount_type: string | null;
         bundle_discount_value: string | null;
         volume_tiers: any;
+        gift_product_id: number | null;
       }>(
         `SELECT 
           id, name, description, discount_type, value,
@@ -498,8 +511,8 @@ export class CartCalculator {
         WHERE store_id = $1 
           AND is_active = true
           ${dateFilter}
-          AND (day_of_week IS NULL OR $${dateParams.length + 1} = ANY(day_of_week))
-          AND (hour_start IS NULL OR hour_end IS NULL OR ($${dateParams.length + 2} >= hour_start AND $${dateParams.length + 2} < hour_end))
+          AND (day_of_week IS NULL OR $${dayParamIndex}::integer = ANY(day_of_week))
+          AND (hour_start IS NULL OR hour_end IS NULL OR ($${hourParamIndex}::integer >= hour_start AND $${hourParamIndex}::integer < hour_end))
         ORDER BY priority DESC`,
         [this.storeId, ...dateParams, currentDay, currentHour]
       );
@@ -884,27 +897,39 @@ export class CartCalculator {
     // Helper function to load gift product
     const loadGiftProduct = async (giftProductId: number, discountId: number, discountName: string) => {
       try {
-        // טעינת פרטי המוצר והגרסה הראשונה שלו
+        // טעינת פרטי המוצר והתמונה הראשונה שלו
         const productResult = await query<{
           id: number;
           title: string;
-          image: string | null;
         }>(
-          `SELECT id, title, image FROM products WHERE id = $1 AND store_id = $2`,
+          `SELECT id, title FROM products WHERE id = $1 AND store_id = $2`,
           [giftProductId, this.storeId]
         );
 
         if (productResult.length > 0) {
           const product = productResult[0];
           
+          // טעינת התמונה הראשונה של המוצר
+          const imageResult = await query<{
+            src: string;
+          }>(
+            `SELECT src 
+             FROM product_images 
+             WHERE product_id = $1 
+             ORDER BY position ASC, id ASC 
+             LIMIT 1`,
+            [product.id]
+          );
+          
+          const productImage = imageResult.length > 0 ? imageResult[0].src : undefined;
+          
           // טעינת הגרסה הראשונה של המוצר
           const variantResult = await query<{
             id: number;
             title: string;
             price: string;
-            image: string | null;
           }>(
-            `SELECT id, title, price, image 
+            `SELECT id, title, price 
              FROM product_variants 
              WHERE product_id = $1 
              ORDER BY id ASC 
@@ -920,7 +945,7 @@ export class CartCalculator {
               product_title: product.title,
               variant_title: variant.title || 'Default',
               price: parseFloat(variant.price),
-              image: variant.image || product.image || undefined,
+              image: productImage,
               discount_id: discountId,
               discount_name: discountName,
             });
