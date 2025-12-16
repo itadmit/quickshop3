@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
-import { HiSave, HiX, HiTrash, HiSearch, HiPackage } from 'react-icons/hi';
+import { HiSave, HiX, HiTrash, HiSearch, HiCube } from 'react-icons/hi';
 import { Page } from '@/types/content';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -409,7 +409,7 @@ export default function PageDetailsPage() {
                               ) : null;
                             })()}
                             <div className={`w-12 h-12 rounded bg-gray-100 flex items-center justify-center ${getProductImageUrl(product) ? 'hidden' : ''}`}>
-                              <HiPackage className="w-6 h-6 text-gray-400" />
+                              <HiCube className="w-6 h-6 text-gray-400" />
                             </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium">{getProductName(product)}</p>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { HiPackage, HiCheckCircle2 } from 'react-icons/hi';
+import { HiCheckCircle, HiCube } from 'react-icons/hi';
 import { useCart } from '@/hooks/useCart';
 
 interface Product {
@@ -109,7 +109,7 @@ export function ChoicesOfPageClient({ page, products, storeSlug }: ChoicesOfPage
         {isCouponActive && (
           <div className="mt-4 flex justify-center">
             <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-              <HiCheckCircle2 className="h-5 w-5 text-green-700 flex-shrink-0" />
+              <HiCheckCircle className="h-5 w-5 text-green-700 flex-shrink-0" />
               <span className="text-green-800 font-medium text-sm">
                 קוד הנחה {page.coupon_code} הופעל בעגלה שלך
               </span>
@@ -138,7 +138,7 @@ export function ChoicesOfPageClient({ page, products, storeSlug }: ChoicesOfPage
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <HiPackage className="w-12 sm:w-16 h-12 sm:h-16 text-gray-400" />
+                        <HiCube className="w-12 sm:w-16 h-12 sm:h-16 text-gray-400" />
                       </div>
                     )}
                   </Link>
@@ -212,7 +212,7 @@ export function ChoicesOfPageClient({ page, products, storeSlug }: ChoicesOfPage
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <HiPackage className="w-16 h-16 text-gray-400" />
+                      <HiCube className="w-16 h-16 text-gray-400" />
                     </div>
                   )}
                 </Link>
@@ -264,7 +264,7 @@ export function ChoicesOfPageClient({ page, products, storeSlug }: ChoicesOfPage
 
       {products.length === 0 && (
         <div className="text-center py-12">
-          <HiPackage className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <HiCube className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500">אין מוצרים להצגה</p>
         </div>
       )}
