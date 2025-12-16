@@ -21,6 +21,31 @@ interface ProductSectionProps {
 export function ProductGallerySection({ section, product, onUpdate }: ProductSectionProps) {
   const settings = section.settings || {};
   const images = product?.images || [];
+  const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+  
+  // Get settings
+  const galleryLayout = settings.gallery_layout || 'thumbnails';
+  const thumbnailPosition = settings.thumbnail_position || 'bottom';
+  const thumbnailSize = settings.thumbnail_size || 'medium';
+  const zoomEnabled = settings.zoom_enabled !== false;
+  const imageRatio = settings.image_ratio || 'square';
+  const showArrows = settings.show_arrows !== false;
+  const showDots = settings.show_dots === true;
+
+  // Thumbnail size classes
+  const thumbnailSizeClasses = {
+    small: 'w-[60px] h-[60px]',
+    medium: 'w-[80px] h-[80px]',
+    large: 'w-[100px] h-[100px]',
+  }[thumbnailSize] || 'w-[80px] h-[80px]';
+
+  // Image ratio classes
+  const imageRatioClasses = {
+    square: 'aspect-square',
+    portrait: 'aspect-[3/4]',
+    landscape: 'aspect-[4/3]',
+    original: '',
+  }[imageRatio] || 'aspect-square';
   
   if (!product) {
     return (
@@ -32,13 +57,121 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
     );
   }
 
+  const selectedImage = images[selectedImageIndex] || images[0];
+
+  // Render thumbnails
+  const renderThumbnails = () => {
+    if (images.length <= 1 || settings.show_thumbnails === false) return null;
+    
+    const isVertical = thumbnailPosition === 'left' || thumbnailPosition === 'right';
+    const containerClass = isVertical 
+      ? 'flex flex-col gap-2 overflow-y-auto max-h-[500px]' 
+      : 'flex gap-2 overflow-x-auto';
+
+    return (
+      <div className={containerClass}>
+        {images.map((img: any, index: number) => (
+          <button 
+            key={index}
+            onClick={() => setSelectedImageIndex(index)}
+            className={`${thumbnailSizeClasses} flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${
+              index === selectedImageIndex ? 'border-gray-900' : 'border-transparent hover:border-gray-300'
+            }`}
+          >
+            <img 
+              src={img.src || img.url || img} 
+              alt={`${product.title} - ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Grid layout
+  if (galleryLayout === 'grid') {
+    const gridCols = images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-2';
+    return (
+      <div className={`grid ${gridCols} gap-2`}>
+        {images.slice(0, 4).map((img: any, index: number) => (
+          <div 
+            key={index}
+            className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden ${index === 0 && images.length > 2 ? 'col-span-2' : ''}`}
+          >
+            <img 
+              src={img.src || img.url || img} 
+              alt={`${product.title} - ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Two columns layout
+  if (galleryLayout === 'two_columns') {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {images.map((img: any, index: number) => (
+          <div 
+            key={index}
+            className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden`}
+          >
+            <img 
+              src={img.src || img.url || img} 
+              alt={`${product.title} - ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Thumbnails layout (default) with position support
+  if (galleryLayout === 'thumbnails') {
+    const isVertical = thumbnailPosition === 'left' || thumbnailPosition === 'right';
+    const mainContainerClass = isVertical ? 'flex gap-4' : 'flex flex-col gap-4';
+    const orderClass = thumbnailPosition === 'left' || thumbnailPosition === 'top' ? 'order-2' : 'order-1';
+
+    return (
+      <div className={mainContainerClass}>
+        {isVertical && thumbnailPosition === 'left' && renderThumbnails()}
+        {!isVertical && thumbnailPosition === 'top' && renderThumbnails()}
+        
+        {/* Main Image */}
+        <div className={`flex-1 ${orderClass}`}>
+          <div className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden`}>
+            {selectedImage ? (
+              <img 
+                src={selectedImage.src || selectedImage.url || selectedImage} 
+                alt={product.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <HiPhotograph className="w-16 h-16" />
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {isVertical && thumbnailPosition === 'right' && renderThumbnails()}
+        {!isVertical && thumbnailPosition === 'bottom' && renderThumbnails()}
+      </div>
+    );
+  }
+
+  // Carousel/Single layout
   return (
-    <div className="grid grid-cols-1 gap-4">
+    <div className="relative">
       {/* Main Image */}
-      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-        {images.length > 0 ? (
+      <div className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden`}>
+        {selectedImage ? (
           <img 
-            src={images[0].src || images[0].url || images[0]} 
+            src={selectedImage.src || selectedImage.url || selectedImage} 
             alt={product.title}
             className="w-full h-full object-cover"
           />
@@ -49,20 +182,39 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
         )}
       </div>
       
-      {/* Thumbnails */}
-      {images.length > 1 && settings.show_thumbnails !== false && (
-        <div className="flex gap-2 overflow-x-auto">
-          {images.slice(0, 4).map((img: any, index: number) => (
-            <div 
+      {/* Navigation Arrows */}
+      {showArrows && images.length > 1 && (
+        <>
+          <button 
+            onClick={() => setSelectedImageIndex(prev => prev > 0 ? prev - 1 : images.length - 1)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button 
+            onClick={() => setSelectedImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </>
+      )}
+      
+      {/* Dots */}
+      {showDots && images.length > 1 && (
+        <div className="flex justify-center gap-2 mt-4">
+          {images.map((_: any, index: number) => (
+            <button
               key={index}
-              className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border-2 border-transparent hover:border-gray-300 cursor-pointer"
-            >
-              <img 
-                src={img.src || img.url || img} 
-                alt={`${product.title} - ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
+              onClick={() => setSelectedImageIndex(index)}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                index === selectedImageIndex ? 'bg-gray-900' : 'bg-gray-300'
+              }`}
+            />
           ))}
         </div>
       )}
@@ -75,34 +227,87 @@ export function ProductTitleSection({ section, product, onUpdate }: ProductSecti
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   
+  // Get settings
+  const titleSize = settings.title_size || 'large';
+  const fontWeight = settings.font_weight || 'bold';
+  const titleColor = settings.title_color || '#111827';
+  const showVendor = settings.show_vendor !== false;
+  const showSku = settings.show_sku === true;
+  const showRating = settings.show_rating === true;
+  const vendorColor = settings.vendor_color || '#6B7280';
+  const textAlign = settings.text_align || 'right';
+
+  // Title size classes
+  const titleSizeClasses = {
+    small: 'text-xl',
+    medium: 'text-2xl',
+    large: 'text-3xl md:text-4xl',
+    xlarge: 'text-4xl md:text-5xl',
+  }[titleSize] || 'text-3xl md:text-4xl';
+
+  // Font weight classes
+  const fontWeightClasses = {
+    normal: 'font-normal',
+    medium: 'font-medium',
+    bold: 'font-bold',
+  }[fontWeight] || 'font-bold';
+
+  // Text align classes
+  const textAlignClasses = {
+    right: 'text-right',
+    center: 'text-center',
+    left: 'text-left',
+  }[textAlign] || 'text-right';
+  
   if (!product) {
     return (
       <div className="py-4">
         <div className="h-8 bg-gray-200 rounded w-3/4 mb-2 animate-pulse" />
-        {settings.show_vendor !== false && (
+        {showVendor && (
           <div className="h-4 bg-gray-100 rounded w-1/4 animate-pulse" />
         )}
       </div>
     );
   }
 
-  const titleSize = (settings.title_size || 'large') as 'small' | 'medium' | 'large';
-  const titleClass = {
-    small: 'text-xl',
-    medium: 'text-2xl',
-    large: 'text-3xl md:text-4xl'
-  }[titleSize];
-
   return (
-    <div className="py-2">
-      <h1 className={`${titleClass} font-bold text-gray-900`}>
+    <div className={`py-2 ${textAlignClasses}`}>
+      <h1 
+        className={`${titleSizeClasses} ${fontWeightClasses}`}
+        style={{ color: titleColor }}
+      >
         {product.title}
       </h1>
-      {settings.show_vendor !== false && product.vendor && (
-        <p className="text-sm text-gray-500 mt-1">{product.vendor}</p>
+      
+      {showVendor && product.vendor && (
+        <p 
+          className="text-sm mt-1"
+          style={{ color: vendorColor }}
+        >
+          {product.vendor}
+        </p>
       )}
-      {settings.show_sku && product.sku && (
-        <p className="text-xs text-gray-400 mt-1">{t('product.sku')}: {product.sku}</p>
+      
+      {showSku && product.sku && (
+        <p className="text-xs text-gray-400 mt-1">
+          {t('product.sku') || 'מק"ט'}: {product.sku}
+        </p>
+      )}
+      
+      {showRating && product.rating && (
+        <div className="flex items-center gap-1 mt-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <HiStar 
+              key={star}
+              className={`w-4 h-4 ${star <= Math.round(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+            />
+          ))}
+          {product.reviews_count && (
+            <span className="text-sm text-gray-500 mr-2">
+              ({product.reviews_count})
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
@@ -112,6 +317,35 @@ export function ProductTitleSection({ section, product, onUpdate }: ProductSecti
 export function ProductPriceSection({ section, product, onUpdate }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
+  
+  // Get settings
+  const priceSize = settings.price_size || 'large';
+  const priceColor = settings.price_color || '#111827';
+  const fontWeight = settings.font_weight || 'bold';
+  const showComparePrice = settings.show_compare_price !== false;
+  const comparePriceColor = settings.compare_price_color || '#9CA3AF';
+  const showStrikethrough = settings.strikethrough !== false;
+  const showDiscountBadge = settings.show_discount_badge !== false;
+  const badgeStyle = settings.badge_style || 'rounded';
+  const badgeBgColor = settings.badge_bg_color || '#FEE2E2';
+  const badgeTextColor = settings.badge_text_color || '#DC2626';
+  const showTaxInfo = settings.show_tax_info === true;
+  const taxInfoText = settings.tax_info_text || 'כולל מע"מ';
+
+  // Price size classes
+  const priceSizeClasses = {
+    small: 'text-lg',
+    medium: 'text-xl',
+    large: 'text-2xl',
+    xlarge: 'text-3xl md:text-4xl',
+  }[priceSize] || 'text-2xl';
+
+  // Badge style classes
+  const badgeStyleClasses = {
+    rounded: 'rounded-md',
+    pill: 'rounded-full',
+    square: 'rounded-none',
+  }[badgeStyle] || 'rounded-md';
   
   // Try to use ProductPageContext if available (for variant selection)
   let selectedVariant = null;
@@ -141,22 +375,37 @@ export function ProductPriceSection({ section, product, onUpdate }: ProductSecti
   const discountPercent = hasDiscount ? Math.round((1 - price / comparePrice) * 100) : 0;
 
   return (
-    <div className="py-2 flex items-center gap-3">
-      <span className="text-2xl font-bold text-gray-900">
-        ₪{price.toFixed(2)}
-      </span>
-      
-      {hasDiscount && settings.show_compare_price !== false && (
-        <>
-          <span className="text-lg text-gray-400 line-through">
-            ₪{comparePrice.toFixed(2)}
-          </span>
-          {settings.show_discount_badge !== false && (
-            <span className="px-2 py-1 bg-red-100 text-red-600 text-sm font-medium rounded">
-              -{discountPercent}%
+    <div className="py-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span 
+          className={`${priceSizeClasses}`}
+          style={{ color: priceColor, fontWeight }}
+        >
+          ₪{price.toFixed(2)}
+        </span>
+        
+        {hasDiscount && showComparePrice && (
+          <>
+            <span 
+              className={`text-lg ${showStrikethrough ? 'line-through' : ''}`}
+              style={{ color: comparePriceColor }}
+            >
+              ₪{comparePrice.toFixed(2)}
             </span>
-          )}
-        </>
+            {showDiscountBadge && (
+              <span 
+                className={`px-2 py-1 text-sm font-medium ${badgeStyleClasses}`}
+                style={{ backgroundColor: badgeBgColor, color: badgeTextColor }}
+              >
+                -{discountPercent}%
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      
+      {showTaxInfo && (
+        <p className="text-sm text-gray-500 mt-1">{taxInfoText}</p>
       )}
     </div>
   );
