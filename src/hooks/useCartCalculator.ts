@@ -338,28 +338,49 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         }
       }
 
-      // הוספת מתנות אוטומטיות לעגלה
+      // ניהול מתנות אוטומטיות
+      // 1. הסרת מתנות שכבר לא רלוונטיות
+      const currentGiftVariantIds = (result.giftProducts || []).map((g: any) => g.variant_id);
+      const giftsToRemove = cartItems.filter(item => {
+        const isGift = item.properties?.some(p => p.name === 'מתנה');
+        // מתנה שלא נמצאת ברשימת המתנות החדשה
+        return isGift && !currentGiftVariantIds.includes(item.variant_id);
+      });
+      
+      for (const giftToRemove of giftsToRemove) {
+        await cartFromHook.removeGiftFromCart(giftToRemove.variant_id);
+      }
+      
+      // 2. הוספת מתנות חדשות
       if (result.giftProducts && Array.isArray(result.giftProducts) && result.giftProducts.length > 0) {
-        for (const giftProduct of result.giftProducts) {
-          const isGiftInCart = cartItems.some(
-            item => item.variant_id === giftProduct.variant_id && 
-                    item.product_id === giftProduct.product_id
-          );
-          
-          if (!isGiftInCart) {
-            await cartFromHook.addToCart({
-              variant_id: giftProduct.variant_id,
-              product_id: giftProduct.product_id,
-              product_title: giftProduct.product_title,
-              variant_title: giftProduct.variant_title,
-              price: giftProduct.price,
-              quantity: 1,
-              image: giftProduct.image,
-              properties: [{
-                name: 'מתנה',
-                value: giftProduct.discount_name,
-              }],
-            });
+        // בדיקה שיש פריטים רגילים (לא מתנות) בעגלה
+        const hasRegularItems = cartItems.some(item => 
+          !item.properties?.some(p => p.name === 'מתנה')
+        );
+        
+        if (hasRegularItems) {
+          for (const giftProduct of result.giftProducts) {
+            const isGiftInCart = cartItems.some(
+              item => item.variant_id === giftProduct.variant_id && 
+                      item.product_id === giftProduct.product_id &&
+                      item.properties?.some(p => p.name === 'מתנה')
+            );
+            
+            if (!isGiftInCart) {
+              await cartFromHook.addToCart({
+                variant_id: giftProduct.variant_id,
+                product_id: giftProduct.product_id,
+                product_title: giftProduct.product_title,
+                variant_title: giftProduct.variant_title,
+                price: 0, // מתנה = מחיר 0
+                quantity: 1,
+                image: giftProduct.image,
+                properties: [{
+                  name: 'מתנה',
+                  value: giftProduct.discount_name,
+                }],
+              });
+            }
           }
         }
       }

@@ -41,6 +41,10 @@ interface VariantsManagerProps {
   shopId?: string;
   hasVariants?: boolean;
   onHasVariantsChange?: (hasVariants: boolean) => void;
+  /** מחיר ברירת מחדל מהטופס - ישמש ליצירת וריאציות חדשות */
+  defaultPrice?: string;
+  /** מחיר לפני הנחה ברירת מחדל מהטופס */
+  defaultCompareAtPrice?: string;
 }
 
 // Popular colors mapping (Hebrew)
@@ -406,6 +410,8 @@ export function VariantsManager({
   shopId,
   hasVariants: hasVariantsProp,
   onHasVariantsChange,
+  defaultPrice,
+  defaultCompareAtPrice,
 }: VariantsManagerProps) {
   const [localHasVariants, setLocalHasVariants] = useState(options.length > 0 || variants.length > 1);
   const hasVariants = hasVariantsProp !== undefined ? hasVariantsProp : localHasVariants;
@@ -499,12 +505,23 @@ export function VariantsManager({
         v.title === title && v.title !== 'Default Title'
       );
 
+      // קביעת מחיר ברירת מחדל: קודם וריאציות קיימות, אחר כך Default Title, אחר כך מחיר מהטופס
+      const fallbackPrice = variants.find(v => v.title !== 'Default Title')?.price 
+        || variants[0]?.price 
+        || defaultPrice 
+        || '0.00';
+      
+      const fallbackComparePrice = variants.find(v => v.title !== 'Default Title')?.compare_at_price 
+        || variants[0]?.compare_at_price
+        || defaultCompareAtPrice 
+        || null;
+
       return existing || {
         id: Date.now() + index,
         product_id: productId,
         title,
-        price: variants.find(v => v.title !== 'Default Title')?.price || variants[0]?.price || '0.00',
-        compare_at_price: variants.find(v => v.title !== 'Default Title')?.compare_at_price || null,
+        price: fallbackPrice,
+        compare_at_price: fallbackComparePrice,
         sku: null,
         barcode: null,
         position: index + 1,

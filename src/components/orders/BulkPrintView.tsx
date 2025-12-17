@@ -230,3 +230,4 @@ export function BulkPrintView({ orders }: BulkPrintViewProps) {
     </div>
   );
 }
+

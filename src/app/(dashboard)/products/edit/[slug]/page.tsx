@@ -32,6 +32,7 @@ import { BadgesCard } from '@/components/products/BadgesCard';
 import { PremiumClubCard } from '@/components/products/PremiumClubCard';
 import { SizeChartsCard } from '@/components/products/SizeChartsCard';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
+import { generateSlugFromHebrew } from '@/lib/utils/hebrewSlug';
 
 export default function EditProductPage() {
   const params = useParams();
@@ -265,9 +266,14 @@ export default function EditProductPage() {
       const method = isNew ? 'POST' : 'PUT';
 
       // Product-level data (not variant-level)
+      // Generate URL-safe slug from product name using the helper function
+      const safeHandle = formData.slug 
+        ? generateSlugFromHebrew(formData.slug) 
+        : generateSlugFromHebrew(formData.name);
+      
       const payload: any = {
         title: formData.name,
-        handle: formData.slug || formData.name.toLowerCase().replace(/\s+/g, '-'),
+        handle: safeHandle,
         body_html: formData.description || null,
         vendor: formData.vendor || product.vendor || null,
         product_type: product.product_type || null,
@@ -664,6 +670,8 @@ export default function EditProductPage() {
               setProduct({ ...product, defaultVariantId: variantId });
             }}
             shopId={product.store_id?.toString()}
+            defaultPrice={formData.price}
+            defaultCompareAtPrice={formData.comparePrice}
           />
 
           {/* Product Add-ons */}

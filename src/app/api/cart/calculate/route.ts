@@ -44,8 +44,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (items.length === 0) {
-      // עגלה ריקה - מחזיר תוצאה ריקה
+    // סינון מוצרי מתנה אם אין פריטים רגילים
+    const regularItems = items.filter((item: any) => 
+      !item.properties?.some((prop: any) => prop.name === 'מתנה')
+    );
+    
+    // אם אין פריטים רגילים (רק מתנות או ריק), עגלה ריקה
+    if (regularItems.length === 0) {
       return NextResponse.json({
         items: [],
         subtotal: 0,
@@ -55,7 +60,7 @@ export async function POST(req: NextRequest) {
         shippingDiscount: 0,
         shippingAfterDiscount: shippingRate?.price || 0,
         discounts: [],
-        giftProducts: [],
+        giftProducts: [], // לא מחזירים מתנות אם אין פריטים רגילים
         total: shippingRate?.price || 0,
         isValid: true,
         errors: [],
@@ -94,13 +99,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // בדיקה אם זה מוצר מתנה (properties כולל name='מתנה')
+      const isGiftProduct = item.properties?.some((prop: any) => prop.name === 'מתנה');
+      
       // הוספת פריט עם טיפוסים נכונים
+      // מוצרי מתנה תמיד במחיר 0
       validatedItems.push({
         variant_id: Number(item.variant_id),
         product_id: Number(item.product_id),
         product_title: item.product_title || '',
         variant_title: item.variant_title || 'Default Title',
-        price: price,
+        price: isGiftProduct ? 0 : price, // מתנה = מחיר 0
         quantity: quantity,
         image: item.image || undefined,
         properties: item.properties || undefined,

@@ -296,22 +296,46 @@ export function useCart() {
     }
   }, [storeId, saveCartToServer, areItemsEqual]);
 
-  // REMOVE FROM CART
+  // REMOVE FROM CART (user action - cannot remove gifts)
   const removeFromCart = useCallback((variantId: number) => {
     if (!storeId) return;
     
     const currentItems = globalCartItems[storeId] || [];
     
-    // Don't remove gift products
+    // Don't remove gift products (user cannot remove gifts manually)
     const itemToRemove = currentItems.find((i) => i.variant_id === variantId);
     const isGiftProduct = itemToRemove?.properties?.some(prop => prop.name === 'מתנה');
     
     if (isGiftProduct) {
-      console.warn('[useCart] Cannot remove gift product');
+      console.warn('[useCart] Cannot remove gift product manually');
       return;
     }
     
     const newItems = currentItems.filter((i) => i.variant_id !== variantId);
+    
+    // Also remove any orphaned gifts if no regular items left
+    const hasRegularItems = newItems.some(item => 
+      !item.properties?.some(p => p.name === 'מתנה')
+    );
+    
+    const finalItems = hasRegularItems 
+      ? newItems 
+      : newItems.filter(item => !item.properties?.some(p => p.name === 'מתנה'));
+    
+    globalCartItems[storeId] = finalItems;
+    setCartToStorage(finalItems, storeId);
+    notifyCartListeners();
+    
+    saveCartToServer(finalItems);
+  }, [storeId, saveCartToServer]);
+
+  // REMOVE GIFT FROM CART (system action - for discount management)
+  const removeGiftFromCart = useCallback((variantId: number) => {
+    if (!storeId) return;
+    
+    const currentItems = globalCartItems[storeId] || [];
+    const newItems = currentItems.filter((i) => i.variant_id !== variantId);
+    
     globalCartItems[storeId] = newItems;
     setCartToStorage(newItems, storeId);
     notifyCartListeners();
@@ -366,6 +390,7 @@ export function useCart() {
     cartItems,
     addToCart,
     removeFromCart,
+    removeGiftFromCart,
     updateQuantity,
     clearCart,
     getCartCount,
