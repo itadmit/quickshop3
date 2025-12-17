@@ -1,10 +1,12 @@
 /**
- * Customizer Layout Wrapper
- * מזהה את pageType מה-URL ומעביר אותו ל-CustomizerLayout
+ * Customizer Layout Wrapper - Client-Side Version
+ * מזהה את pageType מה-URL בצד הלקוח לעדכון בזמן אמת בניווט
  */
 
-import { headers } from 'next/headers';
-import { CustomizerLayout } from './CustomizerLayout';
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { CustomizerLayoutClient } from './CustomizerLayoutClient';
 
 interface CustomizerLayoutWrapperProps {
   storeSlug: string;
@@ -24,7 +26,7 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/products/')) {
     const match = pathWithoutStore.match(/^\/products\/([^/]+)/);
     if (match) {
-      return { pageType: 'product', pageHandle: match[1] };
+      return { pageType: 'product', pageHandle: decodeURIComponent(match[1]) };
     }
     return { pageType: 'products' };
   }
@@ -33,7 +35,7 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/categories/')) {
     const match = pathWithoutStore.match(/^\/categories\/([^/]+)/);
     if (match) {
-      return { pageType: 'collection', pageHandle: match[1] };
+      return { pageType: 'collection', pageHandle: decodeURIComponent(match[1]) };
     }
     return { pageType: 'collections' };
   }
@@ -42,7 +44,7 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/p/')) {
     const match = pathWithoutStore.match(/^\/p\/([^/]+)/);
     if (match) {
-      return { pageType: 'page', pageHandle: match[1] };
+      return { pageType: 'page', pageHandle: decodeURIComponent(match[1]) };
     }
   }
   
@@ -50,7 +52,7 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/blog/')) {
     const match = pathWithoutStore.match(/^\/blog\/([^/]+)/);
     if (match) {
-      return { pageType: 'blog_post', pageHandle: match[1] };
+      return { pageType: 'blog_post', pageHandle: decodeURIComponent(match[1]) };
     }
     return { pageType: 'blog' };
   }
@@ -59,27 +61,24 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   return { pageType: 'other' };
 }
 
-export async function CustomizerLayoutWrapper({
+export function CustomizerLayoutWrapper({
   storeSlug,
   children,
 }: CustomizerLayoutWrapperProps) {
-  const headersList = await headers();
-  const pathname = headersList.get('x-pathname') || '';
+  // שימוש ב-usePathname לזיהוי ה-URL בצד הלקוח
+  // זה מתעדכן אוטומטית בניווט client-side
+  const pathname = usePathname();
   
   // זיהוי pageType מה-pathname
-  const { pageType, pageHandle } = getPageTypeFromPath(pathname);
-  
-  // Decode pageHandle for Hebrew URLs
-  const decodedPageHandle = pageHandle ? decodeURIComponent(pageHandle) : undefined;
+  const { pageType, pageHandle } = getPageTypeFromPath(pathname || '');
   
   return (
-    <CustomizerLayout 
+    <CustomizerLayoutClient 
       storeSlug={storeSlug}
       pageType={pageType}
-      pageHandle={decodedPageHandle}
+      pageHandle={pageHandle}
     >
       {children}
-    </CustomizerLayout>
+    </CustomizerLayoutClient>
   );
 }
-

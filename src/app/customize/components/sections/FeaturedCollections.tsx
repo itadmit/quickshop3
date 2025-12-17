@@ -126,94 +126,67 @@ export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview
           )}
         </div>
 
-        {(settings.display_type === 'slider' || settings.display_type === 'carousel') ? (
-          <>
-            {/* Desktop Slider */}
-            <div className="hidden md:block overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex gap-6 pb-4" style={{ width: 'max-content' }}>
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div 
-                      key={i} 
-                      className="group cursor-pointer flex-shrink-0"
-                      style={{ 
-                        width: getSliderItemWidth(sliderItemsDesktop),
-                        minWidth: '200px',
-                        scrollSnapAlign: 'start'
-                      }}
-                    >
-                      <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-all">
-                         <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
-                            <span>קטגוריה {i}</span>
-                         </div>
-                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      
-                      <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
-                        <h3 className="text-xl font-bold mb-1 group-hover:text-gray-700 transition-colors" style={{ color: textColor }}>
-                            שם הקטגוריה {i}
-                        </h3>
-                        {settings.show_description !== false && (
-                            <p className="text-gray-500 text-sm">תיאור קצר של הקטגוריה</p>
-                        )}
-                      </div>
-                    </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile Slider */}
-            <div className="md:hidden overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div 
-                      key={i} 
-                      className="group cursor-pointer flex-shrink-0"
-                      style={{ 
-                        width: getSliderItemWidth(sliderItemsMobile),
-                        minWidth: '200px',
-                        scrollSnapAlign: 'start'
-                      }}
-                    >
-                      <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-3 shadow-sm">
-                         <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
-                            <span>קטגוריה {i}</span>
-                         </div>
-                      </div>
-                      
-                      <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
-                        <h3 className="text-lg font-bold mb-1" style={{ color: textColor }}>
-                            שם הקטגוריה {i}
-                        </h3>
-                        {settings.show_description !== false && (
-                            <p className="text-gray-500 text-xs">תיאור קצר של הקטגוריה</p>
-                        )}
-                      </div>
-                    </div>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : (
+        {/* Loading state */}
+        {loading && !isPreview && (
           <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
-            {Array.from({ length: getGridItemCount() }, (_, i) => i + 1).map((i) => (
-              <div key={i} className="group cursor-pointer">
-                <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-3 md:mb-4 shadow-sm group-hover:shadow-md transition-all">
-                   <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
-                      <span>קטגוריה {i}</span>
-                   </div>
-                   <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                
-                <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
-                  <h3 className="text-lg md:text-xl font-bold mb-1 group-hover:text-blue-600 transition-colors" style={{ color: textColor }}>
-                      שם הקטגוריה {i}
-                  </h3>
-                  {settings.show_description !== false && (
-                      <p className="text-gray-500 text-xs md:text-sm">תיאור קצר של הקטגוריה</p>
-                  )}
-                </div>
+            {Array.from({ length: getGridItemCount() }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[4/3] bg-gray-200 rounded-lg mb-4" />
+                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Real collections (storefront) or placeholder (preview) */}
+        {!loading && (
+          <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
+            {(isPreview || collections.length === 0 ? 
+              Array.from({ length: getGridItemCount() }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
+              collections.slice(0, getGridItemCount())
+            ).map((item: any, index: number) => {
+              const isPlaceholder = item.isPlaceholder;
+              const collection = isPlaceholder ? null : item as Collection;
+              const collectionUrl = collection ? `/shops/${storeSlug}/categories/${collection.handle}` : '#';
+
+              return (
+                <Link 
+                  href={collectionUrl}
+                  key={collection?.id || index} 
+                  className="group cursor-pointer block"
+                >
+                  <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-3 md:mb-4 shadow-sm group-hover:shadow-md transition-all">
+                    {collection?.image_url ? (
+                      <img 
+                        src={collection.image_url} 
+                        alt={collection.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
+                        <HiPhotograph className="w-12 h-12 opacity-20" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  
+                  <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
+                    <h3 
+                      className="text-lg md:text-xl font-bold mb-1 group-hover:text-gray-700 transition-colors" 
+                      style={{ color: textColor }}
+                    >
+                      {collection?.title || t('sections.featured_collections.sample_collection', { number: index + 1 }) || `קטגוריה ${index + 1}`}
+                    </h3>
+                    {settings.show_description !== false && collection?.products_count !== undefined && (
+                      <p className="text-gray-500 text-xs md:text-sm">
+                        {collection.products_count} {t('product.items') || 'מוצרים'}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
