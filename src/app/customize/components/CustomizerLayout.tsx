@@ -123,14 +123,54 @@ export function CustomizerLayout() {
       const storeLogo = data.store?.logo || null;
       const collections = data.collections || [];
       
-      // Use demo product for product page preview (always use demo in customizer)
+      // For product page preview - use real product if available, otherwise demo
       if (pageType === 'product') {
-        setSampleProduct(DEMO_PRODUCT);
+        if (pageHandle && data.store?.slug) {
+          // Load real product from API
+          try {
+            const productResponse = await fetch(`/api/storefront/products?handle=${encodeURIComponent(pageHandle)}&storeSlug=${data.store.slug}`);
+            if (productResponse.ok) {
+              const productData = await productResponse.json();
+              if (productData.product) {
+                setSampleProduct(productData.product);
+              } else {
+                setSampleProduct(DEMO_PRODUCT);
+              }
+            } else {
+              setSampleProduct(DEMO_PRODUCT);
+            }
+          } catch (error) {
+            console.error('Error loading product for customizer:', error);
+            setSampleProduct(DEMO_PRODUCT);
+          }
+        } else {
+          setSampleProduct(DEMO_PRODUCT);
+        }
       }
       
-      // Use demo collection for collection page preview (always use demo in customizer)
+      // For collection page preview - use real collection if available, otherwise demo
       if (pageType === 'collection') {
-        setSampleCollection(DEMO_COLLECTION);
+        if (pageHandle && data.store?.slug) {
+          // Load real collection from API
+          try {
+            const collectionResponse = await fetch(`/api/storefront/collections?handle=${encodeURIComponent(pageHandle)}&storeSlug=${data.store.slug}`);
+            if (collectionResponse.ok) {
+              const collectionData = await collectionResponse.json();
+              if (collectionData.collection) {
+                setSampleCollection(collectionData.collection);
+              } else {
+                setSampleCollection(DEMO_COLLECTION);
+              }
+            } else {
+              setSampleCollection(DEMO_COLLECTION);
+            }
+          } catch (error) {
+            console.error('Error loading collection for customizer:', error);
+            setSampleCollection(DEMO_COLLECTION);
+          }
+        } else {
+          setSampleCollection(DEMO_COLLECTION);
+        }
       }
       
       // Store the store slug for preview

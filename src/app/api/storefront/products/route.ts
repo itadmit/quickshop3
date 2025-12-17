@@ -1,22 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, queryOne } from '@/lib/db';
+import { getStoreIdBySlug } from '@/lib/utils/store';
+import { getProductByHandle } from '@/lib/storefront/queries';
 
-// GET /api/storefront/products - List products for storefront (public, no auth required)
+// GET /api/storefront/products - List products or get single product by handle
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const storeId = searchParams.get('storeId');
+    const storeSlug = searchParams.get('storeSlug');
+    const handle = searchParams.get('handle'); // Single product by handle
     const limit = parseInt(searchParams.get('limit') || '8');
     const offset = parseInt(searchParams.get('offset') || '0');
     const collectionHandle = searchParams.get('collection');
     const sort = searchParams.get('sort') || 'newest';
     const featured = searchParams.get('featured') === 'true';
 
-    if (!storeId) {
-      return NextResponse.json({ error: 'storeId is required' }, { status: 400 });
+    // Resolve store ID from slug if provided
+    let resolvedStoreId = storeId ? parseInt(storeId) : null;
+    if (!resolvedStoreId && storeSlug) {
+      resolvedStoreId = await getStoreIdBySlug(storeSlug);
     }
 
-    // Build query
+    if (!resolvedStoreId) {
+      return NextResponse.json({ error: 'storeId or storeSlug is required' }, { status: 400 });
+    }
+
+    // If handle is provided, return single product
+    if (handle) {
+      try {
+        const product = await getProductByHandle(handle, resolvedStoreId);
+        if (product) {
+          return NextResponse.json({ product });
+        } else {
+          return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+        }
+      } catch (error) {
+        console.error('Error fetching product by handle:', error);
+        return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
+      }
+    }
+
+    // Build query for product list
     let sql = `
       SELECT 
         p.id,
@@ -29,7 +54,7 @@ export async function GET(request: NextRequest) {
       FROM products p
       WHERE p.store_id = $1 AND p.status = 'active'
     `;
-    const params: any[] = [storeId];
+    const params: any[] = [resolvedStoreId];
     let paramIndex = 2;
 
     // Filter by collection
@@ -97,5 +122,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }
 }
-
-

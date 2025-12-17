@@ -1283,37 +1283,41 @@ export class CartCalculator {
         }
       });
     } else {
-      // BOGO על מוצרים שונים - מורכב יותר, נדרש מימוש נוסף
-      // כרגע נשתמש בלוגיקה פשוטה יותר
-      const totalApplicableQuantity = items.reduce((sum, item) => sum + item.item.quantity, 0);
+      // BOGO על מוצרים שונים - ההנחה ניתנת על המוצרים הזולים ביותר
+      // יוצרים רשימה של כל היחידות ממוינות לפי מחיר (מהזול לייקר)
+      const allUnits: Array<{ index: number; price: number }> = [];
+      
+      items.forEach((itemData, index) => {
+        const unitPrice = itemData.item.price;
+        for (let i = 0; i < itemData.item.quantity; i++) {
+          allUnits.push({ index, price: unitPrice });
+        }
+      });
+      
+      // מיון מהזול לייקר - המוצרים הזולים יקבלו את ההנחה
+      allUnits.sort((a, b) => a.price - b.price);
+      
+      const totalApplicableQuantity = allUnits.length;
       const bundles = Math.floor(totalApplicableQuantity / (buyQuantity + getQuantity));
       const freeQuantity = bundles * getQuantity;
       
       if (freeQuantity > 0) {
-        // חלוקה יחסית של ההנחה בין הפריטים
-        const totalValue = items.reduce((sum, item) => sum + item.lineTotalAfterDiscount, 0);
-        const avgPricePerUnit = totalValue / totalApplicableQuantity;
-        
-        let discountPerUnit = 0;
-        if (getDiscountType === 'free') {
-          discountPerUnit = avgPricePerUnit;
-        } else if (getDiscountType === 'percentage' && getDiscountValue) {
-          discountPerUnit = (avgPricePerUnit * getDiscountValue) / 100;
-        } else if (getDiscountType === 'fixed_amount' && getDiscountValue) {
-          discountPerUnit = Math.min(getDiscountValue, avgPricePerUnit);
-        }
-        
-        const totalDiscountAmount = discountPerUnit * freeQuantity;
-        
-        // חלוקה יחסית בין הפריטים
-        items.forEach((itemData, index) => {
-          if (totalValue > 0) {
-            const ratio = itemData.lineTotalAfterDiscount / totalValue;
-            itemDiscounts[index] = totalDiscountAmount * ratio;
+        // ההנחה ניתנת על היחידות הזולות ביותר
+        for (let i = 0; i < freeQuantity && i < allUnits.length; i++) {
+          const unit = allUnits[i];
+          let discountAmount = 0;
+          
+          if (getDiscountType === 'free') {
+            discountAmount = unit.price;
+          } else if (getDiscountType === 'percentage' && getDiscountValue) {
+            discountAmount = (unit.price * getDiscountValue) / 100;
+          } else if (getDiscountType === 'fixed_amount' && getDiscountValue) {
+            discountAmount = Math.min(getDiscountValue, unit.price);
           }
-        });
-        
-        totalDiscount = totalDiscountAmount;
+          
+          itemDiscounts[unit.index] += discountAmount;
+          totalDiscount += discountAmount;
+        }
       }
     }
 

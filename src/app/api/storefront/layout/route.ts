@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     const store = await getStoreBySlug(storeSlug);
 
     // Load page layout from customizer
-    const pageLayout = await getPageLayout(storeId, pageType, pageHandle);
+    // For product/collection pages, pass the handle to find specific or generic layout
+    const pageLayout = await getPageLayout(storeId, pageType, pageHandle || undefined);
     
     let sections = [];
     if (pageLayout && pageLayout.sections && pageLayout.sections.length > 0) {

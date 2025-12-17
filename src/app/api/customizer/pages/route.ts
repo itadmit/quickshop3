@@ -79,21 +79,28 @@ export async function GET(request: NextRequest) {
     }));
 
     // Get page layout
+    // For product/collection pages, we want to load the generic template (without handle)
+    // This allows editing the template that applies to all products/collections
     const layoutQuery = `
       SELECT
         pl.*,
         tt.name as theme_name,
-        tt.display_name as theme_display_name
+        tt.display_name as theme_display_name,
+        CASE 
+          WHEN pl.page_handle IS NULL THEN 1  -- Generic template gets priority in editor
+          WHEN pl.page_handle = $3 THEN 2  -- Specific handle
+          ELSE 3
+        END as priority
       FROM page_layouts pl
       LEFT JOIN theme_templates tt ON pl.template_id = tt.id
       WHERE pl.store_id = $1
         AND pl.page_type = $2
-        AND ($3::text IS NULL OR pl.page_handle = $3)
-      ORDER BY pl.is_published DESC, pl.created_at DESC
+        AND (pl.page_handle IS NULL OR pl.page_handle = $3)
+      ORDER BY priority ASC, pl.is_published DESC, pl.created_at DESC
       LIMIT 1
     `;
 
-    const layoutResult = await query(layoutQuery, [user.store_id, pageType, pageHandle]);
+    const layoutResult = await query(layoutQuery, [user.store_id, pageType, pageHandle || null]);
 
     if (layoutResult.length === 0) {
       return NextResponse.json({

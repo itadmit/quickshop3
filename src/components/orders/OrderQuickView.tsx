@@ -12,9 +12,10 @@ interface OrderQuickViewProps {
   open: boolean;
   onClose: () => void;
   onMarkAsRead?: (orderId: number) => void;
+  onPrint?: (order: OrderWithDetails) => void;
 }
 
-export function OrderQuickView({ order, open, onClose, onMarkAsRead }: OrderQuickViewProps) {
+export function OrderQuickView({ order, open, onClose, onMarkAsRead, onPrint }: OrderQuickViewProps) {
   const router = useRouter();
 
   if (!order) return null;
@@ -85,7 +86,12 @@ export function OrderQuickView({ order, open, onClose, onMarkAsRead }: OrderQuic
   };
 
   const handlePrint = () => {
-    window.open(`/orders/${order.id}?print=true`, '_blank');
+    if (onPrint) {
+      onPrint(order);
+    } else {
+      // Fallback to old method if onPrint not provided
+      window.open(`/orders/${order.id}?print=true`, '_blank');
+    }
   };
 
   return (

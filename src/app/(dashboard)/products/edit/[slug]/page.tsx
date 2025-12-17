@@ -149,13 +149,24 @@ export default function EditProductPage() {
   const loadProduct = async () => {
     try {
       setLoading(true);
-      // Next.js already decodes the slug from params automatically
-      // So productSlug is already decoded (e.g., "מוצר-בדיקה")
-      // We need to encode it for the fetch URL
-      // The API route will decode it via Next.js params
-      const response = await fetch(`/api/products/slug/${encodeURIComponent(productSlug)}`, {
-        credentials: 'include',
-      });
+      // Check if productSlug is a numeric ID or a string handle
+      const isNumericId = /^\d+$/.test(productSlug);
+      
+      let response;
+      if (isNumericId) {
+        // If it's a numeric ID, use the /api/products/[id] endpoint
+        response = await fetch(`/api/products/${productSlug}`, {
+          credentials: 'include',
+        });
+      } else {
+        // If it's a string handle, use the /api/products/slug/[slug] endpoint
+        // Next.js already decodes the slug from params automatically
+        // We need to encode it for the fetch URL
+        response = await fetch(`/api/products/slug/${encodeURIComponent(productSlug)}`, {
+          credentials: 'include',
+        });
+      }
+      
       if (!response.ok) {
         if (response.status === 404) {
           toast({

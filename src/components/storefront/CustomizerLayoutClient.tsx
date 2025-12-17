@@ -206,10 +206,10 @@ export function CustomizerLayoutClient({
                     ))}
                 </div>
                 
-                {/* Right Column - Product Info */}
-                <div className="space-y-4">
+                {/* Right Column - Product Info (title, price, variants, add to cart) */}
+                <div className="space-y-2">
                   {contentSections
-                    .filter((s: any) => ['product_title', 'product_name', 'product_price', 'product_variants', 'product_variations', 'product_add_to_cart', 'product_description', 'product_custom_fields'].includes(s.type))
+                    .filter((s: any) => ['product_title', 'product_name', 'product_price', 'product_variants', 'product_variations', 'product_add_to_cart'].includes(s.type))
                     .map((section: any) => (
                       <StorefrontSectionRenderer 
                         key={section.id} 
@@ -221,10 +221,10 @@ export function CustomizerLayoutClient({
                 </div>
               </div>
               
-              {/* Full Width Sections - Reviews, Related, Recently Viewed */}
-              <div className="mt-12 space-y-8">
+              {/* Full Width Sections - Description, Custom Fields, Reviews, Related, Recently Viewed */}
+              <div className="mt-8 space-y-8">
                 {contentSections
-                  .filter((s: any) => ['product_reviews', 'related_products', 'recently_viewed', 'product_recently_viewed'].includes(s.type))
+                  .filter((s: any) => ['product_description', 'product_custom_fields', 'product_reviews', 'related_products', 'recently_viewed', 'product_recently_viewed'].includes(s.type))
                   .map((section: any) => (
                     <StorefrontSectionRenderer 
                       key={section.id} 

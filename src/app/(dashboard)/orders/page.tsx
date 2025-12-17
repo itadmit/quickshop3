@@ -275,8 +275,42 @@ export default function OrdersPage() {
     }
   };
 
-  const handlePrintOrder = (orderId: number) => {
-    window.open(`/orders/${orderId}?print=true`, '_blank');
+  const handlePrintOrder = async (orderId: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    
+    setLoadingPrint(true);
+    
+    try {
+      // Load full order details
+      const response = await fetch(`/api/orders/${orderId}`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load order');
+      }
+      
+      const data = await response.json();
+      
+      // Set order to print and show print view
+      setOrdersToPrint([data.order]);
+      setShowPrintView(true);
+      
+      // Wait for the print view to render, then trigger print
+      setTimeout(() => {
+        window.print();
+        setLoadingPrint(false);
+      }, 500);
+    } catch (error) {
+      console.error('Error loading order for print:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה בטעינת ההזמנה להדפסה',
+        variant: 'destructive',
+      });
+      setLoadingPrint(false);
+    }
   };
 
   const handlePrintMultipleOrders = async (e?: React.MouseEvent) => {
@@ -970,6 +1004,15 @@ export default function OrdersPage() {
           setQuickViewOrder(null);
         }}
         onMarkAsRead={handleMarkAsRead}
+        onPrint={(order) => {
+          // Use the smart print method
+          setOrdersToPrint([order]);
+          setShowPrintView(true);
+          setQuickViewOpen(false);
+          setTimeout(() => {
+            window.print();
+          }, 500);
+        }}
       />
 
       </div>

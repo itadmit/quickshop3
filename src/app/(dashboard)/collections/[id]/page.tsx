@@ -341,7 +341,7 @@ export default function EditCollectionPage() {
                 <div
                   key={product.id}
                   className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  onClick={() => router.push(`/products/edit/${product.handle}`)}
+                  onClick={() => router.push(`/products/edit/${product.id}`)}
                 >
                   <div>
                     <div className="font-medium text-gray-900">{product.title}</div>

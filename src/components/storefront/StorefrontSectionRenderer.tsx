@@ -264,55 +264,34 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
     // ========== Product Page Sections ==========
     // Note: ProductPageProvider is wrapped at CustomizerLayout level for all product sections
     case 'product_gallery':
-      return (
-        <SectionWrapper className="py-4">
-          <ProductGallerySection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // No wrapper for product gallery - it's inside a column layout
+      return <ProductGallerySection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_title':
     case 'product_name':
-      return (
-        <SectionWrapper className="py-2">
-          <ProductTitleSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // No wrapper for product info sections - they're inside a column layout
+      return <ProductTitleSection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_price':
-      return (
-        <SectionWrapper className="py-2">
-          <ProductPriceSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // No wrapper for product info sections - they're inside a column layout
+      return <ProductPriceSection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_variants':
     case 'product_variations':
-      return (
-        <SectionWrapper className="py-2">
-          <ProductVariantsSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // No wrapper for product info sections - they're inside a column layout
+      return <ProductVariantsSection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_add_to_cart':
-      return (
-        <SectionWrapper className="py-2">
-          <ProductAddToCartSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // No wrapper for product info sections - they're inside a column layout
+      return <ProductAddToCartSection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_description':
-      return (
-        <SectionWrapper className="py-4">
-          <ProductDescriptionSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // Full width section - no extra wrapper needed
+      return <ProductDescriptionSection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_custom_fields':
-      return (
-        <SectionWrapper className="py-4">
-          <ProductCustomFieldsSection section={responsiveSection} product={product} onUpdate={noopUpdate} />
-        </SectionWrapper>
-      );
+      // Full width section - no extra wrapper needed
+      return <ProductCustomFieldsSection section={responsiveSection} product={product} onUpdate={noopUpdate} />;
 
     case 'product_reviews':
       return (

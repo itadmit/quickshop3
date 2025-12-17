@@ -26,7 +26,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-  rectSwappingStrategy,
+  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -183,7 +183,7 @@ function SortableOptionItem({
         >
           <SortableContext
             items={option.values?.map(v => v.id) || []}
-            strategy={rectSwappingStrategy}
+            strategy={horizontalListSortingStrategy}
           >
             <div className="flex flex-wrap gap-2 mb-2">
               {option.values?.map((value, valueIndex) => (
@@ -330,23 +330,20 @@ function SortableValueItem({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    touchAction: 'none', // חשוב לתמיכה בגרירה במובייל
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border bg-gray-100"
+      {...attributes}
+      {...listeners}
+      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border bg-gray-100 cursor-grab active:cursor-grabbing select-none"
     >
-      <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing"
-      >
-        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-        </svg>
-      </button>
+      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+      </svg>
       {option.type === 'color' && value.metadata?.color && (
         <div
           className="w-4 h-4 rounded-full border border-gray-300"
@@ -390,8 +387,12 @@ function SortableValueItem({
         })()}
       </span>
       <button
-        onClick={onDelete}
-        className="text-gray-500 hover:text-gray-700"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="text-gray-500 hover:text-gray-700 p-0.5"
       >
         <HiX className="w-4 h-4" />
       </button>

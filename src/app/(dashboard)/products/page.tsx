@@ -716,14 +716,14 @@ export default function ProductsPage() {
         selectedItems={selectedProducts as Set<string | number>}
         onSelectionChange={(selected) => setSelectedProducts(selected as Set<number>)}
         onRowClick={(product) => {
-          const slug = product.handle || product.id.toString();
-          router.push(`/products/edit/${slug}`);
+          // Use product ID for navigation - more reliable than handle
+          router.push(`/products/edit/${product.id}`);
         }}
         rowActions={(product) => {
           const handleEdit = (e?: React.MouseEvent) => {
             e?.stopPropagation();
-            const slug = product.handle || product.id.toString();
-            router.push(`/products/edit/${slug}`);
+            // Use product ID for navigation - more reliable than handle
+            router.push(`/products/edit/${product.id}`);
           };
 
           const handleDuplicate = async (e?: React.MouseEvent) => {
@@ -739,9 +739,9 @@ export default function ProductsPage() {
                 description: `המוצר "${data.product?.title || product.title}" שוכפל בהצלחה`,
               });
               loadProducts();
-              if (data.product?.handle) {
+              if (data.product?.id) {
                 setTimeout(() => {
-                  router.push(`/products/edit/${data.product.handle}`);
+                  router.push(`/products/edit/${data.product.id}`);
                 }, 1000);
               }
             } catch (error: any) {

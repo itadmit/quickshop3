@@ -1,17 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, queryOne } from '@/lib/db';
+import { getStoreIdBySlug } from '@/lib/utils/store';
+import { getCollectionByHandle } from '@/lib/storefront/queries';
 
-// GET /api/storefront/collections - List collections for storefront (public, no auth required)
+// GET /api/storefront/collections - List collections or get single collection by handle
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const storeId = searchParams.get('storeId');
+    const storeSlug = searchParams.get('storeSlug');
+    const handle = searchParams.get('handle'); // Single collection by handle
     const limit = parseInt(searchParams.get('limit') || '6');
 
-    if (!storeId) {
-      return NextResponse.json({ error: 'storeId is required' }, { status: 400 });
+    // Resolve store ID from slug if provided
+    let resolvedStoreId = storeId ? parseInt(storeId) : null;
+    if (!resolvedStoreId && storeSlug) {
+      resolvedStoreId = await getStoreIdBySlug(storeSlug);
     }
 
+    if (!resolvedStoreId) {
+      return NextResponse.json({ error: 'storeId or storeSlug is required' }, { status: 400 });
+    }
+
+    // If handle is provided, return single collection with products
+    if (handle) {
+      try {
+        const collectionData = await getCollectionByHandle(handle, resolvedStoreId, { limit: 20, offset: 0 });
+        if (collectionData.collection) {
+          return NextResponse.json({ 
+            collection: collectionData.collection,
+            products: collectionData.products || []
+          });
+        } else {
+          return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+        }
+      } catch (error) {
+        console.error('Error fetching collection by handle:', error);
+        return NextResponse.json({ error: 'Failed to fetch collection' }, { status: 500 });
+      }
+    }
+
+    // List all collections
     const sql = `
       SELECT 
         pc.id,
@@ -25,7 +54,7 @@ export async function GET(request: NextRequest) {
       LIMIT $2
     `;
 
-    const collections = await query(sql, [storeId, limit]);
+    const collections = await query(sql, [resolvedStoreId, limit]);
 
     // Format collections
     const formattedCollections = collections.map((c: any) => ({
@@ -45,5 +74,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch collections' }, { status: 500 });
   }
 }
-
-
