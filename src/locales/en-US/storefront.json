@@ -10,8 +10,26 @@
     "empty_state": "No products available at the moment",
     "coming_soon": "Store will be available soon"
   },
+  "sections": {
+    "featured_products": {
+      "title": "Featured Products",
+      "view_all": "View All",
+      "sample_product": "Sample Product {number}"
+    },
+    "featured_collections": {
+      "title": "Popular Collections",
+      "view_all": "View All Collections",
+      "sample_collection": "Sample Collection {number}"
+    }
+  },
   "product": {
     "add_to_cart": "Add to Cart",
+    "badge": {
+      "new": "New",
+      "sale": "Sale",
+      "bestseller": "Bestseller",
+      "limited": "Limited Edition"
+    },
     "adding_to_cart": "Adding to Cart...",
     "added_to_cart": "Added Successfully!",
     "buy_now": "Buy Now",

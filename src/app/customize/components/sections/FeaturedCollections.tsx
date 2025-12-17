@@ -1,19 +1,62 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useStoreId } from '@/hooks/useStoreId';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { HiPhotograph } from 'react-icons/hi';
 
 interface FeaturedCollectionsProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
   editorDevice?: 'desktop' | 'tablet' | 'mobile';
+  isPreview?: boolean;
 }
 
-export function FeaturedCollections({ section, onUpdate, editorDevice }: FeaturedCollectionsProps) {
+interface Collection {
+  id: number;
+  title: string;
+  handle: string;
+  image_url: string | null;
+  products_count?: number;
+}
+
+export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview }: FeaturedCollectionsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
+  const storeId = useStoreId();
+  const params = useParams();
+  const storeSlug = params?.storeSlug as string || '';
+  
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(false);
+  const loadedRef = useRef(false);
+
+  // Load real collections from API (only in storefront, not in customizer preview)
+  useEffect(() => {
+    if (isPreview || loadedRef.current || !storeId) return;
+    
+    const loadCollections = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=6`);
+        if (response.ok) {
+          const data = await response.json();
+          setCollections(data.collections || []);
+        }
+      } catch (error) {
+        console.error('Error loading featured collections:', error);
+      } finally {
+        setLoading(false);
+        loadedRef.current = true;
+      }
+    };
+    
+    loadCollections();
+  }, [storeId, isPreview]);
   
   const itemsPerRow = settings.items_per_row || 3;
   const sliderItemsDesktop = settings.slider_items_desktop || 4.5;
