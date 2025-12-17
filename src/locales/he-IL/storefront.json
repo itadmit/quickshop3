@@ -10,8 +10,26 @@
     "empty_state": "אין מוצרים להצגה כרגע",
     "coming_soon": "החנות תהיה זמינה בקרוב"
   },
+  "sections": {
+    "featured_products": {
+      "title": "מוצרים מומלצים",
+      "view_all": "לכל המוצרים",
+      "sample_product": "מוצר לדוגמה {number}"
+    },
+    "featured_collections": {
+      "title": "קטגוריות פופולריות",
+      "view_all": "לכל הקטגוריות",
+      "sample_collection": "קטגוריה לדוגמה {number}"
+    }
+  },
   "product": {
     "add_to_cart": "הוסף לעגלה",
+    "badge": {
+      "new": "חדש",
+      "sale": "מבצע",
+      "bestseller": "רב מכר",
+      "limited": "מהדורה מוגבלת"
+    },
     "adding_to_cart": "מוסיף לעגלה...",
     "added_to_cart": "נוסף בהצלחה!",
     "buy_now": "קנה עכשיו",

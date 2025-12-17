@@ -638,11 +638,8 @@ export function ProductAddToCartSection({ section, product, onUpdate }: ProductS
         setAdded(true);
         setTimeout(() => setAdded(false), 2000);
         
-        // פתיחת העגלה אוטומטית אחרי הוספה (Quickshop)
-        // מחכים קצת כדי שהעגלה תתעדכן מהשרת
-        setTimeout(() => {
-          openCart();
-        }, 500);
+        // פתיחת העגלה מיד - ה-state גלובלי ומתעדכן בזמן אמת
+        openCart();
       } else {
         console.error('Failed to add item to cart');
       }

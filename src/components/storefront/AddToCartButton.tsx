@@ -72,8 +72,8 @@ export function AddToCartButton({
         setAdded(true);
         setTimeout(() => setAdded(false), 2000);
 
-        // Open cart
-        setTimeout(() => openCart(), 300);
+        // Open cart immediately - state is global and updates in real-time
+        openCart();
       }
     } catch (error) {
       console.error('[AddToCartButton] Error:', error);

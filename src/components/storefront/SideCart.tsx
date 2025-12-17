@@ -353,7 +353,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
 
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto p-4">
-              {cartItems.length === 0 && !isAddingToCart && !calcLoading ? (
+              {cartItems.length === 0 && !calcLoading ? (
                 <div className="text-center py-12">
                   <HiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4">העגלה שלך ריקה</p>
@@ -376,34 +376,6 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                       <div className="h-4 bg-gray-200 rounded w-1/4"></div>
                     </div>
                   </div>
-                </div>
-              ) : (calcLoading || isAddingToCart) ? (
-                <div className="space-y-4">
-                  {/* סקלטון לפריטים קיימים */}
-                  {cartItems.map((item) => (
-                    <div key={item.variant_id} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg animate-pulse">
-                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                      </div>
-                    </div>
-                  ))}
-                  {/* סקלטון לפריט חדש שנוסף */}
-                  {isAddingToCart && (
-                    <div className="flex items-center gap-4 p-4 border-2 border-green-300 border-dashed rounded-lg animate-pulse bg-green-50">
-                      <div className="w-20 h-20 bg-green-200 rounded-lg flex-shrink-0"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-green-200 rounded w-3/4"></div>
-                        <div className="h-4 bg-green-200 rounded w-1/2"></div>
-                        <div className="h-4 bg-green-200 rounded w-1/4"></div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <div className="w-6 h-6 bg-green-200 rounded"></div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : !calculation || (calculation.items.length === 0 && cartItems.length > 0) ? (
                 // אם אין calculation אבל יש cartItems - מציגים skeleton עד שהחישוב מוכן

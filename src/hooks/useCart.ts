@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useStoreId } from './useStoreId';
 
 export interface CartItem {
@@ -18,18 +18,51 @@ export interface CartItem {
 }
 
 /**
- * Cart Management Hook - Shopify-like Implementation
- * פשוט כמו Shopify:
+ * Cart Management Hook - Global State with Listeners
+ * שיתוף state גלובלי בין כל הקומפוננטות
  * - localStorage לתצוגה מיידית
  * - Server sync לאמינות
- * - לא over-engineering
+ * - Real-time updates בין קומפוננטות
  */
 
 const CART_STORAGE_KEY_PREFIX = 'quickshop_cart_store_';
 
-// Global: prevent multiple instances from loading at once
+// ============================================
+// GLOBAL STATE - Shared between all components
+// ============================================
+
+// Global cart items per store
+const globalCartItems: { [storeId: number]: CartItem[] } = {};
+
+// Global loading states
 const globalCartLoading: { [storeId: number]: boolean } = {};
 const globalCartLoaded: { [storeId: number]: boolean } = {};
+const globalIsAddingToCart: { [storeId: number]: boolean } = {};
+
+// Listeners for real-time updates
+let cartListeners: Array<() => void> = [];
+let listenerVersion = 0;
+
+// Subscribe/notify pattern for useSyncExternalStore
+function subscribeToCart(callback: () => void) {
+  cartListeners.push(callback);
+  return () => {
+    cartListeners = cartListeners.filter(l => l !== callback);
+  };
+}
+
+function getCartSnapshot() {
+  return listenerVersion;
+}
+
+function notifyCartListeners() {
+  listenerVersion++;
+  cartListeners.forEach(l => l());
+}
+
+// ============================================
+// STORAGE HELPERS
+// ============================================
 
 function getCartFromStorage(storeId: number | null): CartItem[] {
   if (typeof window === 'undefined' || !storeId) return [];
@@ -59,25 +92,48 @@ function setCartToStorage(items: CartItem[], storeId: number | null): void {
   }
 }
 
+// ============================================
+// MAIN HOOK
+// ============================================
+
 export function useCart() {
   const storeId = useStoreId();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isLoadingFromServer, setIsLoadingFromServer] = useState(false);
-  const initialized = useRef(false);
+  
+  // Subscribe to global cart changes - this ensures re-render on any cart change
+  const version = useSyncExternalStore(subscribeToCart, getCartSnapshot, getCartSnapshot);
+  
+  // Get cart items from global state
+  const cartItems = storeId ? (globalCartItems[storeId] || []) : [];
+  const isAddingToCart = storeId ? (globalIsAddingToCart[storeId] || false) : false;
+  const isLoading = storeId ? (globalCartLoading[storeId] || false) : false;
+  
   const loadingRef = useRef(false);
 
-  // Load cart from localStorage immediately when storeId is available
+  // Set cart items and notify all listeners
+  const setCartItems = useCallback((items: CartItem[]) => {
+    if (!storeId) return;
+    globalCartItems[storeId] = items;
+    setCartToStorage(items, storeId);
+    notifyCartListeners();
+  }, [storeId]);
+
+  // Set adding state
+  const setIsAddingToCart = useCallback((adding: boolean) => {
+    if (!storeId) return;
+    globalIsAddingToCart[storeId] = adding;
+    notifyCartListeners();
+  }, [storeId]);
+
+  // Initialize cart from localStorage on first mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && storeId && !initialized.current) {
+    if (typeof window !== 'undefined' && storeId && !globalCartLoaded[storeId]) {
       // Load from localStorage immediately
       const cached = getCartFromStorage(storeId);
-      setCartItems(cached);
-      initialized.current = true;
+      globalCartItems[storeId] = cached;
+      notifyCartListeners();
       
-      // Only load from server if no other instance is loading AND not already loaded
-      if (!globalCartLoading[storeId] && !globalCartLoaded[storeId]) {
+      // Load from server once
+      if (!globalCartLoading[storeId]) {
         loadCartFromServer();
       }
     }
@@ -93,7 +149,8 @@ export function useCart() {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === cartKey) {
         const newItems = e.newValue ? JSON.parse(e.newValue) : [];
-        setCartItems(Array.isArray(newItems) ? newItems : []);
+        globalCartItems[storeId] = Array.isArray(newItems) ? newItems : [];
+        notifyCartListeners();
       }
     };
     
@@ -107,7 +164,7 @@ export function useCart() {
 
     loadingRef.current = true;
     globalCartLoading[storeId] = true;
-    setIsLoadingFromServer(true);
+    notifyCartListeners();
     
     try {
       const response = await fetch(`/api/cart?storeId=${storeId}`, {
@@ -119,20 +176,21 @@ export function useCart() {
       if (response.ok) {
         const data = await response.json();
         if (data.items && Array.isArray(data.items)) {
+          globalCartItems[storeId] = data.items;
           setCartToStorage(data.items, storeId);
-          setCartItems(data.items);
         } else {
+          globalCartItems[storeId] = [];
           setCartToStorage([], storeId);
-          setCartItems([]);
         }
         globalCartLoaded[storeId] = true;
+        notifyCartListeners();
       }
     } catch (error) {
       console.error('[useCart] Error loading cart from server:', error);
     } finally {
-      setIsLoadingFromServer(false);
-      loadingRef.current = false;
       globalCartLoading[storeId] = false;
+      loadingRef.current = false;
+      notifyCartListeners();
     }
   }, [storeId]);
 
@@ -151,8 +209,9 @@ export function useCart() {
       if (response.ok) {
         const data = await response.json();
         if (data.items && Array.isArray(data.items)) {
+          globalCartItems[storeId] = data.items;
           setCartToStorage(data.items, storeId);
-          setCartItems(data.items);
+          notifyCartListeners();
         }
         return true;
       }
@@ -180,7 +239,7 @@ export function useCart() {
     );
   }, []);
 
-  // ADD TO CART - Simple and reliable
+  // ADD TO CART - Updates global state immediately
   const addToCart = useCallback(async (item: CartItem): Promise<boolean> => {
     // Validations
     if (!item.variant_id || !item.product_id || !item.price || item.price < 0) {
@@ -195,15 +254,17 @@ export function useCart() {
       console.error('[useCart] Cannot add to cart: storeId is missing');
       return false;
     }
-    if (isAddingToCart) {
+    if (globalIsAddingToCart[storeId]) {
       return false;
     }
 
-    setIsAddingToCart(true);
+    // Set adding state
+    globalIsAddingToCart[storeId] = true;
+    notifyCartListeners();
 
     try {
-      // Read from localStorage (source of truth for client)
-      const currentItems = getCartFromStorage(storeId);
+      // Read current items from global state
+      const currentItems = globalCartItems[storeId] || [];
       const existing = currentItems.find((i) => areItemsEqual(i, item));
       
       let newItems: CartItem[];
@@ -217,25 +278,29 @@ export function useCart() {
         newItems = [...currentItems, item];
       }
       
-      // Update localStorage and state immediately
+      // Update global state and localStorage immediately
+      globalCartItems[storeId] = newItems;
       setCartToStorage(newItems, storeId);
-      setCartItems(newItems);
+      notifyCartListeners();
       
-      // Save to server
-      await saveCartToServer(newItems);
+      // Save to server (async, don't block)
+      saveCartToServer(newItems);
       
       return true;
     } catch (error) {
       console.error('[useCart] Error adding to cart:', error);
       return false;
     } finally {
-      setIsAddingToCart(false);
+      globalIsAddingToCart[storeId] = false;
+      notifyCartListeners();
     }
-  }, [storeId, saveCartToServer, areItemsEqual, isAddingToCart]);
+  }, [storeId, saveCartToServer, areItemsEqual]);
 
   // REMOVE FROM CART
   const removeFromCart = useCallback((variantId: number) => {
-    const currentItems = getCartFromStorage(storeId);
+    if (!storeId) return;
+    
+    const currentItems = globalCartItems[storeId] || [];
     
     // Don't remove gift products
     const itemToRemove = currentItems.find((i) => i.variant_id === variantId);
@@ -247,32 +312,32 @@ export function useCart() {
     }
     
     const newItems = currentItems.filter((i) => i.variant_id !== variantId);
+    globalCartItems[storeId] = newItems;
     setCartToStorage(newItems, storeId);
-    setCartItems(newItems);
+    notifyCartListeners();
     
-    if (storeId) {
-      saveCartToServer(newItems);
-    }
+    saveCartToServer(newItems);
   }, [storeId, saveCartToServer]);
 
   // UPDATE QUANTITY
   const updateQuantity = useCallback(async (variantId: number, quantity: number) => {
+    if (!storeId) return;
+    
     if (quantity <= 0) {
       removeFromCart(variantId);
       return;
     }
     
-    const currentItems = getCartFromStorage(storeId);
+    const currentItems = globalCartItems[storeId] || [];
     const newItems = currentItems.map((i) => 
       i.variant_id === variantId ? { ...i, quantity } : i
     );
     
+    globalCartItems[storeId] = newItems;
     setCartToStorage(newItems, storeId);
-    setCartItems(newItems);
+    notifyCartListeners();
     
-    if (storeId) {
-      await saveCartToServer(newItems);
-    }
+    await saveCartToServer(newItems);
   }, [storeId, saveCartToServer, removeFromCart]);
 
   // CLEAR CART
@@ -281,11 +346,10 @@ export function useCart() {
     
     const key = `${CART_STORAGE_KEY_PREFIX}${storeId}`;
     localStorage.removeItem(key);
-    setCartItems([]);
+    globalCartItems[storeId] = [];
+    notifyCartListeners();
     
-    if (storeId) {
-      await saveCartToServer([]);
-    }
+    await saveCartToServer([]);
   }, [storeId, saveCartToServer]);
 
   // GET CART COUNT
@@ -308,7 +372,7 @@ export function useCart() {
     getCartTotal,
     isLoading,
     isAddingToCart,
-    isLoadingFromServer,
+    isLoadingFromServer: isLoading,
     refreshCart: loadCartFromServer,
   };
 }
