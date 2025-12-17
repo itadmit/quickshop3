@@ -31,6 +31,220 @@ interface PageLayoutData {
 const layoutCache: { [key: string]: { data: PageLayoutData; timestamp: number } } = {};
 const CACHE_TTL = 60000; // 1 minute cache
 
+// ============================================
+// Page-Specific Skeletons
+// ============================================
+
+function HomePageSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col" dir="rtl">
+      {/* Header Skeleton */}
+      <header className="h-16 bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="flex gap-4">
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </header>
+      
+      {/* Hero Banner Skeleton */}
+      <div className="w-full h-64 md:h-96 bg-gradient-to-l from-gray-100 to-gray-200 animate-pulse" />
+      
+      {/* Featured Products Section */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-6 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-square bg-gray-200 rounded-lg animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+                <div className="h-5 bg-gray-200 rounded w-1/3 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Categories Section */}
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded w-40 mb-6 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </main>
+      
+      {/* Footer Skeleton */}
+      <footer className="h-48 bg-gray-100 animate-pulse" />
+    </div>
+  );
+}
+
+function ProductPageSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col" dir="rtl">
+      {/* Header Skeleton */}
+      <header className="h-16 bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="flex gap-4">
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </header>
+      
+      {/* Product Content */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+          {/* Left Column - Gallery */}
+          <div className="space-y-4">
+            <div className="aspect-square bg-gray-200 rounded-lg animate-pulse" />
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="w-16 h-16 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+          
+          {/* Right Column - Product Info */}
+          <div className="space-y-4">
+            {/* Title */}
+            <div className="h-8 bg-gray-200 rounded w-3/4 animate-pulse" />
+            {/* Price */}
+            <div className="h-10 bg-gray-200 rounded w-1/4 animate-pulse" />
+            {/* Variants */}
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-20 animate-pulse" />
+              <div className="flex gap-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-10 w-16 bg-gray-200 rounded animate-pulse" />
+                ))}
+              </div>
+            </div>
+            {/* Quantity + Add to Cart */}
+            <div className="flex gap-4 pt-4">
+              <div className="h-12 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-12 flex-1 bg-gray-300 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Description Section */}
+        <div className="mt-12 space-y-3">
+          <div className="h-6 bg-gray-200 rounded w-32 animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-full animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-5/6 animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-4/5 animate-pulse" />
+        </div>
+      </main>
+      
+      {/* Footer Skeleton */}
+      <footer className="h-48 bg-gray-100 animate-pulse" />
+    </div>
+  );
+}
+
+function CollectionPageSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col" dir="rtl">
+      {/* Header Skeleton */}
+      <header className="h-16 bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="flex gap-4">
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </header>
+      
+      {/* Collection Content */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        {/* Collection Header */}
+        <div className="mb-8">
+          <div className="h-10 bg-gray-200 rounded w-56 mb-3 animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-96 max-w-full animate-pulse" />
+        </div>
+        
+        {/* Filters Bar */}
+        <div className="flex gap-4 mb-6">
+          <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+        </div>
+        
+        {/* Products Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+            <div key={i} className="space-y-3">
+              <div className="aspect-square bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+              <div className="h-5 bg-gray-200 rounded w-1/3 animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </main>
+      
+      {/* Footer Skeleton */}
+      <footer className="h-48 bg-gray-100 animate-pulse" />
+    </div>
+  );
+}
+
+function DefaultPageSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col" dir="rtl">
+      {/* Header Skeleton */}
+      <header className="h-16 bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="flex gap-4">
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </header>
+      
+      {/* Content Skeleton */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-full animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-5/6 animate-pulse" />
+          <div className="h-4 bg-gray-100 rounded w-4/5 animate-pulse" />
+        </div>
+      </main>
+      
+      {/* Footer Skeleton */}
+      <footer className="h-48 bg-gray-100 animate-pulse" />
+    </div>
+  );
+}
+
+function getSkeletonForPageType(pageType: string) {
+  switch (pageType) {
+    case 'home':
+      return <HomePageSkeleton />;
+    case 'product':
+      return <ProductPageSkeleton />;
+    case 'collection':
+    case 'collections':
+    case 'categories':
+      return <CollectionPageSkeleton />;
+    default:
+      return <DefaultPageSkeleton />;
+  }
+}
+
 export function CustomizerLayoutClient({ 
   storeSlug, 
   pageType,
@@ -107,34 +321,9 @@ export function CustomizerLayoutClient({
     };
   }, [cacheKey, storeSlug, pageType, pageHandle]);
 
-  // Loading skeleton
+  // Loading skeleton - shows page-specific skeleton based on pageType
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col" dir="rtl">
-        {/* Header Skeleton */}
-        <header className="h-16 bg-white border-b border-gray-200 animate-pulse" />
-        
-        {/* Content Skeleton */}
-        <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
-          <div className="space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
-            <div className="h-64 bg-gray-100 rounded animate-pulse" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="space-y-2">
-                  <div className="aspect-square bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </main>
-        
-        {/* Footer Skeleton */}
-        <footer className="h-32 bg-gray-100 animate-pulse" />
-      </div>
-    );
+    return getSkeletonForPageType(pageType);
   }
 
   // Error state
