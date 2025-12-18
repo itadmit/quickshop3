@@ -157,14 +157,14 @@ function SectionRendererInner({ section, isSelected, onUpdate, device = 'desktop
     case 'featured_products':
       return (
         <SectionWrapper>
-          <FeaturedProducts section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+          <FeaturedProducts section={responsiveSection} onUpdate={onUpdate} editorDevice={device} isPreview={true} />
         </SectionWrapper>
       );
 
     case 'featured_collections':
       return (
         <SectionWrapper>
-          <FeaturedCollections section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+          <FeaturedCollections section={responsiveSection} onUpdate={onUpdate} editorDevice={device} isPreview={true} />
         </SectionWrapper>
       );
 

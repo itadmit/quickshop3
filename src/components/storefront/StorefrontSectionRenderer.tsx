@@ -184,7 +184,7 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
     case 'featured_collections':
       return (
         <SectionWrapper>
-          <FeaturedCollections section={responsiveSection} onUpdate={noopUpdate} />
+          <FeaturedCollections section={responsiveSection} onUpdate={noopUpdate} isPreview={false} />
         </SectionWrapper>
       );
 
