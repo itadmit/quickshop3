@@ -33,6 +33,7 @@ export type SectionType =
   | 'footer'
   | 'header'
   // Product page sections
+  | 'product_breadcrumbs'
   | 'product_title'
   | 'product_name'
   | 'product_price'

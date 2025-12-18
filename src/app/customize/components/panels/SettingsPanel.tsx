@@ -3652,6 +3652,509 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           </div>
         );
 
+      case 'product_breadcrumbs':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תצוגה">
+              <div className="space-y-4">
+                {renderSelect('הצג בית', 'show_home', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                {renderSelect('הצג אייקון בית', 'home_icon', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                {renderSelect('הצג קטגוריה', 'show_category', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderSelect('מפריד', 'separator', [
+                  { label: 'חץ (שברון)', value: 'chevron' },
+                  { label: 'קו נטוי', value: 'slash' },
+                  { label: 'חץ', value: 'arrow' },
+                ])}
+                {renderSelect('גודל טקסט', 'text_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                ])}
+                {renderSelect('יישור', 'alignment', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+                {renderColorPicker('צבע קישורים', 'link_color')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'announcement_bar':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תוכן">
+              <div className="space-y-4">
+                {renderInput('טקסט ההודעה', 'text', 'משלוח חינם בקנייה מעל 299₪')}
+                {renderInput('טקסט קישור', 'link_text', '')}
+                {renderInput('כתובת קישור', 'link_url', '/categories/all')}
+              </div>
+            </SettingGroup>
+            
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">צבע רקע</label>
+                  <ModernColorPicker 
+                    value={section.style?.background?.background_color || '#000000'}
+                    onChange={(color) => handleStyleChange('background.background_color', color)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">צבע טקסט</label>
+                  <ModernColorPicker 
+                    value={section.style?.typography?.color || '#FFFFFF'}
+                    onChange={(color) => handleStyleChange('typography.color', color)}
+                  />
+                </div>
+                {renderSelect('יישור טקסט', 'text_align', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+                {renderSelect('גובה', 'height', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'רגיל', value: 'auto' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="אפשרויות נוספות">
+              <div className="space-y-4">
+                {renderSelect('הצג כפתור סגירה', 'show_dismiss', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                {renderSelect('טקסט גולל', 'scrolling_text', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
+                {getValue('scrolling_text') && renderSelect('מהירות גלילה', 'scroll_speed', [
+                  { label: 'איטי', value: 'slow' },
+                  { label: 'רגיל', value: 'normal' },
+                  { label: 'מהיר', value: 'fast' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'collage':
+        const collageBlocks = section.blocks?.filter(b => b.type === 'image') || [];
+        
+        const addCollageImage = () => {
+          const newBlock = {
+            id: `collage-img-${Date.now()}`,
+            type: 'image' as const,
+            content: {
+              image_url: '',
+              title: '',
+              link_url: ''
+            },
+            style: {},
+            settings: {}
+          };
+          onUpdate({
+            blocks: [...(section.blocks || []), newBlock]
+          });
+        };
+        
+        const removeCollageImage = (blockId: string) => {
+          const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+          onUpdate({ blocks: newBlocks });
+        };
+
+        const updateCollageImage = (blockId: string, updates: any) => {
+          const newBlocks = [...(section.blocks || [])];
+          const index = newBlocks.findIndex(b => b.id === blockId);
+          if (index >= 0) {
+            newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+            onUpdate({ blocks: newBlocks });
+          }
+        };
+
+        const openCollageImagePicker = (imageId: string) => {
+          setMediaType('image');
+          setTargetBlockId(imageId);
+          setImageDeviceTarget('desktop');
+          setIsMediaPickerOpen(true);
+        };
+
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כותרת">
+              <div className="space-y-4">
+                {renderInput('כותרת', 'title', 'הקולקציה החדשה')}
+                {renderSelect('יישור כותרת', 'title_align', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title={`תמונות (${collageBlocks.length})`} defaultOpen={true}>
+              <div className="space-y-3">
+                {collageBlocks.map((block, index) => (
+                  <div key={block.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700">תמונה {index + 1}</span>
+                      <button
+                        onClick={() => removeCollageImage(block.id)}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        title="מחק תמונה"
+                      >
+                        <HiTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    {/* Image */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">תמונה</label>
+                      <div className="flex gap-2">
+                        {block.content?.image_url ? (
+                          <div className="relative w-20 h-20 rounded overflow-hidden bg-gray-100">
+                            <img 
+                              src={block.content.image_url} 
+                              alt="" 
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              onClick={() => updateCollageImage(block.id, { image_url: '' })}
+                              className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
+                            >
+                              <HiTrash className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openCollageImagePicker(block.id)}
+                            className="w-20 h-20 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-500"
+                          >
+                            <HiPhotograph className="w-8 h-8" />
+                          </button>
+                        )}
+                        {block.content?.image_url && (
+                          <button
+                            onClick={() => openCollageImagePicker(block.id)}
+                            className="text-xs text-blue-600 hover:underline self-center"
+                          >
+                            החלף
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Link */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">קישור (אופציונלי)</label>
+                      <input
+                        type="text"
+                        value={block.content?.link_url || ''}
+                        onChange={(e) => updateCollageImage(block.id, { link_url: e.target.value })}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
+                        placeholder="/categories/new"
+                      />
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  onClick={addCollageImage}
+                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2 text-sm"
+                >
+                  <HiPlus className="w-4 h-4" />
+                  הוסף תמונה
+                </button>
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('סוג פריסה', 'layout', [
+                  { label: 'תמונה גדולה מימין', value: 'left-large' },
+                  { label: 'תמונה גדולה משמאל', value: 'right-large' },
+                  { label: 'רשת שווה', value: 'equal' },
+                ])}
+                {renderSelect('מרווח בין תמונות', 'gap', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderInput('עיגול פינות (px)', 'image_border_radius', '8px')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'multicolumn':
+        const mcColumnBlocks = section.blocks?.filter(b => b.type === 'text' || b.type === 'image') || [];
+        
+        const addMcColumn = () => {
+          const newBlock = {
+            id: `col-${Date.now()}`,
+            type: 'text' as const,
+            content: {
+              image_url: '',
+              heading: 'כותרת עמודה',
+              text: 'הוסף תיאור קצר כאן',
+              button_text: '',
+              button_url: ''
+            },
+            style: {},
+            settings: {}
+          };
+          onUpdate({
+            blocks: [...(section.blocks || []), newBlock]
+          });
+        };
+        
+        const removeMcColumn = (blockId: string) => {
+          const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+          onUpdate({ blocks: newBlocks });
+        };
+
+        const updateMcColumn = (blockId: string, updates: any) => {
+          const newBlocks = [...(section.blocks || [])];
+          const index = newBlocks.findIndex(b => b.id === blockId);
+          if (index >= 0) {
+            newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+            onUpdate({ blocks: newBlocks });
+          }
+        };
+
+        const openMcColumnImagePicker = (columnId: string) => {
+          setMediaType('image');
+          setTargetBlockId(columnId);
+          setImageDeviceTarget('desktop');
+          setIsMediaPickerOpen(true);
+        };
+
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כותרת סקשן">
+              <div className="space-y-4">
+                {renderInput('כותרת', 'title', 'למה לבחור בנו?')}
+                {renderSelect('יישור כותרת', 'title_align', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title={`עמודות (${mcColumnBlocks.length})`} defaultOpen={true}>
+              <div className="space-y-3">
+                {mcColumnBlocks.map((block, index) => (
+                  <div key={block.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700">עמודה {index + 1}</span>
+                      <button
+                        onClick={() => removeMcColumn(block.id)}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        title="מחק עמודה"
+                      >
+                        <HiTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    {/* Image */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">תמונה</label>
+                      <div className="flex gap-2">
+                        {block.content?.image_url ? (
+                          <div className="relative w-16 h-16 rounded overflow-hidden bg-gray-100">
+                            <img 
+                              src={block.content.image_url} 
+                              alt="" 
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              onClick={() => updateMcColumn(block.id, { image_url: '' })}
+                              className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
+                            >
+                              <HiTrash className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openMcColumnImagePicker(block.id)}
+                            className="w-16 h-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-500"
+                          >
+                            <HiPhotograph className="w-6 h-6" />
+                          </button>
+                        )}
+                        {block.content?.image_url && (
+                          <button
+                            onClick={() => openMcColumnImagePicker(block.id)}
+                            className="text-xs text-blue-600 hover:underline self-center"
+                          >
+                            החלף
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Heading */}
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">כותרת</label>
+                      <input
+                        type="text"
+                        value={block.content?.heading || ''}
+                        onChange={(e) => updateMcColumn(block.id, { heading: e.target.value })}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
+                        placeholder="כותרת עמודה"
+                      />
+                    </div>
+                    
+                    {/* Text */}
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">תיאור</label>
+                      <textarea
+                        value={block.content?.text || ''}
+                        onChange={(e) => updateMcColumn(block.id, { text: e.target.value })}
+                        rows={2}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black resize-none"
+                        placeholder="תיאור קצר..."
+                      />
+                    </div>
+                    
+                    {/* Button */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">טקסט כפתור</label>
+                        <input
+                          type="text"
+                          value={block.content?.button_text || ''}
+                          onChange={(e) => updateMcColumn(block.id, { button_text: e.target.value })}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
+                          placeholder="למד עוד"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">קישור</label>
+                        <input
+                          type="text"
+                          value={block.content?.button_url || ''}
+                          onChange={(e) => updateMcColumn(block.id, { button_url: e.target.value })}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
+                          placeholder="/page/about"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  onClick={addMcColumn}
+                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2 text-sm"
+                >
+                  <HiPlus className="w-4 h-4" />
+                  הוסף עמודה
+                </button>
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('מספר עמודות (דסקטופ)', 'columns_desktop', [
+                  { label: '2 עמודות', value: 2 },
+                  { label: '3 עמודות', value: 3 },
+                  { label: '4 עמודות', value: 4 },
+                  { label: '5 עמודות', value: 5 },
+                  { label: '6 עמודות', value: 6 },
+                ])}
+                {renderSelect('מספר עמודות (מובייל)', 'columns_mobile', [
+                  { label: 'עמודה אחת', value: 1 },
+                  { label: '2 עמודות', value: 2 },
+                ])}
+                {renderSelect('יישור תוכן', 'text_align', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+                {renderSelect('מרווח בין עמודות', 'column_gap', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="תמונות">
+              <div className="space-y-4">
+                {renderSelect('יחס גובה-רוחב', 'image_ratio', [
+                  { label: 'ריבוע', value: 'square' },
+                  { label: 'דיוקן', value: 'portrait' },
+                  { label: 'נוף', value: 'landscape' },
+                  { label: 'עיגול', value: 'circle' },
+                ])}
+                {renderInput('עיגול פינות (px)', 'image_border_radius', '8px')}
+                {renderSelect('מסגרת תמונה', 'image_border', [
+                  { label: 'ללא', value: false },
+                  { label: 'עם מסגרת', value: true },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'custom_html':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="קוד HTML">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    קוד HTML
+                  </label>
+                  <textarea
+                    value={getValue('html_content', '')}
+                    onChange={(e) => handleSettingChange('html_content', e.target.value)}
+                    rows={12}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-black/5"
+                    placeholder="<div>הזן כאן את קוד ה-HTML שלך...</div>"
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    ⚠️ קוד לא בטוח עלול לגרום לבעיות באתר. ודא שהקוד תקין.
+                  </p>
+                </div>
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('רוחב תוכן', 'container_width', [
+                  { label: 'צר', value: 'narrow' },
+                  { label: 'רגיל', value: 'container' },
+                  { label: 'מלא', value: 'full' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
       default:
         return (
           <div className="p-6 text-center text-gray-500">

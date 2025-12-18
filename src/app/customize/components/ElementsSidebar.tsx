@@ -39,7 +39,12 @@ import {
   HiUserGroup,
   HiClipboardList,
   HiPlay,
-  HiCollection
+  HiCollection,
+  HiBell,
+  HiCode,
+  HiViewGrid,
+  HiSearch,
+  HiX
 } from 'react-icons/hi';
 
 interface ElementsSidebarProps {
@@ -64,6 +69,7 @@ const BASE_CATEGORIES: { id: CategoryType; name: string; icon: React.ComponentTy
 
 // Icon mapping for page-specific sections
 const PAGE_SECTION_ICONS: Record<string, React.ComponentType<any>> = {
+  product_breadcrumbs: HiFolder,
   product_gallery: HiPhotograph,
   product_title: HiDocumentText,
   product_price: HiCube,
@@ -89,6 +95,13 @@ const AVAILABLE_SECTIONS: Array<{
   category: CategoryType;
 }> = [
   // Media
+  {
+    type: 'announcement_bar',
+    name: 'בר הודעות',
+    description: 'בר הודעות עליון',
+    icon: HiBell,
+    category: 'media'
+  },
   {
     type: 'hero_banner',
     name: 'באנר ראשי',
@@ -117,6 +130,20 @@ const AVAILABLE_SECTIONS: Array<{
     icon: HiPhotograph,
     category: 'media'
   },
+  {
+    type: 'collage',
+    name: 'קולאז׳',
+    description: 'רשת תמונות בסגנון קולאז׳',
+    icon: HiViewGrid,
+    category: 'media'
+  },
+  {
+    type: 'custom_html',
+    name: 'קוד HTML מותאם',
+    description: 'הוספת קוד HTML מותאם אישית',
+    icon: HiCode,
+    category: 'media'
+  },
   
   // Store
   {
@@ -140,6 +167,13 @@ const AVAILABLE_SECTIONS: Array<{
     name: 'מדיה עם טקסט',
     description: 'תמונה לצד טקסט',
     icon: HiPhotograph,
+    category: 'content'
+  },
+  {
+    type: 'multicolumn',
+    name: 'עמודות מרובות',
+    description: 'עמודות עם תמונות וטקסט',
+    icon: HiViewList,
     category: 'content'
   },
   {
@@ -197,6 +231,8 @@ interface AddSectionMenuProps {
 }
 
 function AddSectionMenu({ pageType, activeCategory, setActiveCategory, onAddSection }: AddSectionMenuProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Get page-specific sections
   const pageSpecificSections = useMemo(() => {
     const sections = getPageSpecificSections(pageType);
@@ -222,68 +258,113 @@ function AddSectionMenu({ pageType, activeCategory, setActiveCategory, onAddSect
     return [pageSpecificCategory, ...BASE_CATEGORIES];
   }, [pageType]);
 
-  // Get sections to display based on active category
+  // Get sections to display based on active category and search
   const sectionsToDisplay = useMemo(() => {
+    let sections = [];
     if (activeCategory === 'page-specific') {
-      return pageSpecificSections;
+      sections = pageSpecificSections;
+    } else {
+      sections = AVAILABLE_SECTIONS.filter(s => s.category === activeCategory);
     }
-    return AVAILABLE_SECTIONS.filter(s => s.category === activeCategory);
-  }, [activeCategory, pageSpecificSections]);
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      // If searching, search across ALL available sections if no specific category matches well
+      // OR just filter current category? Let's filter current category for now to keep UX consistent
+      // Actually, better UX is to search everything if search is active, but keeping it simple per category is also fine.
+      // Let's stick to current category filtering for now.
+      return sections.filter(s => 
+        s.name.toLowerCase().includes(query) || 
+        s.description.toLowerCase().includes(query)
+      );
+    }
+
+    return sections;
+  }, [activeCategory, pageSpecificSections, searchQuery]);
 
   return (
-    <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[400px] w-[320px] -right-4">
+    <div className="absolute bottom-full right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[500px] w-[380px] origin-bottom-right">
+      
+      {/* Search Bar */}
+      <div className="p-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+        <div className="relative">
+          <HiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input 
+            type="text"
+            placeholder="חפש סקשן..."
+            className="w-full pl-3 pr-9 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-gray-300 transition-all"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <HiX className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Categories Tabs */}
       <div className="flex overflow-x-auto border-b border-gray-100 scrollbar-hide bg-gray-50/50 flex-shrink-0">
         {categories.map(category => (
           <button
             key={category.id}
             onClick={() => setActiveCategory(category.id)}
-            className={`flex flex-col items-center justify-center py-3 px-4 min-w-[70px] text-xs font-medium border-b-2 transition-colors ${
+            className={`flex flex-col items-center justify-center py-3 px-4 min-w-[80px] text-xs font-medium border-b-2 transition-all ${
               activeCategory === category.id
-                ? 'border-black text-black bg-white'
+                ? 'border-black text-black bg-white shadow-sm'
                 : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
             }`}
           >
-            {React.createElement(category.icon, { className: "w-5 h-5 mb-1" })}
-            {category.name.split(' ')[0]}
+            {React.createElement(category.icon, { className: `w-5 h-5 mb-1.5 ${activeCategory === category.id ? 'text-black' : 'text-gray-400'}` })}
+            <span className="truncate max-w-full">{category.name.split(' ')[0]}</span>
           </button>
         ))}
       </div>
 
       {/* Sections List */}
-      <div className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
-        <div className="space-y-1">
+      <div className="flex-1 overflow-y-auto p-3 bg-gray-50/30 custom-scrollbar">
+        <div className="space-y-2">
           {sectionsToDisplay.map((section) => (
             <button
               key={section.type}
               onClick={() => onAddSection(section.type)}
-              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-right group border border-transparent hover:border-gray-100"
+              className="w-full flex items-start gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-gray-300 hover:shadow-md transition-all text-right group relative overflow-hidden"
             >
-              <div className="p-2.5 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm">
+              <div className="p-2.5 rounded-lg bg-gray-50 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm shrink-0">
                 {React.createElement(section.icon, { className: "w-6 h-6" })}
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
-                  {section.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {section.description}
-                </p>
+              <div className="flex-1 min-w-0 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
+                    {section.name}
+                  </p>
+                  <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                    {section.description}
+                  </p>
+                </div>
+                <HiPlus className="w-5 h-5 text-gray-300 group-hover:text-black opacity-0 group-hover:opacity-100 transition-all transform group-hover:scale-110 mr-2" />
               </div>
             </button>
           ))}
           
           {sectionsToDisplay.length === 0 && (
-            <div className="py-8 text-center text-gray-400 text-sm">
-              אין סקשנים בקטגוריה זו
+            <div className="py-12 flex flex-col items-center justify-center text-center text-gray-400">
+              <HiSearch className="w-12 h-12 mb-3 text-gray-200" />
+              <p className="text-sm font-medium text-gray-900">לא נמצאו סקשנים</p>
+              <p className="text-xs text-gray-500 mt-1">נסה לשנות את מונח החיפוש</p>
             </div>
           )}
         </div>
       </div>
       
       {/* Footer hint */}
-      <div className="p-2 bg-gray-50 border-t border-gray-100 text-center flex-shrink-0">
-        <p className="text-[10px] text-gray-400">בחר קטגוריה למעלה והוסף סקשן לעמוד</p>
+      <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center flex-shrink-0">
+        <p className="text-[10px] text-gray-400 font-medium">לחץ על סקשן כדי להוסיף אותו לעמוד</p>
       </div>
     </div>
   );

@@ -27,7 +27,8 @@ import { LogoList } from '@/app/customize/components/sections/LogoList';
 import { AnnouncementBar } from '@/app/customize/components/sections/AnnouncementBar';
 import { Multicolumn } from '@/app/customize/components/sections/Multicolumn';
 import { Collage } from '@/app/customize/components/sections/Collage';
-import { CustomHTML } from '@/app/customize/components/sections/CustomHTML';
+import { CustomHtml } from '@/app/customize/components/sections/CustomHtml';
+import { ProductBreadcrumbs } from '@/app/customize/components/sections/ProductBreadcrumbs';
 // Product page section components
 import {
   ProductGallerySection,
@@ -283,7 +284,7 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
     case 'custom_html':
       return (
         <SectionWrapper>
-          <CustomHTML section={responsiveSection} onUpdate={noopUpdate} isPreview={false} />
+          <CustomHtml section={responsiveSection} onUpdate={noopUpdate} />
         </SectionWrapper>
       );
 
@@ -292,6 +293,9 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
 
     // ========== Product Page Sections ==========
     // Note: ProductPageProvider is wrapped at CustomizerLayout level for all product sections
+    case 'product_breadcrumbs':
+      return <ProductBreadcrumbs section={responsiveSection} product={product} onUpdate={noopUpdate} />;
+
     case 'product_gallery':
       // No wrapper for product gallery - it's inside a column layout
       return <ProductGallerySection section={responsiveSection} product={product} onUpdate={noopUpdate} />;

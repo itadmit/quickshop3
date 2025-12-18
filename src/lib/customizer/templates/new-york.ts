@@ -457,11 +457,29 @@ function getFooterSection(order: number): SectionSettings {
 // Product page sections
 export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
+    id: 'product-breadcrumbs',
+    type: 'product_breadcrumbs',
+    name: 'פירורי לחם',
+    visible: true,
+    order: 1,
+    locked: false,
+    blocks: [],
+    style: {},
+    settings: {
+      show_home: true,
+      home_icon: true,
+      show_category: true,
+      separator: 'chevron',
+      text_size: 'small',
+      alignment: 'right'
+    }
+  },
+  {
     id: 'product-gallery',
     type: 'product_gallery',
     name: 'גלריית מוצר',
     visible: true,
-    order: 1,
+    order: 2,
     locked: false,
     blocks: [],
     style: {},
@@ -727,6 +745,7 @@ export function getPageSpecificSections(pageType: string): Array<{ type: string;
   switch (pageType) {
     case 'product':
       return [
+        { type: 'product_breadcrumbs', name: 'פירורי לחם', description: 'ניווט היררכי לעמוד' },
         { type: 'product_gallery', name: 'גלריית מוצר', description: 'תמונות ווידאו של המוצר' },
         { type: 'product_title', name: 'שם המוצר', description: 'כותרת ושם המוצר' },
         { type: 'product_price', name: 'מחיר', description: 'מחיר המוצר והנחות' },

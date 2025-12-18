@@ -370,6 +370,55 @@ export async function addSection(data: AddSectionRequest) {
     // הגדרות ברירת מחדל לפי סוג הסקשן
     let defaultSettings = data.settings_json || {};
     
+    // הגדרות לסקשנים חדשים
+    if (data.section_type === 'announcement_bar') {
+      defaultSettings = {
+        text: 'משלוח חינם בקנייה מעל 299₪',
+        link_text: '',
+        link_url: '/categories/all',
+        text_align: 'center',
+        height: 'auto',
+        show_dismiss: true,
+        scrolling_text: false,
+        scroll_speed: 'normal',
+        ...defaultSettings
+      };
+    }
+
+    if (data.section_type === 'custom_html') {
+      defaultSettings = {
+        html_content: "<div style='padding: 40px; text-align: center; background: #f9fafb; border-radius: 8px;'>\n  <h2 style='font-size: 24px; margin-bottom: 16px;'>קוד מותאם אישית</h2>\n  <p>הוסף כאן את ה-HTML שלך</p>\n</div>",
+        container_width: 'container',
+        ...defaultSettings
+      };
+    }
+
+    if (data.section_type === 'collage') {
+      defaultSettings = {
+        title: 'הקולקציה החדשה',
+        title_align: 'center',
+        layout: 'left-large',
+        gap: 'medium',
+        image_border_radius: '8px',
+        ...defaultSettings
+      };
+    }
+
+    if (data.section_type === 'multicolumn') {
+      defaultSettings = {
+        title: 'למה לבחור בנו?',
+        title_align: 'center',
+        columns_desktop: 3,
+        columns_mobile: 1,
+        text_align: 'center',
+        column_gap: 'medium',
+        image_ratio: 'square',
+        image_border_radius: '8px',
+        image_border: false,
+        ...defaultSettings
+      };
+    }
+
     if (data.section_type === 'logo_list') {
       defaultSettings = {
         heading: 'המותגים שלנו',
@@ -451,6 +500,76 @@ export async function addSection(data: AddSectionRequest) {
               title: '',
               description: '',
               link_url: ''
+            })
+          ]
+        );
+      }
+    }
+
+    // 3 עמודות ברירת מחדל לסקשן עמודות מרובות
+    if (data.section_type === 'multicolumn') {
+      const defaultColumns = [
+        {
+          title: 'משלוח מהיר',
+          text: 'משלוח עד הבית תוך 3 ימי עסקים לכל חלקי הארץ.'
+        },
+        {
+          title: 'החזרות חינם',
+          text: 'לא מרוצים? ניתן להחזיר את המוצר תוך 30 יום ולקבל זיכוי מלא.'
+        },
+        {
+          title: 'שירות לקוחות',
+          text: 'צוות התמיכה שלנו זמין עבורכם לכל שאלה או התייעצות.'
+        }
+      ];
+
+      for (let i = 0; i < 3; i++) {
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, true, $5)
+          `,
+          [
+            dbSectionId,
+            'column',
+            `col_${i+1}`,
+            i,
+            JSON.stringify({
+              title: defaultColumns[i].title,
+              text: defaultColumns[i].text,
+              image_url: '',
+              link_label: '',
+              link: ''
+            })
+          ]
+        );
+      }
+    }
+
+    // 3 תמונות ברירת מחדל לקולאז'
+    if (data.section_type === 'collage') {
+      for (let i = 0; i < 3; i++) {
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, true, $5)
+          `,
+          [
+            dbSectionId,
+            'image', // או 'product' / 'collection' / 'video' בהתאם לבחירת המשתמש בעתיד
+            `collage_item_${i+1}`,
+            i,
+            JSON.stringify({
+              type: 'image',
+              image_url: '',
+              heading: '',
+              link: ''
             })
           ]
         );
