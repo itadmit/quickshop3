@@ -205,6 +205,23 @@
       "success": "ההודעה נשלחה בהצלחה! נחזור אליך בהקדם.",
       "error": "אירעה שגיאה בשליחת הטופס"
     }
+  },
+  "announcement_bar": {
+    "default_text": "משלוח חינם בהזמנות מעל ₪200",
+    "close": "סגור"
+  },
+  "multicolumn": {
+    "column_heading": "כותרת עמודה",
+    "placeholder_text": "הוסף תוכן דרך סרגל העריכה",
+    "column_alt": "עמודה {number}"
+  },
+  "collage": {
+    "image_alt": "תמונה {number}"
+  },
+  "custom_html": {
+    "title": "קוד HTML מותאם אישית",
+    "placeholder": "הוסף קוד HTML דרך סרגל ההגדרות",
+    "preview_notice": "הקוד יוצג בחנות החיה. לצפייה מקדימה, שמור ופתח את החנות."
   }
 }
 

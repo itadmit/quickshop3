@@ -23,6 +23,10 @@ export const SECTION_NAMES: Record<string, string> = {
   'faq': 'שאלות ותשובות',
   'logo_list': 'רשימת לוגואים',
   'map': 'מפה',
+  'multicolumn': 'עמודות מרובות',
+  'collage': 'קולאז׳',
+  'custom_html': 'קוד HTML מותאם',
+  'announcement_bar': 'בר הודעות',
   
   // Product Page Sections
   'product_header': 'כותרת מוצר',

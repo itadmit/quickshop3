@@ -88,6 +88,8 @@ const AVAILABLE_SECTIONS: Array<{
   
   // Content
   { type: 'image_with_text', name: 'מדיה עם טקסט', description: 'מדיה עם טקסט (תמונה או וידאו)', icon: HiPhotograph, category: 'Content' },
+  { type: 'multicolumn', name: 'עמודות מרובות', description: 'עמודות עם תמונות וטקסט', icon: HiViewList, category: 'Content' },
+  { type: 'collage', name: 'קולאז׳', description: 'רשת תמונות בסגנון קולאז׳', icon: HiPhotograph, category: 'Content' },
   { type: 'rich_text', name: 'טקסט עשיר', description: 'טקסט עשיר', icon: HiPencil, category: 'Content' },
   { type: 'video', name: 'וידאו', description: 'וידאו', icon: HiVideoCamera, category: 'Content' },
   { type: 'testimonials', name: 'ביקורות', description: 'ביקורות לקוחות', icon: HiChatAlt, category: 'Content' },
@@ -103,6 +105,7 @@ const AVAILABLE_SECTIONS: Array<{
   
   // Advanced
   { type: 'contact_form', name: 'טופס יצירת קשר', description: 'טופס ליצירת קשר', icon: HiMail, category: 'Advanced' },
+  { type: 'custom_html', name: 'קוד HTML מותאם', description: 'הוספת קוד HTML מותאם אישית', icon: HiCode, category: 'Advanced' },
 ];
 
 // Get page-specific category name

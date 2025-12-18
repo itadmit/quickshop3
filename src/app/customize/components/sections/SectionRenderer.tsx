@@ -21,6 +21,10 @@ import { FAQ } from './FAQ';
 import { VideoSection } from './VideoSection';
 import { ContactForm } from './ContactForm';
 import { LogoList } from './LogoList';
+import { AnnouncementBar } from './AnnouncementBar';
+import { Multicolumn } from './Multicolumn';
+import { Collage } from './Collage';
+import { CustomHTML } from './CustomHTML';
 
 // Import product page section components
 import {
@@ -235,6 +239,31 @@ function SectionRendererInner({ section, isSelected, onUpdate, device = 'desktop
       return (
         <SectionWrapper>
           <LogoList section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'announcement_bar':
+      // Announcement bar should be at the very top, no wrapper
+      return <AnnouncementBar section={responsiveSection} onUpdate={onUpdate} />;
+
+    case 'multicolumn':
+      return (
+        <SectionWrapper>
+          <Multicolumn section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'collage':
+      return (
+        <SectionWrapper>
+          <Collage section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'custom_html':
+      return (
+        <SectionWrapper>
+          <CustomHTML section={responsiveSection} onUpdate={onUpdate} isPreview={true} />
         </SectionWrapper>
       );
 

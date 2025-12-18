@@ -27,6 +27,9 @@ export type SectionType =
   | 'faq'
   | 'logo_list'
   | 'map'
+  | 'multicolumn'
+  | 'collage'
+  | 'custom_html'
   | 'footer'
   | 'header'
   // Product page sections

@@ -180,6 +180,23 @@
       "success": "Message sent successfully! We'll get back to you soon.",
       "error": "An error occurred while sending the form"
     }
+  },
+  "announcement_bar": {
+    "default_text": "Free shipping on orders over $50",
+    "close": "Close"
+  },
+  "multicolumn": {
+    "column_heading": "Column heading",
+    "placeholder_text": "Add content via the settings panel",
+    "column_alt": "Column {number}"
+  },
+  "collage": {
+    "image_alt": "Image {number}"
+  },
+  "custom_html": {
+    "title": "Custom HTML",
+    "placeholder": "Add HTML code via the settings panel",
+    "preview_notice": "The code will be displayed in the live store. To preview, save and open the store."
   }
 }
 

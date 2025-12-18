@@ -24,6 +24,10 @@ import { FAQ } from '@/app/customize/components/sections/FAQ';
 import { VideoSection } from '@/app/customize/components/sections/VideoSection';
 import { ContactForm } from '@/app/customize/components/sections/ContactForm';
 import { LogoList } from '@/app/customize/components/sections/LogoList';
+import { AnnouncementBar } from '@/app/customize/components/sections/AnnouncementBar';
+import { Multicolumn } from '@/app/customize/components/sections/Multicolumn';
+import { Collage } from '@/app/customize/components/sections/Collage';
+import { CustomHTML } from '@/app/customize/components/sections/CustomHTML';
 // Product page section components
 import {
   ProductGallerySection,
@@ -255,6 +259,31 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
       return (
         <SectionWrapper>
           <LogoList section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'announcement_bar':
+      // Announcement bar should be at the very top, no wrapper
+      return <AnnouncementBar section={responsiveSection} onUpdate={noopUpdate} />;
+
+    case 'multicolumn':
+      return (
+        <SectionWrapper>
+          <Multicolumn section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collage':
+      return (
+        <SectionWrapper>
+          <Collage section={responsiveSection} onUpdate={noopUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'custom_html':
+      return (
+        <SectionWrapper>
+          <CustomHTML section={responsiveSection} onUpdate={noopUpdate} isPreview={false} />
         </SectionWrapper>
       );
 
