@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
@@ -27,7 +27,6 @@ import { OrderTimeline } from '@/components/orders/OrderTimeline';
 export default function OrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const orderId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -40,6 +39,9 @@ export default function OrderDetailsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [creatingShipment, setCreatingShipment] = useState(false);
+  const [shipment, setShipment] = useState<any>(null);
+  const [processingRefund, setProcessingRefund] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -53,22 +55,6 @@ export default function OrderDetailsPage() {
       };
     }
   }, [orderId]);
-
-  // Auto-print when print=true is in URL
-  useEffect(() => {
-    const shouldPrint = searchParams.get('print') === 'true';
-    if (shouldPrint && !loading && order) {
-      // Wait a bit for page to fully render, then trigger print
-      const timer = setTimeout(() => {
-        window.print();
-        // Remove print parameter from URL after printing
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('print');
-        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, order, searchParams, router]);
 
   const loadOrder = async (signal?: AbortSignal) => {
     try {
@@ -116,10 +102,32 @@ export default function OrderDetailsPage() {
   };
 
   const createRefund = async () => {
-    if (!confirm('האם אתה בטוח שברצונך להחזיר את ההזמנה?')) return;
+    if (!confirm('האם אתה בטוח שברצונך להחזיר את ההזמנה? זה יזכה את העסקה בחברת הסליקה.')) return;
     
     try {
-      setUpdatingStatus(true);
+      setProcessingRefund(true);
+      
+      // Try the new payment refund API first
+      const paymentResponse = await fetch(`/api/payments/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: orderId,
+          reason: 'ביטול הזמנה מדשבורד',
+        }),
+      });
+
+      if (paymentResponse.ok) {
+        const data = await paymentResponse.json();
+        if (data.success) {
+          await loadOrder();
+          alert(`ההחזר בוצע בהצלחה! סכום: ₪${data.amount}`);
+          return;
+        }
+      }
+
+      // Fallback to the old refund API
       const response = await fetch(`/api/orders/${orderId}/refund`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,14 +136,75 @@ export default function OrderDetailsPage() {
       });
       if (!response.ok) throw new Error('Failed to create refund');
       await loadOrder();
-      alert('ההחזר בוצע בהצלחה');
+      alert('ההחזר בוצע בהצלחה (עדכון סטטוס בלבד)');
     } catch (error) {
       console.error('Error creating refund:', error);
       alert('שגיאה ביצירת החזר');
     } finally {
-      setUpdatingStatus(false);
+      setProcessingRefund(false);
     }
   };
+
+  const createShipment = async () => {
+    if (!confirm('האם לשלוח את ההזמנה לחברת השליחויות?')) return;
+    
+    try {
+      setCreatingShipment(true);
+      const response = await fetch(`/api/shipments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: parseInt(orderId),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create shipment');
+      }
+
+      if (data.results && data.results[0]) {
+        if (data.results[0].success) {
+          setShipment(data.results[0].shipment);
+          await loadOrder();
+          alert(`משלוח נוצר בהצלחה! מספר מעקב: ${data.results[0].shipment?.tracking_number || 'לא זמין'}`);
+        } else {
+          throw new Error(data.results[0].error || 'Failed to create shipment');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error creating shipment:', error);
+      alert(error.message || 'שגיאה ביצירת משלוח');
+    } finally {
+      setCreatingShipment(false);
+    }
+  };
+
+  const loadShipmentInfo = async () => {
+    try {
+      const response = await fetch(`/api/shipments?orderId=${orderId}`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.shipments && data.shipments.length > 0) {
+          setShipment(data.shipments[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading shipment:', error);
+    }
+  };
+
+  // Load shipment info when order loads
+  useEffect(() => {
+    if (order && orderId) {
+      loadShipmentInfo();
+    }
+  }, [order?.id]);
 
   const sendReceipt = async () => {
     if (!order?.email) {
@@ -319,7 +388,7 @@ export default function OrderDetailsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 print:p-0 print:space-y-4" dir="rtl">
+    <div className="p-6 space-y-6" dir="rtl">
       <style jsx global>{`
         @media print {
           body {
@@ -1282,21 +1351,77 @@ export default function OrderDetailsPage() {
             </Card>
           )}
 
+          {/* Shipment Info */}
+          {shipment && (
+            <Card>
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">פרטי משלוח</h2>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">סטטוס: </span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      shipment.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                      shipment.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
+                      shipment.status === 'created' ? 'bg-yellow-100 text-yellow-800' :
+                      shipment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {shipment.status === 'delivered' ? 'נמסר' :
+                       shipment.status === 'in_transit' ? 'בדרך' :
+                       shipment.status === 'created' ? 'נוצר' :
+                       shipment.status === 'cancelled' ? 'בוטל' :
+                       shipment.status}
+                    </span>
+                  </div>
+                  {shipment.tracking_number && (
+                    <div>
+                      <span className="text-gray-500">מספר מעקב: </span>
+                      <span className="font-medium">{shipment.tracking_number}</span>
+                    </div>
+                  )}
+                  {shipment.tracking_url && (
+                    <a 
+                      href={shipment.tracking_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-700 block"
+                    >
+                      צפה במעקב →
+                    </a>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Actions */}
           <Card>
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">פעולות</h2>
               <div className="space-y-0 no-print">
+                {/* שליחה למשלוח */}
+                {!shipment && order.fulfillment_status !== 'fulfilled' && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start border-b border-gray-200 rounded-none text-blue-600 hover:text-blue-700"
+                    onClick={createShipment}
+                    disabled={creatingShipment}
+                  >
+                    <HiArrowRight className="w-5 h-5 ml-2" />
+                    {creatingShipment ? 'שולח...' : 'שלח לחברת שליחויות'}
+                  </Button>
+                )}
+                
                 {order.financial_status !== 'refunded' && order.financial_status !== 'voided' && (
                   <>
                     <Button
                       variant="ghost"
                       className="w-full justify-start border-b border-gray-200 rounded-none"
                       onClick={createRefund}
-                      disabled={updatingStatus}
+                      disabled={processingRefund || updatingStatus}
                     >
                       <HiRefresh className="w-5 h-5 ml-2" />
-                      החזר הזמנה
+                      {processingRefund ? 'מזכה...' : 'זכה עסקה / החזר הזמנה'}
                     </Button>
                   </>
                 )}

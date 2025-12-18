@@ -2598,6 +2598,275 @@ CREATE TRIGGER update_plugin_subscriptions_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
+-- 28. PAYMENT INTEGRATIONS (אינטגרציות תשלום)
+-- ============================================
+
+-- Store Payment Integrations - הגדרות ספק תשלום לכל חנות
+CREATE TABLE store_payment_integrations (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  provider VARCHAR(50) NOT NULL, -- 'pelecard', 'meshulam', 'cardcom', 'stripe'
+  display_name VARCHAR(100), -- שם להצגה ללקוח
+  
+  -- Credentials (מוצפנים)
+  terminal_number VARCHAR(100),
+  username VARCHAR(100),
+  password_encrypted TEXT, -- מוצפן
+  api_key_encrypted TEXT, -- מוצפן
+  
+  -- Environment
+  is_sandbox BOOLEAN DEFAULT true,
+  is_active BOOLEAN DEFAULT false,
+  is_default BOOLEAN DEFAULT false,
+  
+  -- Provider-specific settings
+  settings JSONB DEFAULT '{}',
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(store_id, provider)
+);
+
+CREATE INDEX idx_store_payment_integrations_store_id ON store_payment_integrations(store_id);
+CREATE INDEX idx_store_payment_integrations_provider ON store_payment_integrations(provider);
+CREATE INDEX idx_store_payment_integrations_active ON store_payment_integrations(is_active);
+
+COMMENT ON TABLE store_payment_integrations IS 'הגדרות אינטגרציית תשלום לכל חנות - PeleCard, Meshulam, Cardcom וכו';
+
+-- Payment Transactions - טרנזקציות תשלום
+CREATE TABLE payment_transactions (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  integration_id INT REFERENCES store_payment_integrations(id) ON DELETE SET NULL,
+  
+  -- Provider info
+  provider VARCHAR(50) NOT NULL, -- 'pelecard', 'meshulam', etc.
+  external_transaction_id VARCHAR(255), -- מזהה עסקה בספק (PelecardTransactionId)
+  
+  -- Transaction details
+  amount NUMERIC(12,2) NOT NULL,
+  currency VARCHAR(10) DEFAULT 'ILS',
+  transaction_type VARCHAR(50) NOT NULL, -- 'charge', 'refund', 'void', 'authorize'
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed', 'refunded', 'voided'
+  
+  -- Card info (masked)
+  card_last_four VARCHAR(4),
+  card_brand VARCHAR(50), -- 'visa', 'mastercard', 'amex', 'isracard'
+  card_expiry VARCHAR(10), -- MM/YY
+  
+  -- Security & Validation
+  confirmation_key VARCHAR(255), -- PeleCard ConfirmationKey
+  user_key VARCHAR(255), -- מזהה שלנו לאימות
+  approval_number VARCHAR(50), -- מספר אישור
+  
+  -- Token for future use
+  token VARCHAR(255),
+  token_expiry TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- Error handling
+  error_code VARCHAR(50),
+  error_message TEXT,
+  
+  -- Raw response
+  raw_request JSONB,
+  raw_response JSONB,
+  
+  -- Refund reference (if this is a refund)
+  original_transaction_id INT REFERENCES payment_transactions(id) ON DELETE SET NULL,
+  refund_amount NUMERIC(12,2),
+  refund_reason TEXT,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_payment_transactions_store_id ON payment_transactions(store_id);
+CREATE INDEX idx_payment_transactions_order_id ON payment_transactions(order_id);
+CREATE INDEX idx_payment_transactions_provider ON payment_transactions(provider);
+CREATE INDEX idx_payment_transactions_status ON payment_transactions(status);
+CREATE INDEX idx_payment_transactions_external_id ON payment_transactions(external_transaction_id);
+CREATE INDEX idx_payment_transactions_created_at ON payment_transactions(created_at);
+
+COMMENT ON TABLE payment_transactions IS 'טרנזקציות תשלום - חיובים, זיכויים, ביטולים';
+
+-- ============================================
+-- 29. SHIPPING INTEGRATIONS (אינטגרציות משלוחים)
+-- ============================================
+
+-- Store Shipping Integrations - הגדרות ספק משלוחים לכל חנות
+CREATE TABLE store_shipping_integrations (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  provider VARCHAR(50) NOT NULL, -- 'baldar', 'chita', 'dhl', 'ups', 'fedex'
+  display_name VARCHAR(100), -- שם להצגה ללקוח
+  
+  -- Credentials
+  customer_number VARCHAR(100), -- מספר לקוח בחברת המשלוחים
+  api_key_encrypted TEXT, -- מוצפן
+  api_token_encrypted TEXT, -- מוצפן (Token לאימות)
+  
+  -- Provider URLs
+  api_base_url VARCHAR(255), -- כתובת ה-API (למשל https://focusdelivery.co.il)
+  
+  -- Provider-specific codes
+  shipment_type_code VARCHAR(50), -- קוד סוג משלוח
+  cargo_type_code VARCHAR(50), -- קוד סוג מטען
+  return_cargo_type_code VARCHAR(50), -- קוד סוג מטען להחזרות
+  
+  -- Identification
+  reference_prefix VARCHAR(10), -- קידומת למספר הזמנה (AB, CD, etc.)
+  
+  -- Settings
+  is_active BOOLEAN DEFAULT false,
+  is_default BOOLEAN DEFAULT false,
+  auto_create_shipment BOOLEAN DEFAULT false, -- שליחה אוטומטית אחרי תשלום
+  auto_send_tracking_email BOOLEAN DEFAULT true, -- שליחת מייל עם מספר מעקב
+  
+  -- Provider-specific settings
+  settings JSONB DEFAULT '{}',
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(store_id, provider)
+);
+
+CREATE INDEX idx_store_shipping_integrations_store_id ON store_shipping_integrations(store_id);
+CREATE INDEX idx_store_shipping_integrations_provider ON store_shipping_integrations(provider);
+CREATE INDEX idx_store_shipping_integrations_active ON store_shipping_integrations(is_active);
+
+COMMENT ON TABLE store_shipping_integrations IS 'הגדרות אינטגרציית משלוחים לכל חנות - Baldar, Chita, DHL וכו';
+
+-- Shipments - משלוחים
+CREATE TABLE shipments (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  integration_id INT REFERENCES store_shipping_integrations(id) ON DELETE SET NULL,
+  
+  -- Provider info
+  provider VARCHAR(50) NOT NULL, -- 'baldar', 'chita', etc.
+  
+  -- Shipment identifiers
+  external_shipment_id VARCHAR(255), -- ship_create_num בBaldar
+  external_random_id VARCHAR(255), -- ship_num_rand בBaldar (לביטול)
+  
+  -- Tracking
+  tracking_number VARCHAR(255),
+  tracking_url TEXT,
+  
+  -- Label
+  label_url TEXT,
+  label_printed_at TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- Status
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', 
+  -- 'pending', 'created', 'label_printed', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'cancelled', 'returned'
+  status_description TEXT,
+  
+  -- Delivery info
+  estimated_delivery_date DATE,
+  actual_delivery_date TIMESTAMP WITHOUT TIME ZONE,
+  delivered_to VARCHAR(255), -- שם מי שקיבל
+  delivery_proof_url TEXT, -- תמונה/חתימה
+  
+  -- Driver info
+  driver_id VARCHAR(50),
+  driver_name VARCHAR(100),
+  
+  -- Pickup point (if relevant)
+  pickup_point_code VARCHAR(50),
+  pickup_point_name VARCHAR(255),
+  
+  -- Reference
+  our_reference VARCHAR(100), -- המספר שלנו (order_name)
+  
+  -- Error handling
+  error_code VARCHAR(50),
+  error_message TEXT,
+  
+  -- Raw response
+  raw_response JSONB,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_shipments_store_id ON shipments(store_id);
+CREATE INDEX idx_shipments_order_id ON shipments(order_id);
+CREATE INDEX idx_shipments_provider ON shipments(provider);
+CREATE INDEX idx_shipments_status ON shipments(status);
+CREATE INDEX idx_shipments_tracking_number ON shipments(tracking_number);
+CREATE INDEX idx_shipments_external_id ON shipments(external_shipment_id);
+CREATE INDEX idx_shipments_created_at ON shipments(created_at);
+
+COMMENT ON TABLE shipments IS 'משלוחים - יצירה, מעקב וסטטוס';
+
+-- Shipment Status History - היסטוריית סטטוסים
+CREATE TABLE shipment_status_history (
+  id SERIAL PRIMARY KEY,
+  shipment_id INT REFERENCES shipments(id) ON DELETE CASCADE,
+  
+  -- Status info
+  status_code VARCHAR(50),
+  status_description TEXT,
+  
+  -- Timestamp
+  status_date DATE,
+  status_time TIME,
+  
+  -- Additional info
+  location VARCHAR(255),
+  notes TEXT,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_shipment_status_history_shipment_id ON shipment_status_history(shipment_id);
+CREATE INDEX idx_shipment_status_history_status ON shipment_status_history(status_code);
+
+COMMENT ON TABLE shipment_status_history IS 'היסטוריית סטטוסי משלוח';
+
+-- Pickup Points Cache - קאש של נקודות איסוף
+CREATE TABLE shipping_pickup_points (
+  id SERIAL PRIMARY KEY,
+  provider VARCHAR(50) NOT NULL, -- 'baldar', 'chita', etc.
+  
+  -- Point info
+  point_code VARCHAR(50) NOT NULL, -- n_code בBaldar
+  point_name VARCHAR(255) NOT NULL,
+  point_type VARCHAR(50), -- 'store', 'locker'
+  
+  -- Address
+  city VARCHAR(100),
+  street VARCHAR(255),
+  house_number VARCHAR(20),
+  
+  -- Location
+  latitude NUMERIC(10,7),
+  longitude NUMERIC(10,7),
+  
+  -- Opening hours
+  opening_hours TEXT, -- remarks בBaldar
+  
+  is_active BOOLEAN DEFAULT true,
+  
+  last_synced_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(provider, point_code)
+);
+
+CREATE INDEX idx_shipping_pickup_points_provider ON shipping_pickup_points(provider);
+CREATE INDEX idx_shipping_pickup_points_city ON shipping_pickup_points(city);
+CREATE INDEX idx_shipping_pickup_points_active ON shipping_pickup_points(is_active);
+
+COMMENT ON TABLE shipping_pickup_points IS 'קאש נקודות איסוף מחברות משלוחים';
+
+-- ============================================
 -- END OF SCHEMA
 -- ============================================
 

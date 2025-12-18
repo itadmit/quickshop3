@@ -135,6 +135,8 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
   }, [orderId, orderHandle, storeSlug]); // הסרת t מה-dependencies כדי למנוע לולאה אינסופית
 
   const isOrderConfirmed = order?.financial_status === 'paid' || order?.financial_status === 'pending';
+  const isAwaitingPayment = order?.financial_status === 'awaiting_payment';
+  const isPaymentFailed = order?.financial_status === 'payment_failed';
 
   return (
     <div 
@@ -230,7 +232,37 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                 <>
                   {/* Order Status */}
                   <div className="text-center py-8">
-                    {isOrderConfirmed ? (
+                    {isPaymentFailed ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
+                          <HiClock className="w-12 h-12 text-red-600" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          התשלום נכשל
+                        </h1>
+                        <p className="text-gray-600 text-lg">
+                          אירעה שגיאה בעיבוד התשלום. אנא נסה שנית או צור קשר עם שירות הלקוחות.
+                        </p>
+                        <Link
+                          href={`/shops/${storeSlug}/cart`}
+                          className="mt-4 inline-block bg-black hover:bg-gray-800 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+                        >
+                          חזרה לעגלה
+                        </Link>
+                      </div>
+                    ) : isAwaitingPayment ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <HiClock className="w-12 h-12 text-yellow-600" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          ממתין לתשלום
+                        </h1>
+                        <p className="text-gray-600 text-lg">
+                          ההזמנה נשמרה ומחכה לאישור התשלום
+                        </p>
+                      </div>
+                    ) : isOrderConfirmed ? (
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
                           <HiCheckCircle className="w-12 h-12 text-green-600" />

@@ -244,7 +244,50 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         discountCodes: discountCode ? [discountCode] : [], // ✅ מוסיף את קוד הקופון להזמנה
       });
 
-      // Track Purchase event
+      // אם תשלום בכרטיס אשראי - הפניה לדף סליקה
+      if (formData.paymentMethod === 'credit_card' && finalTotal > 0) {
+        try {
+          const baseUrl = window.location.origin;
+          const paymentResponse = await fetch('/api/payments/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: order.id,
+              storeSlug,
+              successUrl: `${baseUrl}/shops/${storeSlug}/checkout/success?orderId=${order.id}`,
+              errorUrl: `${baseUrl}/shops/${storeSlug}/checkout?error=payment_failed&orderId=${order.id}`,
+            }),
+          });
+
+          const paymentData = await paymentResponse.json();
+
+          if (paymentData.success && paymentData.paymentUrl) {
+            // שמירת נתוני ההזמנה לפני redirect
+            setOrderCompleted(true);
+            clearCart();
+            
+            // Track InitiatePayment event
+            emitTrackingEvent({
+              event: 'InitiatePayment',
+              content_ids: cartItems.map(item => String(item.product_id)),
+              currency: 'ILS',
+              value: finalTotal,
+              order_id: String(order.id),
+            });
+
+            // הפניה לדף הסליקה
+            window.location.href = paymentData.paymentUrl;
+            return;
+          } else {
+            // אם אין סליקה פעילה - ממשיך כרגיל
+            console.log('No payment integration, continuing with normal flow');
+          }
+        } catch (paymentError) {
+          console.log('Payment init failed, continuing with normal flow:', paymentError);
+        }
+      }
+
+      // Track Purchase event - רק אם לא הופנה לסליקה
       emitTrackingEvent({
         event: 'Purchase',
         content_ids: cartItems.map(item => String(item.product_id)),
