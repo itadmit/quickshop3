@@ -33,7 +33,13 @@ export async function GET(request: NextRequest) {
 
     // Load page layout from customizer
     // For product/collection pages, pass the handle to find specific or generic layout
-    const pageLayout = await getPageLayout(storeId, pageType, pageHandle || undefined);
+    // For 'other' pages, first try to load home layout to get header/footer settings
+    let pageLayout = await getPageLayout(storeId, pageType, pageHandle || undefined);
+    
+    // If no layout found for 'other' type pages, load 'home' layout for header/footer
+    if (!pageLayout && pageType === 'other') {
+      pageLayout = await getPageLayout(storeId, 'home', undefined);
+    }
     
     let sections = [];
     if (pageLayout && pageLayout.sections && pageLayout.sections.length > 0) {
