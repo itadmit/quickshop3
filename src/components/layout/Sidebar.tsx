@@ -38,8 +38,8 @@ const menuItems: MenuItem[] = [
     href: '#',
     icon: MenuIcons.payments,
     children: [
-      { label: 'תשלומים', href: '/payments', icon: MenuIcons.payments },
-      { label: 'משלוחים', href: '/shipping', icon: MenuIcons.shipping },
+      { label: 'תשלומים', href: '/settings/payments', icon: MenuIcons.payments },
+      { label: 'משלוחים', href: '/settings/shipping', icon: MenuIcons.shipping },
     ],
   },
   {
