@@ -385,7 +385,7 @@ export default function PaymentIntegrationsPage() {
                             </span>
                           )}
                           {provider?.isRecommended && (
-                            <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                            <span className="px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
                               מומלץ
                             </span>
                           )}
@@ -486,11 +486,11 @@ export default function PaymentIntegrationsPage() {
                   className={`relative overflow-hidden transition-all ${
                     isConfigured 
                       ? 'opacity-60 bg-gray-50' 
-                      : 'hover:shadow-lg hover:border-blue-200 cursor-pointer'
-                  }`}
+                      : 'hover:shadow-lg hover:border-emerald-200 cursor-pointer'
+                  } ${provider.isRecommended && !isConfigured ? 'border-emerald-200 border-2' : ''}`}
                 >
                   {provider.isRecommended && !isConfigured && (
-                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs py-1 px-3 text-center font-medium">
+                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs py-1 px-3 text-center font-medium">
                       <HiLightningBolt className="inline w-3 h-3 ml-1" />
                       מומלץ
                     </div>
@@ -515,7 +515,7 @@ export default function PaymentIntegrationsPage() {
                         {/* Features */}
                         <div className="flex flex-wrap gap-1 mt-3">
                           {provider.supportedFeatures?.slice(0, 4).map(feature => (
-                            <span key={feature} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">
+                            <span key={feature} className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
                               {FEATURE_LABELS[feature]?.label || feature}
                             </span>
                           ))}
@@ -532,7 +532,7 @@ export default function PaymentIntegrationsPage() {
                       ) : (
                         <Button 
                           onClick={() => handleAddClick(provider)} 
-                          className="w-full"
+                          className={`w-full ${provider.isRecommended ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white' : ''}`}
                           variant={provider.isRecommended ? 'primary' : 'ghost'}
                         >
                           <HiPlus className="w-4 h-4 ml-1" />
@@ -554,7 +554,7 @@ export default function PaymentIntegrationsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedProvider?.isRecommended && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">מומלץ</span>
+                <span className="px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded">מומלץ</span>
               )}
               {editingIntegration ? 'ערוך' : 'הגדר'} {selectedProvider?.name}
             </DialogTitle>
@@ -611,7 +611,7 @@ export default function PaymentIntegrationsPage() {
                     onChange={(e) => setFormData({ ...formData, is_sandbox: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                 </label>
               </div>
 
@@ -627,7 +627,7 @@ export default function PaymentIntegrationsPage() {
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                 </label>
               </div>
 
@@ -649,11 +649,11 @@ export default function PaymentIntegrationsPage() {
             </div>
 
             {/* Security Note */}
-            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
-              <HiShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+              <HiShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-blue-900 font-medium">אבטחת מידע</p>
-                <p className="text-xs text-blue-700 mt-1">
+                <p className="text-sm text-emerald-900 font-medium">אבטחת מידע</p>
+                <p className="text-xs text-emerald-700 mt-1">
                   כל המידע הרגיש מוצפן ומאוחסן בצורה מאובטחת. אנחנו לא שומרים פרטי כרטיס אשראי של לקוחות.
                 </p>
               </div>
@@ -667,6 +667,7 @@ export default function PaymentIntegrationsPage() {
             <Button 
               onClick={handleSave} 
               disabled={saving || !isFormValid()}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
             >
               {saving ? 'שומר...' : editingIntegration ? 'עדכן' : 'שמור והפעל'}
             </Button>
