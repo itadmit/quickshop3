@@ -11,9 +11,9 @@ import { PaymentGateway, AdapterConfig } from './gateway';
 import { PelecardAdapter } from './adapters/pelecard';
 import { PayMeAdapter } from './adapters/payme';
 import { PayPlusAdapter } from './adapters/payplus';
+import { MeshulamAdapter } from './adapters/meshulam';
 // Import other adapters as they are created:
 // import { HypAdapter } from './adapters/hyp';
-// import { MeshulamAdapter } from './adapters/meshulam';
 
 /**
  * Create payment gateway adapter for a specific integration
@@ -29,11 +29,12 @@ export function createPaymentGateway(config: AdapterConfig): PaymentGateway {
     case 'payplus':
       return new PayPlusAdapter(config);
     
+    case 'meshulam':
+      return new MeshulamAdapter(config);
+    
     // Add more adapters as they are implemented:
     // case 'hyp':
     //   return new HypAdapter(config);
-    // case 'meshulam':
-    //   return new MeshulamAdapter(config);
     
     default:
       throw new Error(`Unsupported payment provider: ${config.provider}`);
