@@ -98,7 +98,51 @@ export interface CreateShippingRateRequest {
 // PAYMENT INTEGRATIONS
 // ============================================
 
-export type PaymentProviderType = 'pelecard' | 'meshulam' | 'cardcom' | 'stripe' | 'payplus';
+// Payment provider types - extensible for future providers
+export type PaymentProviderType = 
+  | 'quickpay'    // QuickShop Payments - הספק הפנימי שלנו
+  | 'pelecard'    // פלאקארד
+  | 'payplus'     // פייפלוס
+  | 'hyp'         // הייפ
+  | 'meshulam'    // משולם / Grow
+  | 'tranzila'    // טרנזילה
+  | 'cardcom'     // קארדקום
+  | 'stripe';     // Stripe (בינלאומי)
+
+// Payment provider configuration - loaded from DB or config
+export interface PaymentProviderConfig {
+  id: PaymentProviderType;
+  name: string;
+  nameEn: string;
+  description: string;
+  logo?: string;
+  isRecommended?: boolean;
+  isComingSoon?: boolean;
+  requiredFields: PaymentProviderField[];
+  supportedFeatures: PaymentProviderFeature[];
+}
+
+export interface PaymentProviderField {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'select';
+  required: boolean;
+  placeholder?: string;
+  options?: { value: string; label: string }[];
+  helpText?: string;
+}
+
+export type PaymentProviderFeature = 
+  | 'credit_card'
+  | 'bit'
+  | 'apple_pay'
+  | 'google_pay'
+  | 'paypal'
+  | 'tokenization'
+  | 'recurring'
+  | 'refunds'
+  | 'partial_refunds'
+  | 'installments';
 
 export interface StorePaymentIntegration {
   id: number;

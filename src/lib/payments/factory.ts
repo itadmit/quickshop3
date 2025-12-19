@@ -1,0 +1,157 @@
+/**
+ * Payment Gateway Factory
+ * 
+ * יוצר את ה-Adapter הנכון לפי סוג הספק.
+ * הקוד שלנו משתמש רק ב-Factory ולא יודע על הספקים עצמם.
+ */
+
+import { query, queryOne } from '@/lib/db';
+import { StorePaymentIntegration, PaymentProviderType } from '@/types/payment';
+import { PaymentGateway, AdapterConfig } from './gateway';
+import { PelecardAdapter } from './adapters/pelecard';
+// Import other adapters as they are created:
+// import { PayPlusAdapter } from './adapters/payplus';
+// import { HypAdapter } from './adapters/hyp';
+// import { MeshulamAdapter } from './adapters/meshulam';
+// import { QuickPayAdapter } from './adapters/quickpay';
+
+/**
+ * Create payment gateway adapter for a specific integration
+ */
+export function createPaymentGateway(config: AdapterConfig): PaymentGateway {
+  switch (config.provider) {
+    case 'pelecard':
+      return new PelecardAdapter(config);
+    
+    // Add more adapters as they are implemented:
+    // case 'payplus':
+    //   return new PayPlusAdapter(config);
+    // case 'hyp':
+    //   return new HypAdapter(config);
+    // case 'meshulam':
+    //   return new MeshulamAdapter(config);
+    // case 'quickpay':
+    //   return new QuickPayAdapter(config);
+    
+    default:
+      throw new Error(`Unsupported payment provider: ${config.provider}`);
+  }
+}
+
+/**
+ * Get payment gateway for a store (uses default integration)
+ */
+export async function getStorePaymentGateway(storeId: number): Promise<PaymentGateway | null> {
+  // Get default active integration for the store
+  const integration = await queryOne<StorePaymentIntegration>(
+    `SELECT * FROM store_payment_integrations 
+     WHERE store_id = $1 AND is_active = true 
+     ORDER BY is_default DESC, created_at ASC 
+     LIMIT 1`,
+    [storeId]
+  );
+  
+  if (!integration) {
+    return null;
+  }
+  
+  return createGatewayFromIntegration(integration);
+}
+
+/**
+ * Get payment gateway by integration ID
+ */
+export async function getPaymentGatewayById(integrationId: number, storeId: number): Promise<PaymentGateway | null> {
+  const integration = await queryOne<StorePaymentIntegration>(
+    'SELECT * FROM store_payment_integrations WHERE id = $1 AND store_id = $2',
+    [integrationId, storeId]
+  );
+  
+  if (!integration) {
+    return null;
+  }
+  
+  return createGatewayFromIntegration(integration);
+}
+
+/**
+ * Get payment gateway by provider type
+ */
+export async function getPaymentGatewayByProvider(
+  storeId: number, 
+  provider: PaymentProviderType
+): Promise<PaymentGateway | null> {
+  const integration = await queryOne<StorePaymentIntegration>(
+    'SELECT * FROM store_payment_integrations WHERE store_id = $1 AND provider = $2 AND is_active = true',
+    [storeId, provider]
+  );
+  
+  if (!integration) {
+    return null;
+  }
+  
+  return createGatewayFromIntegration(integration);
+}
+
+/**
+ * Create gateway from database integration record
+ */
+function createGatewayFromIntegration(integration: StorePaymentIntegration): PaymentGateway {
+  // Build credentials from integration fields
+  const credentials: Record<string, string> = {};
+  
+  if (integration.terminal_number) {
+    credentials.terminal_number = integration.terminal_number;
+  }
+  if (integration.username) {
+    credentials.username = integration.username;
+  }
+  if (integration.password_encrypted) {
+    // TODO: Decrypt password
+    credentials.password = integration.password_encrypted;
+  }
+  if (integration.api_key_encrypted) {
+    // TODO: Decrypt API key
+    credentials.api_key = integration.api_key_encrypted;
+  }
+  
+  // Add any credentials from settings
+  const settings = (integration.settings || {}) as Record<string, any>;
+  
+  // Build config
+  const config: AdapterConfig = {
+    integrationId: integration.id,
+    storeId: integration.store_id,
+    provider: integration.provider as PaymentProviderType,
+    isSandbox: integration.is_sandbox,
+    credentials,
+    settings,
+  };
+  
+  return createPaymentGateway(config);
+}
+
+/**
+ * List all active payment gateways for a store
+ */
+export async function getStorePaymentGateways(storeId: number): Promise<PaymentGateway[]> {
+  const integrations = await query<StorePaymentIntegration>(
+    'SELECT * FROM store_payment_integrations WHERE store_id = $1 AND is_active = true ORDER BY is_default DESC',
+    [storeId]
+  );
+  
+  return integrations.map(integration => createGatewayFromIntegration(integration));
+}
+
+/**
+ * Check if store has any active payment gateway
+ */
+export async function hasActivePaymentGateway(storeId: number): Promise<boolean> {
+  const result = await queryOne<{ count: number }>(
+    'SELECT COUNT(*)::int as count FROM store_payment_integrations WHERE store_id = $1 AND is_active = true',
+    [storeId]
+  );
+  
+  return (result?.count || 0) > 0;
+}
+

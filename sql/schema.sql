@@ -610,28 +610,7 @@ CREATE INDEX idx_transactions_kind ON transactions(kind);
 CREATE INDEX idx_transactions_status ON transactions(status);
 
 -- ============================================
--- 6. PAYMENT PROVIDERS
--- ============================================
-
--- Payment Providers
-CREATE TABLE payment_providers (
-  id SERIAL PRIMARY KEY,
-  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
-  provider_name VARCHAR(150) NOT NULL, -- credit_card, paypal, etc.
-  environment VARCHAR(50) DEFAULT 'test', -- test, production
-  api_public_key TEXT,
-  api_secret_key TEXT,
-  webhook_secret TEXT,
-  is_active BOOLEAN DEFAULT false,
-  settings JSONB, -- Provider-specific settings
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
-);
-
-CREATE INDEX idx_payment_providers_store_id ON payment_providers(store_id);
-
--- ============================================
--- 7. SHIPPING (Shopify-like: Shipping Zones API)
+-- 6. SHIPPING (Shopify-like: Shipping Zones API)
 -- ============================================
 
 -- Shipping Zones

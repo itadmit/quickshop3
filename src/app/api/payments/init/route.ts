@@ -1,156 +1,187 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { StorePaymentIntegration, PaymentTransaction } from '@/types/payment';
-import { Order } from '@/types/order';
-import { getPaymentAdapter, registerAllPaymentAdapters } from '@/lib/payments';
+import { getStorePaymentGateway, PaymentInitParams } from '@/lib/payments';
+import { PaymentTransaction } from '@/types/payment';
 
-// POST /api/payments/init - Initialize payment page
+interface InitPaymentRequest {
+  orderId: number;
+  storeId?: number;
+  storeSlug?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  errorUrl?: string;
+  callbackUrl?: string;
+}
+
+/**
+ * POST /api/payments/init
+ * 
+ * Initialize a payment for an order.
+ * Returns the payment URL to redirect the customer.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { orderId, storeSlug, successUrl, errorUrl } = body;
-
-    if (!orderId || !storeSlug) {
+    const body: InitPaymentRequest = await request.json();
+    const { orderId, storeId, storeSlug, successUrl, cancelUrl, errorUrl, callbackUrl } = body;
+    
+    // Validate request
+    if (!orderId) {
       return NextResponse.json(
-        { error: 'orderId and storeSlug are required' },
+        { error: 'Missing orderId' },
         { status: 400 }
       );
     }
-
-    // Get store by slug
-    const store = await queryOne<{ id: number; name: string }>(
-      'SELECT id, name FROM stores WHERE slug = $1',
-      [storeSlug]
-    );
-
-    if (!store) {
-      return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+    
+    // Get order details - support both storeId and storeSlug
+    let order: any;
+    
+    if (storeId) {
+      order = await queryOne<any>(
+        `SELECT o.*, s.name as store_name, s.slug as store_slug, s.id as store_id
+         FROM orders o 
+         JOIN stores s ON o.store_id = s.id 
+         WHERE o.id = $1 AND o.store_id = $2`,
+        [orderId, storeId]
+      );
+    } else if (storeSlug) {
+      order = await queryOne<any>(
+        `SELECT o.*, s.name as store_name, s.slug as store_slug, s.id as store_id
+         FROM orders o 
+         JOIN stores s ON o.store_id = s.id 
+         WHERE o.id = $1 AND s.slug = $2`,
+        [orderId, storeSlug]
+      );
+    } else {
+      // Try to get order without store verification
+      order = await queryOne<any>(
+        `SELECT o.*, s.name as store_name, s.slug as store_slug, s.id as store_id
+         FROM orders o 
+         JOIN stores s ON o.store_id = s.id 
+         WHERE o.id = $1`,
+        [orderId]
+      );
     }
-
-    // Get order
-    const order = await queryOne<Order>(
-      `SELECT id, order_name, total_price, email, phone, name 
-       FROM orders 
-       WHERE id = $1 AND store_id = $2`,
-      [orderId, store.id]
-    );
-
+    
     if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    // Get active payment integration
-    const integration = await queryOne<StorePaymentIntegration>(
-      `SELECT * FROM store_payment_integrations 
-       WHERE store_id = $1 AND is_active = true AND is_default = true
-       LIMIT 1`,
-      [store.id]
-    );
-
-    if (!integration) {
-      // Try to get any active integration
-      const anyIntegration = await queryOne<StorePaymentIntegration>(
-        `SELECT * FROM store_payment_integrations 
-         WHERE store_id = $1 AND is_active = true
-         LIMIT 1`,
-        [store.id]
-      );
-
-      if (!anyIntegration) {
-        return NextResponse.json(
-          { error: 'No active payment integration found' },
-          { status: 400 }
-        );
-      }
-    }
-
-    const activeIntegration = integration || (await queryOne<StorePaymentIntegration>(
-      `SELECT * FROM store_payment_integrations 
-       WHERE store_id = $1 AND is_active = true
-       LIMIT 1`,
-      [store.id]
-    ));
-
-    if (!activeIntegration) {
       return NextResponse.json(
-        { error: 'No active payment integration found' },
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Check if order is already paid
+    if (order.financial_status === 'paid') {
+      return NextResponse.json(
+        { error: 'Order is already paid' },
         { status: 400 }
       );
     }
-
-    // Register adapters and get the right one
-    registerAllPaymentAdapters();
-    const adapter = getPaymentAdapter(activeIntegration.provider, activeIntegration);
-
-    // Build callback URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const callbackUrl = `${baseUrl}/api/payments/callback`;
-
-    // Initialize payment
-    const result = await adapter.initPayment({
-      order: {
-        id: order.id,
-        order_name: order.order_name || `#${order.id}`,
-        total_price: order.total_price,
-        email: order.email,
-        phone: order.phone,
-        name: order.name,
+    
+    // Get payment gateway
+    const gateway = await getStorePaymentGateway(order.store_id);
+    if (!gateway) {
+      // No gateway configured - return gracefully so checkout can continue without payment
+      return NextResponse.json(
+        { success: false, error: 'No payment gateway configured', noGateway: true },
+        { status: 200 }
+      );
+    }
+    
+    // Build URLs
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://my-quickshop.com';
+    const orderSlug = order.store_slug;
+    
+    const finalSuccessUrl = successUrl || `${baseUrl}/shops/${orderSlug}/checkout/success?orderId=${order.id}`;
+    const finalCancelUrl = cancelUrl || errorUrl || `${baseUrl}/shops/${orderSlug}/checkout?error=payment_cancelled&orderId=${order.id}`;
+    const finalCallbackUrl = callbackUrl || `${baseUrl}/api/payments/callback`;
+    
+    // Extract customer info
+    const shippingAddress = typeof order.shipping_address === 'string' 
+      ? JSON.parse(order.shipping_address) 
+      : (order.shipping_address || {});
+    const billingAddress = typeof order.billing_address === 'string'
+      ? JSON.parse(order.billing_address)
+      : (order.billing_address || {});
+    
+    // Build payment params
+    const paymentParams: PaymentInitParams = {
+      orderId: order.id,
+      orderNumber: order.order_number ? `#${order.order_number}` : `#${order.id}`,
+      amount: parseFloat(order.total_price),
+      currency: order.currency || 'ILS',
+      successUrl: finalSuccessUrl,
+      cancelUrl: finalCancelUrl,
+      callbackUrl: finalCallbackUrl,
+      customer: {
+        email: order.email || billingAddress.email || '',
+        firstName: shippingAddress.first_name || billingAddress.first_name || order.customer_name?.split(' ')[0] || '',
+        lastName: shippingAddress.last_name || billingAddress.last_name || order.customer_name?.split(' ').slice(1).join(' ') || '',
+        phone: order.phone || shippingAddress.phone || billingAddress.phone || '',
       },
-      storeId: store.id,
-      storeSlug,
-      integration: activeIntegration,
-      successUrl: successUrl || `${baseUrl}/shops/${storeSlug}/checkout/success?orderId=${order.id}`,
-      errorUrl: errorUrl || `${baseUrl}/shops/${storeSlug}/checkout?error=payment_failed`,
-      callbackUrl,
-      createToken: false,
-      language: 'he',
-    });
-
+      options: {
+        maxInstallments: 12,
+        description: `הזמנה ${order.order_number ? `#${order.order_number}` : `#${order.id}`} - ${order.store_name}`,
+        language: 'he',
+      },
+      metadata: {
+        orderId: order.id,
+        storeId: order.store_id,
+      },
+    };
+    
+    // Initialize payment
+    const result = await gateway.initPayment(paymentParams);
+    
     if (!result.success) {
+      console.error('Payment init failed:', result.error);
       return NextResponse.json(
-        { error: result.error || 'Failed to initialize payment' },
-        { status: 400 }
+        { success: false, error: result.error || 'Failed to initialize payment' },
+        { status: 500 }
       );
     }
-
-    // Create pending transaction record
+    
+    // Create payment transaction record
     await queryOne<PaymentTransaction>(
       `INSERT INTO payment_transactions (
-        store_id, order_id, integration_id, provider, external_transaction_id,
-        amount, currency, transaction_type, status, user_key
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id`,
+        store_id, order_id, provider, external_transaction_id,
+        amount, currency, transaction_type, status,
+        user_key, raw_request, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+      RETURNING *`,
       [
-        store.id,
-        order.id,
-        activeIntegration.id,
-        activeIntegration.provider,
-        result.transactionId,
-        parseFloat(order.total_price),
-        'ILS',
+        order.store_id,
+        orderId,
+        gateway.provider,
+        result.externalTransactionId || null,
+        order.total_price,
+        order.currency || 'ILS',
         'charge',
         'pending',
-        order.id.toString(),
+        result.transactionId, // Our internal reference (ParamX)
+        JSON.stringify(paymentParams),
       ]
     );
-
-    // Update order status to awaiting_payment
+    
+    // Update order status
     await query(
-      `UPDATE orders SET financial_status = 'awaiting_payment', updated_at = now() WHERE id = $1`,
-      [order.id]
+      `UPDATE orders SET 
+        financial_status = 'pending',
+        updated_at = now()
+       WHERE id = $1`,
+      [orderId]
     );
-
+    
     return NextResponse.json({
       success: true,
       paymentUrl: result.paymentUrl,
       transactionId: result.transactionId,
     });
+    
   } catch (error: any) {
     console.error('Error initializing payment:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to initialize payment' },
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

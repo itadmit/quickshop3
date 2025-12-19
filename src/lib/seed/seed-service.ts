@@ -449,15 +449,14 @@ export class SeedService {
             );
           }
         } else {
-          // אם אין variants אבל יש options, יוצר variant ברירת מחדל
+          // אם אין variants, יוצר variant ברירת מחדל
           await queryOne<{ id: number }>(
-            `INSERT INTO product_variants (product_id, title, price, compare_at_price, sku, 
+            `INSERT INTO product_variants (product_id, price, compare_at_price, sku, 
              taxable, inventory_quantity, weight, position, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, now(), now())
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 1, now(), now())
              RETURNING id`,
             [
               productId,
-              'Default Title',
               productData.price || 0,
               productData.compare_at_price || null,
               productData.sku || null,
@@ -467,24 +466,6 @@ export class SeedService {
             ]
           );
         }
-      } else {
-        // מוצר בלי options - יוצר variant ברירת מחדל (כמו בשופיפי - כל מוצר חייב לפחות variant אחד)
-        await queryOne<{ id: number }>(
-          `INSERT INTO product_variants (product_id, title, price, compare_at_price, sku, 
-           taxable, inventory_quantity, weight, position, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, now(), now())
-           RETURNING id`,
-          [
-            productId,
-            'Default Title',
-            productData.price || 0,
-            productData.compare_at_price || null,
-            productData.sku || null,
-            productData.taxable ?? true,
-            productData.inventory_quantity || 0,
-            productData.weight || null,
-          ]
-        );
       }
 
       // Emit event
@@ -584,28 +565,17 @@ export class SeedService {
 
       if (!customer) continue;
 
-      // חישוב תאריך יצירה - אם יש created_hours_ago, נחשב אחורה
-      const orderDataAny = orderData as any;
-      const hoursAgo = orderDataAny.created_hours_ago || 0;
-      const createdAt = hoursAgo > 0 
-        ? new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString()
-        : new Date().toISOString();
-
-      // Generate unique order handle for payment links
-      const orderHandle = `order_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-      
       const order = await queryOne<{ id: number; order_number: number }>(
-        `INSERT INTO orders (store_id, customer_id, order_name, order_number, order_handle, financial_status, 
+        `INSERT INTO orders (store_id, customer_id, order_name, order_number, financial_status, 
          fulfillment_status, total_price, subtotal_price, total_tax, currency, email, name, 
          created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now())
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
          RETURNING id, order_number`,
         [
           this.storeId,
           customer.id,
           orderData.order_name || `#${orderData.order_number}`,
           orderData.order_number,
-          orderHandle,
           orderData.financial_status || 'pending',
           orderData.fulfillment_status || 'unfulfilled',
           orderData.total_price || 0,
@@ -614,7 +584,6 @@ export class SeedService {
           orderData.currency || 'ILS',
           orderData.customer_email,
           `${orderData.shipping_address?.first_name || ''} ${orderData.shipping_address?.last_name || ''}`.trim(),
-          createdAt,
         ]
       );
 
@@ -967,7 +936,6 @@ export class SeedService {
         'blog_categories',
         'pages',
         'webhook_subscriptions',
-        'payment_providers',
         'gift_cards',
         'store_credits',
         'customer_segments',

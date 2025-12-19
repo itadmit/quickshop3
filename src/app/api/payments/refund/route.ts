@@ -1,171 +1,198 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { StorePaymentIntegration, PaymentTransaction } from '@/types/payment';
+import { getStorePaymentGateway } from '@/lib/payments';
+import { PaymentTransaction } from '@/types/payment';
 import { getUserFromRequest } from '@/lib/auth';
-import { getPaymentAdapter, registerAllPaymentAdapters } from '@/lib/payments';
 import { eventBus } from '@/lib/events/eventBus';
 
-// POST /api/payments/refund - Refund a transaction
+interface RefundRequest {
+  orderId: number;
+  transactionId?: number;
+  amount?: number;
+  reason?: string;
+}
+
+/**
+ * POST /api/payments/refund
+ * 
+ * Refund a payment (full or partial).
+ * Called from order management in dashboard.
+ */
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user
     const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const body = await request.json();
-    const { transactionId, orderId, amount, reason } = body;
-
-    if (!transactionId && !orderId) {
+    
+    const body: RefundRequest = await request.json();
+    const { orderId, transactionId, amount, reason } = body;
+    
+    if (!orderId) {
       return NextResponse.json(
-        { error: 'transactionId or orderId is required' },
+        { error: 'Missing orderId' },
         { status: 400 }
       );
     }
-
-    // Find the transaction
+    
+    // Get order and verify ownership
+    const order = await queryOne<any>(
+      'SELECT * FROM orders WHERE id = $1 AND store_id = $2',
+      [orderId, user.store_id]
+    );
+    
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Get the original transaction
     let transaction: PaymentTransaction | null = null;
     
     if (transactionId) {
       transaction = await queryOne<PaymentTransaction>(
         `SELECT * FROM payment_transactions 
-         WHERE id = $1 AND store_id = $2 AND status = 'completed'`,
-        [transactionId, user.store_id]
+         WHERE id = $1 AND order_id = $2 AND store_id = $3 
+         AND transaction_type = 'charge' AND status = 'completed'`,
+        [transactionId, orderId, user.store_id]
       );
-    } else if (orderId) {
+    } else {
+      // Get the latest successful charge transaction for this order
       transaction = await queryOne<PaymentTransaction>(
         `SELECT * FROM payment_transactions 
-         WHERE order_id = $1 AND store_id = $2 AND status = 'completed' AND transaction_type = 'charge'
+         WHERE order_id = $1 AND store_id = $2 
+         AND transaction_type = 'charge' AND status = 'completed'
          ORDER BY created_at DESC LIMIT 1`,
         [orderId, user.store_id]
       );
     }
-
+    
     if (!transaction) {
       return NextResponse.json(
-        { error: 'Completed transaction not found' },
-        { status: 404 }
-      );
-    }
-
-    // Get integration
-    const integration = await queryOne<StorePaymentIntegration>(
-      'SELECT * FROM store_payment_integrations WHERE id = $1',
-      [transaction.integration_id]
-    );
-
-    if (!integration) {
-      return NextResponse.json(
-        { error: 'Payment integration not found' },
-        { status: 404 }
-      );
-    }
-
-    // Calculate refund amount
-    const refundAmount = amount || transaction.amount;
-
-    // Get adapter and attempt refund
-    registerAllPaymentAdapters();
-    const adapter = getPaymentAdapter(integration.provider, integration);
-
-    const result = await adapter.refundTransaction(
-      transaction.external_transaction_id || '',
-      refundAmount
-    );
-
-    if (!result.success) {
-      // Log failed attempt
-      await queryOne(
-        `INSERT INTO payment_transactions (
-          store_id, order_id, integration_id, provider, 
-          amount, currency, transaction_type, status,
-          original_transaction_id, refund_amount, refund_reason,
-          error_message
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING id`,
-        [
-          user.store_id,
-          transaction.order_id,
-          integration.id,
-          integration.provider,
-          refundAmount,
-          'ILS',
-          'refund',
-          'failed',
-          transaction.id,
-          refundAmount,
-          reason || null,
-          result.error,
-        ]
-      );
-
-      return NextResponse.json(
-        { error: result.error || 'Refund failed' },
+        { error: 'No successful payment transaction found for this order' },
         { status: 400 }
       );
     }
-
+    
+    if (!transaction.external_transaction_id) {
+      return NextResponse.json(
+        { error: 'Transaction does not have an external ID for refund' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate refund amount
+    const refundAmount = amount || Number(transaction.amount);
+    if (refundAmount <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid refund amount' },
+        { status: 400 }
+      );
+    }
+    
+    if (refundAmount > Number(transaction.amount)) {
+      return NextResponse.json(
+        { error: 'Refund amount cannot exceed original transaction amount' },
+        { status: 400 }
+      );
+    }
+    
+    // Get payment gateway
+    const gateway = await getStorePaymentGateway(user.store_id);
+    if (!gateway) {
+      return NextResponse.json(
+        { error: 'No payment gateway configured' },
+        { status: 400 }
+      );
+    }
+    
+    // Process refund
+    const refundResult = await gateway.refund({
+      transactionId: String(transaction.id),
+      externalTransactionId: transaction.external_transaction_id,
+      amount: refundAmount,
+      reason: reason,
+    });
+    
+    if (!refundResult.success) {
+      console.error('[Refund] Failed:', refundResult.error);
+      return NextResponse.json(
+        { error: refundResult.error || 'Refund failed' },
+        { status: 500 }
+      );
+    }
+    
     // Create refund transaction record
     const refundTransaction = await queryOne<PaymentTransaction>(
       `INSERT INTO payment_transactions (
-        store_id, order_id, integration_id, provider, external_transaction_id,
+        store_id, order_id, provider, external_transaction_id,
         amount, currency, transaction_type, status,
-        original_transaction_id, refund_amount, refund_reason
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        original_transaction_id, refund_amount, refund_reason,
+        raw_response, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
       RETURNING *`,
       [
         user.store_id,
-        transaction.order_id,
-        integration.id,
-        integration.provider,
-        result.refundId || null,
+        orderId,
+        gateway.provider,
+        refundResult.refundId || transaction.external_transaction_id,
         refundAmount,
-        'ILS',
+        transaction.currency || 'ILS',
         'refund',
         'completed',
         transaction.id,
         refundAmount,
         reason || null,
+        refundResult.rawResponse ? JSON.stringify(refundResult.rawResponse) : null,
       ]
     );
-
-    // Update original transaction status
-    await query(
-      `UPDATE payment_transactions SET status = 'refunded', updated_at = now() WHERE id = $1`,
-      [transaction.id]
-    );
-
-    // Update order status
-    if (transaction.order_id) {
+    
+    // Update original transaction status if full refund
+    const isFullRefund = refundAmount >= Number(transaction.amount);
+    if (isFullRefund) {
       await query(
-        `UPDATE orders SET financial_status = 'refunded', updated_at = now() WHERE id = $1`,
-        [transaction.order_id]
+        `UPDATE payment_transactions SET status = 'refunded', updated_at = now() WHERE id = $1`,
+        [transaction.id]
       );
-
-      // Emit event
-      await eventBus.emit('order.refunded', {
-        order_id: transaction.order_id,
-        transaction_id: transaction.id,
-        refund_transaction_id: refundTransaction?.id,
-        amount: refundAmount,
-      }, {
-        store_id: user.store_id,
-        source: 'api',
-        user_id: user.id,
-      });
     }
-
+    
+    // Update order financial status
+    const newFinancialStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+    await query(
+      `UPDATE orders SET financial_status = $1, updated_at = now() WHERE id = $2`,
+      [newFinancialStatus, orderId]
+    );
+    
+    // Emit refund event
+    await eventBus.emitEvent('order.refunded', {
+      order_id: orderId,
+      order_number: order.order_number,
+      refund_amount: refundAmount,
+      is_full_refund: isFullRefund,
+      reason: reason,
+      refund_transaction_id: refundTransaction?.id,
+    }, {
+      store_id: user.store_id,
+      source: 'dashboard',
+      user_id: user.id,
+    });
+    
     return NextResponse.json({
       success: true,
       refundId: refundTransaction?.id,
       amount: refundAmount,
+      isFullRefund,
+      newFinancialStatus,
     });
+    
   } catch (error: any) {
-    console.error('Error processing refund:', error);
+    console.error('[Refund] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Refund failed' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
 }
-
