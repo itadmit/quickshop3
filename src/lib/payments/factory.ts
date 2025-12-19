@@ -9,11 +9,11 @@ import { query, queryOne } from '@/lib/db';
 import { StorePaymentIntegration, PaymentProviderType } from '@/types/payment';
 import { PaymentGateway, AdapterConfig } from './gateway';
 import { PelecardAdapter } from './adapters/pelecard';
+import { PayMeAdapter } from './adapters/payme';
 // Import other adapters as they are created:
 // import { PayPlusAdapter } from './adapters/payplus';
 // import { HypAdapter } from './adapters/hyp';
 // import { MeshulamAdapter } from './adapters/meshulam';
-// import { QuickPayAdapter } from './adapters/quickpay';
 
 /**
  * Create payment gateway adapter for a specific integration
@@ -23,6 +23,9 @@ export function createPaymentGateway(config: AdapterConfig): PaymentGateway {
     case 'pelecard':
       return new PelecardAdapter(config);
     
+    case 'quickpay':
+      return new PayMeAdapter(config);
+    
     // Add more adapters as they are implemented:
     // case 'payplus':
     //   return new PayPlusAdapter(config);
@@ -30,8 +33,6 @@ export function createPaymentGateway(config: AdapterConfig): PaymentGateway {
     //   return new HypAdapter(config);
     // case 'meshulam':
     //   return new MeshulamAdapter(config);
-    // case 'quickpay':
-    //   return new QuickPayAdapter(config);
     
     default:
       throw new Error(`Unsupported payment provider: ${config.provider}`);

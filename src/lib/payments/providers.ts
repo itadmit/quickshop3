@@ -9,14 +9,28 @@ import { PaymentProviderConfig, PaymentProviderType } from '@/types/payment';
 export const PAYMENT_PROVIDERS: PaymentProviderConfig[] = [
   {
     id: 'quickpay',
-    name: 'קוויק פיימנטס',
+    name: 'קוויק שופ פיימנטס',
     nameEn: 'QuickShop Payments',
-    description: 'הפתרון המובנה שלנו - ללא עמלות נוספות, התממשקות מיידית',
+    description: 'הפתרון המובנה שלנו - עמלות משתלמות, התממשקות מיידית (מבוסס PayMe)',
     logo: '/images/providers/quickpay.svg',
     isRecommended: true,
-    isComingSoon: true, // TODO: Remove when ready
     requiredFields: [
-      // No fields needed - automatic setup
+      {
+        key: 'seller_payme_id',
+        label: 'מפתח MPL',
+        type: 'password',
+        required: true,
+        placeholder: 'MPL1234-XXXXXXXX-XXXXXXXX-XXXXXXXX',
+        helpText: 'מפתח המוכר שקיבלת מקוויק שופ פיימנטס',
+      },
+      {
+        key: 'payme_client_key',
+        label: 'מפתח שותף (אופציונלי)',
+        type: 'password',
+        required: false,
+        placeholder: 'Partner Key',
+        helpText: 'מפתח שותף לשימוש ב-Marketplace (אופציונלי)',
+      },
     ],
     supportedFeatures: [
       'credit_card',
