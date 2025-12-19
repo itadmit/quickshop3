@@ -10,8 +10,8 @@ import { StorePaymentIntegration, PaymentProviderType } from '@/types/payment';
 import { PaymentGateway, AdapterConfig } from './gateway';
 import { PelecardAdapter } from './adapters/pelecard';
 import { PayMeAdapter } from './adapters/payme';
+import { PayPlusAdapter } from './adapters/payplus';
 // Import other adapters as they are created:
-// import { PayPlusAdapter } from './adapters/payplus';
 // import { HypAdapter } from './adapters/hyp';
 // import { MeshulamAdapter } from './adapters/meshulam';
 
@@ -26,9 +26,10 @@ export function createPaymentGateway(config: AdapterConfig): PaymentGateway {
     case 'quickpay':
       return new PayMeAdapter(config);
     
+    case 'payplus':
+      return new PayPlusAdapter(config);
+    
     // Add more adapters as they are implemented:
-    // case 'payplus':
-    //   return new PayPlusAdapter(config);
     // case 'hyp':
     //   return new HypAdapter(config);
     // case 'meshulam':
