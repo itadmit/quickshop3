@@ -118,8 +118,18 @@ function createGatewayFromIntegration(integration: StorePaymentIntegration): Pay
     credentials.api_key = integration.api_key_encrypted;
   }
   
-  // Add any credentials from settings
+  // Add credentials from settings (for providers like PayPlus, Meshulam that use custom fields)
   const settings = (integration.settings || {}) as Record<string, any>;
+  
+  // Merge settings into credentials (for api_key, secret_key, terminal_uid, etc.)
+  if (settings.api_key) credentials.api_key = settings.api_key;
+  if (settings.secret_key) credentials.secret_key = settings.secret_key;
+  if (settings.terminal_uid) credentials.terminal_uid = settings.terminal_uid;
+  if (settings.payment_page_uid) credentials.payment_page_uid = settings.payment_page_uid;
+  if (settings.seller_payme_id) credentials.seller_payme_id = settings.seller_payme_id;
+  if (settings.payme_client_key) credentials.payme_client_key = settings.payme_client_key;
+  if (settings.user_id) credentials.user_id = settings.user_id;
+  if (settings.page_code) credentials.page_code = settings.page_code;
   
   // Build config
   const config: AdapterConfig = {

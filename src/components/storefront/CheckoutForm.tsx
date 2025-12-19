@@ -82,12 +82,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     autoCalculate: true,
   });
 
-  // רענון חישוב כשהעגלה משתנה - רק כשהכמויות משתנות
-  useEffect(() => {
-    if (cartItems.length > 0) {
-      recalculate();
-    }
-  }, [cartItems.map(i => `${i.variant_id}-${i.quantity}`).join(','), recalculate]);
+  // ✅ autoCalculate: true ב-useCartCalculator כבר מטפל בחישוב אוטומטי
+  // לא צריך useEffect נוסף - זה גורם ל-loop אינסופי של קריאות
 
   const [formData, setFormData] = useState({
     email: '',
@@ -278,12 +274,23 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
             // הפניה לדף הסליקה
             window.location.href = paymentData.paymentUrl;
             return;
+          } else if (paymentData.noGateway) {
+            // ❌ אין ספק סליקה מוגדר - לא מאפשרים תשלום בכרטיס אשראי
+            setProcessing(false);
+            alert('לא ניתן לשלם בכרטיס אשראי כרגע. אנא בחר שיטת תשלום אחרת או פנה לבעל החנות.');
+            return;
           } else {
-            // אם אין סליקה פעילה - ממשיך כרגיל
-            console.log('No payment integration, continuing with normal flow');
+            // ❌ שגיאה באתחול התשלום
+            setProcessing(false);
+            alert(paymentData.error || 'אירעה שגיאה באתחול התשלום. אנא נסה שוב.');
+            return;
           }
         } catch (paymentError) {
-          console.log('Payment init failed, continuing with normal flow:', paymentError);
+          // ❌ שגיאה בתקשורת עם שרת התשלומים
+          console.error('Payment init failed:', paymentError);
+          setProcessing(false);
+          alert('אירעה שגיאה בתקשורת עם שרת התשלומים. אנא נסה שוב.');
+          return;
         }
       }
 
