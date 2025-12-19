@@ -404,13 +404,28 @@ export default function OrderDetailsPage() {
       `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {order.order_name || `#${order.order_number || order.id}`}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            נוצר ב-{new Date(order.created_at).toLocaleString('he-IL')}
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {order.order_name || `#${order.order_number || order.id}`}
+              </h1>
+              {/* Payment method badges */}
+              {(order as any).note_attributes?.payment_method === 'bank_transfer' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                  העברה בנקאית
+                </span>
+              )}
+              {(order as any).note_attributes?.payment_method === 'cash' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+                  מזומן
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              נוצר ב-{new Date(order.created_at).toLocaleString('he-IL')}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2 no-print">
           <Button

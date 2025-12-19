@@ -5,28 +5,33 @@ import { getStoreBySlug } from '@/lib/utils/store';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-function CheckoutSuccessContent({
-  orderId,
-  storeSlug,
-}: {
-  orderId: string;
-  storeSlug: string;
-}) {
-  return <CheckoutSuccess orderId={parseInt(orderId, 10)} storeSlug={storeSlug} storeName="" />;
-}
-
+/**
+ * Checkout Success Page
+ * 
+ * This page is reached after a successful payment through the unified callback.
+ * All payment providers (PayPlus, Pelecard, PayMe, Meshulam) redirect through
+ * /api/payments/callback which processes the payment and then redirects here
+ * with a clean orderId parameter.
+ */
 export default async function CheckoutSuccessPage({
   params,
   searchParams,
 }: {
   params: Promise<{ storeSlug: string }>;
-  searchParams: Promise<{ handle?: string; orderId?: string }>;
+  searchParams: Promise<{ 
+    handle?: string; 
+    orderId?: string;
+    order_id?: string; // Alternative format
+  }>;
 }) {
   const { storeSlug } = await params;
-  const { handle, orderId } = await searchParams;
-
-  // תמיכה ב-handle (מומלץ) או orderId (legacy)
-  const orderIdentifier = handle || orderId;
+  const { handle, orderId, order_id } = await searchParams;
+  
+  // Support multiple orderId formats
+  const finalOrderId = orderId || order_id;
+  
+  // Support both handle (recommended) and orderId (legacy)
+  const orderIdentifier = handle || finalOrderId;
 
   if (!orderIdentifier) {
     return (
@@ -53,7 +58,13 @@ export default async function CheckoutSuccessPage({
         </div>
       </div>
     }>
-      <CheckoutSuccess orderHandle={handle || undefined} orderId={orderId ? parseInt(orderId, 10) : undefined} storeSlug={storeSlug} storeName={storeName} storeLogo={storeLogo} />
+      <CheckoutSuccess 
+        orderHandle={handle || undefined} 
+        orderId={finalOrderId ? parseInt(finalOrderId, 10) : undefined} 
+        storeSlug={storeSlug} 
+        storeName={storeName} 
+        storeLogo={storeLogo} 
+      />
     </Suspense>
   );
 }

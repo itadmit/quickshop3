@@ -335,16 +335,20 @@ export class PayPlusAdapter extends BasePaymentAdapter {
   
   /**
    * Validate callback from PayPlus
-   * PayPlus sends callback as POST with JSON body
+   * 
+   * PayPlus sends data in two formats:
+   * 1. POST with JSON body (server callback) - includes hash header
+   * 2. GET with query params (redirect) - flat structure
+   * 
    * Headers include 'hash' for verification and 'user-agent': 'PayPlus'
    */
   async validateCallback(params: CallbackParams): Promise<CallbackValidationResult> {
-    const data = (params.body || params.queryParams) as PayPlusCallbackData;
+    const data = (params.body || params.queryParams || {}) as Record<string, any>;
     const headers = params.headers || {};
     
     this.log('validateCallback', data);
     
-    // Verify hash if present
+    // Verify hash if present (POST callback)
     if (headers['hash'] && params.rawBody) {
       const isValid = this.verifyHash(params.rawBody, headers['hash']);
       if (!isValid) {
@@ -357,38 +361,54 @@ export class PayPlusAdapter extends BasePaymentAdapter {
       }
     }
     
-    // Check status
-    const status = data.status?.toLowerCase();
-    const statusCode = data.status_code;
+    // Check status - support both nested and flat formats
+    // Flat format (URL redirect): status, status_code
+    // Nested format (POST callback): status, status_code, card_information.four_digits
+    const status = (data.status || '')?.toLowerCase?.() || '';
+    const statusCode = data.status_code || '';
     const paymentSuccess = status === 'approved' || statusCode === '000';
     
-    // Extract card info
-    const cardInfo = data.card_information;
-    const cardBrand = cardInfo?.brand_name?.toLowerCase() || 'unknown';
+    // Extract card info - support both formats
+    // Flat: four_digits, expiry_month, expiry_year, brand_name
+    // Nested: card_information.four_digits, etc.
+    const cardInfo = data.card_information || {};
+    const fourDigits = data.four_digits || cardInfo.four_digits;
+    const brandName = data.brand_name || cardInfo.brand_name || 'unknown';
+    const expiryMonth = data.expiry_month || cardInfo.expiry_month;
+    const expiryYear = data.expiry_year || cardInfo.expiry_year;
+    const cardHolderName = data.card_holder_name || cardInfo.card_holder_name;
+    
+    // Transaction identifiers
+    const transactionUid = data.transaction_uid;
+    const pageRequestUid = data.page_request_uid;
+    const approvalNum = data.approval_num;
+    const voucherNum = data.voucher_num;
+    const token = data.token;
+    const statusDescription = data.status_description;
     
     if (!paymentSuccess) {
       return {
         success: true,
         paymentSuccess: false,
-        error: data.status_description || `Payment failed: ${status}`,
+        error: statusDescription || `Payment failed: ${status}`,
         errorCode: statusCode,
-        externalTransactionId: data.transaction_uid || data.page_request_uid,
-        rawResponse: data as Record<string, any>,
+        externalTransactionId: transactionUid || pageRequestUid,
+        rawResponse: data,
       };
     }
     
     return {
       success: true,
       paymentSuccess: true,
-      externalTransactionId: data.transaction_uid || data.page_request_uid,
-      approvalNumber: data.approval_num || data.voucher_num,
-      cardLastFour: cardInfo?.four_digits,
-      cardBrand,
-      cardExpiry: cardInfo?.expiry_month && cardInfo?.expiry_year 
-        ? `${cardInfo.expiry_month}/${cardInfo.expiry_year.slice(-2)}`
+      externalTransactionId: transactionUid || pageRequestUid,
+      approvalNumber: approvalNum || voucherNum,
+      cardLastFour: fourDigits,
+      cardBrand: brandName.toLowerCase(),
+      cardExpiry: expiryMonth && expiryYear 
+        ? `${expiryMonth}/${String(expiryYear).slice(-2)}`
         : undefined,
-      token: data.token,
-      rawResponse: data as Record<string, any>,
+      token,
+      rawResponse: data,
     };
   }
   

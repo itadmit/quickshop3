@@ -313,10 +313,15 @@ export async function createOrder(input: CreateOrderInput) {
     }
   );
 
-  // Send order confirmation email (async, don't block order creation)
-  sendOrderReceiptEmail(order.id, storeId).catch((error) => {
-    console.warn('Failed to send order receipt email:', error);
-  });
+  // Send order confirmation email - רק אם לא credit_card או אם הסכום הוא 0
+  // אם credit_card עם סכום > 0, האימייל יישלח מה-callback אחרי תשלום מוצלח
+  const shouldSendEmailNow = input.paymentMethod !== 'credit_card' || input.total === 0;
+  
+  if (shouldSendEmailNow) {
+    sendOrderReceiptEmail(order.id, storeId).catch((error) => {
+      console.warn('Failed to send order receipt email:', error);
+    });
+  }
 
   return {
     ...order,

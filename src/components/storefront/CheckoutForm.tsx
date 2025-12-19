@@ -48,6 +48,16 @@ interface CheckoutFormProps {
   customFields?: CustomField[];
 }
 
+// Types for payment methods
+interface PaymentMethodOption {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  fee?: number;
+  details?: string;
+}
+
 export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customFields = [] }: CheckoutFormProps) {
   const router = useRouter();
   const { cartItems, clearCart, isLoading: cartLoading } = useCart();
@@ -55,6 +65,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   const [processing, setProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [redirectingToPayment, setRedirectingToPayment] = useState(false);
+  
+  // Available payment methods from store settings
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+  const [minimumOrderAmount, setMinimumOrderAmount] = useState(0);
   
   // Autocomplete hooks לערים ורחובות
   const citySearch = useCitySearch(storeSlug);
@@ -116,6 +132,33 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Load available payment methods
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    const loadPaymentMethods = async () => {
+      try {
+        setLoadingPaymentMethods(true);
+        const response = await fetch(`/api/storefront/${storeSlug}/payment-methods`);
+        if (response.ok) {
+          const data = await response.json();
+          setPaymentMethods(data.methods || []);
+          setMinimumOrderAmount(data.minimum_order_amount || 0);
+          // Set default payment method if available
+          if (data.defaultMethod && data.methods?.length > 0) {
+            setFormData(prev => ({ ...prev, paymentMethod: data.defaultMethod }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading payment methods:', error);
+      } finally {
+        setLoadingPaymentMethods(false);
+      }
+    };
+    
+    loadPaymentMethods();
+  }, [isMounted, storeSlug]);
 
   // Load store credit if customer is logged in
   useEffect(() => {
@@ -258,11 +301,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           const paymentData = await paymentResponse.json();
 
           if (paymentData.success && paymentData.paymentUrl) {
-            // שמירת נתוני ההזמנה לפני redirect
-            setOrderCompleted(true);
-            clearCart();
+            // ⚠️ לא מוחקים את העגלה כאן!
+            // העגלה תימחק רק בדף התודה אחרי תשלום מוצלח
+            setOrderCompleted(true); // מונע redirect לעגלה ריקה
+            setRedirectingToPayment(true); // הצגת loader לפני הפניה
             
-            // Track InitiatePayment event
+            // Track InitiatePayment event (לא Purchase - זה יהיה רק אחרי תשלום)
             emitTrackingEvent({
               event: 'InitiatePayment',
               content_ids: cartItems.map(item => String(item.product_id)),
@@ -528,6 +572,20 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         backgroundColor: '#ffffff',
       }}
     >
+      {/* Payment Redirect Overlay */}
+      {redirectingToPayment && (
+        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4 text-center">
+            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">מעביר לעמוד תשלום...</h3>
+              <p className="text-sm text-gray-500">אנא המתן, אתה מועבר לדף הסליקה המאובטח</p>
+            </div>
+            <Lock className="w-5 h-5 text-emerald-500" />
+          </div>
+        </div>
+      )}
+
       {/* הרקע של העמודות מתפרס על כל הרוחב */}
       <form onSubmit={handleSubmit} className="w-full">
         {/* Header - Mobile: Logo and Back in same row */}
@@ -1082,94 +1140,68 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       finalTotal > 0 ? 'שיטת תשלום' : 'אישור הזמנה'
                     )}
                   </h2>
-                  <RadioGroup
-                    value={formData.paymentMethod}
-                    onValueChange={(value: any) => {
-                      setFormData((prev) => ({ ...prev, paymentMethod: value }))
-                    }}
-                    className="space-y-3"
-                  >
-                    <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">    
-                      <RadioGroupItem value="credit_card" id="credit_card" />
-                      <Label htmlFor="credit_card" className="cursor-pointer flex-1">                                                                           
-                        <div className="font-medium">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-24" height="h-5" />
-                          ) : (
-                            'כרטיס אשראי'
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-32" height="h-4" />
-                          ) : (
-                            'תשלום מאובטח בכרטיס אשראי'
-                          )}
-                        </div>                                                                  
-                      </Label>
-                      <Lock className="w-5 h-5 text-gray-400" />
+                  {loadingPaymentMethods ? (
+                    <div className="space-y-3">
+                      <div className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+                      <div className="h-20 bg-gray-100 rounded-lg animate-pulse" />
                     </div>
-                    <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">      
-                      <RadioGroupItem value="bank_transfer" id="bank_transfer" />
-                      <Label htmlFor="bank_transfer" className="cursor-pointer flex-1">                                                                           
-                        <div className="font-medium">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-32" height="h-5" />
-                          ) : (
-                            'העברה בנקאית'
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-40" height="h-4" />
-                          ) : (
-                            'העברת כסף ישירות לחשבון הבנק'
-                          )}
-                        </div>                                                                 
-                      </Label>
+                  ) : paymentMethods.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                      <p>לא הוגדרו שיטות תשלום לחנות זו</p>
+                      <p className="text-sm mt-1">יש ליצור קשר עם בעל החנות</p>
                     </div>
-                    <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">      
-                      <RadioGroupItem value="cash" id="cash" />
-                      <Label htmlFor="cash" className="cursor-pointer flex-1">
-                        <div className="font-medium">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-32" height="h-5" />
-                          ) : (
-                            'מזומן בהזמנה'
-                          )}
+                  ) : (
+                    <RadioGroup
+                      value={formData.paymentMethod}
+                      onValueChange={(value: any) => {
+                        setFormData((prev) => ({ ...prev, paymentMethod: value }))
+                      }}
+                      className="space-y-3"
+                    >
+                      {paymentMethods.map((method) => (
+                        <div 
+                          key={method.id}
+                          className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer"
+                        >
+                          <RadioGroupItem value={method.id} id={method.id} />
+                          <Label htmlFor={method.id} className="cursor-pointer flex-1">
+                            <div className="font-medium flex items-center gap-2">
+                              {method.name}
+                              {method.fee && method.fee > 0 && (
+                                <span className="text-xs text-gray-500">(+₪{method.fee})</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">{method.description}</div>
+                          </Label>
+                          {method.id === 'credit_card' && <Lock className="w-5 h-5 text-gray-400" />}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-40" height="h-4" />
-                          ) : (
-                            'תשלום במזומן בעת המשלוח'
-                          )}
-                        </div>                                                                      
-                      </Label>
-                    </div>
-                    {storeCredit && storeCredit.balance > 0 && (
-                      <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">
-                        <RadioGroupItem value="store_credit" id="store_credit" />
-                        <Label htmlFor="store_credit" className="cursor-pointer flex-1">
-                          <div className="font-medium flex items-center gap-2">
-                            <Coins className="w-5 h-5 text-yellow-600" />
-                            {translationsLoading ? (
-                              <TextSkeleton width="w-32" height="h-5" />
-                            ) : (
-                              'קרדיט בחנות'
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {translationsLoading ? (
-                              <TextSkeleton width="w-40" height="h-4" />
-                            ) : (
-                              `יתרה זמינה: ₪${storeCredit.balance.toFixed(2)}`
-                            )}
-                          </div>
-                        </Label>
-                      </div>
-                    )}
-                  </RadioGroup>
+                      ))}
+                      
+                      {/* Store Credit Option - shows only if customer has balance */}
+                      {storeCredit && storeCredit.balance > 0 && (
+                        <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">
+                          <RadioGroupItem value="store_credit" id="store_credit" />
+                          <Label htmlFor="store_credit" className="cursor-pointer flex-1">
+                            <div className="font-medium flex items-center gap-2">
+                              <Coins className="w-5 h-5 text-yellow-600" />
+                              {translationsLoading ? (
+                                <TextSkeleton width="w-32" height="h-5" />
+                              ) : (
+                                'קרדיט בחנות'
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {translationsLoading ? (
+                                <TextSkeleton width="w-40" height="h-4" />
+                              ) : (
+                                `יתרה זמינה: ₪${storeCredit.balance.toFixed(2)}`
+                              )}
+                            </div>
+                          </Label>
+                        </div>
+                      )}
+                    </RadioGroup>
+                  )}
                   
                   {/* Store Credit Amount Input */}
                   {formData.paymentMethod === 'store_credit' && storeCredit && storeCredit.balance > 0 && (
@@ -1482,12 +1514,19 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   </div>
 
                   {/* Submit Button */}
+                  {/* Minimum order warning */}
+                  {minimumOrderAmount > 0 && getTotal() < minimumOrderAmount && (
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm text-center">
+                      סכום ההזמנה המינימלי הוא ₪{minimumOrderAmount.toFixed(2)}. נותרו עוד ₪{(minimumOrderAmount - getTotal()).toFixed(2)} להזמנה.
+                    </div>
+                  )}
+                  
                   <Button
                     type="submit"
-                    className="w-full mt-6 text-white rounded-lg font-semibold"
+                    className="w-full mt-6 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#9333ea' }}
                     size="lg"
-                    disabled={processing}
+                    disabled={processing || loadingPaymentMethods || paymentMethods.length === 0 || (minimumOrderAmount > 0 && getTotal() < minimumOrderAmount)}
                   >
                     {processing ? (
                       translationsLoading ? (

@@ -91,9 +91,13 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://my-quickshop.com';
     const orderSlug = order.store_slug;
     
-    const finalSuccessUrl = successUrl || `${baseUrl}/shops/${orderSlug}/checkout/success?orderId=${order.id}`;
-    const finalCancelUrl = cancelUrl || errorUrl || `${baseUrl}/shops/${orderSlug}/checkout?error=payment_cancelled&orderId=${order.id}`;
+    // ⚠️ חשוב: כל הספקים צריכים לחזור דרך ה-callback שלנו
+    // ה-callback יעבד את התשלום ויפנה לדף success
     const finalCallbackUrl = callbackUrl || `${baseUrl}/api/payments/callback`;
+    
+    // ל-success URL נשלח את ה-callback כדי לעבד לפני הצגת דף success
+    const finalSuccessUrl = `${baseUrl}/api/payments/callback?orderId=${order.id}&storeSlug=${orderSlug}&type=success_redirect`;
+    const finalCancelUrl = cancelUrl || errorUrl || `${baseUrl}/shops/${orderSlug}/checkout?error=payment_cancelled&orderId=${order.id}`;
     
     // Extract customer info
     const shippingAddress = typeof order.shipping_address === 'string' 

@@ -3,12 +3,19 @@ import { query, queryOne } from '@/lib/db';
 import { getStorePaymentGateway } from '@/lib/payments';
 import { PaymentTransaction } from '@/types/payment';
 import { eventBus } from '@/lib/events/eventBus';
+import { sendOrderReceiptEmail } from '@/lib/order-email';
 
 /**
  * GET /api/payments/callback
  * 
  * Handle callback from payment provider after customer completes payment.
  * Validates the payment and updates order status.
+ * 
+ * Supports all payment providers through unified handling:
+ * - PayPlus: orderId, more_info, transaction_uid, status
+ * - Pelecard: ParamX, ConfirmationKey, ResultCode
+ * - PayMe: processId, processToken
+ * - Meshulam: transactionId, transactionToken
  */
 export async function GET(request: NextRequest) {
   try {
@@ -20,66 +27,145 @@ export async function GET(request: NextRequest) {
       queryParams[key] = value;
     });
     
-    console.log('[Payment Callback] Received:', queryParams);
+    console.log('[Payment Callback] Received:', JSON.stringify(queryParams, null, 2));
     
-    // Find the pending transaction by user_key (ParamX)
+    // ========================================
+    // STEP 1: Find order/transaction
+    // ========================================
+    
+    // Try multiple methods to find the order:
+    // 1. Direct orderId (PayPlus, our callback URL)
+    // 2. more_info (PayPlus internal)
+    // 3. ParamX/userKey (Pelecard)
+    // 4. processId (PayMe/Meshulam)
+    
+    const orderId = queryParams.orderId || queryParams.more_info;
+    const storeSlug = queryParams.storeSlug;
     const userKey = queryParams.ParamX || queryParams.paramX || queryParams.UserKey || queryParams.userKey;
+    const processId = queryParams.processId;
     
+    let order: any = null;
     let transaction: PaymentTransaction | null = null;
     
-    if (userKey) {
+    // Method 1: Direct orderId
+    if (orderId) {
+      order = await queryOne<any>(
+        `SELECT o.*, s.slug as store_slug FROM orders o 
+         JOIN stores s ON o.store_id = s.id 
+         WHERE o.id = $1`,
+        [parseInt(orderId, 10)]
+      );
+      
+      if (order) {
+        transaction = await queryOne<PaymentTransaction>(
+          `SELECT * FROM payment_transactions 
+           WHERE order_id = $1 AND status = 'pending'
+           ORDER BY created_at DESC LIMIT 1`,
+          [order.id]
+        );
+      }
+    }
+    
+    // Method 2: userKey (Pelecard)
+    if (!order && userKey) {
       transaction = await queryOne<PaymentTransaction>(
         `SELECT * FROM payment_transactions 
          WHERE user_key = $1 AND status = 'pending'
          ORDER BY created_at DESC LIMIT 1`,
         [userKey]
       );
+      
+      if (transaction) {
+        order = await queryOne<any>(
+          `SELECT o.*, s.slug as store_slug FROM orders o 
+           JOIN stores s ON o.store_id = s.id 
+           WHERE o.id = $1`,
+          [transaction.order_id]
+        );
+      }
     }
     
-    if (!transaction) {
-      console.error('[Payment Callback] Transaction not found for userKey:', userKey);
-      // Redirect to error page
-      return NextResponse.redirect(new URL('/checkout/error?reason=transaction_not_found', request.url));
+    // Method 3: processId (PayMe/Meshulam)
+    if (!order && processId) {
+      transaction = await queryOne<PaymentTransaction>(
+        `SELECT * FROM payment_transactions 
+         WHERE external_transaction_id = $1 AND status = 'pending'
+         ORDER BY created_at DESC LIMIT 1`,
+        [processId]
+      );
+      
+      if (transaction) {
+        order = await queryOne<any>(
+          `SELECT o.*, s.slug as store_slug FROM orders o 
+           JOIN stores s ON o.store_id = s.id 
+           WHERE o.id = $1`,
+          [transaction.order_id]
+        );
+      }
     }
     
-    // Get the order
-    const order = await queryOne<any>(
-      `SELECT o.*, s.slug as store_slug FROM orders o 
-       JOIN stores s ON o.store_id = s.id 
-       WHERE o.id = $1`,
-      [transaction.order_id]
-    );
+    // Use storeSlug from params if order doesn't have it
+    const finalStoreSlug = order?.store_slug || storeSlug || 'shop';
     
     if (!order) {
-      console.error('[Payment Callback] Order not found:', transaction.order_id);
-      return NextResponse.redirect(new URL('/checkout/error?reason=order_not_found', request.url));
+      console.error('[Payment Callback] Order not found. Params:', { orderId, userKey, processId });
+      return NextResponse.redirect(new URL(`/shops/${finalStoreSlug}/checkout?error=order_not_found`, request.url));
     }
     
-    // Get payment gateway
-    const gateway = await getStorePaymentGateway(transaction.store_id);
+    // ========================================
+    // STEP 2: Check if already processed
+    // ========================================
+    
+    if (order.financial_status === 'paid') {
+      console.log('[Payment Callback] Order already paid, redirecting to success');
+      return NextResponse.redirect(
+        new URL(`/shops/${order.store_slug}/checkout/success?orderId=${order.id}`, request.url)
+      );
+    }
+    
+    // ========================================
+    // STEP 3: Get payment gateway
+    // ========================================
+    
+    const gateway = await getStorePaymentGateway(order.store_id);
     if (!gateway) {
-      console.error('[Payment Callback] Gateway not found for store:', transaction.store_id);
-      return NextResponse.redirect(new URL(`/shops/${order.store_slug}/checkout/error?reason=gateway_not_found`, request.url));
+      console.error('[Payment Callback] Gateway not found for store:', order.store_id);
+      return NextResponse.redirect(
+        new URL(`/shops/${order.store_slug}/checkout?error=gateway_not_found`, request.url)
+      );
     }
     
-    // Validate callback with payment provider
-    const validationResult = await gateway.validateCallback({
-      queryParams,
+    // ========================================
+    // STEP 4: Validate payment with gateway
+    // ========================================
+    
+    const validationResult = await gateway.validateCallback({ queryParams });
+    
+    console.log('[Payment Callback] Validation result:', {
+      success: validationResult.success,
+      paymentSuccess: validationResult.paymentSuccess,
+      error: validationResult.error,
     });
     
-    console.log('[Payment Callback] Validation result:', validationResult);
+    // ========================================
+    // STEP 5: Handle validation result
+    // ========================================
     
     if (!validationResult.success) {
       // Validation request failed
-      await updateTransactionStatus(transaction.id, 'failed', validationResult);
+      if (transaction) {
+        await updateTransactionStatus(transaction.id, 'failed', validationResult);
+      }
       return NextResponse.redirect(
-        new URL(`/shops/${order.store_slug}/checkout/error?reason=validation_failed`, request.url)
+        new URL(`/shops/${order.store_slug}/checkout?error=validation_failed&orderId=${order.id}`, request.url)
       );
     }
     
     if (!validationResult.paymentSuccess) {
       // Payment was declined
-      await updateTransactionStatus(transaction.id, 'failed', validationResult);
+      if (transaction) {
+        await updateTransactionStatus(transaction.id, 'failed', validationResult);
+      }
       
       await query(
         `UPDATE orders SET financial_status = 'failed', updated_at = now() WHERE id = $1`,
@@ -87,14 +173,18 @@ export async function GET(request: NextRequest) {
       );
       
       return NextResponse.redirect(
-        new URL(`/shops/${order.store_slug}/checkout/error?reason=payment_declined&error=${encodeURIComponent(validationResult.error || '')}`, request.url)
+        new URL(`/shops/${order.store_slug}/checkout?error=payment_declined&message=${encodeURIComponent(validationResult.error || '')}`, request.url)
       );
     }
     
-    // Payment succeeded!
-    await updateTransactionStatus(transaction.id, 'completed', validationResult);
+    // ========================================
+    // STEP 6: Payment succeeded! Update records
+    // ========================================
     
-    // Update order
+    if (transaction) {
+      await updateTransactionStatus(transaction.id, 'completed', validationResult);
+    }
+    
     await query(
       `UPDATE orders SET 
         financial_status = 'paid',
@@ -103,8 +193,15 @@ export async function GET(request: NextRequest) {
       [order.id]
     );
     
+    console.log('[Payment Callback] Order updated to paid:', order.id);
+    
+    // ========================================
+    // STEP 7: Emit events and send email
+    // ========================================
+    
     // Emit order paid event
     await eventBus.emitEvent('order.paid', {
+      order: order,
       order_id: order.id,
       order_number: order.order_number,
       total: order.total_price,
@@ -114,9 +211,17 @@ export async function GET(request: NextRequest) {
       source: 'payment_callback',
     });
     
-    // Redirect to success page
+    // Send order receipt email
+    sendOrderReceiptEmail(order.id, order.store_id).catch((error) => {
+      console.warn('[Payment Callback] Failed to send order receipt email:', error);
+    });
+    
+    // ========================================
+    // STEP 8: Redirect to success page
+    // ========================================
+    
     return NextResponse.redirect(
-      new URL(`/shops/${order.store_slug}/checkout/success?order_id=${order.id}`, request.url)
+      new URL(`/shops/${order.store_slug}/checkout/success?orderId=${order.id}`, request.url)
     );
     
   } catch (error: any) {

@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { HiCheckCircle, HiClock } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextSkeleton } from '@/components/ui/Skeleton';
 import { Truck } from 'lucide-react';
+import { useCart } from '@/hooks/useCart';
+import { emitTrackingEvent } from '@/lib/tracking/events';
 
 interface Order {
   id: number;
@@ -65,6 +67,9 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { clearCart, cartItems } = useCart();
+  const cartClearedRef = useRef(false); // למנוע ניקוי כפול
+  const [bankTransferDetails, setBankTransferDetails] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +114,22 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
             orderData.line_items = [];
           }
           setOrder(orderData);
+          
+          // Fetch bank transfer details if payment method is bank_transfer
+          if (orderData.payment_method === 'bank_transfer') {
+            try {
+              const paymentMethodsRes = await fetch(`/api/storefront/${storeSlug}/payment-methods`);
+              if (paymentMethodsRes.ok) {
+                const pmData = await paymentMethodsRes.json();
+                const bankMethod = pmData.methods?.find((m: any) => m.id === 'bank_transfer');
+                if (bankMethod?.details) {
+                  setBankTransferDetails(bankMethod.details);
+                }
+              }
+            } catch (e) {
+              console.error('Error fetching bank transfer details:', e);
+            }
+          }
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -133,6 +154,41 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
       cancelled = true;
     };
   }, [orderId, orderHandle, storeSlug]); // הסרת t מה-dependencies כדי למנוע לולאה אינסופית
+
+  // מחיקת העגלה ואירוע Purchase אחרי תשלום מוצלח בלבד
+  useEffect(() => {
+    // רק אם יש הזמנה, התשלום הושלם, והעגלה עדיין לא נמחקה
+    if (
+      order && 
+      (order.financial_status === 'paid' || order.payment_method !== 'credit_card') &&
+      !cartClearedRef.current
+    ) {
+      cartClearedRef.current = true;
+      
+      // שליחת אירוע Purchase אם תשלום בכרטיס אשראי הושלם
+      if (order.payment_method === 'credit_card' && order.financial_status === 'paid') {
+        emitTrackingEvent({
+          event: 'Purchase',
+          content_ids: order.line_items.map(item => String(item.id)),
+          contents: order.line_items.map(item => ({
+            id: String(item.id),
+            quantity: item.quantity,
+            item_price: parseFloat(item.price),
+          })),
+          currency: 'ILS',
+          value: parseFloat(order.total_price),
+          order_id: String(order.id),
+        });
+        console.log('[CheckoutSuccess] Purchase event emitted after successful payment');
+      }
+      
+      // מחיקת העגלה
+      if (cartItems.length > 0) {
+        clearCart();
+        console.log('[CheckoutSuccess] Cart cleared after successful payment');
+      }
+    }
+  }, [order, cartItems.length, clearCart]);
 
   const isOrderConfirmed = order?.financial_status === 'paid' || order?.financial_status === 'pending';
   const isAwaitingPayment = order?.financial_status === 'awaiting_payment';
@@ -385,6 +441,27 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Bank Transfer Details */}
+                    {order.payment_method === 'bank_transfer' && bankTransferDetails && (
+                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="font-semibold text-blue-900 mb-2">פרטי העברה בנקאית</h4>
+                        <p className="text-sm text-blue-800 whitespace-pre-line">{bankTransferDetails}</p>
+                        <p className="text-xs text-blue-600 mt-3">
+                          לאחר ביצוע ההעברה, ההזמנה תאושר ותטופל.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Cash Payment Notice */}
+                    {order.payment_method === 'cash' && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 className="font-semibold text-green-900 mb-2">תשלום במזומן</h4>
+                        <p className="text-sm text-green-800">
+                          התשלום יתבצע בעת קבלת המשלוח. אנא הכינו את הסכום המדויק.
+                        </p>
+                      </div>
+                    )}
                     
                     <div className="pt-4 border-t border-gray-200">
                       <p className="text-sm text-gray-600 mb-4">

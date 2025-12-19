@@ -20,6 +20,7 @@ import {
   HiChevronLeft,
   HiChat
 } from 'react-icons/hi';
+import { Landmark, Banknote } from 'lucide-react';
 import { StorePaymentIntegration, PaymentProviderConfig } from '@/types/payment';
 
 // ספקים עם Adapters מוכנים
@@ -154,6 +155,15 @@ const FEATURE_LABELS: Record<string, { label: string; icon: string }> = {
   recurring: { label: 'הוראות קבע', icon: '🔄' },
 };
 
+// הגדרות שיטות תשלום נוספות
+interface AlternativePaymentMethods {
+  bank_transfer_enabled: boolean;
+  bank_transfer_details?: string;
+  cash_on_delivery_enabled: boolean;
+  cod_fee?: number;
+  minimum_order_amount?: number;
+}
+
 export default function PaymentIntegrationsPage() {
   const [integrations, setIntegrations] = useState<StorePaymentIntegration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,9 +172,21 @@ export default function PaymentIntegrationsPage() {
   const [selectedProvider, setSelectedProvider] = useState<PaymentProviderConfig | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  
+  // שיטות תשלום נוספות
+  const [alternativeMethods, setAlternativeMethods] = useState<AlternativePaymentMethods>({
+    bank_transfer_enabled: false,
+    bank_transfer_details: '',
+    cash_on_delivery_enabled: false,
+    cod_fee: 0,
+    minimum_order_amount: 0,
+  });
+  const [savingAlternative, setSavingAlternative] = useState(false);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
   useEffect(() => {
     loadIntegrations();
+    loadAlternativeMethods();
   }, []);
 
   const loadIntegrations = async () => {
@@ -181,6 +203,48 @@ export default function PaymentIntegrationsPage() {
       console.error('Error loading integrations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAlternativeMethods = async () => {
+    try {
+      const response = await fetch('/api/payments/alternative-methods', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAlternativeMethods({
+          bank_transfer_enabled: data.bank_transfer_enabled || false,
+          bank_transfer_details: data.bank_transfer_details || '',
+          cash_on_delivery_enabled: data.cash_on_delivery_enabled || false,
+          cod_fee: data.cod_fee || 0,
+          minimum_order_amount: data.minimum_order_amount || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading alternative methods:', error);
+    }
+  };
+
+  const saveAlternativeMethods = async () => {
+    try {
+      setSavingAlternative(true);
+      const response = await fetch('/api/payments/alternative-methods', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(alternativeMethods),
+      });
+      if (!response.ok) throw new Error('Failed to save');
+      
+      // Show saved indicator
+      setShowSavedIndicator(true);
+      setTimeout(() => setShowSavedIndicator(false), 2000);
+    } catch (error) {
+      console.error('Error saving alternative methods:', error);
+      alert('שגיאה בשמירת ההגדרות');
+    } finally {
+      setSavingAlternative(false);
     }
   };
 
@@ -330,8 +394,8 @@ export default function PaymentIntegrationsPage() {
       
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">הגדרות סליקה</h1>
-        <p className="text-gray-500 text-lg">בחר את ספק התשלומים המתאים ביותר לעסק שלך וקבל תשלומים בצורה מאובטחת.</p>
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">הגדרות תשלומים</h1>
+        <p className="text-gray-500 text-lg">הגדר את אמצעי התשלום בחנות שלך וקבל תשלומים בצורה מאובטחת.</p>
       </div>
 
       {loading ? (
@@ -488,6 +552,147 @@ export default function PaymentIntegrationsPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* General Payment Settings */}
+          <div className="space-y-4 pt-6 mt-8 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">הגדרות כלליות</h2>
+                <p className="text-gray-500">הגדרות שחלות על כל שיטות התשלום.</p>
+              </div>
+              {/* Save indicator */}
+              <div className="flex items-center gap-2">
+                {savingAlternative && (
+                  <span className="text-sm text-gray-500 flex items-center gap-1">
+                    <svg className="animate-spin h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    שומר...
+                  </span>
+                )}
+                {showSavedIndicator && !savingAlternative && (
+                  <span className="text-sm text-emerald-600 flex items-center gap-1 transition-opacity duration-300">
+                    <HiCheckCircle className="w-4 h-4" />
+                    נשמר
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-gray-900">סכום מינימום להזמנה</div>
+                  <div className="text-sm text-gray-500">הגדר סכום מינימלי לביצוע רכישה בחנות</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={alternativeMethods.minimum_order_amount || 0}
+                    onChange={(e) => setAlternativeMethods(prev => ({ ...prev, minimum_order_amount: parseFloat(e.target.value) || 0 }))}
+                    onBlur={saveAlternativeMethods}
+                    placeholder="0"
+                    className="w-24 bg-white text-left"
+                    min="0"
+                    step="1"
+                  />
+                  <span className="text-gray-500">₪</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">הזן 0 כדי לבטל את המגבלה</p>
+            </div>
+          </div>
+
+          {/* Alternative Payment Methods */}
+          <div className="space-y-4 pt-6 mt-8 border-t border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">שיטות תשלום נוספות</h2>
+            <p className="text-gray-500">הפעל שיטות תשלום נוספות מעבר לכרטיס אשראי.</p>
+            
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden divide-y divide-gray-100">
+              {/* העברה בנקאית */}
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-50 border border-blue-100">
+                      <Landmark className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">העברה בנקאית</div>
+                      <div className="text-sm text-gray-500">לקוחות יוכלו לשלם בהעברה בנקאית</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    dir="ltr"
+                    onClick={() => {
+                      setAlternativeMethods(prev => ({ ...prev, bank_transfer_enabled: !prev.bank_transfer_enabled }));
+                      setTimeout(saveAlternativeMethods, 100);
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${alternativeMethods.bank_transfer_enabled ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${alternativeMethods.bank_transfer_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                
+                {alternativeMethods.bank_transfer_enabled && (
+                  <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                    <Label className="text-gray-700 mb-2 block">פרטי חשבון בנק להעברה</Label>
+                    <textarea
+                      value={alternativeMethods.bank_transfer_details || ''}
+                      onChange={(e) => setAlternativeMethods(prev => ({ ...prev, bank_transfer_details: e.target.value }))}
+                      onBlur={saveAlternativeMethods}
+                      placeholder="בנק: לאומי&#10;סניף: 123&#10;מספר חשבון: 12345678&#10;שם בעל החשבון: שם העסק"
+                      className="w-full h-24 p-3 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      dir="rtl"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">פרטים אלה יוצגו ללקוח לאחר ביצוע ההזמנה</p>
+                  </div>
+                )}
+              </div>
+
+              {/* מזומן בהזמנה */}
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-green-50 border border-green-100">
+                      <Banknote className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">מזומן בהזמנה</div>
+                      <div className="text-sm text-gray-500">תשלום במזומן בעת קבלת המשלוח</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    dir="ltr"
+                    onClick={() => {
+                      setAlternativeMethods(prev => ({ ...prev, cash_on_delivery_enabled: !prev.cash_on_delivery_enabled }));
+                      setTimeout(saveAlternativeMethods, 100);
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${alternativeMethods.cash_on_delivery_enabled ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${alternativeMethods.cash_on_delivery_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                
+                {alternativeMethods.cash_on_delivery_enabled && (
+                  <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                    <Label className="text-gray-700 mb-2 block">עמלת תשלום במזומן (₪)</Label>
+                    <Input
+                      type="number"
+                      value={alternativeMethods.cod_fee || 0}
+                      onChange={(e) => setAlternativeMethods(prev => ({ ...prev, cod_fee: parseFloat(e.target.value) || 0 }))}
+                      onBlur={saveAlternativeMethods}
+                      placeholder="0"
+                      className="w-32 bg-white"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">עמלה נוספת שתתווסף להזמנות ששולמו במזומן (0 = ללא עמלה)</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

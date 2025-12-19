@@ -12,6 +12,7 @@ import './premiumClubListener';
 import './contactSyncListener';
 import './influencerListener';
 import './defaultPagesListener';
+import './shippingListener';
 import '../../automations/automationListener';
 
 // Add more listeners here as they are created:
