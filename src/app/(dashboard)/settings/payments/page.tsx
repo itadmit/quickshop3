@@ -582,10 +582,11 @@ export default function PaymentIntegrationsPage() {
                  </div>
                  <button
                     type="button"
+                    dir="ltr"
                     onClick={() => setFormData({ ...formData, is_sandbox: !formData.is_sandbox })}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${formData.is_sandbox ? 'bg-amber-500' : 'bg-gray-200'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_sandbox ? 'translate-x-1' : 'translate-x-6'}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_sandbox ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                </div>
                
@@ -596,10 +597,11 @@ export default function PaymentIntegrationsPage() {
                  </div>
                  <button
                     type="button"
+                    dir="ltr"
                     onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${formData.is_active ? 'bg-emerald-500' : 'bg-gray-200'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_active ? 'translate-x-1' : 'translate-x-6'}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                </div>
 
@@ -610,10 +612,11 @@ export default function PaymentIntegrationsPage() {
                  </div>
                  <button
                     type="button"
+                    dir="ltr"
                     onClick={() => setFormData({ ...formData, is_default: !formData.is_default })}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${formData.is_default ? 'bg-emerald-500' : 'bg-gray-200'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_default ? 'translate-x-1' : 'translate-x-6'}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_default ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                </div>
             </div>
