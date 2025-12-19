@@ -251,6 +251,71 @@ export const builtInPlugins: PluginDefinition[] = [
   },
 
   // ============================================
+  // MARKETING PLUGINS - Smart Advisor
+  // ============================================
+  {
+    slug: 'smart-advisor',
+    name: 'יועץ חכם',
+    description: 'יועץ אינטראקטיבי שמנחה לקוחות למוצר המתאים להם. הגדר שאלות, תשובות וכללי התאמה - והמערכת תציג את המוצרים הכי רלוונטיים!',
+    type: 'CORE',
+    category: 'MARKETING',
+    version: '1.0.0',
+    is_built_in: true,
+    is_free: false,
+    price: 59,
+    currency: 'ILS',
+    icon: '/icons/smart-advisor.svg',
+    author: 'QuickShop',
+    defaultConfig: {
+      enabled: false,
+      defaultResultsCount: 3,
+      showMatchPercentage: true,
+      showMatchReasons: true,
+      trackSessions: true,
+      autoAddToCart: false,
+    },
+    metadata: {
+      menuItem: {
+        icon: 'Sparkles',
+        labelKey: 'sidebar.smartAdvisor',
+        href: '/smart-advisor',
+        permission: 'products',
+        section: 'marketing',
+      },
+      screenshots: [
+        '/images/plugins/smart-advisor-1.png',
+        '/images/plugins/smart-advisor-2.png',
+      ],
+      documentation: `
+## יועץ חכם - מדריך שימוש
+
+### מה זה עושה?
+היועץ החכם עוזר ללקוחות למצוא את המוצר המושלם עבורם.
+הוא שואל שאלות פשוטות ומציג מוצרים מותאמים אישית.
+
+### איך זה עובד?
+1. **צור שאלון** - תן לו שם ותיאור
+2. **הוסף שאלות** - מה סוג השיער? מה צבע העור?
+3. **הוסף תשובות** - תלתלים, חלק, מסולסל...
+4. **קשר מוצרים** - הגדר ניקוד לכל מוצר לפי תשובות
+5. **שתף** - הוסף לינק ליועץ באתר
+
+### שיטת הניקוד
+כל מוצר מקבל ניקוד לפי התשובות שהלקוח בחר.
+המוצרים עם הניקוד הגבוה ביותר מוצגים ראשונים.
+
+### דוגמה:
+- שמפו לתלתלים: תלתלים=10, חפיפה יומית=8
+- לקוח בחר: תלתלים + יומי = 18 נקודות
+- המוצר מוצג ראשון!
+      `,
+    },
+    requirements: {
+      minVersion: '1.0.0',
+    },
+  },
+
+  // ============================================
   // COMMUNICATION PLUGINS
   // ============================================
   {

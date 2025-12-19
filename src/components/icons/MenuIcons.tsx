@@ -29,7 +29,11 @@ import {
   HiColorSwatch,
   HiPuzzle,
   HiCog,
-  HiLightningBolt
+  HiLightningBolt,
+  HiDatabase,
+  HiTemplate,
+  HiPlus,
+  HiLightBulb
 } from 'react-icons/hi';
 
 export const MenuIcons = {
@@ -62,5 +66,10 @@ export const MenuIcons = {
   webhooks: HiGlobe,
   plugins: HiPuzzle,
   automations: HiLightningBolt,
+  addons: HiPlus,
+  metaFields: HiDatabase,
+  sizeCharts: HiTemplate,
+  productAddons: HiCollection,
+  sparkles: HiLightBulb,
 };
 

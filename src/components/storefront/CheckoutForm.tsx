@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -27,8 +27,10 @@ import {
   X,
   Lock,
   Coins,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
+import { CheckoutFooter } from './CheckoutFooter';
 
 interface CustomField {
   id: string;
@@ -71,6 +73,25 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [minimumOrderAmount, setMinimumOrderAmount] = useState(0);
+  
+  // Checkout customizer settings
+  const [checkoutSettings, setCheckoutSettings] = useState<{
+    layout: { left_column_color: string; right_column_color: string };
+    button: { text: string; background_color: string; text_color: string; border_radius: string };
+    fields_order: string[];
+    custom_fields: Array<{ id: string; label: string; type: string; required: boolean; options?: string[]; placeholder?: string }>;
+    show_order_notes: boolean;
+    show_shipping_options: boolean;
+    show_payment_methods: boolean;
+  }>({
+    layout: { left_column_color: '#fafafa', right_column_color: '#ffffff' },
+    button: { text: 'לתשלום', background_color: '#000000', text_color: '#ffffff', border_radius: '8' },
+    fields_order: ['email', 'first_name', 'last_name', 'phone', 'city', 'street', 'apartment', 'notes'],
+    custom_fields: [],
+    show_order_notes: true,
+    show_shipping_options: true,
+    show_payment_methods: true
+  });
   
   // Autocomplete hooks לערים ורחובות
   const citySearch = useCitySearch(storeSlug);
@@ -158,6 +179,30 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     };
     
     loadPaymentMethods();
+  }, [isMounted, storeSlug]);
+
+  // Load checkout customizer settings
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    const loadCheckoutSettings = async () => {
+      try {
+        const response = await fetch(`/api/storefront/${storeSlug}/checkout-settings`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.settings) {
+            setCheckoutSettings(prev => ({
+              ...prev,
+              ...data.settings
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading checkout settings:', error);
+      }
+    };
+    
+    loadCheckoutSettings();
   }, [isMounted, storeSlug]);
 
   // Load store credit if customer is logged in
@@ -421,7 +466,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                 </Link>
               </div>
             </div>
-            <div className="lg:col-span-2 border-b border-gray-200 flex justify-start" style={{ backgroundColor: '#fafafa' }}>
+            <div className="lg:col-span-2 border-b border-gray-200 flex justify-start" style={{ backgroundColor: checkoutSettings.layout.left_column_color }}>
               <div className="w-full max-w-md px-8 py-4 flex items-center justify-end gap-3">
                 {storeLogo && (
                   <img
@@ -501,7 +546,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
             <div 
               className="lg:col-span-2 min-h-screen flex justify-start"
               style={{
-                backgroundColor: '#fafafa',
+                backgroundColor: checkoutSettings.layout.left_column_color,
               }}
             >
               <div className="w-full max-w-md px-8 py-8">
@@ -565,14 +610,15 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   }
 
   return (
-    <div 
-      className="min-h-screen" 
-      dir="rtl"
-      style={{ 
-        backgroundColor: '#ffffff',
-      }}
-    >
-      {/* Payment Redirect Overlay */}
+    <>
+      <div 
+        className="min-h-screen" 
+        dir="rtl"
+        style={{ 
+          backgroundColor: '#ffffff',
+        }}
+      >
+        {/* Payment Redirect Overlay */}
       {redirectingToPayment && (
         <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4 text-center">
@@ -645,7 +691,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           <div 
             className="lg:col-span-3 min-h-screen flex justify-end"
             style={{
-              backgroundColor: '#ffffff',
+              backgroundColor: checkoutSettings.layout.right_column_color,
             }}
           >
             {/* Container לתוכן - מוגבל לרוחב */}
@@ -1123,6 +1169,90 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   </div>
                 )}
 
+                {/* Custom Fields from Customizer */}
+                {checkoutSettings.custom_fields.length > 0 && (
+                  <div 
+                    className="pb-6"
+                    style={{ 
+                      borderBottom: '1px solid #e5e7eb'
+                    }}
+                  >
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      פרטים נוספים
+                    </h2>
+                    <div className="space-y-4">
+                      {checkoutSettings.custom_fields.map((field) => (
+                        <div key={field.id}>
+                          <Label htmlFor={field.id} className="text-sm font-medium text-gray-700">
+                            {field.label} {field.required && '*'}
+                          </Label>
+                          {field.type === 'text' && (
+                            <Input
+                              id={field.id}
+                              placeholder={field.placeholder}
+                              value={formData.customFields[field.id] || ''}
+                              onChange={(e) => setFormData((prev) => ({
+                                ...prev,
+                                customFields: { ...prev.customFields, [field.id]: e.target.value }
+                              }))}
+                              className="mt-1"
+                              required={field.required}
+                            />
+                          )}
+                          {field.type === 'textarea' && (
+                            <Textarea
+                              id={field.id}
+                              placeholder={field.placeholder}
+                              value={formData.customFields[field.id] || ''}
+                              onChange={(e) => setFormData((prev) => ({
+                                ...prev,
+                                customFields: { ...prev.customFields, [field.id]: e.target.value }
+                              }))}
+                              className="mt-1"
+                              rows={3}
+                              required={field.required}
+                            />
+                          )}
+                          {field.type === 'date' && (
+                            <Input
+                              id={field.id}
+                              type="date"
+                              value={formData.customFields[field.id] || ''}
+                              onChange={(e) => setFormData((prev) => ({
+                                ...prev,
+                                customFields: { ...prev.customFields, [field.id]: e.target.value }
+                              }))}
+                              className="mt-1"
+                              required={field.required}
+                            />
+                          )}
+                          {field.type === 'select' && (
+                            <Select
+                              value={formData.customFields[field.id] || ''}
+                              onValueChange={(value) => setFormData((prev) => ({
+                                ...prev,
+                                customFields: { ...prev.customFields, [field.id]: value }
+                              }))}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder={field.placeholder || 'בחר...'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options?.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Payment Method */}
                 <div 
                   className="pb-6"
@@ -1241,14 +1371,14 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
             <div 
               className="lg:col-span-2 min-h-screen flex justify-start"
               style={{
-                backgroundColor: '#fafafa',
+                backgroundColor: checkoutSettings.layout.left_column_color,
               }}
             >
               <div className="w-full max-w-md px-8 py-8">
                 <div 
                   className="p-6 sticky top-24"
                   style={{ 
-                    backgroundColor: '#fafafa',
+                    backgroundColor: checkoutSettings.layout.left_column_color,
                   }}
                 >
                   <h2 
@@ -1523,8 +1653,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   
                   <Button
                     type="submit"
-                    className="w-full mt-6 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#9333ea' }}
+                    className="w-full mt-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ 
+                      backgroundColor: checkoutSettings.button.background_color,
+                      color: checkoutSettings.button.text_color,
+                      borderRadius: `${checkoutSettings.button.border_radius}px`
+                    }}
                     size="lg"
                     disabled={processing || loadingPaymentMethods || paymentMethods.length === 0 || (minimumOrderAmount > 0 && getTotal() < minimumOrderAmount)}
                   >
@@ -1539,7 +1673,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     ) : formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal ? (
                       'אישור הזמנה'
                     ) : (
-                      `שלם ₪${Math.max(0, finalTotal - (formData.storeCreditAmount || 0)).toFixed(2)}`
+                      `${checkoutSettings.button.text} ₪${Math.max(0, finalTotal - (formData.storeCreditAmount || 0)).toFixed(2)}`
                     )}
                   </Button>
                   
@@ -1556,7 +1690,11 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
             </div>
           </div>
         </form>
-    </div>
+      </div>
+      
+      {/* Checkout Footer */}
+      <CheckoutFooter storeSlug={storeSlug} />
+    </>
   );
 }
 

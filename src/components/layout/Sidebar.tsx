@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { MenuIcons } from '@/components/icons/MenuIcons';
 import { IconType } from 'react-icons';
 import { HiCog, HiLogout } from 'react-icons/hi';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 
 interface MenuItem {
   label: string;
@@ -47,6 +48,7 @@ const menuItems: MenuItem[] = [
     href: '#',
     icon: MenuIcons.discounts,
     children: [
+      { label: 'יועץ חכם', href: '/smart-advisor', icon: MenuIcons.sparkles },
       { label: 'הנחות אוטומטיות', href: '/automatic-discounts', icon: MenuIcons.discounts },
       { label: 'קופונים', href: '/discounts', icon: MenuIcons.coupons },
       { label: 'משפיענים', href: '/marketing/influencers', icon: MenuIcons.customers },
@@ -79,6 +81,17 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
+    label: 'תוספות',
+    href: '#',
+    icon: MenuIcons.addons,
+    children: [
+      { label: 'שדות מטא', href: '/settings/meta-fields', icon: MenuIcons.metaFields },
+      { label: 'טבלאות מידות', href: '/settings/size-charts', icon: MenuIcons.sizeCharts },
+      { label: 'תוספות למוצרים', href: '/settings/product-addons', icon: MenuIcons.productAddons },
+      { label: 'סטטוסי הזמנות', href: '/settings/order-statuses', icon: MenuIcons.orders },
+    ],
+  },
+  {
     label: 'אינטגרציות',
     href: '#',
     icon: MenuIcons.webhooks,
@@ -93,10 +106,11 @@ const menuItems: MenuItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות', 'אינטגרציות']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות', 'תוספות', 'אינטגרציות']);
   const [clickedLink, setClickedLink] = useState<string | null>(null);
-  const [unreadOrdersCount, setUnreadOrdersCount] = useState<number>(0);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+  
+  // Use shared hook for unread counts - prevents duplicate API calls
+  const { notificationsCount: unreadNotificationsCount, ordersCount: unreadOrdersCount, refreshCounts } = useUnreadCounts();
 
   const isActive = (href: string) => pathname === href;
   
@@ -118,69 +132,17 @@ export function Sidebar() {
     setClickedLink(null);
   }, [pathname]);
 
-  // Load unread orders count
+  // Listen for events to refresh counts
   useEffect(() => {
-    const loadUnreadCount = async () => {
-      try {
-        const response = await fetch('/api/orders/unread-count', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadOrdersCount(data.count || 0);
-        }
-      } catch (error) {
-        console.error('Error loading unread orders count:', error);
-      }
-    };
-
-    loadUnreadCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadUnreadCount, 30000);
-    
-    // Listen for order marked as read event
-    const handleOrderMarkedAsRead = () => {
-      loadUnreadCount();
-    };
-    window.addEventListener('orderMarkedAsRead', handleOrderMarkedAsRead);
+    const handleRefresh = () => refreshCounts();
+    window.addEventListener('orderMarkedAsRead', handleRefresh);
+    window.addEventListener('notificationMarkedAsRead', handleRefresh);
     
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('orderMarkedAsRead', handleOrderMarkedAsRead);
+      window.removeEventListener('orderMarkedAsRead', handleRefresh);
+      window.removeEventListener('notificationMarkedAsRead', handleRefresh);
     };
-  }, [pathname]);
-
-  // Load unread notifications count
-  useEffect(() => {
-    const loadUnreadNotificationsCount = async () => {
-      try {
-        const response = await fetch('/api/notifications/unread-count', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadNotificationsCount(data.count || 0);
-        }
-      } catch (error) {
-        console.error('Error loading unread notifications count:', error);
-      }
-    };
-
-    loadUnreadNotificationsCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadUnreadNotificationsCount, 30000);
-    
-    // Listen for notification marked as read event
-    const handleNotificationMarkedAsRead = () => {
-      loadUnreadNotificationsCount();
-    };
-    window.addEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
-    };
-  }, [pathname]);
+  }, [refreshCounts]);
   
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev =>

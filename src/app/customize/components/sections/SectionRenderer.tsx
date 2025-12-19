@@ -40,6 +40,7 @@ import {
   RecentlyViewedSection
 } from './ProductPageSections';
 import { ProductBreadcrumbs } from './ProductBreadcrumbs';
+import { CheckoutFormSection } from './CheckoutFormSection';
 
 interface SectionRendererProps {
   section: SectionSettings;
@@ -341,6 +342,11 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
           <RecentlyViewedSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
         </SectionWrapper>
       );
+
+    // ========== Checkout Page Sections ==========
+    case 'checkout_form':
+      // Checkout form takes full page - no wrapper
+      return <CheckoutFormSection section={responsiveSection} onUpdate={onUpdate} />;
 
     default:
       // Generic section for unknown types

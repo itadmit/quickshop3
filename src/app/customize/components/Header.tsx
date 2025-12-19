@@ -13,6 +13,8 @@ const PAGE_TYPE_OPTIONS: Array<{ value: PageType; label: string; description: st
   { value: 'home', label: 'דף הבית', description: 'עמוד ראשי של החנות' },
   { value: 'product', label: 'עמוד מוצר', description: 'תבנית לעמודי מוצר' },
   { value: 'collection', label: 'עמוד קטגוריה', description: 'תבנית לעמודי קטגוריה' },
+  { value: 'checkout', label: 'עמוד צ\'ק אאוט', description: 'התאמת עמוד התשלום' },
+  { value: 'page', label: 'עמוד תוכן', description: 'תבנית לעמודי תוכן' },
 ];
 
 interface HeaderProps {

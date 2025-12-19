@@ -10,6 +10,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { StorefrontSectionRenderer } from './StorefrontSectionRenderer';
 import { ProductPageProvider } from '@/contexts/ProductPageContext';
+import { FloatingAdvisorButton } from './FloatingAdvisorButton';
 
 interface CustomizerLayoutClientProps {
   storeSlug: string;
@@ -466,6 +467,11 @@ export function CustomizerLayoutClient({
       
       {/* For non-'other' pages - show children after footer (for fixed elements like AdminEditBar) */}
       {pageType !== 'other' && children}
+
+      {/* Floating Advisor Button - only on home page */}
+      {pageType === 'home' && storeId && (
+        <FloatingAdvisorButton storeSlug={storeSlug} storeId={storeId} />
+      )}
     </div>
   );
 }

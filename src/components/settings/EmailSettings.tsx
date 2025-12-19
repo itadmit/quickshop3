@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { HiMail, HiColorSwatch, HiDocument } from 'react-icons/hi';
+import { HiMail, HiColorSwatch, HiChevronLeft } from 'react-icons/hi';
 import Link from 'next/link';
 
 export function EmailSettings() {
@@ -16,7 +16,6 @@ export function EmailSettings() {
     color1: '#15b981',
     color2: '#10b981',
   });
-  const [sendGridConfigured, setSendGridConfigured] = useState(false);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -54,18 +53,6 @@ export function EmailSettings() {
         });
       }
       
-      // Check if SendGrid is configured (from ENV)
-      const emailResponse = await fetch('/api/settings/email', {
-        credentials: 'include',
-        signal,
-      });
-      
-      if (signal?.aborted) return;
-      
-      if (emailResponse.ok) {
-        const emailData = await emailResponse.json();
-        setSendGridConfigured(emailData.configured || false);
-      }
     } catch (error: any) {
       if (error.name === 'AbortError') return;
       console.error('Error loading email settings:', error);
@@ -113,15 +100,25 @@ export function EmailSettings() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div className="h-7 bg-gray-200 rounded w-48 animate-pulse"></div>
+          <div className="h-7 bg-gray-200 rounded w-36 animate-pulse"></div>
         </div>
+        
+        {/* Email Templates Card Skeleton */}
+        <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-200 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-100 rounded-lg animate-pulse"></div>
+              <div className="space-y-2">
+                <div className="h-5 bg-gray-200 rounded w-24 animate-pulse"></div>
+                <div className="h-4 bg-gray-100 rounded w-56 animate-pulse"></div>
+              </div>
+            </div>
+            <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+        
         <Card>
           <div className="p-6 space-y-6">
-            {/* SendGrid Status */}
-            <div className="space-y-2">
-              <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-            </div>
             {/* Sender Name */}
             <div className="space-y-2">
               <div className="h-5 bg-gray-200 rounded w-24 animate-pulse"></div>
@@ -142,10 +139,16 @@ export function EmailSettings() {
                 </div>
               </div>
             </div>
-            {/* Templates Link */}
-            <div className="space-y-2">
-              <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            {/* Preview */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="h-4 bg-gray-200 rounded w-24 animate-pulse mb-2"></div>
+              <div className="bg-white rounded p-3 border border-gray-200">
+                <div className="h-12 bg-gray-200 rounded-t animate-pulse"></div>
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                  <div className="h-3 bg-gray-100 rounded w-16 animate-pulse"></div>
+                </div>
+              </div>
             </div>
             {/* Save Button */}
             <div className="pt-4 border-t">
@@ -160,30 +163,39 @@ export function EmailSettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">הגדרות מייל</h2>
+        <h2 className="text-lg font-semibold text-gray-900">התראות ומיילים</h2>
       </div>
+
+      {/* Email Templates Card - Prominent */}
+      <Link
+        href="/email-templates"
+        className="block bg-gradient-to-br from-emerald-50 to-white border border-emerald-200 rounded-xl p-6 hover:shadow-md transition-all group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <HiMail className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors">
+                תבניות מייל
+              </h3>
+              <p className="text-sm text-gray-600 mt-0.5">
+                ערוך את תוכן המיילים והנושאים שנשלחים ללקוחות
+              </p>
+            </div>
+          </div>
+          <HiChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+        </div>
+      </Link>
 
       <Card>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-2 mb-4">
-            <HiMail className="w-5 h-5 text-gray-500" />
+            <HiColorSwatch className="w-5 h-5 text-gray-500" />
             <p className="text-sm text-gray-600">
-              הגדר את שם השולח והצבעים למיילים. SendGrid API Key ו-From Email מוגדרים ב-Environment Variables.
+              הגדר את שם השולח והצבעים למיילים שנשלחים מהחנות.
             </p>
-          </div>
-
-          {/* SendGrid Status */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-900">סטטוס SendGrid</p>
-                <p className="text-xs text-blue-700 mt-1">
-                  {sendGridConfigured 
-                    ? '✅ SendGrid מוגדר ומוכן לשליחת מיילים'
-                    : '⚠️ SendGrid לא מוגדר - הגדר SENDGRID_API_KEY ו-SENDGRID_FROM_EMAIL ב-Environment Variables'}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Sender Name */}
@@ -250,23 +262,6 @@ export function EmailSettings() {
             </div>
             <p className="text-xs text-gray-500">
               הצבעים ישמשו ל-header ולכפתורים במיילים.
-            </p>
-          </div>
-
-          {/* Email Templates Link */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <HiDocument className="w-5 h-5 text-gray-500" />
-              <Label>תבניות מייל</Label>
-            </div>
-            <Link
-              href="/email-templates"
-              className="block w-full px-4 py-2 text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
-            >
-              ערוך תבניות מייל (ORDER_CONFIRMATION, WELCOME, וכו')
-            </Link>
-            <p className="text-xs text-gray-500">
-              ערוך את תוכן המיילים והנושאים שנשלחים ללקוחות.
             </p>
           </div>
 

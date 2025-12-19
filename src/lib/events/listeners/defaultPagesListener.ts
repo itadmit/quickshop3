@@ -7,7 +7,7 @@
  */
 
 import { eventBus } from '../eventBus';
-import { createDefaultPages, createDefaultFooterMenu } from '@/lib/utils/default-pages';
+import { createDefaultPages, createDefaultFooterMenu, createDefaultCheckoutFooterMenu } from '@/lib/utils/default-pages';
 
 // מאזין ל-store.created ויוצר עמודים ברירת מחדל
 eventBus.on('store.created', async (event) => {
@@ -28,7 +28,10 @@ eventBus.on('store.created', async (event) => {
     // יצירת תפריט footer ברירת מחדל עם העמודים
     await createDefaultFooterMenu(storeId);
 
-    console.log(`[DefaultPagesListener] Successfully created default pages and footer menu for store ${storeId}`);
+    // יצירת תפריט checkout footer ברירת מחדל
+    await createDefaultCheckoutFooterMenu(storeId);
+
+    console.log(`[DefaultPagesListener] Successfully created default pages, footer menu, and checkout footer menu for store ${storeId}`);
   } catch (error: any) {
     console.error('[DefaultPagesListener] Error creating default pages:', error);
     // Don't throw - this is a background operation, shouldn't break store creation

@@ -5,9 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { PaymentsSettings } from '@/components/settings/PaymentsSettings';
 import { ShippingSettings } from '@/components/settings/ShippingSettings';
-import { WebhooksSettings } from '@/components/settings/WebhooksSettings';
 import { EmailSettings } from '@/components/settings/EmailSettings';
 import { AdvancedSettings } from '@/components/settings/AdvancedSettings';
 import { GiftCardSettings } from '@/components/settings/GiftCardSettings';
@@ -28,7 +26,7 @@ interface Store {
   plan: string;
 }
 
-type SettingsTab = 'general' | 'domain' | 'payments' | 'shipping' | 'email' | 'integrations' | 'users' | 'api' | 'advanced' | 'meta-fields' | 'size-charts' | 'product-addons' | 'premium-club' | 'cron-status' | 'subscription' | 'gift-cards' | 'order-statuses';
+type SettingsTab = 'general' | 'shipping' | 'email' | 'users' | 'api' | 'advanced' | 'premium-club' | 'cron-status' | 'subscription' | 'gift-cards';
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -37,7 +35,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const tab = searchParams.get('tab') as SettingsTab | null;
-    return tab && ['general', 'domain', 'payments', 'shipping', 'email', 'gift-cards', 'integrations', 'users', 'api', 'advanced', 'meta-fields', 'size-charts', 'product-addons', 'premium-club', 'cron-status', 'subscription', 'order-statuses'].includes(tab) 
+    return tab && ['general', 'shipping', 'email', 'gift-cards', 'users', 'api', 'advanced', 'premium-club', 'cron-status', 'subscription'].includes(tab) 
       ? tab 
       : 'general';
   });
@@ -340,20 +338,13 @@ export default function SettingsPage() {
 
   const tabs: { id: SettingsTab; label: string; href?: string }[] = [
     { id: 'general', label: 'כללי' },
-    { id: 'domain', label: 'דומיין' },
     { id: 'subscription', label: 'מנוי' },
-    { id: 'payments', label: 'תשלומים' },
     { id: 'shipping', label: 'משלוחים' },
-    { id: 'email', label: 'מייל' },
+    { id: 'email', label: 'התראות ומיילים' },
     { id: 'gift-cards', label: 'גיפט קארד' },
-    { id: 'integrations', label: 'אינטגרציות' },
     { id: 'users', label: 'משתמשים' },
     { id: 'api', label: 'API' },
     { id: 'advanced', label: 'מתקדם' },
-    { id: 'meta-fields', label: 'שדות מטא', href: '/settings/meta-fields' },
-    { id: 'size-charts', label: 'טבלאות מידות', href: '/settings/size-charts' },
-    { id: 'product-addons', label: 'תוספות למוצרים', href: '/settings/product-addons' },
-    { id: 'order-statuses', label: 'סטטוסי הזמנות', href: '/settings/order-statuses' },
     { id: 'premium-club', label: 'מועדון פרימיום', href: '/settings/premium-club' },
     { id: 'cron-status', label: 'סטטוס CRON', href: '/settings/cron-status' },
   ];
@@ -363,37 +354,112 @@ export default function SettingsPage() {
       <div className="p-6 space-y-6" dir="rtl">
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
-          <div className="h-8 bg-gray-200 rounded w-32 animate-pulse"></div>
-          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+          <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded w-28 animate-pulse"></div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar Skeleton */}
+          {/* Sidebar Skeleton - 17 tabs */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-2">
               <div className="space-y-1">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-                  <div key={i} className="h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                {/* First tab active */}
+                <div className="h-9 bg-green-100 rounded-lg animate-pulse"></div>
+                {/* Other tabs */}
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="h-9 bg-gray-100 rounded-lg animate-pulse"></div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Content Skeleton */}
+          {/* Content Skeleton - matches General settings form */}
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="space-y-6">
                 {/* Title */}
-                <div className="h-7 bg-gray-200 rounded w-48 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded w-28 animate-pulse"></div>
                 
                 {/* Form Fields */}
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="h-5 bg-gray-200 rounded w-24 animate-pulse"></div>
-                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                <div className="space-y-5">
+                  {/* שם החנות */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* דומיין */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-14 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* מטבע */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* שפה */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-10 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* אזור זמן */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* אימייל החנות */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* טלפון */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* כתובת */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-14 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* עיר + מיקוד */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-8 animate-pulse"></div>
+                      <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                      <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                    </div>
+                  </div>
+                  
+                  {/* מדינה */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-14 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                  </div>
+                  
+                  {/* לוגו החנות */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                    <div className="h-24 bg-gray-100 rounded-lg animate-pulse border-2 border-dashed border-gray-200"></div>
+                  </div>
+                  
+                  {/* תוכנית */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-14 animate-pulse"></div>
+                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+                    <div className="h-3 bg-gray-100 rounded w-48 animate-pulse"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -407,7 +473,7 @@ export default function SettingsPage() {
     <div className="p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">הגדרות</h1>
-        {(activeTab === 'general' || activeTab === 'domain') && (
+        {activeTab === 'general' && (
           <Button onClick={saveSettings} disabled={saving}>
             שמור שינויים
           </Button>
@@ -668,74 +734,6 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {activeTab === 'domain' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-2">דומיין מותאם אישית</h2>
-                    <p className="text-sm text-gray-600 mb-6">
-                      חבר את הדומיין שלך לחנות כדי ליצור חוויית קנייה מקצועית יותר
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        דומיין מותאם אישית
-                      </label>
-                      <Input
-                        value={formData.domain || ''}
-                        onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                        placeholder="example.com"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        הזן את הדומיין שלך ללא http:// או https:// (לדוגמה: myshop.com)
-                      </p>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="text-sm font-semibold text-blue-900 mb-2">איך לחבר דומיין מותאם אישית?</h3>
-                      <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
-                        <li>היכנס לפאנל הניהול של ספק הדומיין שלך (GoDaddy, Namecheap, Cloudflare וכו')</li>
-                        <li>מצא את ההגדרות של DNS Records</li>
-                        <li>הוסף A Record חדש עם הערכים הבאים:
-                          <ul className="list-disc list-inside mr-4 mt-1 space-y-1">
-                            <li><strong>Type:</strong> A</li>
-                            <li><strong>Name:</strong> @ (או השאר ריק)</li>
-                            <li><strong>Value:</strong> 76.76.21.21 (כתובת IP שלנו)</li>
-                            <li><strong>TTL:</strong> 3600 (או ברירת מחדל)</li>
-                          </ul>
-                        </li>
-                        <li>שמור את השינויים</li>
-                        <li>הזן את הדומיין למעלה ולחץ על "שמור שינויים"</li>
-                      </ol>
-                      <div className="mt-4 p-3 bg-white rounded border border-blue-200">
-                        <p className="text-xs text-gray-700">
-                          <strong>הערה חשובה:</strong> שינויי DNS יכולים לקחת עד 48 שעות להיכנס לתוקף. 
-                          לאחר שהדומיין מחובר, החנות שלך תהיה זמינה בכתובת החדשה שלך.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-2">כתובת החנות הנוכחית</h3>
-                      <p className="text-sm text-gray-700">
-                        {formData.domain ? (
-                          <>
-                            <span className="font-mono">https://{formData.domain}</span>
-                            <span className="text-gray-500 mr-2"> (לאחר חיבור הדומיין)</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-mono">quickshop3.vercel.app/shops/{store?.slug || 'your-slug'}</span>
-                            <span className="text-gray-500 mr-2"> (כתובת ברירת מחדל)</span>
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {activeTab === 'subscription' && (
                 <div className="space-y-6">
                   <div>
@@ -857,15 +855,11 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {activeTab === 'payments' && <PaymentsSettings />}
-
               {activeTab === 'shipping' && <ShippingSettings />}
 
               {activeTab === 'email' && <EmailSettings />}
 
               {activeTab === 'gift-cards' && <GiftCardSettings />}
-
-              {activeTab === 'integrations' && <WebhooksSettings />}
 
               {activeTab === 'users' && (
                 <div className="space-y-6">

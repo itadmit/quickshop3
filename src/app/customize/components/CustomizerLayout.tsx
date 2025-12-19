@@ -54,6 +54,7 @@ export function CustomizerLayout() {
   const [pageSections, setPageSections] = useState<SectionSettings[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
+  const [storeIdState, setStoreIdState] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -173,12 +174,27 @@ export function CustomizerLayout() {
         }
       }
       
-      // Store the store slug for preview
+      // Store the store slug and id for preview
       if (data.store?.slug) {
         setStoreSlug(data.store.slug);
       }
+      if (data.store?.id) {
+        setStoreIdState(data.store.id);
+      }
 
-      // Ensure header and footer are always present and locked
+      // Checkout page doesn't need header/footer - it has its own layout
+      const isCheckoutPage = pageType === 'checkout';
+      
+      if (isCheckoutPage) {
+        // For checkout, just use the checkout sections without header/footer
+        setPageSections(sections);
+        setCurrentPageType(pageType);
+        setPageSectionsCache(prev => ({ ...prev, [pageType]: sections }));
+        setIsLoading(false);
+        return;
+      }
+      
+      // Ensure header and footer are always present and locked (for non-checkout pages)
       const hasHeader = sections.some(s => s.type === 'header');
       const hasFooter = sections.some(s => s.type === 'footer');
 
@@ -446,13 +462,13 @@ export function CustomizerLayout() {
     setCurrentPageHandle(null);
     
     // Update URL to reflect new page type
-    const storeId = searchParams.get('storeId');
-    const newUrl = `/customize?storeId=${storeId}&pageType=${newPageType}`;
+    const currentStoreId = storeIdState || searchParams.get('storeId');
+    const newUrl = `/customize?storeId=${currentStoreId}&pageType=${newPageType}`;
     router.push(newUrl, { scroll: false });
     
     // Load the new page type (without specific handle)
     loadPageData(newPageType, null);
-  }, [currentPageType, pageSections, loadPageData, searchParams, router]);
+  }, [currentPageType, pageSections, loadPageData, searchParams, router, storeIdState]);
 
   const handleDeviceChange = useCallback((device: DeviceType) => {
     setEditorState(prev => ({ ...prev, device }));

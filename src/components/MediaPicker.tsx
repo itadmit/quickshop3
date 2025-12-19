@@ -418,7 +418,7 @@ export function MediaPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[1400px] max-h-[90vh] flex flex-col p-0 rounded-lg overflow-hidden" dir="rtl">
+      <DialogContent className="max-w-[90vw] w-[1100px] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden" dir="rtl">
         <DialogHeader className="px-5 py-3.5 border-b bg-white">
           <DialogTitle className="text-base font-semibold text-gray-900">{title}</DialogTitle>
         </DialogHeader>
@@ -498,10 +498,10 @@ export function MediaPicker({
                   </div>
                </div>
             ) : loading && files.length === 0 ? (
-               <div className="border-2 border-dashed border-gray-300 rounded-lg p-5 mb-4">
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {[...Array(12)].map((_, i) => (
-                        <div key={i} className="aspect-square rounded-lg border border-gray-200 bg-white overflow-hidden">
+               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4">
+                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                    {[...Array(16)].map((_, i) => (
+                        <div key={i} className="aspect-square rounded-md border border-gray-200 bg-white overflow-hidden">
                             <Skeleton className="w-full h-full" />
                         </div>
                     ))}
@@ -570,7 +570,7 @@ export function MediaPicker({
 
                 {/* Uploading Skeletons */}
                 {uploading && uploadingFiles.length > 0 && (
-                  <div className="border border-blue-200 bg-blue-50/30 rounded-lg p-5 mb-4">
+                  <div className="border border-blue-200 bg-blue-50/30 rounded-lg p-4 mb-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium text-blue-900">מעלה {uploadingFiles.length} קבצים...</p>
                       <div className="text-xs text-blue-700 font-medium">
@@ -587,12 +587,12 @@ export function MediaPicker({
                         }}
                       />
                     </div>
-                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                       {uploadingFiles.map((tempId) => (
-                        <div key={tempId} className="aspect-square rounded-lg border-2 border-blue-300 bg-white overflow-hidden relative">
+                        <div key={tempId} className="aspect-square rounded-md border-2 border-blue-300 bg-white overflow-hidden relative">
                           <Skeleton className="w-full h-full" />
                           <div className="absolute inset-0 flex items-center justify-center bg-blue-500/10">
-                            <div className="text-sm font-semibold text-blue-700">
+                            <div className="text-xs font-semibold text-blue-700">
                               {uploadProgress[tempId] || 0}%
                             </div>
                           </div>
@@ -603,8 +603,8 @@ export function MediaPicker({
                 )}
 
                 {/* Files Grid */}
-                <div className="border border-gray-200 rounded-lg p-5 mb-4 bg-white">
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-white">
+                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                     {/* Existing Files */}
                     {files.map((file) => {
                   const isSelected = selected.has(file.path);
@@ -613,25 +613,25 @@ export function MediaPicker({
                       key={file.id}
                       onClick={() => handleToggleSelect(file.path)}
                       className={cn(
-                        "group relative aspect-square rounded-lg border-2 bg-white cursor-pointer transition-all overflow-hidden shadow-sm hover:shadow-md",
+                        "group relative aspect-square rounded-md border bg-white cursor-pointer transition-all overflow-hidden",
                         isSelected 
-                            ? "border-blue-500 ring-2 ring-blue-200 shadow-md" 
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-blue-500 ring-2 ring-blue-200 shadow-sm" 
+                            : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
                       )}
                     >
-                       <div className="absolute top-3 right-3 z-10">
+                       <div className="absolute top-1 right-1 z-10">
                            <div className={cn(
-                               "w-6 h-6 rounded-md border-2 bg-white flex items-center justify-center transition-all shadow-sm",
+                               "w-4 h-4 rounded border-2 bg-white flex items-center justify-center transition-all",
                                isSelected 
                                 ? "bg-blue-500 border-blue-500" 
                                 : "border-gray-300 group-hover:border-gray-400"
                            )}>
-                               {isSelected && <HiCheck className="w-4 h-4 text-white font-bold" />}
+                               {isSelected && <HiCheck className="w-2.5 h-2.5 text-white font-bold" />}
                            </div>
                        </div>
                        
-                       <div className="w-full h-full">
-                           <div className="w-full h-full relative overflow-hidden bg-gray-50">
+                       <div className="w-full h-full p-1">
+                           <div className="w-full h-full relative rounded-sm overflow-hidden bg-gray-50">
                                 {isVideo(file) ? (
                                   <div className="relative w-full h-full">
                                     <video
@@ -641,8 +641,8 @@ export function MediaPicker({
                                       preload="metadata"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                      <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                                        <svg className="w-6 h-6 text-gray-700 mr-[-2px]" fill="currentColor" viewBox="0 0 24 24">
+                                      <div className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                        <svg className="w-3.5 h-3.5 text-gray-700 mr-[-1px]" fill="currentColor" viewBox="0 0 24 24">
                                           <path d="M8 5v14l11-7z" />
                                         </svg>
                                       </div>
@@ -659,8 +659,8 @@ export function MediaPicker({
                            </div>
                        </div>
 
-                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 pt-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <p className="text-white text-xs truncate font-medium">{file.name}</p>
+                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-1 pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <p className="text-white text-[9px] truncate font-medium">{file.name}</p>
                        </div>
                     </div>
                   );

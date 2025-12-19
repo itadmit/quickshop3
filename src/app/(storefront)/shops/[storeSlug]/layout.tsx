@@ -10,6 +10,12 @@ import { PopupManager } from '@/components/storefront/PopupManager';
 import { getStoreBySlug } from '@/lib/utils/store';
 import { getActivePixels, getActiveTrackingCodes } from '@/lib/tracking/pixels';
 
+// בדיקה אם הנתיב הוא צ'ק אאוט
+function isCheckoutPath(pathname: string, storeSlug: string): boolean {
+  const basePath = `/shops/${storeSlug}`;
+  return pathname.startsWith(`${basePath}/checkout`);
+}
+
 export default async function StoreSlugLayout({
   children,
   params,
@@ -25,6 +31,11 @@ export default async function StoreSlugLayout({
   if (!store) {
     notFound();
   }
+
+  // בדיקה אם הנתיב הוא צ'ק אאוט - אם כן, לא נציג header/footer
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '';
+  const isCheckout = isCheckoutPath(pathname, storeSlug);
 
   // טעינת פיקסלים וקודי מעקב
   const [headPixels, headCodes, bodyPixels, bodyCodes, footerPixels, footerCodes] = await Promise.all([
@@ -145,9 +156,17 @@ export default async function StoreSlugLayout({
       {/* Layout Structure: Customizer Layout (Header + Content + Footer from Customizer) */}
       <PageViewTracker />
       <PopupManager storeId={store.id} />
-      <CustomizerLayoutWrapper storeSlug={storeSlug}>
-        {children}
-      </CustomizerLayoutWrapper>
+      
+      {/* אם זה צ'ק אאוט - לא נשתמש ב-CustomizerLayoutWrapper */}
+      {isCheckout ? (
+        <div className="min-h-screen" dir="rtl">
+          {children}
+        </div>
+      ) : (
+        <CustomizerLayoutWrapper storeSlug={storeSlug}>
+          {children}
+        </CustomizerLayoutWrapper>
+      )}
 
       {/* Body Tracking Codes */}
       {bodyCodes

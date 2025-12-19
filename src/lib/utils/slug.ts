@@ -14,15 +14,31 @@ export async function generateUniqueSlug(
   storeId: number,
   excludeId?: number
 ): Promise<string> {
-  // Convert title to slug
+  // Convert title to slug - keep Hebrew and Latin characters
   let baseSlug = title
-    .toLowerCase()
     .trim()
-    .replace(/[\u0590-\u05FF]/g, '') // Remove Hebrew characters
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    .split('')
+    .map((char) => {
+      // Keep Hebrew characters (א-ת)
+      if (/[\u0590-\u05FF]/.test(char)) {
+        return char;
+      }
+      // Keep Latin letters and numbers (lowercase)
+      if (/[a-zA-Z0-9]/.test(char)) {
+        return char.toLowerCase();
+      }
+      // Replace spaces with hyphen
+      if (/\s/.test(char)) {
+        return '-';
+      }
+      // Remove other special characters
+      return '';
+    })
+    .join('')
+    // Replace multiple hyphens with single hyphen
+    .replace(/-+/g, '-')
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, '');
 
   // If slug is empty after processing, use a default
   if (!baseSlug) {

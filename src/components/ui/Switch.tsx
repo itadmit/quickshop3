@@ -17,8 +17,13 @@ export function Switch({ checked, onCheckedChange, className = '', ...props }: S
         className="sr-only peer"
         {...props}
       />
-      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:bg-green-600 transition-colors">
+        <div 
+          className={`absolute top-0.5 w-5 h-5 bg-white border border-gray-300 rounded-full transition-all ${
+            checked ? 'left-0.5 border-white' : 'left-[22px]'
+          }`}
+        />
+      </div>
     </label>
   );
 }
-

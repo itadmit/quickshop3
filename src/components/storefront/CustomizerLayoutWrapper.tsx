@@ -1,10 +1,12 @@
 /**
- * Customizer Layout Wrapper - Client-Side Version
- * מזהה את pageType מה-URL בצד הלקוח לעדכון בזמן אמת בניווט
+ * Customizer Layout Wrapper
+ * מזהה את pageType מה-URL ומעביר אותו ל-CustomizerLayoutClient
+ * Client Component שמתעדכן בזמן client-side navigation
  */
 
 'use client';
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import { CustomizerLayoutClient } from './CustomizerLayoutClient';
 
@@ -13,9 +15,9 @@ interface CustomizerLayoutWrapperProps {
   children: React.ReactNode;
 }
 
-function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?: string } {
+function getPageTypeFromPath(pathname: string, storeSlug: string): { pageType: string; pageHandle?: string } {
   // הסרת storeSlug מה-path
-  const pathWithoutStore = pathname.replace(/^\/shops\/[^/]+/, '');
+  const pathWithoutStore = pathname.replace(`/shops/${storeSlug}`, '');
   
   // דף בית
   if (pathWithoutStore === '' || pathWithoutStore === '/') {
@@ -26,7 +28,7 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/products/')) {
     const match = pathWithoutStore.match(/^\/products\/([^/]+)/);
     if (match) {
-      return { pageType: 'product', pageHandle: decodeURIComponent(match[1]) };
+      return { pageType: 'product', pageHandle: match[1] };
     }
     return { pageType: 'products' };
   }
@@ -35,16 +37,16 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/categories/')) {
     const match = pathWithoutStore.match(/^\/categories\/([^/]+)/);
     if (match) {
-      return { pageType: 'collection', pageHandle: decodeURIComponent(match[1]) };
+      return { pageType: 'category', pageHandle: match[1] };
     }
-    return { pageType: 'collections' };
+    return { pageType: 'categories' };
   }
   
   // דף תוכן
   if (pathWithoutStore.startsWith('/p/')) {
     const match = pathWithoutStore.match(/^\/p\/([^/]+)/);
     if (match) {
-      return { pageType: 'page', pageHandle: decodeURIComponent(match[1]) };
+      return { pageType: 'page', pageHandle: match[1] };
     }
   }
   
@@ -52,7 +54,7 @@ function getPageTypeFromPath(pathname: string): { pageType: string; pageHandle?:
   if (pathWithoutStore.startsWith('/blog/')) {
     const match = pathWithoutStore.match(/^\/blog\/([^/]+)/);
     if (match) {
-      return { pageType: 'blog_post', pageHandle: decodeURIComponent(match[1]) };
+      return { pageType: 'blog_post', pageHandle: match[1] };
     }
     return { pageType: 'blog' };
   }
@@ -65,12 +67,24 @@ export function CustomizerLayoutWrapper({
   storeSlug,
   children,
 }: CustomizerLayoutWrapperProps) {
-  // שימוש ב-usePathname לזיהוי ה-URL בצד הלקוח
-  // זה מתעדכן אוטומטית בניווט client-side
   const pathname = usePathname();
   
-  // זיהוי pageType מה-pathname
-  const { pageType, pageHandle } = getPageTypeFromPath(pathname || '');
+  // זיהוי pageType מה-pathname (מתעדכן בזמן client-side navigation)
+  const { pageType, pageHandle } = getPageTypeFromPath(pathname, storeSlug);
+  
+  // Debug log (רק בפיתוח)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[CustomizerLayoutWrapper] Pathname:', pathname, 'PageType:', pageType, 'PageHandle:', pageHandle);
+  }
+  
+  // דפי צ'ק אאוט ותודה - לא מציגים הדר ופוטר
+  const pathWithoutStore = pathname.replace(`/shops/${storeSlug}`, '');
+  const isCheckoutPage = pathWithoutStore.startsWith('/checkout');
+  
+  if (isCheckoutPage) {
+    // בצ'ק אאוט - להחזיר רק את התוכן ללא הדר ופוטר
+    return <>{children}</>;
+  }
   
   return (
     <CustomizerLayoutClient 

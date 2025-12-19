@@ -240,3 +240,54 @@ export async function createDefaultFooterMenu(storeId: number): Promise<void> {
   }
 }
 
+/**
+ * יוצר תפריט ברירת מחדל עבור פוטר הצ'ק אאוט
+ */
+export async function createDefaultCheckoutFooterMenu(storeId: number): Promise<void> {
+  try {
+    // בדיקה אם תפריט checkout-footer כבר קיים
+    const existingMenu = await query(
+      'SELECT id FROM navigation_menus WHERE store_id = $1 AND handle = $2',
+      [storeId, 'checkout-footer']
+    );
+
+    if (existingMenu.length > 0) {
+      // תפריט כבר קיים, לא יוצרים חדש
+      return;
+    }
+
+    // יצירת תפריט checkout-footer
+    const menu = await query(
+      `INSERT INTO navigation_menus (store_id, name, handle, position, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, now(), now())
+       RETURNING id`,
+      [storeId, 'תפריט צ\'ק אאוט', 'checkout-footer', 'checkout']
+    );
+
+    if (menu.length === 0) {
+      return;
+    }
+
+    const menuId = menu[0].id;
+
+    // יצירת פריטי תפריט - קישורים לעמודי מדיניות
+    const menuItems = [
+      { title: 'תקנון', type: 'page', resource_handle: 'terms', position: 1 },
+      { title: 'מדיניות פרטיות', type: 'page', resource_handle: 'privacy', position: 2 },
+      { title: 'החזרות והחלפות', type: 'page', resource_handle: 'returns-policy', position: 3 },
+      { title: 'הצהרת נגישות', type: 'page', resource_handle: 'accessibility', position: 4 },
+    ];
+
+    for (const item of menuItems) {
+      await query(
+        `INSERT INTO navigation_menu_items (menu_id, title, type, resource_handle, position, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, now(), now())`,
+        [menuId, item.title, item.type, item.resource_handle, item.position]
+      );
+    }
+  } catch (error) {
+    console.error('Error creating default checkout footer menu:', error);
+    // לא נזרוק שגיאה כדי לא לעצור את תהליך ההרשמה
+  }
+}
+

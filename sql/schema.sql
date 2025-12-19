@@ -2846,6 +2846,202 @@ CREATE INDEX idx_shipping_pickup_points_active ON shipping_pickup_points(is_acti
 COMMENT ON TABLE shipping_pickup_points IS 'קאש נקודות איסוף מחברות משלוחים';
 
 -- ============================================
+-- SMART ADVISOR (יועץ חכם) - Plugin Tables
+-- ============================================
+
+-- Advisor Quizzes (שאלונים - אפשר כמה יועצים שונים באתר)
+CREATE TABLE advisor_quizzes (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  
+  -- Basic Info
+  title VARCHAR(255) NOT NULL, -- "יועץ טיפוח השיער", "יועץ סוג העור"
+  slug VARCHAR(100) NOT NULL,
+  description TEXT,
+  subtitle TEXT, -- כותרת משנה
+  
+  -- Media
+  image_url TEXT, -- תמונת רקע
+  icon VARCHAR(50), -- אייקון Lucide
+  
+  -- Settings
+  is_active BOOLEAN DEFAULT false,
+  show_progress_bar BOOLEAN DEFAULT true, -- הצג סרגל התקדמות
+  show_question_numbers BOOLEAN DEFAULT true, -- הצג מספרי שאלות
+  allow_back_navigation BOOLEAN DEFAULT true, -- אפשר חזרה לשאלה קודמת
+  results_count INT DEFAULT 3, -- כמה מוצרים להציג בתוצאות
+  show_floating_button BOOLEAN DEFAULT false, -- הצג כפתור צף בדף הבית
+  
+  -- Styling
+  primary_color VARCHAR(7) DEFAULT '#000000',
+  background_color VARCHAR(7) DEFAULT '#FFFFFF',
+  button_style VARCHAR(20) DEFAULT 'rounded', -- 'rounded', 'square', 'pill'
+  
+  -- CTA
+  start_button_text VARCHAR(100) DEFAULT 'בואו נתחיל!',
+  results_title VARCHAR(255) DEFAULT 'המוצרים המומלצים עבורך',
+  results_subtitle TEXT DEFAULT 'על פי התשובות שלך, הנה המוצרים הכי מתאימים:',
+  
+  -- Tracking
+  total_starts INT DEFAULT 0, -- כמה התחילו
+  total_completions INT DEFAULT 0, -- כמה סיימו
+  
+  position INT DEFAULT 0, -- סדר תצוגה
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(store_id, slug)
+);
+
+CREATE INDEX idx_advisor_quizzes_store_id ON advisor_quizzes(store_id);
+CREATE INDEX idx_advisor_quizzes_slug ON advisor_quizzes(slug);
+CREATE INDEX idx_advisor_quizzes_active ON advisor_quizzes(is_active);
+
+COMMENT ON TABLE advisor_quizzes IS 'יועץ חכם - שאלונים לחנות';
+
+-- Advisor Questions (שאלות)
+CREATE TABLE advisor_questions (
+  id SERIAL PRIMARY KEY,
+  quiz_id INT REFERENCES advisor_quizzes(id) ON DELETE CASCADE,
+  
+  -- Question Content
+  question_text VARCHAR(500) NOT NULL, -- "מה סוג השיער שלך?"
+  question_subtitle TEXT, -- טקסט משני
+  
+  -- Media
+  image_url TEXT, -- תמונה לשאלה
+  
+  -- Question Type
+  question_type VARCHAR(20) DEFAULT 'single', -- 'single' (בחירה יחידה), 'multiple' (מרובה)
+  
+  -- Layout
+  answers_layout VARCHAR(20) DEFAULT 'grid', -- 'grid', 'list', 'cards'
+  columns INT DEFAULT 2, -- מספר עמודות ב-grid
+  
+  -- Validation
+  is_required BOOLEAN DEFAULT true,
+  min_selections INT DEFAULT 1, -- מינימום בחירות (למרובה)
+  max_selections INT, -- מקסימום בחירות (למרובה)
+  
+  position INT DEFAULT 0,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_advisor_questions_quiz_id ON advisor_questions(quiz_id);
+CREATE INDEX idx_advisor_questions_position ON advisor_questions(quiz_id, position);
+
+COMMENT ON TABLE advisor_questions IS 'יועץ חכם - שאלות';
+
+-- Advisor Answers (תשובות אפשריות)
+CREATE TABLE advisor_answers (
+  id SERIAL PRIMARY KEY,
+  question_id INT REFERENCES advisor_questions(id) ON DELETE CASCADE,
+  
+  -- Answer Content
+  answer_text VARCHAR(255) NOT NULL, -- "תלתלים", "חלק", "מסולסל"
+  answer_subtitle TEXT, -- טקסט משני
+  
+  -- Media (בחר אחד)
+  image_url TEXT, -- תמונה מותאמת אישית
+  icon VARCHAR(50), -- אייקון Lucide (למשל: 'Waves', 'ArrowRight')
+  emoji VARCHAR(10), -- אימוג'י (למשל: '🌀')
+  color VARCHAR(7), -- צבע רקע (למשל: '#FFD700')
+  
+  -- Internal Value (לחישובים)
+  value VARCHAR(100), -- 'curly', 'straight', 'wavy' - מזהה פנימי
+  
+  position INT DEFAULT 0,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_advisor_answers_question_id ON advisor_answers(question_id);
+CREATE INDEX idx_advisor_answers_position ON advisor_answers(question_id, position);
+CREATE INDEX idx_advisor_answers_value ON advisor_answers(value);
+
+COMMENT ON TABLE advisor_answers IS 'יועץ חכם - תשובות';
+
+-- Advisor Product Rules (כללי התאמת מוצרים - עם ניקוד משוקלל)
+CREATE TABLE advisor_product_rules (
+  id SERIAL PRIMARY KEY,
+  quiz_id INT REFERENCES advisor_quizzes(id) ON DELETE CASCADE,
+  product_id INT REFERENCES products(id) ON DELETE CASCADE,
+  
+  -- Rule Definition (JSONB array of answer conditions with weights)
+  -- Format: [{"answer_id": 1, "weight": 10}, {"answer_id": 5, "weight": 5}]
+  answer_weights JSONB NOT NULL DEFAULT '[]',
+  
+  -- Base score (ניקוד בסיס - יתווסף לכל מוצר)
+  base_score INT DEFAULT 0,
+  
+  -- Bonus conditions (תנאי בונוס)
+  -- Format: {"all_answers": [1,2,3], "bonus": 20} - אם כל התשובות נבחרו, הוסף בונוס
+  bonus_rules JSONB DEFAULT NULL,
+  
+  -- Exclusion rules (כללי מניעה)
+  -- Format: [4, 7] - אם אחת מהתשובות האלה נבחרה, המוצר לא יוצג
+  exclude_if_answers INT[] DEFAULT '{}',
+  
+  -- Priority boost (דחיפה לראש הרשימה)
+  priority_boost INT DEFAULT 0, -- ניקוד נוסף לדירוג
+  
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(quiz_id, product_id)
+);
+
+CREATE INDEX idx_advisor_product_rules_quiz_id ON advisor_product_rules(quiz_id);
+CREATE INDEX idx_advisor_product_rules_product_id ON advisor_product_rules(product_id);
+CREATE INDEX idx_advisor_product_rules_active ON advisor_product_rules(is_active);
+
+COMMENT ON TABLE advisor_product_rules IS 'יועץ חכם - כללי התאמת מוצרים עם ניקוד משוקלל';
+COMMENT ON COLUMN advisor_product_rules.answer_weights IS 'מערך של תשובות עם משקלים: [{"answer_id": 1, "weight": 10}]';
+COMMENT ON COLUMN advisor_product_rules.exclude_if_answers IS 'מערך של answer IDs - אם אחד נבחר, המוצר לא יוצג';
+
+-- Advisor Sessions (מעקב אחרי הפעלות - לאנליטיקס)
+CREATE TABLE advisor_sessions (
+  id SERIAL PRIMARY KEY,
+  quiz_id INT REFERENCES advisor_quizzes(id) ON DELETE CASCADE,
+  
+  -- Session Info
+  session_id VARCHAR(100) NOT NULL, -- UUID ייחודי
+  customer_id INT REFERENCES customers(id) ON DELETE SET NULL, -- אם מחובר
+  
+  -- Answers Given
+  answers JSONB NOT NULL DEFAULT '[]', -- [{question_id: 1, answer_ids: [1,2]}]
+  
+  -- Results
+  recommended_products JSONB, -- [{product_id: 1, score: 85}]
+  
+  -- Tracking
+  started_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  completed_at TIMESTAMP WITHOUT TIME ZONE,
+  is_completed BOOLEAN DEFAULT false,
+  
+  -- User Agent / Device
+  user_agent TEXT,
+  ip_address VARCHAR(45),
+  
+  -- Conversion
+  converted_to_cart BOOLEAN DEFAULT false,
+  converted_to_order BOOLEAN DEFAULT false,
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_advisor_sessions_quiz_id ON advisor_sessions(quiz_id);
+CREATE INDEX idx_advisor_sessions_session_id ON advisor_sessions(session_id);
+CREATE INDEX idx_advisor_sessions_customer_id ON advisor_sessions(customer_id);
+CREATE INDEX idx_advisor_sessions_completed ON advisor_sessions(is_completed);
+CREATE INDEX idx_advisor_sessions_converted ON advisor_sessions(converted_to_order);
+
+COMMENT ON TABLE advisor_sessions IS 'יועץ חכם - מעקב הפעלות לאנליטיקס';
+
+-- ============================================
 -- END OF SCHEMA
 -- ============================================
 

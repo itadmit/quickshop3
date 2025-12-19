@@ -8,9 +8,26 @@ import { SettingSelect } from '../ui/SettingSelect';
 import { ModernColorPicker } from '../SettingsUI';
 import { MediaPicker } from '@/components/MediaPicker';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
-import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer } from 'react-icons/hi';
+import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4 } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface SettingsPanelProps {
   section: SectionSettings;
@@ -22,6 +39,120 @@ interface NavigationMenu {
   id: number;
   name: string;
   items?: Array<{ id: number; label?: string; title?: string; url: string }>;
+}
+
+// Component for sortable field items in checkout form settings
+function SortableFieldItem({
+  id,
+  index,
+  label,
+}: {
+  id: string;
+  index: number;
+  label: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 p-2 bg-gray-50 rounded border ${isDragging ? 'border-blue-400 shadow-md' : 'border-gray-200'} cursor-grab active:cursor-grabbing`}
+      {...attributes}
+      {...listeners}
+    >
+      <HiMenuAlt4 className="w-4 h-4 text-gray-400" />
+      <span className="text-gray-400 text-sm">{index + 1}.</span>
+      <span className="text-sm text-gray-700">{label}</span>
+    </div>
+  );
+}
+
+// Checkout Fields Order Component with drag-and-drop
+function CheckoutFieldsOrder({
+  getValue,
+  handleSettingChange,
+}: {
+  getValue: (key: string, defaultValue: any) => any;
+  handleSettingChange: (key: string, value: any) => void;
+}) {
+  const fieldLabels: Record<string, string> = {
+    email: 'אימייל',
+    first_name: 'שם פרטי',
+    last_name: 'שם משפחה',
+    phone: 'טלפון',
+    city: 'עיר',
+    street: 'רחוב ומספר',
+    apartment: 'דירה / קומה',
+    notes: 'הערות להזמנה'
+  };
+
+  const fieldsOrder = getValue('fields_order', [
+    'email', 'first_name', 'last_name', 'phone', 'city', 'street', 'apartment', 'notes'
+  ]) as string[];
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = fieldsOrder.indexOf(active.id as string);
+      const newIndex = fieldsOrder.indexOf(over.id as string);
+      
+      const newOrder = arrayMove(fieldsOrder, oldIndex, newIndex);
+      handleSettingChange('fields_order', newOrder);
+    }
+  };
+
+  return (
+    <SettingGroup title="סדר שדות">
+      <div className="space-y-3">
+        <p className="text-xs text-gray-500">
+          גרור לסידור מחדש. שדות שלא בשימוש יוסתרו.
+        </p>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={fieldsOrder}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {fieldsOrder.map((fieldKey: string, index: number) => (
+                <SortableFieldItem
+                  key={fieldKey}
+                  id={fieldKey}
+                  index={index}
+                  label={fieldLabels[fieldKey] || fieldKey}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+    </SettingGroup>
+  );
 }
 
 export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps) {
@@ -4150,6 +4281,175 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                   { label: 'רגיל', value: 'container' },
                   { label: 'מלא', value: 'full' },
                 ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      // ========== Checkout Page Settings ==========
+      case 'checkout_form':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="עיצוב כללי">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">צבע עמודה ימנית (טופס)</label>
+                  <ModernColorPicker
+                    value={getValue('layout.right_column_color', '#ffffff')}
+                    onChange={(color) => handleSettingChange('layout.right_column_color', color)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">צבע עמודה שמאלית (סיכום)</label>
+                  <ModernColorPicker
+                    value={getValue('layout.left_column_color', '#fafafa')}
+                    onChange={(color) => handleSettingChange('layout.left_column_color', color)}
+                  />
+                </div>
+              </div>
+            </SettingGroup>
+            
+            <SettingGroup title="כפתור תשלום">
+              <div className="space-y-4">
+                {renderInput('טקסט הכפתור', 'button.text', 'לתשלום')}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">צבע רקע</label>
+                  <ModernColorPicker
+                    value={getValue('button.background_color', '#000000')}
+                    onChange={(color) => handleSettingChange('button.background_color', color)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">צבע טקסט</label>
+                  <ModernColorPicker
+                    value={getValue('button.text_color', '#ffffff')}
+                    onChange={(color) => handleSettingChange('button.text_color', color)}
+                  />
+                </div>
+                {renderInput('עיגול פינות (px)', 'button.border_radius', '8', 'number')}
+              </div>
+            </SettingGroup>
+
+            <CheckoutFieldsOrder 
+              getValue={getValue}
+              handleSettingChange={handleSettingChange}
+            />
+
+            <SettingGroup title="שדות מותאמים אישית">
+              <div className="space-y-4">
+                <p className="text-xs text-gray-500 mb-4">
+                  הוסף שדות נוספים שיופיעו בטופס ויישמרו עם ההזמנה.
+                </p>
+                {(() => {
+                  const customFields = getValue('custom_fields', []) as any[];
+                  return (
+                    <>
+                      {customFields.map((field: any, index: number) => (
+                        <div key={field.id || index} className="p-3 border border-blue-200 rounded-lg bg-blue-50/30 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-blue-700">שדה {index + 1}</span>
+                            <button
+                              onClick={() => {
+                                const newFields = customFields.filter((_, i) => i !== index);
+                                handleSettingChange('custom_fields', newFields);
+                              }}
+                              className="text-red-400 hover:text-red-600"
+                            >
+                              <HiTrash className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            value={field.label || ''}
+                            onChange={(e) => {
+                              const newFields = [...customFields];
+                              newFields[index] = { ...field, label: e.target.value };
+                              handleSettingChange('custom_fields', newFields);
+                            }}
+                            placeholder="שם השדה"
+                            className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+                          />
+                          <select
+                            value={field.type || 'text'}
+                            onChange={(e) => {
+                              const newFields = [...customFields];
+                              newFields[index] = { ...field, type: e.target.value };
+                              handleSettingChange('custom_fields', newFields);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+                          >
+                            <option value="text">טקסט</option>
+                            <option value="textarea">טקסט ארוך</option>
+                            <option value="date">תאריך</option>
+                            <option value="select">בחירה מרשימה</option>
+                          </select>
+                          {field.type === 'select' && (
+                            <input
+                              type="text"
+                              value={field.options?.join(', ') || ''}
+                              onChange={(e) => {
+                                const newFields = [...customFields];
+                                newFields[index] = { 
+                                  ...field, 
+                                  options: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) 
+                                };
+                                handleSettingChange('custom_fields', newFields);
+                              }}
+                              placeholder="אפשרויות (מופרדות בפסיק)"
+                              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+                            />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={field.required || false}
+                              onChange={(e) => {
+                                const newFields = [...customFields];
+                                newFields[index] = { ...field, required: e.target.checked };
+                                handleSettingChange('custom_fields', newFields);
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <label className="text-sm text-gray-600">שדה חובה</label>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const newField = {
+                            id: `custom_${Date.now()}`,
+                            label: '',
+                            type: 'text',
+                            required: false,
+                            placeholder: ''
+                          };
+                          handleSettingChange('custom_fields', [...customFields, newField]);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors"
+                      >
+                        <HiPlus className="w-4 h-4" />
+                        הוסף שדה מותאם
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
+            </SettingGroup>
+
+            <SettingGroup title="הגדרות נוספות">
+              <div className="space-y-4">
+                {renderSelect('הצג הערות להזמנה', 'show_order_notes', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], true)}
+                {renderSelect('הצג אפשרויות משלוח', 'show_shipping_options', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], true)}
+                {renderSelect('הצג אמצעי תשלום', 'show_payment_methods', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], true)}
               </div>
             </SettingGroup>
           </div>

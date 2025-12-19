@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { NotificationsDrawer } from './NotificationsDrawer';
 import { Tooltip } from '../ui/Tooltip';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 
 export function Header() {
   const router = useRouter();
@@ -25,7 +26,9 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+  
+  // Use shared hook for unread counts - prevents duplicate API calls
+  const { notificationsCount: unreadNotificationsCount, refreshCounts } = useUnreadCounts();
 
   // טעינת פרטי המשתמש
   useEffect(() => {
@@ -59,37 +62,15 @@ export function Header() {
     loadUser();
   }, []);
 
-  // Load unread notifications count
+  // Listen for notification events to refresh counts
   useEffect(() => {
-    const loadUnreadNotificationsCount = async () => {
-      try {
-        const response = await fetch('/api/notifications/unread-count', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadNotificationsCount(data.count || 0);
-        }
-      } catch (error) {
-        console.error('Error loading unread notifications count:', error);
-      }
-    };
-
-    loadUnreadNotificationsCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadUnreadNotificationsCount, 30000);
-    
-    // Listen for notification marked as read event
-    const handleNotificationMarkedAsRead = () => {
-      loadUnreadNotificationsCount();
-    };
-    window.addEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
+    const handleRefresh = () => refreshCounts();
+    window.addEventListener('notificationMarkedAsRead', handleRefresh);
     
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('notificationMarkedAsRead', handleNotificationMarkedAsRead);
+      window.removeEventListener('notificationMarkedAsRead', handleRefresh);
     };
-  }, []);
+  }, [refreshCounts]);
 
   // Close switcher when clicking outside
   useEffect(() => {

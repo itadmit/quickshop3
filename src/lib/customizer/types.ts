@@ -52,7 +52,11 @@ export type SectionType =
   | 'collection_description'
   | 'collection_filters'
   | 'collection_products'
-  | 'collection_pagination';
+  | 'collection_pagination'
+  // Checkout page sections
+  | 'checkout_form'
+  | 'checkout_header'
+  | 'checkout_footer';
 
 // סוגי בלוקים בתוך סקשן
 export type BlockType = 'text' | 'image' | 'button' | 'product' | 'collection' | 'video';

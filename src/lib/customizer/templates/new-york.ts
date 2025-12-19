@@ -711,6 +711,77 @@ export const COLLECTION_PAGE_SECTIONS: SectionSettings[] = [
   }
 ];
 
+// Checkout Page Sections - הגדרות עמוד צ'ק אאוט
+export const CHECKOUT_PAGE_SECTIONS: SectionSettings[] = [
+  {
+    id: 'checkout-main',
+    type: 'checkout_form' as any,
+    name: 'טופס צ\'ק אאוט',
+    visible: true,
+    order: 1,
+    locked: true,
+    blocks: [],
+    style: {
+      background_color: '#ffffff'
+    },
+    settings: {
+      // עיצוב כללי
+      layout: {
+        left_column_color: '#fafafa',
+        right_column_color: '#ffffff'
+      },
+      // כפתור תשלום
+      button: {
+        text: 'לתשלום',
+        background_color: '#000000',
+        text_color: '#ffffff',
+        border_radius: '8'
+      },
+      // סדר שדות
+      fields_order: [
+        'email',
+        'first_name',
+        'last_name',
+        'phone',
+        'city',
+        'street',
+        'apartment',
+        'notes'
+      ],
+      // שדות מותאמים אישית
+      custom_fields: [],
+      // הגדרות נוספות
+      show_order_notes: true,
+      show_shipping_options: true,
+      show_payment_methods: true
+    }
+  }
+];
+
+// Content Page Sections - הגדרות עמוד תוכן
+export const CONTENT_PAGE_SECTIONS: SectionSettings[] = [
+  {
+    id: 'page-content',
+    type: 'rich_text',
+    name: 'תוכן העמוד',
+    visible: true,
+    order: 1,
+    locked: false,
+    blocks: [],
+    style: {
+      spacing: {
+        padding_top: '60px',
+        padding_bottom: '60px'
+      }
+    },
+    settings: {
+      content: '<h1>כותרת העמוד</h1><p>תוכן העמוד יופיע כאן...</p>',
+      max_width: '800px',
+      text_align: 'right'
+    }
+  }
+];
+
 // Helper function to get default sections for any page type
 export function getDefaultSectionsForPage(pageType: string): SectionSettings[] {
   const header = getHeaderSection();
@@ -733,6 +804,18 @@ export function getDefaultSectionsForPage(pageType: string): SectionSettings[] {
         header,
         ...collectionSections,
         getFooterSection(collectionSections.length + 1)
+      ];
+      
+    case 'checkout':
+      // צ'ק אאוט לא כולל header/footer רגילים
+      return CHECKOUT_PAGE_SECTIONS;
+      
+    case 'page':
+      const contentSections = CONTENT_PAGE_SECTIONS.map((s, i) => ({ ...s, order: i + 1 }));
+      return [
+        header,
+        ...contentSections,
+        getFooterSection(contentSections.length + 1)
       ];
       
     default:
@@ -765,6 +848,19 @@ export function getPageSpecificSections(pageType: string): Array<{ type: string;
         { type: 'collection_filters', name: 'מסננים', description: 'סינון לפי מחיר, זמינות וכו\'' },
         { type: 'collection_products', name: 'רשימת מוצרים', description: 'גריד המוצרים בקטגוריה' },
         { type: 'collection_pagination', name: 'עמודים', description: 'ניווט בין עמודים' }
+      ];
+      
+    case 'checkout':
+      return [
+        { type: 'checkout_form', name: 'טופס צ\'ק אאוט', description: 'טופס הזמנה ותשלום' }
+      ];
+      
+    case 'page':
+      return [
+        { type: 'rich_text', name: 'תוכן טקסט', description: 'טקסט מעוצב עם כותרות ופסקאות' },
+        { type: 'image_with_text', name: 'תמונה עם טקסט', description: 'תמונה לצד טקסט' },
+        { type: 'faq', name: 'שאלות נפוצות', description: 'רשימת שאלות ותשובות' },
+        { type: 'contact_form', name: 'טופס יצירת קשר', description: 'טופס ליצירת קשר' }
       ];
       
     default:

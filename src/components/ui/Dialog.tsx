@@ -1,13 +1,7 @@
 'use client';
 
-import { ReactNode, useEffect, useRef, createContext, useContext } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { HiX } from 'react-icons/hi';
-
-interface DialogContextType {
-  onOpenChange: (open: boolean) => void;
-}
-
-const DialogContext = createContext<DialogContextType | null>(null);
 
 interface DialogProps {
   open: boolean;
@@ -22,7 +16,7 @@ interface DialogContentProps {
   dir?: 'rtl' | 'ltr';
   showCloseButton?: boolean;
   onClose?: () => void;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | 'full';
 }
 
 interface DialogHeaderProps {
@@ -39,6 +33,11 @@ interface DialogDescriptionProps {
 }
 
 interface DialogFooterProps {
+  children: ReactNode;
+  className?: string;
+}
+
+interface DialogBodyProps {
   children: ReactNode;
   className?: string;
 }
@@ -71,17 +70,15 @@ export function Dialog({ open, onOpenChange, children, closeOnBackdropClick = tr
   if (!open) return null;
 
   return (
-    <DialogContext.Provider value={{ onOpenChange }}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div 
-          className="fixed inset-0 bg-black/50 transition-opacity duration-200"
-          onClick={() => closeOnBackdropClick && onOpenChange(false)}
-        />
-        <div className="relative z-50 transition-all duration-200 transform">
-          {children}
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div 
+        className="fixed inset-0 bg-black/50 transition-opacity duration-200"
+        onClick={() => closeOnBackdropClick && onOpenChange(false)}
+      />
+      <div className="relative z-50 transition-all duration-200 transform">
+        {children}
       </div>
-    </DialogContext.Provider>
+    </div>
   );
 }
 
@@ -91,39 +88,31 @@ export function DialogContent({
   dir = 'rtl',
   showCloseButton = true,
   onClose,
-  maxWidth = 'lg'
+  maxWidth = '3xl'
 }: DialogContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const context = useContext(DialogContext);
 
   const maxWidthClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
-    full: 'max-w-full'
-  };
-
-  const handleClose = () => {
-    if (onClose) {
-      onClose();
-    } else if (context) {
-      context.onOpenChange(false);
-    }
+    sm: 'min-w-[400px] max-w-sm',
+    md: 'min-w-[500px] max-w-md',
+    lg: 'min-w-[600px] max-w-lg',
+    xl: 'min-w-[700px] max-w-xl',
+    '2xl': 'min-w-[750px] max-w-2xl',
+    '3xl': 'min-w-[800px] max-w-3xl',
+    full: 'min-w-[90vw] max-w-full'
   };
 
   return (
     <div 
       ref={contentRef}
-      className={`relative z-50 bg-white rounded-lg shadow-xl ${maxWidthClasses[maxWidth]} w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col ${className}`}
+      className={`relative z-50 bg-white rounded-xl shadow-2xl ${maxWidthClasses[maxWidth]} w-full mx-4 max-h-[95vh] flex flex-col ${className}`}
       dir={dir}
       onClick={(e) => e.stopPropagation()}
     >
       {showCloseButton && (
         <button
-          onClick={handleClose}
-          className="absolute left-4 top-4 z-10 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          onClick={onClose}
+          className="absolute left-6 top-6 z-10 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           aria-label="סגור"
         >
           <HiX className="w-5 h-5" />
@@ -136,7 +125,7 @@ export function DialogContent({
 
 export function DialogHeader({ children, className = '' }: DialogHeaderProps) {
   return (
-    <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>
+    <div className={`px-8 pt-6 pb-5 border-b border-gray-200 ${className}`}>
       {children}
     </div>
   );
@@ -144,7 +133,7 @@ export function DialogHeader({ children, className = '' }: DialogHeaderProps) {
 
 export function DialogTitle({ children }: DialogTitleProps) {
   return (
-    <h2 className="text-xl font-semibold text-gray-900 pr-8">
+    <h2 className="text-2xl font-bold text-gray-900 pr-8">
       {children}
     </h2>
   );
@@ -158,9 +147,17 @@ export function DialogDescription({ children }: DialogDescriptionProps) {
   );
 }
 
+export function DialogBody({ children, className = '' }: DialogBodyProps) {
+  return (
+    <div className={`px-8 py-6 overflow-y-auto overflow-x-visible ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 export function DialogFooter({ children, className = '' }: DialogFooterProps) {
   return (
-    <div className={`px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 ${className}`}>
+    <div className={`px-8 py-5 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3 ${className}`}>
       {children}
     </div>
   );
