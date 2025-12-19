@@ -399,10 +399,122 @@ export default function PaymentIntegrationsPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="h-48 bg-gray-100 rounded-xl animate-pulse" />
-          <div className="h-24 bg-gray-100 rounded-xl animate-pulse" />
-          <div className="h-24 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="space-y-10">
+          {/* ספקים פעילים skeleton */}
+          <div className="space-y-4">
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-40 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="flex gap-3">
+                  <div className="h-9 w-16 bg-gray-100 rounded-lg animate-pulse" />
+                  <div className="h-9 w-16 bg-gray-100 rounded-lg animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* מומלץ עבורך skeleton */}
+          <div className="space-y-4">
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-xl p-8">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-lg animate-pulse" />
+                    <div className="h-6 w-28 bg-emerald-100 rounded-full animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-7 w-48 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-5 w-full max-w-xl bg-gray-100 rounded animate-pulse" />
+                  </div>
+                  <div className="flex gap-4 pt-2">
+                    <div className="h-5 w-24 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-5 w-24 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-5 w-28 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-12 w-40 bg-emerald-200 rounded-xl animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* ספקים נוספים skeleton */}
+          <div className="space-y-4">
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-sm">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-6 flex items-center justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-5 w-28 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+                      <div className="flex gap-2 mt-2">
+                        <div className="h-5 w-16 bg-gray-100 rounded animate-pulse" />
+                        <div className="h-5 w-12 bg-gray-100 rounded animate-pulse" />
+                        <div className="h-5 w-16 bg-gray-100 rounded animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="h-9 w-20 bg-gray-100 rounded-lg animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* הגדרות כלליות skeleton */}
+          <div className="space-y-4 pt-6 mt-8 border-t border-gray-200">
+            <div className="space-y-2">
+              <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-56 bg-gray-100 rounded animate-pulse" />
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-5 w-36 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="h-10 w-24 bg-gray-100 rounded-lg animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* שיטות תשלום נוספות skeleton */}
+          <div className="space-y-4 pt-6 mt-8 border-t border-gray-200">
+            <div className="h-6 w-40 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden divide-y divide-gray-100">
+              {[1, 2].map((i) => (
+                <div key={i} className="p-6 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-5 w-28 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="h-6 w-11 bg-gray-200 rounded-full animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTAs skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 mt-8 border-t border-gray-100">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-3">
+                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
+                <div className="h-4 w-3/4 bg-gray-100 rounded animate-pulse" />
+                <div className="h-10 w-40 bg-gray-100 rounded-lg animate-pulse mt-2" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>

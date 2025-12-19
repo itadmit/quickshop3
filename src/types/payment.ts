@@ -198,7 +198,17 @@ export interface PaymentTransaction {
 // SHIPPING INTEGRATIONS
 // ============================================
 
-export type ShippingProviderType = 'baldar' | 'chita' | 'dhl' | 'ups' | 'fedex' | 'israel_post';
+export type ShippingProviderType = 
+  | 'baldar'
+  | 'focus'
+  | 'runcom'
+  | 'cargo'
+  | 'lionwheel'
+  | 'chita'
+  | 'dhl'
+  | 'ups'
+  | 'fedex'
+  | 'israel_post';
 
 export interface StoreShippingIntegration {
   id: number;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { Shipment, StoreShippingIntegration } from '@/types/payment';
 import { getUserFromRequest } from '@/lib/auth';
-import { getShippingAdapter, registerAllShippingAdapters } from '@/lib/shipping';
+import { getStoreShippingAdapter, getShippingAdapterById, createShippingAdapter, ShippingAdapterConfig } from '@/lib/shipping';
 import { Order } from '@/types/order';
 import { eventBus } from '@/lib/events/eventBus';
 
@@ -63,7 +63,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/shipments - Create shipment
+/**
+ * Create adapter from integration record
+ */
+function createAdapterFromIntegration(integration: StoreShippingIntegration) {
+  const settings = (integration.settings || {}) as Record<string, any>;
+  
+  const credentials: Record<string, string> = {};
+  if (integration.customer_number) credentials.customer_number = integration.customer_number;
+  if (integration.api_key_encrypted) credentials.api_key = integration.api_key_encrypted;
+  if (integration.api_token_encrypted) credentials.api_token = integration.api_token_encrypted;
+  if (integration.api_base_url) credentials.api_base_url = integration.api_base_url;
+  if (settings.customer_number) credentials.customer_number = settings.customer_number;
+  if (settings.shipment_type_code) credentials.shipment_type_code = settings.shipment_type_code;
+  if (settings.cargo_type_code) credentials.cargo_type_code = settings.cargo_type_code;
+  if (settings.reference_prefix) credentials.reference_prefix = settings.reference_prefix;
+  
+  const config: ShippingAdapterConfig = {
+    integrationId: integration.id,
+    storeId: integration.store_id,
+    provider: integration.provider,
+    isSandbox: false,
+    credentials,
+    settings,
+  };
+  
+  return createShippingAdapter(config);
+}
+
+// POST /api/shipments - Create shipment (single or bulk)
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
@@ -72,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { orderId, orderIds, integrationId, shipmentType, cargoType } = body;
+    const { orderId, orderIds, integrationId } = body;
 
     // Handle single or bulk shipment creation
     const idsToProcess = orderIds || [orderId];
@@ -118,9 +146,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Register adapters
-    registerAllShippingAdapters();
-    const adapter = getShippingAdapter(integration.provider, integration);
+    // Create adapter using unified architecture
+    const adapter = createAdapterFromIntegration(integration);
 
     const results: { orderId: number; success: boolean; shipment?: Shipment; error?: string }[] = [];
 
@@ -159,22 +186,25 @@ export async function POST(request: NextRequest) {
           ? JSON.parse(order.shipping_address) 
           : order.shipping_address;
 
+        // Use unified adapter interface
         const createResult = await adapter.createShipment({
-          order: {
-            id: order.id,
-            order_name: order.order_name || `#${order.id}`,
-            customer_name: order.name || shippingAddress?.name || '',
+          integration,
+          shipment: {
+            orderId: order.id,
+            orderName: order.order_name || `#${order.id}`,
+            consigneeName: order.name || shippingAddress?.name || '',
             phone: order.phone || shippingAddress?.phone || '',
             email: order.email || '',
-            address: shippingAddress?.address1 || '',
             city: shippingAddress?.city || '',
-            zip: shippingAddress?.zip || '',
-            notes: order.note || '',
+            street: shippingAddress?.address1 || shippingAddress?.street || '',
+            houseNumber: shippingAddress?.house_number || '',
+            entrance: shippingAddress?.entrance || '',
+            floor: shippingAddress?.floor || '',
+            apartment: shippingAddress?.apartment || '',
+            addressRemarks: shippingAddress?.notes || '',
+            shipmentRemarks: order.note || '',
+            numberOfPackages: 1,
           },
-          storeId: user.store_id,
-          integration,
-          shipmentType: shipmentType || integration.default_shipment_type || 1,
-          cargoType: cargoType || integration.default_cargo_type || 1,
         });
 
         if (!createResult.success) {
@@ -195,10 +225,10 @@ export async function POST(request: NextRequest) {
         const shipment = await queryOne<Shipment>(
           `INSERT INTO shipments (
             store_id, order_id, integration_id, provider, 
-            external_shipment_id, tracking_number, tracking_url, barcode,
+            external_shipment_id, external_random_id, tracking_number, tracking_url,
             recipient_name, recipient_phone, recipient_address, recipient_city, recipient_zip,
-            shipment_type, cargo_type, status
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'created')
+            status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'created')
           RETURNING *`,
           [
             user.store_id,
@@ -206,16 +236,14 @@ export async function POST(request: NextRequest) {
             integration.id,
             integration.provider,
             createResult.shipmentId || null,
+            createResult.randomId || null,
             createResult.trackingNumber || null,
             createResult.trackingUrl || null,
-            createResult.barcode || null,
             order.name || shippingAddress?.name || '',
             order.phone || shippingAddress?.phone || '',
             shippingAddress?.address1 || '',
             shippingAddress?.city || '',
             shippingAddress?.zip || '',
-            shipmentType || integration.default_shipment_type || 1,
-            cargoType || integration.default_cargo_type || 1,
           ]
         );
 
@@ -226,10 +254,11 @@ export async function POST(request: NextRequest) {
         );
 
         // Emit event
-        await eventBus.emit('shipment.created', {
+        await eventBus.emitEvent('shipment.created', {
           order_id: oid,
           shipment_id: shipment?.id,
           tracking_number: createResult.trackingNumber,
+          provider: integration.provider,
         }, {
           store_id: user.store_id,
           source: 'api',
@@ -259,4 +288,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

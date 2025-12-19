@@ -11,7 +11,6 @@
 
 import {
   ShippingProviderType,
-  StoreShippingIntegration,
   CreateShipmentResult,
   ShipmentTrackingResult,
   CancelShipmentResult,
@@ -19,13 +18,14 @@ import {
   GetPickupPointsResult,
 } from '@/types/payment';
 import {
-  ShippingAdapter,
   CreateShipmentParams,
   GetTrackingParams,
   CancelShipmentParams,
   PrintLabelParams,
   GetPickupPointsParams,
 } from '../ShippingGateway';
+import { BaseShippingAdapter } from './base';
+import { ShippingAdapterConfig } from '../factory';
 
 // ============================================
 // BALDAR CONSTANTS
@@ -65,14 +65,25 @@ const ERROR_MESSAGES: Record<string, string> = {
 // BALDAR ADAPTER
 // ============================================
 
-export class BaldarAdapter implements ShippingAdapter {
+export class BaldarAdapter extends BaseShippingAdapter {
   readonly provider: ShippingProviderType = 'baldar';
 
+  constructor(config: ShippingAdapterConfig) {
+    super(config);
+  }
+
   /**
-   * Get API base URL from integration or use default
+   * Get API base URL
    */
-  private getBaseUrl(integration: StoreShippingIntegration): string {
-    return integration.api_base_url || DEFAULT_API_URL;
+  private getBaseUrl(): string {
+    return this.getCredential('api_base_url') || DEFAULT_API_URL;
+  }
+
+  /**
+   * Get customer number
+   */
+  private getCustomerNumber(): string {
+    return this.getCredential('customer_number');
   }
 
   /**
@@ -91,14 +102,16 @@ export class BaldarAdapter implements ShippingAdapter {
     const { integration, shipment } = params;
     
     try {
-      const baseUrl = this.getBaseUrl(integration);
-      const customerNumber = integration.customer_number || '';
-      const shipmentTypeCode = integration.shipment_type_code || '';
-      const cargoTypeCode = integration.cargo_type_code || '';
-      const referencePrefix = integration.reference_prefix || '';
+      const baseUrl = this.getBaseUrl();
+      const customerNumber = this.getCustomerNumber() || integration.customer_number || '';
+      const shipmentTypeCode = this.getSetting('shipment_type_code', integration.shipment_type_code || '');
+      const cargoTypeCode = this.getSetting('cargo_type_code', integration.cargo_type_code || '');
+      const referencePrefix = this.getSetting('reference_prefix', integration.reference_prefix || '');
 
       // Build reference number
       const reference = `${referencePrefix}${shipment.orderName}`;
+
+      this.debug('Creating shipment', { reference, customerNumber });
 
       // Build arguments array (P1-P42)
       const args = [
@@ -149,20 +162,11 @@ export class BaldarAdapter implements ShippingAdapter {
       // Build URL
       const url = `${baseUrl}/RunCom.Server/Request.aspx?APPNAME=run&PRGNAME=ship_create_anonymous&ARGUMENTS=${args.join(',')}`;
 
-      // Add authorization header if token is provided
-      const headers: Record<string, string> = {};
-      if (integration.api_token_encrypted) {
-        // In production, decrypt the token
-        headers['Authorization'] = `Bearer ${integration.api_token_encrypted}`;
-      }
-
       // Send request
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-      });
-
+      const response = await this.fetchWithRetry(url);
       const text = await response.text();
+
+      this.debug('Create shipment response', text.substring(0, 500));
 
       // Check if response is XML or TXT
       if (text.includes('<?xml')) {
@@ -203,7 +207,7 @@ export class BaldarAdapter implements ShippingAdapter {
         };
       }
     } catch (error: any) {
-      console.error('[BaldarAdapter] createShipment error:', error);
+      this.logError('createShipment error:', error);
       return {
         success: false,
         error: error.message || 'Failed to create shipment',
@@ -218,7 +222,7 @@ export class BaldarAdapter implements ShippingAdapter {
     const { integration, shipmentId, referenceNumber } = params;
 
     try {
-      const baseUrl = this.getBaseUrl(integration);
+      const baseUrl = this.getBaseUrl();
 
       // Build arguments
       let args: string;
@@ -235,22 +239,15 @@ export class BaldarAdapter implements ShippingAdapter {
 
       const url = `${baseUrl}/RunCom.Server/Request.aspx?APPNAME=run&PRGNAME=ship_status_xml&ARGUMENTS=${args}`;
 
-      const headers: Record<string, string> = {};
-      if (integration.api_token_encrypted) {
-        headers['Authorization'] = `Bearer ${integration.api_token_encrypted}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-      });
-
+      const response = await this.fetchWithRetry(url);
       const text = await response.text();
       
+      this.debug('Tracking response', text.substring(0, 500));
+
       // Parse XML tracking response
       return this.parseTrackingXml(text);
     } catch (error: any) {
-      console.error('[BaldarAdapter] getTracking error:', error);
+      this.logError('getTracking error:', error);
       return {
         success: false,
         error: error.message || 'Failed to get tracking',
@@ -265,23 +262,16 @@ export class BaldarAdapter implements ShippingAdapter {
     const { integration, randomId } = params;
 
     try {
-      const baseUrl = this.getBaseUrl(integration);
-      const customerNumber = integration.customer_number || '';
+      const baseUrl = this.getBaseUrl();
+      const customerNumber = this.getCustomerNumber() || integration.customer_number || '';
 
       // Build URL
       const url = `${baseUrl}/RunCom.Server/Request.aspx?APPNAME=run&PRGNAME=bitul_mishloah&ARGUMENTS=${this.buildArgument(randomId, false)},-A,-A,-A,${this.buildArgument(customerNumber, true)}`;
 
-      const headers: Record<string, string> = {};
-      if (integration.api_token_encrypted) {
-        headers['Authorization'] = `Bearer ${integration.api_token_encrypted}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-      });
-
+      const response = await this.fetchWithRetry(url);
       const text = await response.text();
+
+      this.debug('Cancel shipment response', text);
 
       // Check for success
       if (text.toLowerCase().includes('success') || text.includes('בוטל בהצלחה')) {
@@ -293,7 +283,7 @@ export class BaldarAdapter implements ShippingAdapter {
         error: text || 'Failed to cancel shipment',
       };
     } catch (error: any) {
-      console.error('[BaldarAdapter] cancelShipment error:', error);
+      this.logError('cancelShipment error:', error);
       return {
         success: false,
         error: error.message || 'Failed to cancel shipment',
@@ -308,7 +298,7 @@ export class BaldarAdapter implements ShippingAdapter {
     const { integration, shipmentId, referenceNumber } = params;
 
     try {
-      const baseUrl = this.getBaseUrl(integration);
+      const baseUrl = this.getBaseUrl();
 
       // Build arguments - shipment ID and optional reference
       let args = this.buildArgument(shipmentId, true);
@@ -319,15 +309,7 @@ export class BaldarAdapter implements ShippingAdapter {
 
       const url = `${baseUrl}/RunCom.Server/Request.aspx?APPNAME=run&PRGNAME=ship_print_ws&ARGUMENTS=${args}`;
 
-      const headers: Record<string, string> = {};
-      if (integration.api_token_encrypted) {
-        headers['Authorization'] = `Bearer ${integration.api_token_encrypted}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-      });
+      const response = await this.fetchWithRetry(url);
 
       // The response should be a PDF
       if (response.headers.get('content-type')?.includes('application/pdf')) {
@@ -344,7 +326,7 @@ export class BaldarAdapter implements ShippingAdapter {
         labelUrl: url,
       };
     } catch (error: any) {
-      console.error('[BaldarAdapter] printLabel error:', error);
+      this.logError('printLabel error:', error);
       return {
         success: false,
         error: error.message || 'Failed to print label',
@@ -359,7 +341,7 @@ export class BaldarAdapter implements ShippingAdapter {
     const { integration, city, cityCode } = params;
 
     try {
-      const baseUrl = this.getBaseUrl(integration);
+      const baseUrl = this.getBaseUrl();
 
       // Build arguments
       let args: string;
@@ -374,22 +356,13 @@ export class BaldarAdapter implements ShippingAdapter {
 
       const url = `${baseUrl}/RunCom.Server/Request.aspx?APPNAME=run&PRGNAME=ws_spotslist&ARGUMENTS=${args}`;
 
-      const headers: Record<string, string> = {};
-      if (integration.api_token_encrypted) {
-        headers['Authorization'] = `Bearer ${integration.api_token_encrypted}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-      });
-
+      const response = await this.fetchWithRetry(url);
       const text = await response.text();
 
       // Parse XML response
       return this.parsePickupPointsXml(text);
     } catch (error: any) {
-      console.error('[BaldarAdapter] getPickupPoints error:', error);
+      this.logError('getPickupPoints error:', error);
       return {
         success: false,
         error: error.message || 'Failed to get pickup points',
@@ -431,7 +404,7 @@ export class BaldarAdapter implements ShippingAdapter {
         randomId: randomIdMatch ? randomIdMatch[1] : undefined,
       };
     } catch (error) {
-      console.error('[BaldarAdapter] parseXmlResponse error:', error);
+      this.logError('parseXmlResponse error:', error);
       return { error: 'Failed to parse response' };
     }
   }
@@ -495,7 +468,7 @@ export class BaldarAdapter implements ShippingAdapter {
         statusHistory,
       };
     } catch (error) {
-      console.error('[BaldarAdapter] parseTrackingXml error:', error);
+      this.logError('parseTrackingXml error:', error);
       return {
         success: false,
         error: 'Failed to parse tracking response',
@@ -553,7 +526,7 @@ export class BaldarAdapter implements ShippingAdapter {
         points,
       };
     } catch (error) {
-      console.error('[BaldarAdapter] parsePickupPointsXml error:', error);
+      this.logError('parsePickupPointsXml error:', error);
       return {
         success: false,
         error: 'Failed to parse pickup points response',
@@ -561,17 +534,3 @@ export class BaldarAdapter implements ShippingAdapter {
     }
   }
 }
-
-// ============================================
-// SINGLETON INSTANCE
-// ============================================
-
-let baldarAdapterInstance: BaldarAdapter | null = null;
-
-export function getBaldarAdapter(): BaldarAdapter {
-  if (!baldarAdapterInstance) {
-    baldarAdapterInstance = new BaldarAdapter();
-  }
-  return baldarAdapterInstance;
-}
-

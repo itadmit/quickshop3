@@ -1,55 +1,154 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog';
-import { HiPlus, HiPencil, HiTrash, HiCheckCircle, HiXCircle, HiTruck, HiStar, HiLightningBolt } from 'react-icons/hi';
+import { 
+  HiPlus, HiPencil, HiTrash, HiCheckCircle, HiXCircle, 
+  HiStar, HiLightningBolt, HiCheck 
+} from 'react-icons/hi';
+import { Truck, Package, MessageCircle, Loader2 } from 'lucide-react';
 import { StoreShippingIntegration } from '@/types/payment';
 
-const SHIPPING_PROVIDERS = [
-  { value: 'baldar', label: 'בלדר / פוקוס דליוורי', description: 'משלוחים עד הבית' },
-  { value: 'israelpost', label: 'דואר ישראל', description: 'חבילות רגילות ודחופות' },
-  { value: 'cheetah', label: 'צ\'יטה', description: 'משלוחים מהירים' },
-  { value: 'mahirli', label: 'מהיר לי', description: 'משלוחים אקספרס' },
+// ============================================
+// SHIPPING PROVIDERS CONFIGURATION
+// ============================================
+
+interface ShippingProviderField {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'number' | 'select';
+  required: boolean;
+  placeholder?: string;
+  helpText?: string;
+}
+
+interface ShippingProviderConfig {
+  id: string;
+  name: string;
+  nameEn: string;
+  description: string;
+  logo?: string;
+  isRecommended?: boolean;
+  isComingSoon?: boolean;
+  requiredFields: ShippingProviderField[];
+  supportedFeatures: string[];
+}
+
+const SHIPPING_PROVIDERS: ShippingProviderConfig[] = [
+  {
+    id: 'baldar',
+    name: 'בלדר / פוקוס משלוחים',
+    nameEn: 'Baldar / Focus Delivery',
+    description: 'שליחויות ברחבי הארץ עם מעקב בזמן אמת, איסוף מנקודות חלוקה',
+    isRecommended: true,
+    requiredFields: [
+      {
+        key: 'customer_number',
+        label: 'מספר לקוח',
+        type: 'text',
+        required: true,
+        placeholder: '12345',
+        helpText: 'מספר הלקוח שלך בבלדר/פוקוס',
+      },
+      {
+        key: 'api_base_url',
+        label: 'כתובת API (אופציונלי)',
+        type: 'text',
+        required: false,
+        placeholder: 'https://focusdelivery.co.il',
+        helpText: 'השאר ריק לשימוש בכתובת ברירת מחדל',
+      },
+      {
+        key: 'shipment_type_code',
+        label: 'קוד סוג משלוח',
+        type: 'text',
+        required: false,
+        placeholder: '1',
+      },
+      {
+        key: 'cargo_type_code',
+        label: 'קוד סוג מטען',
+        type: 'text',
+        required: false,
+        placeholder: '1',
+      },
+      {
+        key: 'reference_prefix',
+        label: 'תחילית לאסמכתא',
+        type: 'text',
+        required: false,
+        placeholder: 'QS-',
+      },
+    ],
+    supportedFeatures: ['tracking', 'pickup_points', 'label_printing', 'cancellation'],
+  },
+  {
+    id: 'cargo',
+    name: 'קארגו שליחויות',
+    nameEn: 'Cargo',
+    description: 'שירות שליחויות ארצי מהיר ואמין',
+    isComingSoon: true,
+    requiredFields: [],
+    supportedFeatures: ['tracking', 'label_printing'],
+  },
+  {
+    id: 'lionwheel',
+    name: 'ליון וויל',
+    nameEn: 'Lionwheel',
+    description: 'פתרון משלוחים משולב עם מגוון ספקים',
+    isComingSoon: true,
+    requiredFields: [],
+    supportedFeatures: ['tracking', 'multi_carrier'],
+  },
+  {
+    id: 'chita',
+    name: 'צ\'יטה',
+    nameEn: 'Chita',
+    description: 'משלוחים מהירים ביום העסקים',
+    isComingSoon: true,
+    requiredFields: [],
+    supportedFeatures: ['tracking', 'same_day'],
+  },
+  {
+    id: 'dhl',
+    name: 'DHL',
+    nameEn: 'DHL',
+    description: 'משלוחים בינלאומיים מהמובילים בעולם',
+    isComingSoon: true,
+    requiredFields: [],
+    supportedFeatures: ['tracking', 'international'],
+  },
 ];
 
-const SHIPMENT_TYPES = [
-  { value: '1', label: 'משלוח רגיל' },
-  { value: '2', label: 'משלוח מהיר' },
-  { value: '3', label: 'משלוח עד הבית' },
-];
+const getProviderConfig = (providerId: string): ShippingProviderConfig | undefined => {
+  return SHIPPING_PROVIDERS.find(p => p.id === providerId);
+};
 
-const CARGO_TYPES = [
-  { value: '1', label: 'חבילה רגילה' },
-  { value: '2', label: 'מעטפה' },
-  { value: '3', label: 'חבילה גדולה' },
-];
+const getFeatureLabel = (feature: string): string => {
+  const labels: Record<string, string> = {
+    tracking: 'מעקב משלוחים',
+    pickup_points: 'נקודות איסוף',
+    label_printing: 'הדפסת מדבקות',
+    cancellation: 'ביטול משלוחים',
+    same_day: 'משלוח באותו יום',
+    multi_carrier: 'ריבוי ספקים',
+    international: 'משלוחים בינלאומיים',
+  };
+  return labels[feature] || feature;
+};
 
-export default function ShippingIntegrationsPage() {
+export default function ShippingSettingsPage() {
   const [integrations, setIntegrations] = useState<StoreShippingIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingIntegration, setEditingIntegration] = useState<StoreShippingIntegration | null>(null);
-  const [formData, setFormData] = useState({
-    provider: 'baldar',
-    display_name: '',
-    customer_number: '',
-    username: '',
-    password: '',
-    api_key: '',
-    is_sandbox: true,
-    is_active: false,
-    is_default: false,
-    auto_ship_enabled: false,
-    auto_ship_on_payment: false,
-    default_shipment_type: '1',
-    default_cargo_type: '1',
-    settings: {} as Record<string, any>,
-  });
+  const [selectedProvider, setSelectedProvider] = useState<ShippingProviderConfig | null>(null);
+  const [formData, setFormData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -73,49 +172,49 @@ export default function ShippingIntegrationsPage() {
     }
   };
 
-  const handleAddClick = () => {
+  const handleSelectProvider = (provider: ShippingProviderConfig) => {
+    if (provider.isComingSoon) return;
+    
+    setSelectedProvider(provider);
     setEditingIntegration(null);
     setFormData({
-      provider: 'baldar',
+      provider: provider.id,
       display_name: '',
-      customer_number: '',
-      username: '',
-      password: '',
-      api_key: '',
-      is_sandbox: true,
-      is_active: false,
-      is_default: false,
-      auto_ship_enabled: false,
-      auto_ship_on_payment: false,
-      default_shipment_type: '1',
-      default_cargo_type: '1',
-      settings: {},
+      is_sandbox: false,
+      is_active: true,
+      is_default: integrations.length === 0,
+      auto_create_shipment: false,
     });
     setShowModal(true);
   };
 
   const handleEditClick = (integration: StoreShippingIntegration) => {
+    const provider = getProviderConfig(integration.provider);
+    if (!provider) return;
+    
+    setSelectedProvider(provider);
     setEditingIntegration(integration);
+    
+    const settings = (integration.settings || {}) as Record<string, any>;
     setFormData({
       provider: integration.provider,
       display_name: integration.display_name || '',
-      customer_number: integration.customer_number || '',
-      username: integration.username || '',
-      password: '',
-      api_key: '',
-      is_sandbox: integration.is_sandbox,
+      customer_number: integration.customer_number || settings.customer_number || '',
+      api_base_url: integration.api_base_url || settings.api_base_url || '',
+      shipment_type_code: settings.shipment_type_code || '',
+      cargo_type_code: settings.cargo_type_code || '',
+      reference_prefix: settings.reference_prefix || '',
+      is_sandbox: integration.is_sandbox || false,
       is_active: integration.is_active,
       is_default: integration.is_default,
-      auto_ship_enabled: integration.auto_ship_enabled || false,
-      auto_ship_on_payment: integration.auto_ship_on_payment || false,
-      default_shipment_type: String(integration.default_shipment_type || '1'),
-      default_cargo_type: String(integration.default_cargo_type || '1'),
-      settings: (integration.settings as Record<string, any>) || {},
+      auto_create_shipment: integration.auto_create_shipment || false,
     });
     setShowModal(true);
   };
 
   const handleSave = async () => {
+    if (!selectedProvider) return;
+    
     try {
       setSaving(true);
       const url = editingIntegration 
@@ -124,25 +223,21 @@ export default function ShippingIntegrationsPage() {
       
       const body: Record<string, any> = {
         provider: formData.provider,
-        display_name: formData.display_name,
-        customer_number: formData.customer_number,
-        username: formData.username,
+        display_name: formData.display_name || null,
+        customer_number: formData.customer_number || null,
+        api_base_url: formData.api_base_url || null,
         is_sandbox: formData.is_sandbox,
         is_active: formData.is_active,
         is_default: formData.is_default,
-        auto_ship_enabled: formData.auto_ship_enabled,
-        auto_ship_on_payment: formData.auto_ship_on_payment,
-        default_shipment_type: parseInt(formData.default_shipment_type),
-        default_cargo_type: parseInt(formData.default_cargo_type),
-        settings: formData.settings,
+        auto_create_shipment: formData.auto_create_shipment,
+        settings: {
+          customer_number: formData.customer_number || '',
+          api_base_url: formData.api_base_url || '',
+          shipment_type_code: formData.shipment_type_code || '',
+          cargo_type_code: formData.cargo_type_code || '',
+          reference_prefix: formData.reference_prefix || '',
+        },
       };
-
-      if (formData.password) {
-        body.password = formData.password;
-      }
-      if (formData.api_key) {
-        body.api_key = formData.api_key;
-      }
 
       const response = await fetch(url, {
         method: editingIntegration ? 'PUT' : 'POST',
@@ -214,309 +309,335 @@ export default function ShippingIntegrationsPage() {
     }
   };
 
-  const getProviderInfo = (providerValue: string) => {
-    return SHIPPING_PROVIDERS.find(p => p.value === providerValue) || { label: providerValue, description: '' };
-  };
+  // Separate recommended and other providers
+  const recommendedProvider = SHIPPING_PROVIDERS.find(p => p.isRecommended);
+  const otherProviders = SHIPPING_PROVIDERS.filter(p => !p.isRecommended);
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">הגדרות משלוחים</h1>
-          <p className="text-gray-500 mt-1">ניהול אינטגרציות משלוחים לחנות שלך</p>
-        </div>
-        <Button onClick={handleAddClick} className="flex items-center gap-2">
-          הוסף אינטגרציה
-          <HiPlus className="w-4 h-4" />
-        </Button>
+    <div className="p-6 space-y-8 max-w-5xl mx-auto" dir="rtl">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">הגדרות משלוחים</h1>
+        <p className="text-gray-500 mt-1">ניהול ספקי משלוחים והגדרות שליחויות</p>
       </div>
 
-      {/* Information Card */}
-      <Card>
-        <div className="p-4 bg-blue-50 border-b border-blue-100">
-          <div className="flex items-start gap-3">
-            <HiTruck className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-blue-900">כיצד זה עובד?</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                הוסף את פרטי חברת המשלוחים שלך (למשל: בלדר/פוקוס דליוורי) ותוכל לשלוח הזמנות ישירות מהדשבורד.
-                אפשר גם להפעיל שליחה אוטומטית לאחר תשלום!
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {loading ? (
-        <div className="animate-pulse space-y-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-          ))}
-        </div>
-      ) : integrations.length === 0 ? (
-        <Card>
-          <div className="p-12 text-center">
-            <HiTruck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">אין אינטגרציות משלוחים</h3>
-            <p className="text-gray-500 mb-6">הוסף אינטגרציה כדי לשלוח הזמנות ישירות לחברת השליחויות</p>
-            <Button onClick={handleAddClick} className="flex items-center gap-2 mx-auto">
-              הוסף אינטגרציה ראשונה
-              <HiPlus className="w-4 h-4" />
-            </Button>
-          </div>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {integrations.map((integration) => {
-            const providerInfo = getProviderInfo(integration.provider);
-            return (
-              <Card key={integration.id}>
-                <div className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-3 rounded-lg ${integration.is_active ? 'bg-green-100' : 'bg-gray-100'}`}>
-                        <HiTruck className={`w-6 h-6 ${integration.is_active ? 'text-green-600' : 'text-gray-400'}`} />
+      {/* Active Integrations */}
+      {integrations.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">ספקי משלוחים מחוברים</h2>
+          <div className="space-y-3">
+            {integrations.map((integration) => {
+              const providerConfig = getProviderConfig(integration.provider);
+              return (
+                <div
+                  key={integration.id}
+                  className="bg-white border border-gray-200 rounded-lg p-4 hover:border-emerald-300 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2.5 rounded-lg ${integration.is_active ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                        <Truck className={`w-5 h-5 ${integration.is_active ? 'text-emerald-600' : 'text-gray-400'}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {integration.display_name || providerInfo.label}
-                          </h3>
+                          <span className="font-medium text-gray-900">
+                            {integration.display_name || providerConfig?.name || integration.provider}
+                          </span>
                           {integration.is_default && (
-                            <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700 rounded-full flex items-center gap-1">
+                            <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full flex items-center gap-1">
                               <HiStar className="w-3 h-3" />
                               ברירת מחדל
                             </span>
                           )}
-                          {integration.auto_ship_on_payment && (
+                          {integration.auto_create_shipment && (
                             <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full flex items-center gap-1">
                               <HiLightningBolt className="w-3 h-3" />
                               אוטומטי
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{providerInfo.description}</p>
-                        <div className="flex items-center gap-4 mt-2 text-sm">
-                          <span className={`px-2 py-0.5 rounded ${integration.is_sandbox ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                            {integration.is_sandbox ? 'סביבת בדיקה' : 'סביבת ייצור'}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded ${integration.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {integration.is_active ? 'פעיל' : 'לא פעיל'}
-                          </span>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                           {integration.customer_number && (
-                            <span className="text-gray-400">
-                              מספר לקוח: {integration.customer_number}
-                            </span>
+                            <span>מספר לקוח: {integration.customer_number}</span>
                           )}
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            integration.is_sandbox 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {integration.is_sandbox ? 'בדיקה' : 'ייצור'}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => toggleActive(integration)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        integration.is_active
-                          ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                    >
-                      {integration.is_active ? (
-                        <HiCheckCircle className="w-6 h-6" />
-                      ) : (
-                        <HiXCircle className="w-6 h-6" />
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditClick(integration)}
-                    >
-                      <HiPencil className="w-4 h-4 ml-1" />
-                      ערוך
-                    </Button>
-                    {!integration.is_default && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setAsDefault(integration.id)}
+                    <div className="flex items-center gap-2">
+                      {/* Toggle */}
+                      <button
+                        onClick={() => toggleActive(integration)}
+                        dir="ltr"
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          integration.is_active ? 'bg-emerald-500' : 'bg-gray-200'
+                        }`}
                       >
-                        <HiStar className="w-4 h-4 ml-1" />
-                        הגדר כברירת מחדל
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDelete(integration.id)}
-                    >
-                      <HiTrash className="w-4 h-4 ml-1" />
-                      מחק
-                    </Button>
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            integration.is_active ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                      <button
+                        onClick={() => handleEditClick(integration)}
+                        className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="ערוך"
+                      >
+                        <HiPencil className="w-4 h-4" />
+                      </button>
+                      {!integration.is_default && (
+                        <button
+                          onClick={() => setAsDefault(integration.id)}
+                          className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="הגדר כברירת מחדל"
+                        >
+                          <HiStar className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(integration.id)}
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="מחק"
+                      >
+                        <HiTrash className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </Card>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </section>
       )}
+
+      {/* Recommended Provider */}
+      {recommendedProvider && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">ספק מומלץ</h2>
+          <div
+            onClick={() => handleSelectProvider(recommendedProvider)}
+            className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl p-6 cursor-pointer hover:border-emerald-400 transition-all"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-emerald-100 rounded-xl">
+                <Truck className="w-8 h-8 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-gray-900">{recommendedProvider.name}</h3>
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500 text-white rounded-full">
+                    מומלץ
+                  </span>
+                </div>
+                <p className="text-gray-600 mt-1">{recommendedProvider.description}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {recommendedProvider.supportedFeatures.map(feature => (
+                    <span
+                      key={feature}
+                      className="px-2 py-1 text-xs bg-white/70 text-emerald-700 rounded-full border border-emerald-200"
+                    >
+                      {getFeatureLabel(feature)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <HiPlus className="w-4 h-4 ml-1" />
+                הוסף
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Other Providers */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">ספקים נוספים</h2>
+        <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+          {otherProviders.map((provider) => (
+            <div
+              key={provider.id}
+              onClick={() => !provider.isComingSoon && handleSelectProvider(provider)}
+              className={`flex items-center justify-between p-4 transition-colors ${
+                provider.isComingSoon 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:bg-gray-50 cursor-pointer'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <Truck className="w-5 h-5 text-gray-500" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">{provider.name}</span>
+                    {provider.isComingSoon && (
+                      <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded-full">
+                        בקרוב
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">{provider.description}</p>
+                </div>
+              </div>
+              {!provider.isComingSoon && (
+                <HiPlus className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section className="grid md:grid-cols-2 gap-4">
+        <a
+          href="https://wa.me/972552554432?text=שלום, אני מעוניין להצטרף כחברת שליחויות לקוויק שופ"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl hover:border-emerald-400 transition-colors"
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <Package className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-emerald-900">חברות שליחויות?</h3>
+              <p className="text-sm text-emerald-700 mt-1">
+                צרו איתנו קשר על מנת להצטרף למשפחת קוויק שופ
+              </p>
+            </div>
+          </div>
+        </a>
+
+        <a
+          href="https://wa.me/972552554432?text=שלום, אני צריך עזרה בחיבור ספק משלוחים קיים"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:border-blue-400 transition-colors"
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MessageCircle className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-blue-900">שולחים עם חברה אחרת?</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                צרו איתנו קשר ונשמח לעזור לכם לחבר את ספק המשלוחים הקיים שלכם
+              </p>
+            </div>
+          </div>
+        </a>
+      </section>
 
       {/* Add/Edit Dialog */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editingIntegration ? 'ערוך אינטגרציית משלוחים' : 'הוסף אינטגרציית משלוחים חדשה'}
+              {editingIntegration ? 'ערוך ספק משלוחים' : `הוסף ${selectedProvider?.name || 'ספק משלוחים'}`}
             </DialogTitle>
             <DialogDescription>
-              הזן את פרטי חברת השליחויות שלך
+              הזן את פרטי ההתחברות לספק המשלוחים
             </DialogDescription>
           </DialogHeader>
-          <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
-            <div>
-              <Label>ספק משלוחים *</Label>
-              <Select
-                value={formData.provider}
-                onValueChange={(value) => setFormData({ ...formData, provider: value })}
-                disabled={!!editingIntegration}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue>
-                    {getProviderInfo(formData.provider).label}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {SHIPPING_PROVIDERS.map((provider) => (
-                    <SelectItem key={provider.value} value={provider.value}>
-                      <div>
-                        <div className="font-medium">{provider.label}</div>
-                        <div className="text-xs text-gray-500">{provider.description}</div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+            {selectedProvider?.requiredFields.map((field) => (
+              <div key={field.key}>
+                <Label>
+                  {field.label} {field.required && '*'}
+                </Label>
+                <Input
+                  type={field.type === 'password' ? 'password' : 'text'}
+                  value={formData[field.key] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                  placeholder={field.placeholder}
+                  className="mt-2"
+                />
+                {field.helpText && (
+                  <p className="text-xs text-gray-500 mt-1">{field.helpText}</p>
+                )}
+              </div>
+            ))}
 
             <div>
               <Label>שם תצוגה (אופציונלי)</Label>
               <Input
-                value={formData.display_name}
+                value={formData.display_name || ''}
                 onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                placeholder="למשל: משלוח עד הבית"
+                placeholder="למשל: משלוח מהיר"
                 className="mt-2"
               />
             </div>
 
-            {(formData.provider === 'baldar') && (
-              <>
+            <div className="pt-4 border-t space-y-3">
+              <div className="flex items-center justify-between">
                 <div>
-                  <Label>מספר לקוח *</Label>
-                  <Input
-                    value={formData.customer_number}
-                    onChange={(e) => setFormData({ ...formData, customer_number: e.target.value })}
-                    placeholder="הזן מספר לקוח"
-                    className="mt-2"
+                  <Label className="text-sm">סביבת ייצור</Label>
+                  <p className="text-xs text-gray-500">השבת עבור סביבת בדיקה (Sandbox)</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, is_sandbox: !formData.is_sandbox })}
+                  dir="ltr"
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    !formData.is_sandbox ? 'bg-emerald-500' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      !formData.is_sandbox ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">הפעל ספק</Label>
+                  <p className="text-xs text-gray-500">הספק יהיה זמין לשליחת הזמנות</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
+                  dir="ltr"
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    formData.is_active ? 'bg-emerald-500' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      formData.is_active ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>סוג משלוח ברירת מחדל</Label>
-                    <Select
-                      value={formData.default_shipment_type}
-                      onValueChange={(value) => setFormData({ ...formData, default_shipment_type: value })}
-                    >
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SHIPMENT_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>סוג חבילה ברירת מחדל</Label>
-                    <Select
-                      value={formData.default_cargo_type}
-                      onValueChange={(value) => setFormData({ ...formData, default_cargo_type: value })}
-                    >
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CARGO_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">שליחה אוטומטית</Label>
+                  <p className="text-xs text-gray-500">שלח הזמנות אוטומטית אחרי תשלום מוצלח</p>
                 </div>
-              </>
-            )}
-
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_sandbox"
-                  checked={formData.is_sandbox}
-                  onChange={(e) => setFormData({ ...formData, is_sandbox: e.target.checked })}
-                  className="w-4 h-4 text-orange-600 border-gray-300 rounded"
-                />
-                <Label htmlFor="is_sandbox" className="cursor-pointer text-sm">
-                  סביבת בדיקה
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-green-600 border-gray-300 rounded"
-                />
-                <Label htmlFor="is_active" className="cursor-pointer text-sm">
-                  פעיל
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_default"
-                  checked={formData.is_default}
-                  onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
-                  className="w-4 h-4 text-yellow-600 border-gray-300 rounded"
-                />
-                <Label htmlFor="is_default" className="cursor-pointer text-sm">
-                  ברירת מחדל
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="auto_ship_on_payment"
-                  checked={formData.auto_ship_on_payment}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    auto_ship_on_payment: e.target.checked,
-                    auto_ship_enabled: e.target.checked 
-                  })}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded"
-                />
-                <Label htmlFor="auto_ship_on_payment" className="cursor-pointer text-sm">
-                  שליחה אוטומטית לאחר תשלום
-                </Label>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, auto_create_shipment: !formData.auto_create_shipment })}
+                  dir="ltr"
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    formData.auto_create_shipment ? 'bg-purple-500' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      formData.auto_create_shipment ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </div>
@@ -526,9 +647,15 @@ export default function ShippingIntegrationsPage() {
             </Button>
             <Button 
               onClick={handleSave} 
-              disabled={saving || !formData.provider || (formData.provider === 'baldar' && !formData.customer_number)}
+              disabled={saving}
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {saving ? 'שומר...' : editingIntegration ? 'עדכן' : 'הוסף'}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  שומר...
+                </>
+              ) : editingIntegration ? 'עדכן' : 'הוסף'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -536,4 +663,3 @@ export default function ShippingIntegrationsPage() {
     </div>
   );
 }
-

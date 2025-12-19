@@ -7,15 +7,8 @@
 
 import { eventBus } from '../eventBus';
 import { query, queryOne } from '@/lib/db';
-import { getStoreShippingGateway } from '@/lib/shipping';
-
-interface ShippingIntegration {
-  id: number;
-  provider: string;
-  auto_ship_on_payment: boolean;
-  is_active: boolean;
-  settings: Record<string, any>;
-}
+import { getStoreShippingAdapter, getStoreShippingIntegration } from '@/lib/shipping';
+import { StoreShippingIntegration } from '@/types/payment';
 
 // מאזין ל-order.paid ושולח למשלוח אם מופעל
 eventBus.on('order.paid', async (event) => {
@@ -27,14 +20,14 @@ eventBus.on('order.paid', async (event) => {
     }
 
     // בדוק אם יש הגדרת משלוח אוטומטי לחנות
-    const shippingIntegration = await queryOne<ShippingIntegration>(
+    const integration = await queryOne<StoreShippingIntegration>(
       `SELECT * FROM store_shipping_integrations 
-       WHERE store_id = $1 AND is_active = true AND auto_ship_on_payment = true
+       WHERE store_id = $1 AND is_active = true AND auto_create_shipment = true
        ORDER BY is_default DESC LIMIT 1`,
       [event.store_id]
     );
 
-    if (!shippingIntegration) {
+    if (!integration) {
       console.log(`[Shipping Listener] No auto-ship enabled for store ${event.store_id}`);
       return;
     }
@@ -72,10 +65,10 @@ eventBus.on('order.paid', async (event) => {
       return;
     }
 
-    // קבל את ה-gateway
-    const gateway = await getStoreShippingGateway(event.store_id);
-    if (!gateway) {
-      console.warn(`[Shipping Listener] No shipping gateway found for store ${event.store_id}`);
+    // קבל את ה-adapter
+    const adapter = await getStoreShippingAdapter(event.store_id);
+    if (!adapter) {
+      console.warn(`[Shipping Listener] No shipping adapter found for store ${event.store_id}`);
       return;
     }
 
@@ -85,22 +78,24 @@ eventBus.on('order.paid', async (event) => {
       : (fullOrder.shipping_address || {});
 
     // צור משלוח
-    const shipmentResult = await gateway.createShipment({
-      orderId: fullOrder.id,
-      orderNumber: fullOrder.order_number || `#${fullOrder.id}`,
-      recipient: {
-        name: `${shippingAddress.first_name || ''} ${shippingAddress.last_name || ''}`.trim() || fullOrder.name,
+    const shipmentResult = await adapter.createShipment({
+      integration,
+      shipment: {
+        orderId: fullOrder.id,
+        orderName: fullOrder.order_number || `#${fullOrder.id}`,
+        consigneeName: `${shippingAddress.first_name || ''} ${shippingAddress.last_name || ''}`.trim() || fullOrder.name,
         phone: shippingAddress.phone || fullOrder.phone || '',
         email: fullOrder.email || '',
-        address: shippingAddress.address1 || '',
         city: shippingAddress.city || '',
-        zip: shippingAddress.zip || '',
-        country: shippingAddress.country || 'Israel',
+        street: shippingAddress.address1 || shippingAddress.street || '',
+        houseNumber: shippingAddress.house_number || '',
+        entrance: shippingAddress.entrance || '',
+        floor: shippingAddress.floor || '',
+        apartment: shippingAddress.apartment || '',
+        addressRemarks: shippingAddress.notes || '',
+        shipmentRemarks: `הזמנה ${fullOrder.order_number || fullOrder.id}`,
+        numberOfPackages: 1,
       },
-      packages: [{
-        weight: 1, // Default weight
-        description: `הזמנה ${fullOrder.order_number || fullOrder.id}`,
-      }],
     });
 
     if (!shipmentResult.success) {
@@ -111,15 +106,18 @@ eventBus.on('order.paid', async (event) => {
     // שמור את המשלוח ב-DB
     await query(
       `INSERT INTO shipments (
-        store_id, order_id, provider, external_shipment_id,
+        store_id, order_id, integration_id, provider, 
+        external_shipment_id, external_random_id,
         tracking_number, tracking_url, status, label_url,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())`,
       [
         event.store_id,
         order.id,
-        gateway.provider,
+        integration.id,
+        integration.provider,
         shipmentResult.shipmentId || null,
+        shipmentResult.randomId || null,
         shipmentResult.trackingNumber || null,
         shipmentResult.trackingUrl || null,
         'created',
@@ -143,7 +141,7 @@ eventBus.on('order.paid', async (event) => {
       order_id: order.id,
       shipment_id: shipmentResult.shipmentId,
       tracking_number: shipmentResult.trackingNumber,
-      provider: gateway.provider,
+      provider: integration.provider,
       auto_created: true,
     }, {
       store_id: event.store_id,
@@ -155,4 +153,3 @@ eventBus.on('order.paid', async (event) => {
     // לא נכשל את האירוע אם יצירת המשלוח נכשלה
   }
 });
-
