@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ShoppingCart, Check, Sparkles, Brain, Zap, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShoppingCart, Check, Sparkles, Brain, Zap, Target, Loader2 } from 'lucide-react';
 import { 
   AdvisorQuizWithQuestions, 
   AdvisorQuestionWithAnswers,
@@ -10,6 +11,8 @@ import {
   AdvisorResult,
   SessionAnswer,
 } from '@/types/advisor';
+import { useCart } from '@/hooks/useCart';
+import { useCartOpen } from '@/hooks/useCartOpen';
 
 // AI Thinking Steps - שלבים שמוצגים אחד אחד
 const AI_LOADING_STEPS = [
@@ -226,6 +229,11 @@ export function AdvisorWizard({
   const [results, setResults] = useState<AdvisorResult[] | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [addingProductId, setAddingProductId] = useState<number | null>(null);
+
+  // Cart hooks - use existing cart system
+  const { addToCart } = useCart();
+  const { openCart } = useCartOpen();
 
   const currentQuestion = quiz.questions[currentIndex];
   const totalQuestions = quiz.questions.length;
@@ -235,6 +243,38 @@ export function AdvisorWizard({
   const [aiPhrase] = useState(() => 
     AI_RESPONSE_PHRASES[Math.floor(Math.random() * AI_RESPONSE_PHRASES.length)]
   );
+
+  // Handle add to cart - uses existing cart system and opens side cart
+  const handleAddToCart = async (result: AdvisorResult) => {
+    if (addingProductId) return; // Prevent double-click
+    
+    setAddingProductId(result.product_id);
+    
+    try {
+      const success = await addToCart({
+        variant_id: result.variant_id || result.product_id, // Use variant if available
+        product_id: result.product_id,
+        product_title: result.title,
+        variant_title: '',
+        price: result.compare_at_price && result.compare_at_price > result.price 
+          ? result.price 
+          : result.price,
+        quantity: 1,
+        image: result.image || undefined,
+      });
+
+      if (success) {
+        // Open cart immediately
+        openCart();
+        // Also call the optional callback
+        onAddToCart?.(result.product_id);
+      }
+    } catch (error) {
+      console.error('[AdvisorWizard] Error adding to cart:', error);
+    } finally {
+      setAddingProductId(null);
+    }
+  };
 
   const isAnswerSelected = (answerId: number) => {
     const selected = answers.get(currentQuestion?.id);
@@ -636,7 +676,7 @@ export function AdvisorWizard({
                     )}
 
                     <div className="flex gap-2 pt-2">
-                      <a
+                      <Link
                         href={`/shops/${storeSlug}/products/${result.handle}`}
                         className={`
                           flex-1 py-2.5 text-center font-semibold border-2 transition-colors hover:bg-gray-50
@@ -649,18 +689,23 @@ export function AdvisorWizard({
                         }}
                       >
                         צפייה
-                      </a>
+                      </Link>
                       <button
-                        onClick={() => onAddToCart?.(result.product_id)}
+                        onClick={() => handleAddToCart(result)}
+                        disabled={addingProductId === result.product_id}
                         className={`
-                          flex-1 py-2.5 flex items-center justify-center gap-2 font-semibold text-white transition-opacity hover:opacity-90
+                          flex-1 py-2.5 flex items-center justify-center gap-2 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70
                           ${quiz.button_style === 'rounded' ? 'rounded-lg' : 
                             quiz.button_style === 'pill' ? 'rounded-full' : 'rounded-none'}
                         `}
                         style={{ backgroundColor: quiz.primary_color }}
                       >
-                        <ShoppingCart className="h-4 w-4" />
-                        הוסף
+                        {addingProductId === result.product_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ShoppingCart className="h-4 w-4" />
+                        )}
+                        {addingProductId === result.product_id ? 'מוסיף...' : 'הוסף'}
                       </button>
                     </div>
                   </div>
