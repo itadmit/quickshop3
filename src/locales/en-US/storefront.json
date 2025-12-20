@@ -157,10 +157,13 @@
   "newsletter": {
     "email_placeholder": "Enter your email address",
     "subscribe": "Subscribe",
+    "subscribe_now": "Subscribe Now",
     "subscribing": "Subscribing...",
     "success": "Successfully subscribed!",
     "error": "An error occurred while subscribing",
-    "invalid_email": "Please enter a valid email address"
+    "invalid_email": "Please enter a valid email address",
+    "privacy_consent": "I agree to the",
+    "privacy_policy": "Privacy Policy"
   },
   "contact": {
     "title": "Contact Us",

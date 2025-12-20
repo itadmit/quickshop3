@@ -182,10 +182,13 @@
   "newsletter": {
     "email_placeholder": "הזן את כתובת האימייל שלך",
     "subscribe": "הירשם",
+    "subscribe_now": "הירשם עכשיו",
     "subscribing": "נרשם...",
     "success": "נרשמת בהצלחה!",
     "error": "אירעה שגיאה בהרשמה",
-    "invalid_email": "אנא הזן כתובת אימייל תקינה"
+    "invalid_email": "אנא הזן כתובת אימייל תקינה",
+    "privacy_consent": "אני מסכים/ה ל",
+    "privacy_policy": "מדיניות הפרטיות"
   },
   "contact": {
     "title": "צור קשר",
