@@ -32,13 +32,13 @@ function BillingSuccessContent() {
             התשלום עבר בהצלחה
           </p>
           <p className="text-gray-500 mb-8">
-            המנוי שלך ל-<span className="font-semibold text-primary">{planName}</span> פעיל
+            המנוי שלך ל-<span className="font-semibold text-[#10b981]">{planName}</span> פעיל
           </p>
 
           {/* What's next */}
           <div className="bg-gray-50 rounded-xl p-6 mb-8 text-right">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <Sparkles className="h-5 w-5 text-[#10b981]" />
               מה עכשיו?
             </h3>
             <ul className="space-y-2 text-gray-600">
@@ -57,7 +57,7 @@ function BillingSuccessContent() {
           {/* CTA */}
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition w-full justify-center"
+            className="inline-flex items-center gap-2 bg-[#10b981] text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-[#059669] transition w-full justify-center"
           >
             עבור לדשבורד
             <ArrowLeft className="h-5 w-5" />
@@ -66,7 +66,7 @@ function BillingSuccessContent() {
           {/* Support link */}
           <p className="mt-6 text-gray-500 text-sm">
             יש לך שאלות?{' '}
-            <a href="mailto:support@quickshop.co.il" className="text-primary hover:underline">
+            <a href="mailto:support@quickshop.co.il" className="text-[#10b981] hover:underline">
               צור קשר עם התמיכה
             </a>
           </p>
@@ -80,7 +80,7 @@ export default function BillingSuccessPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#10b981]" />
       </div>
     }>
       <BillingSuccessContent />

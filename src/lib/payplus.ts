@@ -211,6 +211,8 @@ export class PayPlusClient {
     }
     
     console.log(`[PayPlus] ${method} ${endpoint}`);
+    console.log(`[PayPlus] URL: ${url}`);
+    console.log(`[PayPlus] API Key (first 8 chars): ${this.config.apiKey?.substring(0, 8)}...`);
     
     const response = await fetch(url, options);
     const data = await response.json();

@@ -576,32 +576,21 @@ export default function BillingPage() {
         )}
 
         {/* Pricing Plans */}
-        <div className="mb-12">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900">תוכניות מחירים</h2>
-            <p className="text-gray-500 mt-2">בחר את התוכנית המתאימה ביותר לעסק שלך</p>
+        <div className="mb-10">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900">תוכניות מחירים</h2>
+            <p className="text-gray-500 text-sm mt-1">בחר את התוכנית המתאימה ביותר לעסק שלך</p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {plans.map((plan) => {
               const isCurrentPlan = status?.subscription?.plan.name === plan.name;
               
               return (
                 <div
                   key={plan.id}
-                  className={`relative flex flex-col bg-white rounded-2xl transition-all duration-300 ${
-                    plan.is_recommended 
-                      ? 'border-2 border-primary shadow-xl scale-105 z-10' 
-                      : 'border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'
-                  } ${isCurrentPlan ? 'ring-2 ring-primary ring-offset-4' : ''}`}
+                  className={`relative flex flex-col bg-white rounded-xl transition-all duration-300 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md ${isCurrentPlan ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                 >
-                  {plan.is_recommended && (
-                    <div className="absolute -top-4 right-1/2 translate-x-1/2">
-                      <span className="bg-black text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-md tracking-wide whitespace-nowrap">
-                        מומלץ
-                      </span>
-                    </div>
-                  )}
                   
                   {isCurrentPlan && (
                     <div className="absolute top-4 right-4">
@@ -611,30 +600,36 @@ export default function BillingPage() {
                     </div>
                   )}
 
-                  <div className="p-8 pb-0 text-center">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.display_name}</h3>
-                    <p className="text-gray-500 h-10 flex items-center justify-center">{plan.description}</p>
+                  <div className="p-6 pb-0 text-center">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">
+                      <span className="font-black tracking-tight">Quick Shop</span>
+                      {' '}
+                      <span className={`font-normal ${plan.name === 'pro' ? 'text-[#10b981]' : 'text-gray-600'}`}>
+                        {plan.name === 'pro' ? 'Pro' : 'Lite'}
+                      </span>
+                    </h3>
+                    <p className="text-gray-500 text-sm h-8 flex items-center justify-center">{plan.description}</p>
                     
-                    <div className="mt-8 mb-8">
+                    <div className="mt-6 mb-6">
                       <div className="flex items-baseline justify-center gap-1 text-gray-900">
-                        <span className="text-5xl font-bold tracking-tight">{formatPrice(plan.price)}</span>
+                        <span className="text-4xl font-bold tracking-tight">{formatPrice(plan.price)}</span>
                       </div>
-                      <div className="text-gray-500 font-medium mt-1">לחודש</div>
-                      <div className="text-gray-400 text-sm mt-1">
-                        + {formatPrice(plan.vat_amount)} מע"מ
+                      <div className="text-gray-500 font-medium text-sm mt-1">לחודש</div>
+                      <div className="text-gray-400 text-xs mt-1">
+                        + מע״מ
                       </div>
                       {plan.commission_display && (
-                        <div className="mt-3 inline-block bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-sm font-bold border border-orange-100">
+                        <div className="mt-2 inline-block bg-orange-50 text-orange-700 px-2.5 py-0.5 rounded-full text-xs font-bold border border-orange-100">
                           + {plan.commission_display} עמלת עסקאות
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="p-8 pt-0 flex-1 flex flex-col">
-                    <div className="border-t border-gray-100 my-6"></div>
+                  <div className="p-6 pt-0 flex-1 flex flex-col">
+                    <div className="border-t border-gray-100 my-4"></div>
                     
-                    <ul className="space-y-4 mb-8 flex-1">
+                    <ul className="space-y-2.5 mb-6 flex-1 text-sm">
                       {plan.has_checkout ? (
                         <>
                           <FeatureItem text="כל הפיצ'רים כלולים" />
@@ -657,29 +652,27 @@ export default function BillingPage() {
                     <button
                       onClick={() => handleSubscribe(plan.name)}
                       disabled={subscribing || isCurrentPlan}
-                      className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 ${
+                      className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                         isCurrentPlan
                           ? 'bg-gray-100 text-gray-400 cursor-default'
-                          : plan.is_recommended
-                            ? 'bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-0.5'
-                            : 'bg-white text-gray-900 border-2 border-gray-200 hover:border-gray-900 hover:-translate-y-0.5'
+                          : 'bg-white text-gray-900 border-2 border-gray-200 hover:border-gray-900 hover:-translate-y-0.5'
                       }`}
                     >
                       {subscribing ? (
-                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <Loader2 className="h-5 w-5 animate-spin" />
                       ) : isCurrentPlan ? (
                         <>
-                          <CheckCircle className="h-6 w-6" />
+                          <CheckCircle className="h-5 w-5" />
                           התוכנית הנוכחית
                         </>
                       ) : status?.subscription ? (
                         <>
-                          <ArrowUpRight className="h-6 w-6" />
+                          <ArrowUpRight className="h-5 w-5" />
                           עבור לתוכנית זו
                         </>
                       ) : (
                         <>
-                          <Zap className="h-6 w-6" />
+                          <Zap className="h-5 w-5" />
                           התחל עכשיו
                         </>
                       )}
@@ -776,8 +769,8 @@ export default function BillingPage() {
 
 function FeatureItem({ text, highlighted = false, excluded = false }: { text: string; highlighted?: boolean; excluded?: boolean }) {
   return (
-    <li className={`flex items-start gap-3 ${excluded ? 'opacity-50' : ''}`}>
-      <div className={`mt-0.5 h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${
+    <li className={`flex items-center gap-2 ${excluded ? 'opacity-50' : ''}`}>
+      <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${
         excluded 
           ? 'bg-gray-100 text-gray-400' 
           : highlighted 
@@ -785,12 +778,12 @@ function FeatureItem({ text, highlighted = false, excluded = false }: { text: st
             : 'bg-green-100 text-green-600'
       }`}>
         {excluded ? (
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3 w-3" />
         ) : (
-          <CheckCircle className="h-3.5 w-3.5" />
+          <CheckCircle className="h-3 w-3" />
         )}
       </div>
-      <span className={`text-sm leading-6 ${highlighted ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+      <span className={`text-xs leading-5 ${highlighted ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
         {text}
       </span>
     </li>
