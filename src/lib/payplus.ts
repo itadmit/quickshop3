@@ -169,7 +169,8 @@ export class PayPlusClient {
       terminalUid: config?.terminalUid || process.env.PAYPLUS_TERMINAL_UID || '',
       cashierUid: config?.cashierUid || process.env.PAYPLUS_CASHIER_UID || '',
       paymentPageUid: config?.paymentPageUid || process.env.PAYPLUS_PAYMENT_PAGE_UID || '',
-      apiUrl: config?.apiUrl || process.env.PAYPLUS_API_URL || 'https://restapi.payplus.co.il/api/v1.0',
+      // Default to Staging for safety - change to production URL when ready
+      apiUrl: config?.apiUrl || process.env.PAYPLUS_API_URL || 'https://restapidev.payplus.co.il/api/v1.0',
     };
     
     if (!this.config.apiKey || !this.config.secretKey) {
