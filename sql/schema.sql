@@ -3042,6 +3042,339 @@ CREATE INDEX idx_advisor_sessions_converted ON advisor_sessions(converted_to_ord
 COMMENT ON TABLE advisor_sessions IS 'יועץ חכם - מעקב הפעלות לאנליטיקס';
 
 -- ============================================
+-- 31. QUICKSHOP BILLING SYSTEM (מערכת גבייה של QuickShop)
+-- ============================================
+
+-- Subscription Plans (תוכניות מנוי)
+CREATE TABLE qs_subscription_plans (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,           -- 'lite' / 'pro'
+  display_name VARCHAR(100) NOT NULL,         -- 'Quick Shop Lite'
+  description TEXT,                           -- תיאור התוכנית
+  
+  -- Pricing
+  price NUMERIC(10,2) NOT NULL,               -- 299 / 399
+  vat_percentage NUMERIC(5,2) DEFAULT 18,     -- אחוז מע"מ
+  
+  -- Commissions
+  commission_percentage NUMERIC(5,4) DEFAULT 0, -- 0 / 0.005 (0.5%)
+  commission_vat_percentage NUMERIC(5,2) DEFAULT 18,
+  
+  -- Features (מה כלול בתוכנית)
+  features JSONB DEFAULT '{}',                -- רשימת פיצ'רים
+  max_products INT,                           -- NULL = unlimited
+  max_orders_per_month INT,                   -- NULL = unlimited
+  has_checkout BOOLEAN DEFAULT true,          -- האם יש צ'קאאוט (לייט = לא)
+  
+  -- PayPlus Integration
+  payplus_page_uid VARCHAR(100),              -- UID דף תשלום בפייפלוס (עם הוראת קבע)
+  payplus_product_uid VARCHAR(100),           -- UID מוצר בפייפלוס
+  
+  -- Status
+  is_active BOOLEAN DEFAULT true,
+  display_order INT DEFAULT 0,                -- סדר הצגה
+  is_recommended BOOLEAN DEFAULT false,       -- "מומלץ"
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_qs_subscription_plans_name ON qs_subscription_plans(name);
+CREATE INDEX idx_qs_subscription_plans_active ON qs_subscription_plans(is_active);
+
+COMMENT ON TABLE qs_subscription_plans IS 'תוכניות מנוי של QuickShop - Lite ו-Pro';
+
+-- Store Subscriptions (מנויי חנויות)
+CREATE TABLE qs_store_subscriptions (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  plan_id INT REFERENCES qs_subscription_plans(id),
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'trial' CHECK (status IN (
+    'trial',      -- תקופת ניסיון
+    'active',     -- פעיל
+    'past_due',   -- תשלום חייב
+    'blocked',    -- חסום (לא שילם)
+    'cancelled',  -- בוטל (פעיל עד סוף תקופה)
+    'expired'     -- פג תוקף
+  )),
+  
+  -- Trial Period
+  trial_ends_at TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- Billing Cycle
+  current_period_start TIMESTAMP WITHOUT TIME ZONE,
+  current_period_end TIMESTAMP WITHOUT TIME ZONE,
+  next_payment_date TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- PayPlus Integration
+  payplus_customer_uid VARCHAR(100),          -- UID לקוח בפייפלוס
+  
+  -- Payment History
+  last_payment_date TIMESTAMP WITHOUT TIME ZONE,
+  last_payment_amount NUMERIC(10,2),
+  last_payment_status VARCHAR(20),            -- success, failed
+  failed_payment_count INT DEFAULT 0,         -- מספר נסיונות כושלים רצופים
+  
+  -- Cancellation
+  cancel_at_period_end BOOLEAN DEFAULT false, -- האם לבטל בסוף תקופה
+  cancelled_at TIMESTAMP WITHOUT TIME ZONE,
+  cancellation_reason TEXT,
+  
+  -- Plan Changes
+  scheduled_plan_id INT REFERENCES qs_subscription_plans(id), -- תוכנית מתוכננת לשינוי
+  scheduled_change_date TIMESTAMP WITHOUT TIME ZONE,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  
+  UNIQUE(store_id)
+);
+
+CREATE INDEX idx_qs_store_subscriptions_store_id ON qs_store_subscriptions(store_id);
+CREATE INDEX idx_qs_store_subscriptions_status ON qs_store_subscriptions(status);
+CREATE INDEX idx_qs_store_subscriptions_plan_id ON qs_store_subscriptions(plan_id);
+CREATE INDEX idx_qs_store_subscriptions_trial_ends ON qs_store_subscriptions(trial_ends_at) WHERE status = 'trial';
+CREATE INDEX idx_qs_store_subscriptions_next_payment ON qs_store_subscriptions(next_payment_date);
+
+COMMENT ON TABLE qs_store_subscriptions IS 'מנויי חנויות - סטטוס תשלום וחיוב חודשי';
+
+-- Payment Tokens (טוקנים לגבייה - של QuickShop)
+CREATE TABLE qs_payment_tokens (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  
+  -- PayPlus Token Info
+  payplus_token_uid VARCHAR(100) NOT NULL,
+  payplus_customer_uid VARCHAR(100),
+  
+  -- Card Info (לתצוגה בלבד)
+  four_digits VARCHAR(4),
+  expiry_month VARCHAR(2),
+  expiry_year VARCHAR(4),
+  brand VARCHAR(50),                          -- visa, mastercard, etc
+  card_holder_name VARCHAR(100),
+  
+  -- Status
+  is_primary BOOLEAN DEFAULT true,            -- טוקן ראשי לגבייה
+  is_active BOOLEAN DEFAULT true,
+  last_used_at TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- Validation
+  last_check_at TIMESTAMP WITHOUT TIME ZONE,
+  last_check_status VARCHAR(20),              -- valid, invalid, expired
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_qs_payment_tokens_store_id ON qs_payment_tokens(store_id);
+CREATE INDEX idx_qs_payment_tokens_active ON qs_payment_tokens(is_active);
+CREATE INDEX idx_qs_payment_tokens_primary ON qs_payment_tokens(store_id, is_primary) WHERE is_primary = true;
+CREATE UNIQUE INDEX idx_qs_payment_tokens_unique ON qs_payment_tokens(store_id, payplus_token_uid);
+
+COMMENT ON TABLE qs_payment_tokens IS 'טוקנים לגביית עמלות מחנויות - של QuickShop';
+
+-- Billing Transactions (עסקאות חיוב)
+CREATE TABLE qs_billing_transactions (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  subscription_id INT REFERENCES qs_store_subscriptions(id) ON DELETE SET NULL,
+  
+  -- Transaction Type
+  type VARCHAR(30) NOT NULL CHECK (type IN (
+    'subscription',           -- תשלום מנוי חודשי
+    'commission',             -- עמלות עסקאות
+    'one_time',               -- חיוב חד-פעמי
+    'refund',                 -- החזר
+    'adjustment'              -- התאמה
+  )),
+  
+  -- Amounts
+  amount NUMERIC(10,2) NOT NULL,              -- סכום לפני מע"מ
+  vat_amount NUMERIC(10,2) DEFAULT 0,         -- מע"מ
+  total_amount NUMERIC(10,2) NOT NULL,        -- סה"כ לחיוב
+  currency VARCHAR(3) DEFAULT 'ILS',
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN (
+    'pending',    -- ממתין לחיוב
+    'processing', -- בתהליך
+    'success',    -- הצליח
+    'failed',     -- נכשל
+    'refunded',   -- הוחזר
+    'cancelled'   -- בוטל
+  )),
+  
+  -- PayPlus Integration
+  payplus_transaction_uid VARCHAR(100),
+  payplus_approval_num VARCHAR(50),
+  payplus_voucher_num VARCHAR(50),
+  
+  -- Details
+  description TEXT,
+  invoice_number VARCHAR(50),
+  invoice_url TEXT,
+  
+  -- Error Handling
+  failure_reason TEXT,
+  retry_count INT DEFAULT 0,
+  next_retry_at TIMESTAMP WITHOUT TIME ZONE,
+  
+  -- Metadata
+  metadata JSONB DEFAULT '{}',                -- נתונים נוספים
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  processed_at TIMESTAMP WITHOUT TIME ZONE
+);
+
+CREATE INDEX idx_qs_billing_transactions_store_id ON qs_billing_transactions(store_id);
+CREATE INDEX idx_qs_billing_transactions_type ON qs_billing_transactions(type);
+CREATE INDEX idx_qs_billing_transactions_status ON qs_billing_transactions(status);
+CREATE INDEX idx_qs_billing_transactions_created_at ON qs_billing_transactions(created_at DESC);
+CREATE INDEX idx_qs_billing_transactions_pending ON qs_billing_transactions(status) WHERE status = 'pending';
+
+COMMENT ON TABLE qs_billing_transactions IS 'עסקאות חיוב של QuickShop - מנויים ועמלות';
+
+-- Commission Charges (גביית עמלות - סיכום חודשי)
+CREATE TABLE qs_commission_charges (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  billing_transaction_id INT REFERENCES qs_billing_transactions(id) ON DELETE SET NULL,
+  
+  -- Period
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  charge_type VARCHAR(20) DEFAULT 'monthly' CHECK (charge_type IN (
+    'monthly',    -- גביית סוף חודש רגילה
+    'mid_month'   -- גביית אמצע חודש (מעל 5000 ש"ח)
+  )),
+  
+  -- Sales Data
+  total_orders INT DEFAULT 0,                 -- כמות הזמנות
+  total_sales NUMERIC(12,2) NOT NULL,         -- סה"כ מכירות בתקופה
+  
+  -- Commission Calculation
+  commission_rate NUMERIC(5,4) NOT NULL,      -- 0.005 = 0.5%
+  commission_amount NUMERIC(10,2),            -- עמלה לפני מע"מ
+  vat_amount NUMERIC(10,2),                   -- מע"מ על העמלה
+  total_amount NUMERIC(10,2),                 -- סה"כ לגבייה
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN (
+    'pending',    -- ממתין לחישוב
+    'calculated', -- חושב, ממתין לגבייה
+    'charged',    -- נגבה
+    'failed',     -- נכשל
+    'waived'      -- בוטל/ויתרו
+  )),
+  
+  -- Tracking
+  calculated_at TIMESTAMP WITHOUT TIME ZONE,
+  charged_at TIMESTAMP WITHOUT TIME ZONE,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_qs_commission_charges_store_id ON qs_commission_charges(store_id);
+CREATE INDEX idx_qs_commission_charges_period ON qs_commission_charges(period_start, period_end);
+CREATE INDEX idx_qs_commission_charges_status ON qs_commission_charges(status);
+CREATE INDEX idx_qs_commission_charges_pending ON qs_commission_charges(status) WHERE status IN ('pending', 'calculated');
+
+COMMENT ON TABLE qs_commission_charges IS 'גביית עמלות - חודשי או אמצע חודש מעל 5000 ש"ח';
+
+-- PayPlus IPN Log (לוג IPN מפייפלוס - לניטור)
+CREATE TABLE qs_payplus_ipn_log (
+  id BIGSERIAL PRIMARY KEY,
+  
+  -- Request Info
+  source VARCHAR(50) NOT NULL,                -- 'subscription', 'recurring', 'charge'
+  payplus_transaction_uid VARCHAR(100),
+  
+  -- Store Reference (אם רלוונטי)
+  store_id INT REFERENCES stores(id) ON DELETE SET NULL,
+  
+  -- Payload
+  request_body JSONB NOT NULL,
+  response_body JSONB,
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'received' CHECK (status IN (
+    'received',   -- התקבל
+    'processed',  -- טופל
+    'failed',     -- נכשל
+    'ignored'     -- התעלם (כפילות וכו')
+  )),
+  error_message TEXT,
+  
+  -- Timing
+  received_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  processed_at TIMESTAMP WITHOUT TIME ZONE
+);
+
+CREATE INDEX idx_qs_payplus_ipn_log_transaction_uid ON qs_payplus_ipn_log(payplus_transaction_uid);
+CREATE INDEX idx_qs_payplus_ipn_log_store_id ON qs_payplus_ipn_log(store_id);
+CREATE INDEX idx_qs_payplus_ipn_log_status ON qs_payplus_ipn_log(status);
+CREATE INDEX idx_qs_payplus_ipn_log_received_at ON qs_payplus_ipn_log(received_at DESC);
+
+COMMENT ON TABLE qs_payplus_ipn_log IS 'לוג IPN מפייפלוס - לניטור ודיבוג';
+
+-- Triggers for billing tables
+CREATE TRIGGER update_qs_subscription_plans_updated_at
+  BEFORE UPDATE ON qs_subscription_plans
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_qs_store_subscriptions_updated_at
+  BEFORE UPDATE ON qs_store_subscriptions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_qs_payment_tokens_updated_at
+  BEFORE UPDATE ON qs_payment_tokens
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_qs_billing_transactions_updated_at
+  BEFORE UPDATE ON qs_billing_transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_qs_commission_charges_updated_at
+  BEFORE UPDATE ON qs_commission_charges
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert default plans
+INSERT INTO qs_subscription_plans (name, display_name, description, price, commission_percentage, has_checkout, is_recommended, display_order, features) VALUES
+('lite', 'Quick Shop Lite', 'אתר תדמית / קטלוג - מתאים לעסקים שרוצים להציג מוצרים ללא רכישה אונליין', 299, 0, false, false, 1, '{
+  "products_unlimited": true,
+  "custom_domain": true,
+  "drag_drop_builder": true,
+  "contact_form": true,
+  "catalog_mode": true,
+  "checkout": false
+}'::jsonb),
+('pro', 'Quick Shop Pro', 'חנות אונליין מלאה - כל מה שצריך כדי למכור באינטרנט ולצמוח', 399, 0.005, true, true, 2, '{
+  "products_unlimited": true,
+  "custom_domain": true,
+  "drag_drop_builder": true,
+  "contact_form": true,
+  "catalog_mode": true,
+  "checkout": true,
+  "payment_processing": true,
+  "shipping_management": true,
+  "coupons": true,
+  "customer_accounts": true,
+  "facebook_pixel": true,
+  "google_analytics": true,
+  "whatsapp_support": true
+}'::jsonb);
+
+-- ============================================
 -- END OF SCHEMA
 -- ============================================
 
