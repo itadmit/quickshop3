@@ -260,7 +260,7 @@ export function AdvisorWizard({
           ? result.price 
           : result.price,
         quantity: 1,
-        image: result.image || undefined,
+        image: result.image_url || undefined,
       });
 
       if (success) {
