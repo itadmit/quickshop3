@@ -160,56 +160,39 @@ export function Header() {
     router.push('/settings');
   };
 
-  // באנר לתקופת ניסיון
-  const renderTrialBanner = () => {
+  // באדג' לתקופת ניסיון - מוצג ליד הלוגו
+  const renderTrialBadge = () => {
     if (!subscription) return null;
     
     // תקופת ניסיון
     if (subscription.status === 'trial') {
-      const daysText = subscription.trial_days_left === 1 ? 'יום אחד' : `${subscription.trial_days_left} ימים`;
       const isUrgent = (subscription.trial_days_left || 0) <= 2;
       
       return (
-        <div className={`w-full py-2 px-4 text-center text-sm flex items-center justify-center gap-3 ${
-          isUrgent 
-            ? 'bg-orange-500 text-white' 
-            : 'bg-gradient-to-r from-primary to-primary-600 text-white'
-        }`}>
-          <HiSparkles className="w-4 h-4" />
-          <span>
-            {isUrgent ? (
-              <>נותרו לך עוד <strong>{daysText}</strong> בלבד בתקופת הניסיון!</>
-            ) : (
-              <>נותרו לך <strong>{daysText}</strong> בתקופת הניסיון</>
-            )}
-          </span>
-          <Link
-            href="/billing"
-            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-              isUrgent 
-                ? 'bg-white text-orange-600 hover:bg-orange-50' 
-                : 'bg-white text-primary hover:bg-gray-100'
-            }`}
-          >
-            שדרג עכשיו
-          </Link>
-        </div>
+        <Link
+          href="/billing"
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+            isUrgent 
+              ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
+              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+          }`}
+        >
+          <HiSparkles className="w-3 h-3" />
+          <span>{subscription.trial_days_left} ימי ניסיון</span>
+        </Link>
       );
     }
     
     // חשבון חסום
     if (subscription.status === 'blocked' || subscription.status === 'expired') {
       return (
-        <div className="w-full py-2 px-4 text-center text-sm bg-red-500 text-white flex items-center justify-center gap-3">
-          <HiExclamation className="w-4 h-4" />
-          <span>החשבון שלך חסום. לחידוש הגישה יש לבחור מסלול ולהשלים תשלום.</span>
-          <Link
-            href="/billing"
-            className="bg-white text-red-600 px-3 py-1 rounded-lg font-medium hover:bg-red-50 transition-colors"
-          >
-            בחר מסלול
-          </Link>
-        </div>
+        <Link
+          href="/billing"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+        >
+          <HiExclamation className="w-3 h-3" />
+          <span>חשבון חסום</span>
+        </Link>
       );
     }
     
@@ -217,19 +200,7 @@ export function Header() {
   };
 
   return (
-    <>
-      {/* Trial/Blocked Banner */}
-      {renderTrialBanner() && (
-        <div className="fixed top-0 left-0 right-0 z-[60]">
-          {renderTrialBanner()}
-        </div>
-      )}
-      
-      <header className={`h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between fixed left-0 right-0 z-50 ${
-        (subscription?.status === 'trial' || subscription?.status === 'blocked' || subscription?.status === 'expired') 
-          ? 'top-10' 
-          : 'top-0'
-      }`}>
+      <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between fixed left-0 right-0 z-50 top-0">
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -240,7 +211,10 @@ export function Header() {
 
       {/* Logo & Store Switcher */}
       <div className="flex items-center gap-4">
-        <h1 className="text-xl md:text-2xl font-logo text-gray-900">Quick Shop</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-logo text-gray-900">Quick Shop</h1>
+          {renderTrialBadge()}
+        </div>
         {userStores.length > 1 && (
           <div className="relative" ref={switcherRef}>
             <button
@@ -419,7 +393,6 @@ export function Header() {
         onClose={() => setShowNotifications(false)} 
       />
     </header>
-    </>
   );
 }
 
