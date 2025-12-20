@@ -12,6 +12,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
   const [userInitials, setUserInitials] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('מנהל חנות');
   const [loadingUser, setLoadingUser] = useState(true);
   
   // TODO: לקבל מהקונטקסט/API את החנויות שהמשתמש מקושר אליהן
@@ -41,6 +42,12 @@ export function Header() {
           const data = await response.json();
           const name = data.user?.name || data.user?.email || '';
           setUserName(name);
+          // הגדרת תפקיד
+          if (data.user?.is_super_admin) {
+            setUserRole('סופר אדמין');
+          } else {
+            setUserRole('מנהל חנות');
+          }
           // יצירת ראשי תיבות
           if (name) {
             const parts = name.split(' ');
@@ -244,7 +251,7 @@ export function Header() {
               <div className="text-sm font-semibold text-gray-900">
                 {loadingUser ? 'טוען...' : userName || 'משתמש'}
               </div>
-              <div className="text-xs text-gray-500">סופר אדמין</div>
+              <div className="text-xs text-gray-500">{userRole}</div>
             </div>
             <HiChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </button>
@@ -282,7 +289,7 @@ export function Header() {
                 <div className="text-sm font-semibold text-gray-900">
                   {loadingUser ? 'טוען...' : userName || 'משתמש'}
                 </div>
-                <div className="text-xs text-gray-500">סופר אדמין</div>
+                <div className="text-xs text-gray-500">{userRole}</div>
               </div>
               <button
                 onClick={handleSettings}

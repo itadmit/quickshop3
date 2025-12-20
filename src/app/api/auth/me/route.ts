@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { queryOne } from '@/lib/db';
 
+// בדיקה אם המשתמש הוא סופר אדמין
+function checkIsSuperAdmin(email: string): boolean {
+  const superAdminEmails = process.env.SUPER_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
+  return superAdminEmails.includes(email.toLowerCase());
+}
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
@@ -13,12 +19,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get user details
+    // Get user details (including is_super_admin if exists)
     const userDetails = await queryOne<{
       id: number;
       email: string;
       name: string;
       email_verified: boolean;
+      is_super_admin?: boolean;
     }>(
       'SELECT id, email, name, email_verified FROM store_owners WHERE id = $1',
       [user.id]
@@ -30,6 +37,9 @@ export async function GET(req: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Check super admin status (from DB or env)
+    const isSuperAdmin = userDetails.is_super_admin || checkIsSuperAdmin(userDetails.email);
 
     // Get store details
     const store = await queryOne<{
@@ -51,6 +61,8 @@ export async function GET(req: NextRequest) {
         email: userDetails.email,
         name: userDetails.name,
         email_verified: userDetails.email_verified,
+        is_super_admin: isSuperAdmin,
+        role: isSuperAdmin ? 'super_admin' : 'store_owner',
       },
       store: store ? {
         id: store.id,
