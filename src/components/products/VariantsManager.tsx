@@ -506,15 +506,30 @@ export function VariantsManager({
         v.title === title && v.title !== 'Default Title'
       );
 
-      // קביעת מחיר ברירת מחדל: קודם וריאציות קיימות, אחר כך Default Title, אחר כך מחיר מהטופס
-      const fallbackPrice = variants.find(v => v.title !== 'Default Title')?.price 
+      // קביעת מחיר ברירת מחדל: בדיקה אם יש מחיר תקין (לא 0 או ריק)
+      const hasValidPrice = (price: string | null | undefined): boolean => {
+        if (!price) return false;
+        const parsed = parseFloat(price);
+        return !isNaN(parsed) && parsed > 0;
+      };
+
+      // עדיפויות: 1) מחיר מ-variant קיים שאינו Default Title
+      // 2) מחיר מהטופס (defaultPrice) 3) מחיר מ-Default Title 4) '0.00'
+      const existingVariantPrice = variants.find(v => v.title !== 'Default Title' && hasValidPrice(v.price))?.price;
+      const defaultTitlePrice = variants.find(v => v.title === 'Default Title' && hasValidPrice(v.price))?.price;
+      
+      const fallbackPrice = existingVariantPrice 
+        || (defaultPrice && hasValidPrice(defaultPrice) ? defaultPrice : null)
+        || defaultTitlePrice
         || variants[0]?.price 
-        || defaultPrice 
         || '0.00';
       
-      const fallbackComparePrice = variants.find(v => v.title !== 'Default Title')?.compare_at_price 
-        || variants[0]?.compare_at_price
-        || defaultCompareAtPrice 
+      const existingVariantComparePrice = variants.find(v => v.title !== 'Default Title')?.compare_at_price;
+      const defaultTitleComparePrice = variants.find(v => v.title === 'Default Title')?.compare_at_price;
+      
+      const fallbackComparePrice = existingVariantComparePrice 
+        || (defaultCompareAtPrice && defaultCompareAtPrice.trim() !== '' ? defaultCompareAtPrice : null)
+        || defaultTitleComparePrice
         || null;
 
       return existing || {

@@ -115,3 +115,9 @@ export async function generateInfluencerToken(payload: {
   return token;
 }
 
+// Check if user is Super Admin
+export function isSuperAdmin(email: string): boolean {
+  const superAdminEmails = process.env.SUPER_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
+  return superAdminEmails.includes(email.toLowerCase());
+}
+

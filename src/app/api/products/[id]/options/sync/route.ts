@@ -41,12 +41,12 @@ export async function POST(
     for (let i = 0; i < options.length; i++) {
       const option = options[i];
       
-      // Insert option
+      // Insert option with type
       const optionResult = await queryOne<{ id: number }>(
-        `INSERT INTO product_options (product_id, name, position, created_at)
-         VALUES ($1, $2, $3, now())
+        `INSERT INTO product_options (product_id, name, type, position, created_at)
+         VALUES ($1, $2, $3, $4, now())
          RETURNING id`,
-        [productId, option.name, i + 1]
+        [productId, option.name, option.type || 'button', i + 1]
       );
 
       if (!optionResult) continue;

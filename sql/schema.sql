@@ -3348,6 +3348,88 @@ CREATE TRIGGER update_qs_commission_charges_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- QuickShop Coupons (קופונים של הפלטפורמה)
+CREATE TABLE qs_coupons (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,           -- קוד הקופון (לדוגמה: WELCOME50, TRIAL14)
+  
+  -- Coupon Type
+  type VARCHAR(30) NOT NULL CHECK (type IN (
+    'extra_trial_days',       -- הוספת ימי ניסיון
+    'free_months',            -- חודשים חינם
+    'first_payment_discount', -- הנחה מתשלום ראשון (אחוז או סכום קבוע)
+    'recurring_discount'      -- הנחה קבועה לתקופה
+  )),
+  
+  -- Discount Value (תלוי בסוג)
+  value NUMERIC(10,2) NOT NULL,               -- ערך: ימים / חודשים / אחוז / סכום
+  value_type VARCHAR(20) DEFAULT 'fixed' CHECK (value_type IN (
+    'fixed',    -- ערך קבוע (ימים, חודשים, שקלים)
+    'percent'   -- אחוזים (רק להנחות)
+  )),
+  max_discount NUMERIC(10,2),                 -- הנחה מקסימלית (לאחוזים)
+  
+  -- Restrictions
+  applicable_plans TEXT[] DEFAULT '{}',       -- לאילו תוכניות (ריק = כולן)
+  min_plan_months INT,                        -- מינימום חודשי התחייבות
+  first_time_only BOOLEAN DEFAULT true,       -- רק ללקוחות חדשים
+  
+  -- Usage Limits
+  max_uses INT,                               -- NULL = unlimited
+  current_uses INT DEFAULT 0,
+  max_uses_per_store INT DEFAULT 1,           -- שימושים מקסימליים לחנות
+  
+  -- Validity
+  starts_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  expires_at TIMESTAMP WITHOUT TIME ZONE,     -- NULL = לא פג
+  
+  -- Metadata
+  description TEXT,                           -- תיאור פנימי
+  created_by VARCHAR(255),                    -- מייל היוצר
+  
+  -- Status
+  is_active BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_qs_coupons_code ON qs_coupons(code);
+CREATE INDEX idx_qs_coupons_active ON qs_coupons(is_active, starts_at, expires_at);
+CREATE INDEX idx_qs_coupons_type ON qs_coupons(type);
+
+COMMENT ON TABLE qs_coupons IS 'קופוני הנחה של QuickShop - לתקופת ניסיון, חודשים חינם, והנחות';
+
+-- Coupon Usage Log (לוג שימוש בקופונים)
+CREATE TABLE qs_coupon_usage (
+  id SERIAL PRIMARY KEY,
+  coupon_id INT REFERENCES qs_coupons(id) ON DELETE CASCADE,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  subscription_id INT REFERENCES qs_store_subscriptions(id) ON DELETE SET NULL,
+  
+  -- Applied Details
+  applied_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  applied_value NUMERIC(10,2),                -- ערך שהוחל בפועל
+  savings_amount NUMERIC(10,2),               -- סכום החיסכון
+  
+  -- Metadata
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  
+  UNIQUE(coupon_id, store_id)                 -- קופון אחד לחנות
+);
+
+CREATE INDEX idx_qs_coupon_usage_coupon_id ON qs_coupon_usage(coupon_id);
+CREATE INDEX idx_qs_coupon_usage_store_id ON qs_coupon_usage(store_id);
+
+COMMENT ON TABLE qs_coupon_usage IS 'לוג שימוש בקופונים - מעקב אחרי מי השתמש במה';
+
+-- Trigger for coupons
+CREATE TRIGGER update_qs_coupons_updated_at
+  BEFORE UPDATE ON qs_coupons
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert default plans
 INSERT INTO qs_subscription_plans (name, display_name, description, price, commission_percentage, has_checkout, is_recommended, display_order, features) VALUES
 ('lite', 'Quick Shop Lite', 'אתר תדמית / קטלוג - מתאים לעסקים שרוצים להציג מוצרים ללא רכישה אונליין', 299, 0, false, false, 1, '{

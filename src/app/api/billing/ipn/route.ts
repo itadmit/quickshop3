@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const storeId = payload.more_info ? parseInt(payload.more_info, 10) : null;
     const planName = payload.more_info_2 || null;
     const subscriptionIdStr = payload.more_info_3;
+    const couponCode = payload.more_info_4 || null;
     
     if (!storeId) {
       console.error('[IPN] Missing store_id in more_info');
@@ -201,6 +202,52 @@ export async function POST(request: NextRequest) {
       `מנוי ${planName === 'lite' ? 'Lite' : 'Pro'} - תשלום חודשי`,
     ]);
     
+    // Apply coupon if provided
+    if (couponCode) {
+      const coupon = await queryOne<{ id: number; type: string; value: number }>(`
+        SELECT id, type, value FROM qs_coupons WHERE code = $1 AND is_active = true
+      `, [couponCode]);
+      
+      if (coupon) {
+        // Record coupon usage
+        await query(`
+          INSERT INTO qs_coupon_usage (
+            coupon_id, store_id, applied_value, savings_amount, ip_address
+          ) VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (coupon_id, store_id) DO NOTHING
+        `, [
+          coupon.id,
+          storeId,
+          coupon.value,
+          coupon.type === 'first_payment_discount' ? (plan.price - payload.amount) : 0,
+          request.headers.get('x-forwarded-for') || null,
+        ]);
+        
+        // Increment coupon usage count
+        await query(
+          'UPDATE qs_coupons SET current_uses = current_uses + 1 WHERE id = $1',
+          [coupon.id]
+        );
+        
+        // Apply extra trial days or free months if applicable
+        if (coupon.type === 'extra_trial_days') {
+          await query(`
+            UPDATE qs_store_subscriptions
+            SET trial_ends_at = COALESCE(trial_ends_at, now()) + INTERVAL '1 day' * $1
+            WHERE store_id = $2
+          `, [coupon.value, storeId]);
+        } else if (coupon.type === 'free_months') {
+          await query(`
+            UPDATE qs_store_subscriptions
+            SET next_payment_date = next_payment_date + INTERVAL '1 month' * $1
+            WHERE store_id = $2
+          `, [coupon.value, storeId]);
+        }
+        
+        console.log('[IPN] Coupon applied:', couponCode);
+      }
+    }
+
     // If downgrading from Pro to Lite, handle product deletion
     if (planName === 'lite' && !plan.has_checkout) {
       // Mark that products should be reviewed (don't delete immediately)

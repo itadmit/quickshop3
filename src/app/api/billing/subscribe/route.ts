@@ -12,6 +12,16 @@ import { getUserFromRequest } from '@/lib/auth';
 interface SubscribeRequest {
   plan_name: 'lite' | 'pro';
   store_id?: number;
+  coupon_code?: string;
+}
+
+interface CouponData {
+  id: number;
+  code: string;
+  type: string;
+  value: number;
+  value_type: string;
+  max_discount: number | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -26,13 +36,47 @@ export async function POST(request: NextRequest) {
     }
     
     const body: SubscribeRequest = await request.json();
-    const { plan_name, store_id } = body;
+    const { plan_name, store_id, coupon_code } = body;
     
     if (!plan_name || !['lite', 'pro'].includes(plan_name)) {
       return NextResponse.json(
         { error: 'Invalid plan name' },
         { status: 400 }
       );
+    }
+
+    // Validate coupon if provided
+    let coupon: CouponData | null = null;
+    if (coupon_code) {
+      coupon = await queryOne<CouponData>(`
+        SELECT id, code, type, value, value_type, max_discount
+        FROM qs_coupons
+        WHERE code = $1 
+          AND is_active = true
+          AND (starts_at IS NULL OR starts_at <= now())
+          AND (expires_at IS NULL OR expires_at > now())
+          AND (max_uses IS NULL OR current_uses < max_uses)
+      `, [coupon_code.toUpperCase()]);
+      
+      if (!coupon) {
+        return NextResponse.json(
+          { error: 'קופון לא תקין או פג תוקף' },
+          { status: 400 }
+        );
+      }
+      
+      // Check if already used by this store
+      const usedCoupon = await queryOne<{ id: number }>(
+        'SELECT id FROM qs_coupon_usage WHERE coupon_id = $1 AND store_id = $2',
+        [coupon.id, store_id || user.store_id]
+      );
+      
+      if (usedCoupon) {
+        return NextResponse.json(
+          { error: 'כבר השתמשת בקופון זה' },
+          { status: 400 }
+        );
+      }
     }
     
     // Get store (use provided or user's current store)
@@ -75,9 +119,23 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Calculate total with VAT
-    const vatAmount = Math.round(plan.price * (plan.vat_percentage / 100) * 100) / 100;
-    const totalAmount = Math.round((plan.price + vatAmount) * 100) / 100;
+    // Calculate discount from coupon
+    let discountAmount = 0;
+    if (coupon && coupon.type === 'first_payment_discount') {
+      if (coupon.value_type === 'percent') {
+        discountAmount = Math.round(plan.price * (coupon.value / 100) * 100) / 100;
+        if (coupon.max_discount && discountAmount > coupon.max_discount) {
+          discountAmount = coupon.max_discount;
+        }
+      } else {
+        discountAmount = Math.min(coupon.value, plan.price);
+      }
+    }
+    
+    // Calculate total with VAT (after discount)
+    const priceAfterDiscount = plan.price - discountAmount;
+    const vatAmount = Math.round(priceAfterDiscount * (plan.vat_percentage / 100) * 100) / 100;
+    const totalAmount = Math.round((priceAfterDiscount + vatAmount) * 100) / 100;
     
     // Check if store already has active subscription
     const existingSubscription = await queryOne<{ id: number; status: string }>(`
@@ -113,6 +171,7 @@ export async function POST(request: NextRequest) {
       more_info: storeData.id.toString(), // Store ID for IPN
       more_info_2: plan_name, // Plan name for IPN
       more_info_3: existingSubscription?.id?.toString() || 'new', // Subscription ID or 'new'
+      more_info_4: coupon?.code || '', // Coupon code for IPN
       refURL_success: successUrl,
       refURL_failure: failureUrl,
       refURL_cancel: cancelUrl,
@@ -159,9 +218,15 @@ export async function POST(request: NextRequest) {
         name: plan.name,
         display_name: plan.display_name,
         price: plan.price,
+        discount_amount: discountAmount,
         vat_amount: vatAmount,
         total_amount: totalAmount,
       },
+      coupon: coupon ? {
+        code: coupon.code,
+        type: coupon.type,
+        discount: discountAmount,
+      } : null,
     });
   } catch (error) {
     console.error('[Subscribe] Error:', error);

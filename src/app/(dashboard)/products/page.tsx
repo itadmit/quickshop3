@@ -431,11 +431,28 @@ export default function ProductsPage() {
       label: 'מחיר',
       render: (product) => {
         // לפי האפיון: כל מוצר חייב לפחות variant אחד
-        const price = product.variants?.[0]?.price || '0.00';
-        const comparePrice = product.variants?.[0]?.compare_at_price || null;
+        // סינון variants תקינים עם מחיר גדול מ-0
+        const variants = product.variants || [];
+        const prices = variants
+          .map((v) => parseFloat(v.price || '0'))
+          .filter((p) => !isNaN(p) && p > 0);
+        
+        // אם אין מחירים תקינים, נסה לקחת את הראשון גם אם הוא 0
+        const minPrice = prices.length > 0 ? Math.min(...prices) : parseFloat(variants[0]?.price || '0');
+        const maxPrice = prices.length > 0 ? Math.max(...prices) : minPrice;
+        const hasVariants = (product.options?.length || 0) > 0 || variants.length > 1;
+        
+        // מחיר לפני הנחה - רק אם יש וריאנט אחד
+        const comparePrice = !hasVariants ? (variants[0]?.compare_at_price || null) : null;
+        
         return (
           <div>
-            <div className="font-medium text-gray-900">₪{parseFloat(price).toFixed(2)}</div>
+            <div className="font-medium text-gray-900">
+              {hasVariants && minPrice !== maxPrice 
+                ? `₪${minPrice.toFixed(2)} - ₪${maxPrice.toFixed(2)}`
+                : `₪${minPrice.toFixed(2)}`
+              }
+            </div>
             {comparePrice && (
               <div className="text-sm text-gray-500 line-through">₪{parseFloat(comparePrice).toFixed(2)}</div>
             )}

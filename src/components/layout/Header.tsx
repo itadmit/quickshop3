@@ -1,11 +1,18 @@
 'use client';
 
-import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuilding, HiMenu, HiCog, HiLogout, HiShoppingBag, HiCube } from 'react-icons/hi';
+import { HiShoppingCart, HiEye, HiBell, HiSearch, HiChevronDown, HiOfficeBuilding, HiMenu, HiCog, HiLogout, HiShoppingBag, HiCube, HiSparkles, HiExclamation } from 'react-icons/hi';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { NotificationsDrawer } from './NotificationsDrawer';
 import { Tooltip } from '../ui/Tooltip';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+
+interface SubscriptionStatus {
+  status: 'trial' | 'active' | 'blocked' | 'cancelled' | 'expired' | null;
+  trial_days_left?: number;
+  plan_name?: string;
+}
 
 export function Header() {
   const router = useRouter();
@@ -14,6 +21,7 @@ export function Header() {
   const [userInitials, setUserInitials] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('מנהל חנות');
   const [loadingUser, setLoadingUser] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   
   // TODO: לקבל מהקונטקסט/API את החנויות שהמשתמש מקושר אליהן
   const userStores = [
@@ -31,7 +39,7 @@ export function Header() {
   // Use shared hook for unread counts - prevents duplicate API calls
   const { notificationsCount: unreadNotificationsCount, refreshCounts } = useUnreadCounts();
 
-  // טעינת פרטי המשתמש
+  // טעינת פרטי המשתמש וסטטוס מנוי
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -66,7 +74,33 @@ export function Header() {
         setLoadingUser(false);
       }
     };
+    
+    const loadSubscription = async () => {
+      try {
+        const response = await fetch('/api/billing/status', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.subscription) {
+            setSubscription({
+              status: data.subscription.status as SubscriptionStatus['status'],
+              trial_days_left: data.subscription.trial?.remaining_days,
+              plan_name: data.subscription.plan?.display_name
+            });
+          } else {
+            // אין מנוי - כנראה חדש או צריך לבחור מסלול
+            setSubscription({ status: 'blocked' });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading subscription:', error);
+        // Don't block if API fails
+      }
+    };
+    
     loadUser();
+    loadSubscription();
   }, []);
 
   // Listen for notification events to refresh counts
@@ -126,8 +160,76 @@ export function Header() {
     router.push('/settings');
   };
 
+  // באנר לתקופת ניסיון
+  const renderTrialBanner = () => {
+    if (!subscription) return null;
+    
+    // תקופת ניסיון
+    if (subscription.status === 'trial') {
+      const daysText = subscription.trial_days_left === 1 ? 'יום אחד' : `${subscription.trial_days_left} ימים`;
+      const isUrgent = (subscription.trial_days_left || 0) <= 2;
+      
+      return (
+        <div className={`w-full py-2 px-4 text-center text-sm flex items-center justify-center gap-3 ${
+          isUrgent 
+            ? 'bg-orange-500 text-white' 
+            : 'bg-gradient-to-r from-primary to-primary-600 text-white'
+        }`}>
+          <HiSparkles className="w-4 h-4" />
+          <span>
+            {isUrgent ? (
+              <>נותרו לך עוד <strong>{daysText}</strong> בלבד בתקופת הניסיון!</>
+            ) : (
+              <>נותרו לך <strong>{daysText}</strong> בתקופת הניסיון</>
+            )}
+          </span>
+          <Link
+            href="/billing"
+            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+              isUrgent 
+                ? 'bg-white text-orange-600 hover:bg-orange-50' 
+                : 'bg-white text-primary hover:bg-gray-100'
+            }`}
+          >
+            שדרג עכשיו
+          </Link>
+        </div>
+      );
+    }
+    
+    // חשבון חסום
+    if (subscription.status === 'blocked' || subscription.status === 'expired') {
+      return (
+        <div className="w-full py-2 px-4 text-center text-sm bg-red-500 text-white flex items-center justify-center gap-3">
+          <HiExclamation className="w-4 h-4" />
+          <span>החשבון שלך חסום. לחידוש הגישה יש לבחור מסלול ולהשלים תשלום.</span>
+          <Link
+            href="/billing"
+            className="bg-white text-red-600 px-3 py-1 rounded-lg font-medium hover:bg-red-50 transition-colors"
+          >
+            בחר מסלול
+          </Link>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   return (
-    <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
+    <>
+      {/* Trial/Blocked Banner */}
+      {renderTrialBanner() && (
+        <div className="fixed top-0 left-0 right-0 z-[60]">
+          {renderTrialBanner()}
+        </div>
+      )}
+      
+      <header className={`h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between fixed left-0 right-0 z-50 ${
+        (subscription?.status === 'trial' || subscription?.status === 'blocked' || subscription?.status === 'expired') 
+          ? 'top-10' 
+          : 'top-0'
+      }`}>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -317,6 +419,7 @@ export function Header() {
         onClose={() => setShowNotifications(false)} 
       />
     </header>
+    </>
   );
 }
 

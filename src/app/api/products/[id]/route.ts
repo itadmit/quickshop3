@@ -42,7 +42,7 @@ export async function GET(
         [productId]
       ),
       query<ProductOption>(
-        `SELECT po.*, 
+        `SELECT po.id, po.product_id, po.name, po.type, po.position, po.created_at, 
          (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position))
           FROM product_option_values pov WHERE pov.option_id = po.id) as values
          FROM product_options po WHERE po.product_id = $1 ORDER BY po.position`,

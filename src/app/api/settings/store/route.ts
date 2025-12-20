@@ -93,6 +93,26 @@ export async function PUT(request: NextRequest) {
     }
 
     if (body.domain !== undefined) {
+      // הגנה: לא לאפשר חיבור דומיין לפני תשלום
+      if (body.domain && body.domain.trim() !== '') {
+        // בדיקת סטטוס מנוי
+        const subscription = await queryOne<{ status: string }>(`
+          SELECT status FROM qs_store_subscriptions WHERE store_id = $1
+        `, [user.store_id]);
+        
+        const isTrialOrBlocked = !subscription || 
+          subscription.status === 'trial' || 
+          subscription.status === 'blocked' ||
+          subscription.status === 'expired';
+        
+        if (isTrialOrBlocked) {
+          return NextResponse.json({ 
+            error: 'חיבור דומיין אפשרי רק למנויים משלמים. אנא שדרג את המנוי שלך.',
+            code: 'SUBSCRIPTION_REQUIRED'
+          }, { status: 403 });
+        }
+      }
+      
       updates.push(`domain = $${paramIndex}`);
       values.push(body.domain);
       paramIndex++;
@@ -116,7 +136,7 @@ export async function PUT(request: NextRequest) {
       paramIndex++;
     }
 
-    // Handle themeSettings (email colors, sender name, abandoned cart timeout, etc.)
+    // Handle themeSettings (email colors, sender name, etc.)
     if (body.themeSettings !== undefined || body.giftCardSettings !== undefined) {
       // Try to update store_settings table
       try {
@@ -138,25 +158,16 @@ export async function PUT(request: NextRequest) {
             ? (typeof existing.settings === 'string' ? JSON.parse(existing.settings) : existing.settings)
             : {};
 
-          // Merge all settings at root level
+          // Merge themeSettings
           const mergedSettings: any = {
             ...existingSettings,
           };
 
           if (body.themeSettings !== undefined) {
-            // Handle abandonedCartTimeoutHours at root level
-            if (body.themeSettings.abandonedCartTimeoutHours !== undefined) {
-              mergedSettings.abandonedCartTimeoutHours = body.themeSettings.abandonedCartTimeoutHours;
-            }
-            
-            // Merge other theme settings
-            const { abandonedCartTimeoutHours, ...otherThemeSettings } = body.themeSettings;
-            if (Object.keys(otherThemeSettings).length > 0) {
-              mergedSettings.themeSettings = {
-                ...(existingSettings.themeSettings || {}),
-                ...otherThemeSettings,
-              };
-            }
+            mergedSettings.themeSettings = {
+              ...(existingSettings.themeSettings || {}),
+              ...body.themeSettings,
+            };
           }
 
           // Merge giftCardSettings
