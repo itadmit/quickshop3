@@ -54,6 +54,7 @@ interface Order {
   }>;
 }
 
+
 interface CheckoutSuccessProps {
   orderId?: number;
   orderHandle?: string;
@@ -130,6 +131,7 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
               console.error('Error fetching bank transfer details:', e);
             }
           }
+          
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -495,6 +497,7 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                       </div>
                     </div>
                   </div>
+                  
                 </>
                 ) : error ? (
                   <div className="text-center py-8">

@@ -310,10 +310,10 @@ export default function PremiumClubPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <HiStar className="w-8 h-8 text-yellow-500" />
-            חברי מועדון פרימיום
+            מועדון נאמנות פרימיום
           </h1>
           <p className="text-gray-600 mt-1">
-            הגדר רמות חברות, הנחות והטבות מותאמות אישית
+            הגדר רמות חברות (כסף, זהב, פלטינה), הנחות והטבות מותאמות אישית
           </p>
         </div>
         <div className="flex items-center gap-4">

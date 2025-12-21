@@ -52,7 +52,7 @@ const menuItems: MenuItem[] = [
       { label: 'הנחות אוטומטיות', href: '/automatic-discounts', icon: MenuIcons.discounts },
       { label: 'קופונים', href: '/discounts', icon: MenuIcons.coupons },
       { label: 'משפיענים', href: '/marketing/influencers', icon: MenuIcons.customers },
-      { label: 'מועדון לקוחות', href: '/loyalty', icon: MenuIcons.loyalty },
+      { label: 'נאמנות פרימיום', href: '/settings/premium-club', icon: MenuIcons.loyalty },
       { label: 'גיפט קארד', href: '/gift-cards', icon: MenuIcons.giftCards },
       { label: 'עגלות נטושות', href: '/abandoned-carts', icon: MenuIcons.abandonedCarts },
       { label: 'רשימת המתנה', href: '/wishlist', icon: MenuIcons.wishlist },
