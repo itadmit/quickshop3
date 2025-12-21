@@ -5,6 +5,7 @@ import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { Plugin } from '@/types/plugin';
 import { getPluginConfig, updatePluginConfig } from '@/lib/plugins/loader';
+import { cancelPluginSubscription } from '@/lib/plugins/billing';
 
 /**
  * GET /api/plugins/[slug] - פרטי תוסף
@@ -90,7 +91,10 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/plugins/[slug] - הסרת תוסף
+ * DELETE /api/plugins/[slug] - הסרת/ביטול תוסף
+ * 
+ * לתוספים בתשלום: מבטל רק את המנוי של התוסף הספציפי הזה
+ * התוסף ימשיך לעבוד עד סוף התקופה ששולמה
  */
 export async function DELETE(
   request: NextRequest,
@@ -105,9 +109,14 @@ export async function DELETE(
     const { slug } = await params;
     const storeId = user.store_id;
 
-    // בדיקה אם התוסף מובנה
-    const plugin = await queryOne<{ is_built_in: boolean; is_deletable: boolean }>(
-      `SELECT is_built_in, is_deletable FROM plugins 
+    // בדיקה אם התוסף קיים ומותקן
+    const plugin = await queryOne<{ 
+      id: number;
+      is_built_in: boolean; 
+      is_deletable: boolean;
+      is_free: boolean;
+    }>(
+      `SELECT id, is_built_in, is_deletable, is_free FROM plugins 
        WHERE slug = $1 AND store_id = $2`,
       [slug, storeId]
     );
@@ -119,20 +128,54 @@ export async function DELETE(
       );
     }
 
-    if (plugin.is_built_in && !plugin.is_deletable) {
-      return NextResponse.json(
-        { error: 'Cannot delete built-in plugin' },
-        { status: 400 }
-      );
+    // בדיקה אם יש מנוי פעיל לתוסף הזה
+    const subscription = await queryOne<{ id: number; status: string; end_date: Date }>(
+      `SELECT id, status, end_date FROM plugin_subscriptions 
+       WHERE store_id = $1 AND plugin_id = $2`,
+      [storeId, plugin.id]
+    );
+
+    // אם זה תוסף בתשלום עם מנוי פעיל - מבטלים את המנוי
+    if (subscription && subscription.status === 'ACTIVE') {
+      const cancelResult = await cancelPluginSubscription(storeId, slug);
+      
+      if (!cancelResult.success) {
+        return NextResponse.json(
+          { error: cancelResult.error || 'Failed to cancel subscription' },
+          { status: 400 }
+        );
+      }
+
+      // התוסף ימשיך לעבוד עד סוף התקופה ששולמה
+      return NextResponse.json({ 
+        success: true,
+        message: 'המנוי בוטל. התוסף יישאר פעיל עד סוף התקופה ששולמה',
+        endDate: cancelResult.endDate,
+      });
     }
 
-    // מחיקת התוסף
+    // אם זה תוסף חינמי או שאין מנוי - פשוט מכבים
     await query(
-      `DELETE FROM plugins WHERE slug = $1 AND store_id = $2`,
+      `UPDATE plugins 
+       SET is_active = false, is_installed = false, updated_at = now()
+       WHERE slug = $1 AND store_id = $2`,
       [slug, storeId]
     );
 
-    return NextResponse.json({ success: true });
+    // אם יש מנוי שכבר בוטל - רק מכבים
+    if (subscription && subscription.status === 'CANCELLED') {
+      await query(
+        `UPDATE plugin_subscriptions 
+         SET is_active = false, updated_at = now()
+         WHERE id = $1`,
+        [subscription.id]
+      );
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'התוסף הוסר בהצלחה',
+    });
   } catch (error: any) {
     console.error('Error deleting plugin:', error);
     return NextResponse.json(

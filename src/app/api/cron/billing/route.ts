@@ -1,9 +1,16 @@
 /**
  * Daily Billing Cron Job
  * 
- * POST /api/cron/billing - Process daily subscription renewals
+ * POST /api/cron/billing - Process daily subscription and plugin renewals
  * 
  * This should be called daily by Upstash Cron
+ * 
+ * Handles:
+ * 1. Block expired trials
+ * 2. Charge store subscriptions (Lite/Pro)
+ * 3. Charge plugin subscriptions
+ * 4. Deactivate cancelled plugins that reached end date
+ * 5. Handle cancelled store subscriptions
  * 
  * Header: Authorization: Bearer {CRON_SECRET}
  */
@@ -11,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getPayPlusClient } from '@/lib/payplus';
+import { chargeStorePlugins, deactivateExpiredSubscriptions } from '@/lib/plugins/billing';
 
 // Verify cron secret
 function verifyCronSecret(request: NextRequest): boolean {
@@ -30,10 +38,21 @@ export async function POST(request: NextRequest) {
   console.log('[Billing Cron] Starting daily billing run...');
   
   const results = {
-    processed: 0,
-    successful: 0,
-    failed: 0,
+    // Store subscriptions
+    storeSubscriptions: {
+      processed: 0,
+      successful: 0,
+      failed: 0,
+    },
+    // Plugin subscriptions
+    pluginSubscriptions: {
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      totalAmount: 0,
+    },
     blocked: 0,
+    expiredPlugins: 0,
     errors: [] as string[],
   };
   
@@ -41,7 +60,9 @@ export async function POST(request: NextRequest) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // =============================================
     // 1. Block expired trial accounts
+    // =============================================
     const expiredTrials = await query<{ store_id: number; store_name: string }>(`
       UPDATE qs_store_subscriptions sub
       SET status = 'blocked', updated_at = now()
@@ -60,7 +81,9 @@ export async function POST(request: NextRequest) {
       results.blocked++;
     }
     
-    // 2. Find subscriptions due for payment today
+    // =============================================
+    // 2. Charge store subscriptions (Lite/Pro)
+    // =============================================
     const dueSubscriptions = await query<{
       subscription_id: number;
       store_id: number;
@@ -95,12 +118,12 @@ export async function POST(request: NextRequest) {
       ORDER BY sub.next_payment_date ASC
     `, [today]);
     
-    console.log(`[Billing Cron] Found ${dueSubscriptions.length} subscriptions due for payment`);
+    console.log(`[Billing Cron] Found ${dueSubscriptions.length} store subscriptions due for payment`);
     
     const payplus = getPayPlusClient();
     
     for (const sub of dueSubscriptions) {
-      results.processed++;
+      results.storeSubscriptions.processed++;
       
       try {
         if (!sub.token_uid) {
@@ -114,7 +137,7 @@ export async function POST(request: NextRequest) {
           } else {
             await incrementFailedCount(sub.store_id);
           }
-          results.failed++;
+          results.storeSubscriptions.failed++;
           continue;
         }
         
@@ -185,8 +208,31 @@ export async function POST(request: NextRequest) {
           WHERE store_id = $1 AND payplus_token_uid = $2
         `, [sub.store_id, sub.token_uid]);
         
-        console.log(`[Billing Cron] Successfully charged store ${sub.store_id}`);
-        results.successful++;
+        console.log(`[Billing Cron] Successfully charged store ${sub.store_id} for subscription`);
+        results.storeSubscriptions.successful++;
+        
+        // =============================================
+        // 3. Charge plugin subscriptions for this store
+        // =============================================
+        // Using the same token, charge all plugins due today
+        const pluginResult = await chargeStorePlugins(
+          sub.store_id,
+          sub.token_uid,
+          sub.customer_uid || undefined
+        );
+        
+        results.pluginSubscriptions.processed += pluginResult.charged + pluginResult.failed;
+        results.pluginSubscriptions.successful += pluginResult.charged;
+        results.pluginSubscriptions.failed += pluginResult.failed;
+        results.pluginSubscriptions.totalAmount += pluginResult.totalAmount;
+        
+        if (pluginResult.errors.length > 0) {
+          results.errors.push(...pluginResult.errors.map(e => `Store ${sub.store_id} plugins: ${e}`));
+        }
+        
+        if (pluginResult.charged > 0) {
+          console.log(`[Billing Cron] Charged ${pluginResult.charged} plugins for store ${sub.store_id}: ₪${pluginResult.totalAmount}`);
+        }
         
       } catch (error) {
         console.error(`[Billing Cron] Failed to charge store ${sub.store_id}:`, error);
@@ -216,11 +262,23 @@ export async function POST(request: NextRequest) {
           await incrementFailedCount(sub.store_id);
         }
         
-        results.failed++;
+        results.storeSubscriptions.failed++;
       }
     }
     
-    // 3. Handle cancelled subscriptions that reached their end date
+    // =============================================
+    // 4. Deactivate cancelled plugins that reached end date
+    // =============================================
+    const deactivatedPlugins = await deactivateExpiredSubscriptions();
+    results.expiredPlugins = deactivatedPlugins;
+    
+    if (deactivatedPlugins > 0) {
+      console.log(`[Billing Cron] Deactivated ${deactivatedPlugins} expired plugin subscriptions`);
+    }
+    
+    // =============================================
+    // 5. Handle cancelled store subscriptions that reached their end date
+    // =============================================
     const expiredCancelled = await query<{ store_id: number }>(`
       UPDATE qs_store_subscriptions
       SET status = 'expired', updated_at = now()
@@ -284,4 +342,3 @@ async function incrementFailedCount(storeId: number) {
 export async function GET(request: NextRequest) {
   return POST(request);
 }
-

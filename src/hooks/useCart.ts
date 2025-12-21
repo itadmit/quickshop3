@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useStoreId } from './useStoreId';
+import { emitTrackingEvent } from '@/lib/tracking/events';
 
 export interface CartItem {
   variant_id: number;
@@ -241,8 +242,8 @@ export function useCart() {
 
   // ADD TO CART - Updates global state immediately
   const addToCart = useCallback(async (item: CartItem): Promise<boolean> => {
-    // Validations
-    if (!item.variant_id || !item.product_id || !item.price || item.price < 0) {
+    // Validations - שים לב: price יכול להיות 0 למוצרי מתנה
+    if (!item.variant_id || !item.product_id || item.price === undefined || item.price === null || item.price < 0) {
       console.error('[useCart] Invalid cart item:', item);
       return false;
     }
@@ -266,6 +267,37 @@ export function useCart() {
       // Read current items from global state
       const currentItems = globalCartItems[storeId] || [];
       const existing = currentItems.find((i) => areItemsEqual(i, item));
+      
+      // חישוב כמות סופית (קיימת + חדשה)
+      const currentQuantity = existing ? existing.quantity : 0;
+      const totalQuantity = currentQuantity + item.quantity;
+      
+      // ✅ בדיקת מלאי לפני הוספה (רק למוצרים רגילים, לא למתנות)
+      const isGiftProduct = item.properties?.some(prop => prop.name === 'מתנה');
+      if (!isGiftProduct) {
+        try {
+          const inventoryResponse = await fetch(`/api/variants/${item.variant_id}/inventory`);
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json();
+            const available = inventoryData.available || 0;
+            
+            if (totalQuantity > available) {
+              const canAdd = available - currentQuantity;
+              if (canAdd <= 0) {
+                alert(`המוצר "${item.product_title}" אזל מהמלאי`);
+              } else {
+                alert(`רק ${available} יחידות זמינות במלאי. ניתן להוסיף עוד ${canAdd} יחידות.`);
+              }
+              globalIsAddingToCart[storeId] = false;
+              notifyCartListeners();
+              return false;
+            }
+          }
+        } catch (inventoryError) {
+          console.warn('[useCart] Could not check inventory, proceeding:', inventoryError);
+          // ממשיכים גם אם לא הצלחנו לבדוק מלאי
+        }
+      }
       
       let newItems: CartItem[];
       if (existing) {
@@ -311,6 +343,22 @@ export function useCart() {
       return;
     }
     
+    // Track RemoveFromCart event
+    if (itemToRemove) {
+      emitTrackingEvent({
+        event: 'RemoveFromCart',
+        content_ids: [String(itemToRemove.product_id)],
+        contents: [{
+          id: String(itemToRemove.product_id),
+          quantity: itemToRemove.quantity,
+          item_price: itemToRemove.price,
+          item_name: itemToRemove.product_title,
+        }],
+        currency: 'ILS',
+        value: itemToRemove.price * itemToRemove.quantity,
+      });
+    }
+    
     const newItems = currentItems.filter((i) => i.variant_id !== variantId);
     
     // Also remove any orphaned gifts if no regular items left
@@ -353,9 +401,28 @@ export function useCart() {
     }
     
     const currentItems = globalCartItems[storeId] || [];
+    const itemToUpdate = currentItems.find((i) => i.variant_id === variantId);
+    
     const newItems = currentItems.map((i) => 
       i.variant_id === variantId ? { ...i, quantity } : i
     );
+    
+    // Track UpdateCart event
+    if (itemToUpdate) {
+      emitTrackingEvent({
+        event: 'UpdateCart',
+        content_ids: newItems.map(i => String(i.product_id)),
+        contents: newItems.map(i => ({
+          id: String(i.product_id),
+          quantity: i.quantity,
+          item_price: i.price,
+          item_name: i.product_title,
+        })),
+        currency: 'ILS',
+        value: newItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
+        num_items: newItems.reduce((sum, i) => sum + i.quantity, 0),
+      });
+    }
     
     globalCartItems[storeId] = newItems;
     setCartToStorage(newItems, storeId);

@@ -16,6 +16,7 @@ interface AddToCartButtonProps {
   price: number;
   image?: string | null;
   available: boolean;
+  inventoryQuantity?: number; // כמות זמינה במלאי
   onAddToCart?: () => void;
   properties?: Array<{
     name: string;
@@ -31,6 +32,7 @@ export function AddToCartButton({
   price,
   image,
   available,
+  inventoryQuantity = Infinity, // ברירת מחדל: אין הגבלה
   properties,
 }: AddToCartButtonProps) {
   const { addToCart, isAddingToCart } = useCart();
@@ -116,13 +118,23 @@ export function AddToCartButton({
           </button>
           <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
           <button
-            onClick={() => setQuantity(quantity + 1)}
-            className="px-3 py-2 hover:bg-gray-100 transition-colors"
+            onClick={() => {
+              if (quantity < inventoryQuantity) {
+                setQuantity(quantity + 1);
+              }
+            }}
+            disabled={quantity >= inventoryQuantity}
+            className="px-3 py-2 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={t('product.increase_quantity')}
           >
             +
           </button>
         </div>
+        {inventoryQuantity > 0 && inventoryQuantity <= 5 && inventoryQuantity !== Infinity && (
+          <span className="text-sm text-orange-600">
+            נותרו {inventoryQuantity} במלאי
+          </span>
+        )}
       </div>
 
       {/* Add to Cart Button */}

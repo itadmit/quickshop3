@@ -33,7 +33,8 @@ import {
   HiDatabase,
   HiTemplate,
   HiPlus,
-  HiLightBulb
+  HiLightBulb,
+  HiDocumentReport
 } from 'react-icons/hi';
 
 export const MenuIcons = {
@@ -71,5 +72,6 @@ export const MenuIcons = {
   sizeCharts: HiTemplate,
   productAddons: HiCollection,
   sparkles: HiLightBulb,
+  reports: HiDocumentReport,
 };
 

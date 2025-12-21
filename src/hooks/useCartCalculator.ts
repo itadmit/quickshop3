@@ -360,6 +360,12 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         
         if (hasRegularItems) {
           for (const giftProduct of result.giftProducts) {
+            // וידוא שה-giftProduct מכיל את כל השדות הנדרשים
+            if (!giftProduct.variant_id || !giftProduct.product_id) {
+              console.warn('[useCartCalculator] Invalid gift product, skipping:', giftProduct);
+              continue;
+            }
+            
             const isGiftInCart = cartItems.some(
               item => item.variant_id === giftProduct.variant_id && 
                       item.product_id === giftProduct.product_id &&
@@ -370,14 +376,14 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
               await cartFromHook.addToCart({
                 variant_id: giftProduct.variant_id,
                 product_id: giftProduct.product_id,
-                product_title: giftProduct.product_title,
-                variant_title: giftProduct.variant_title,
+                product_title: giftProduct.product_title || 'מתנה',
+                variant_title: giftProduct.variant_title || '',
                 price: 0, // מתנה = מחיר 0
                 quantity: 1,
                 image: giftProduct.image,
                 properties: [{
                   name: 'מתנה',
-                  value: giftProduct.discount_name,
+                  value: giftProduct.discount_name || 'מתנה',
                 }],
               });
             }
@@ -525,21 +531,26 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           console.error('Error saving discount code:', error);
         }
         
+        // ✅ חכה עד שה-recalculate יסתיים כולל הוספת מתנות לפני שמכבים את הלואדינג
         await recalculate();
+        setValidatingCode(false);
         return { valid: true };
       } else {
+        setValidatingCode(false);
         return { valid: false, error: result.error };
       }
     } catch (error) {
       console.error('Error validating code:', error);
-      return { valid: false, error: 'שגיאה באימות קופון' };
-    } finally {
       setValidatingCode(false);
+      return { valid: false, error: 'שגיאה באימות קופון' };
     }
   }, [cartItems, options.storeId, recalculate, calculation, setDiscountCode]);
 
   // הסרת קופון
   const removeDiscountCode = useCallback(async () => {
+    // ✅ הצגת loading בזמן הסרת קופון
+    setValidatingCode(true);
+    
     // Update global state immediately
     globalDiscountCode[options.storeId] = '';
     sessionStorage.setItem(`discount_code_${options.storeId}`, '');
@@ -575,14 +586,27 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
       if (response2.ok) {
         const result = await response2.json();
         setCalculation(result);
+        
+        // ✅ הסרת מתנות שכבר לא רלוונטיות (אם הקופון נתן מתנה)
+        const currentGiftVariantIds = (result.giftProducts || []).map((g: any) => g.variant_id);
+        const giftsToRemove = cartItems.filter(item => {
+          const isGift = item.properties?.some(p => p.name === 'מתנה');
+          return isGift && !currentGiftVariantIds.includes(item.variant_id);
+        });
+        
+        for (const giftToRemove of giftsToRemove) {
+          await cartFromHook.removeGiftFromCart(giftToRemove.variant_id);
+        }
       } else {
         await recalculate();
       }
     } catch (error) {
       console.error('Error removing discount code:', error);
       await recalculate();
+    } finally {
+      setValidatingCode(false);
     }
-  }, [cartItems, options.storeId, options.shippingRate, options.customerId, options.customerSegment, options.customerOrdersCount, options.customerLifetimeValue, recalculate, setCalculation]);
+  }, [cartItems, options.storeId, options.shippingRate, options.customerId, options.customerSegment, options.customerOrdersCount, options.customerLifetimeValue, recalculate, setCalculation, cartFromHook]);
 
   return {
     // State

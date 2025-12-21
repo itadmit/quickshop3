@@ -29,13 +29,13 @@ export default function CartPage() {
     autoCalculate: true,
   });
 
-  // Track InitiateCheckout event
+  // Track ViewCart event on page load
   useEffect(() => {
     if (cartItems.length > 0) {
-      // שימוש במנוע החישוב לקבלת המחיר המדויק (כולל הנחות)
       const total = getTotal();
+      // Track ViewCart event
       emitTrackingEvent({
-        event: 'InitiateCheckout',
+        event: 'ViewCart',
         content_ids: cartItems.map(item => String(item.product_id)),
         contents: cartItems.map(item => ({
           id: String(item.product_id),
@@ -47,7 +47,8 @@ export default function CartPage() {
         num_items: cartItems.reduce((sum, item) => sum + item.quantity, 0),
       });
     }
-  }, [cartItems, getTotal]); // עדכון כשהעגלה או החישוב משתנים
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // רק בטעינת הדף
 
   if (cartItems.length === 0) {
     return (

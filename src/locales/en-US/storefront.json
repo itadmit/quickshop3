@@ -200,6 +200,23 @@
     "title": "Custom HTML",
     "placeholder": "Add HTML code via the settings panel",
     "preview_notice": "The code will be displayed in the live store. To preview, save and open the store."
+  },
+  "cookies": {
+    "notice": "Cookie Notice",
+    "description": "We use cookies to improve your browsing experience on our site. Continuing to use the site constitutes consent to our use of cookies.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "learn_more": "Learn More",
+    "show_less": "Show Less",
+    "policy_title": "Cookie Policy",
+    "what_are_cookies": "What are cookies?",
+    "what_are_cookies_text": "Cookies are small text files that are stored on your device when you browse the site.",
+    "how_we_use": "How do we use cookies?",
+    "essential_cookies": "Essential cookies - required for site operation",
+    "performance_cookies": "Performance cookies - help us understand how visitors use the site",
+    "advertising_cookies": "Advertising cookies - used to tailor relevant ads",
+    "control": "Cookie Control",
+    "control_text": "You can control cookies through your browser settings."
   }
 }
 

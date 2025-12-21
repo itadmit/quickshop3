@@ -10,6 +10,7 @@ import { useCart } from '@/hooks/useCart';
 import { useCartOpen } from '@/hooks/useCartOpen';
 import { useProductPage } from '@/contexts/ProductPageContext';
 import { DEMO_RELATED_PRODUCTS, DEMO_RECENTLY_VIEWED, DEMO_REVIEWS } from '@/lib/customizer/demoData';
+import { emitTrackingEvent } from '@/lib/tracking/events';
 
 interface ProductSectionProps {
   section: SectionSettings;
@@ -74,7 +75,16 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
         {images.map((img: any, index: number) => (
           <button 
             key={index}
-            onClick={() => setSelectedImageIndex(index)}
+            onClick={() => {
+              setSelectedImageIndex(index);
+              // Track ViewProductGallery event
+              emitTrackingEvent({
+                event: 'ViewProductGallery',
+                product_id: String(product?.id || 0),
+                product_name: product?.title || '',
+                image_index: index,
+              });
+            }}
             className={`${thumbnailSizeClasses} flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${
               index === selectedImageIndex ? 'border-gray-900' : 'border-transparent hover:border-gray-300'
             }`}
@@ -580,6 +590,15 @@ export function ProductVariantsSection({ section, product, onUpdate }: ProductSe
                 });
                 if (newVariant) {
                   effectiveSetSelectedVariantId(newVariant.id);
+                  // Track SelectVariant event
+                  emitTrackingEvent({
+                    event: 'SelectVariant',
+                    product_id: String(product?.id || 0),
+                    variant_id: String(newVariant.id),
+                    variant_title: newVariant.title || '',
+                    price: parseFloat(newVariant.price || 0),
+                    currency: 'ILS',
+                  });
                 }
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
@@ -609,6 +628,15 @@ export function ProductVariantsSection({ section, product, onUpdate }: ProductSe
                       });
                       if (newVariant) {
                         effectiveSetSelectedVariantId(newVariant.id);
+                        // Track SelectVariant event
+                        emitTrackingEvent({
+                          event: 'SelectVariant',
+                          product_id: String(product?.id || 0),
+                          variant_id: String(newVariant.id),
+                          variant_title: newVariant.title || '',
+                          price: parseFloat(newVariant.price || 0),
+                          currency: 'ILS',
+                        });
                       }
                     }}
                     className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
@@ -674,9 +702,16 @@ export function ProductAddToCartSection({ section, product, onUpdate }: ProductS
   
   // Available check: variant has available > 0
   const available = effectiveVariant ? (effectiveVariant.available || 0) > 0 : false;
+  const inventoryQuantity = effectiveVariant?.available || 0;
   
   const handleAddToCart = async () => {
     if (!available || !effectiveVariant || !product || isAddingToCart) return;
+    
+    // בדיקת מלאי לפני הוספה
+    if (quantity > inventoryQuantity) {
+      alert(`רק ${inventoryQuantity} יחידות זמינות במלאי`);
+      return;
+    }
     
     try {
       // הוספה לעגלה
@@ -734,12 +769,22 @@ export function ProductAddToCartSection({ section, product, onUpdate }: ProductS
             </button>
             <span className="px-4 py-2 border-x border-gray-300 min-w-[3rem] text-center">{quantity}</span>
             <button 
-              onClick={() => setQuantity(quantity + 1)}
-              className="px-3 py-2 hover:bg-gray-100"
+              onClick={() => {
+                if (quantity < inventoryQuantity) {
+                  setQuantity(quantity + 1);
+                }
+              }}
+              disabled={quantity >= inventoryQuantity}
+              className="px-3 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               +
             </button>
           </div>
+          {inventoryQuantity > 0 && inventoryQuantity <= 5 && (
+            <span className="text-sm text-orange-600">
+              נותרו {inventoryQuantity} במלאי
+            </span>
+          )}
         </div>
       )}
       

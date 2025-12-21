@@ -19,6 +19,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { label: 'בית', href: '/dashboard', icon: MenuIcons.home },
   { label: 'אנליטיקס', href: '/analytics', icon: MenuIcons.analytics },
+  { label: 'דוחות', href: '/reports', icon: MenuIcons.reports },
   { label: 'עיצוב ותבניות', href: '/themes', icon: MenuIcons.themes },
   { label: 'התראות', href: '/notifications', icon: MenuIcons.notifications },
   {
@@ -96,6 +97,7 @@ const menuItems: MenuItem[] = [
     href: '#',
     icon: MenuIcons.webhooks,
     children: [
+      { label: 'פיקסלים ומעקב', href: '/settings/tracking', icon: MenuIcons.analytics },
       { label: 'Webhooks', href: '/webhooks', icon: MenuIcons.webhooks },
       { label: 'מרקטפלייס תוספים', href: '/settings/plugins', icon: MenuIcons.plugins },
       { label: 'אוטומציות', href: '/automations', icon: MenuIcons.automations },

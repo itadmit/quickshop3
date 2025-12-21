@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { getAllPlugins, getPluginBySlug } from '@/lib/plugins/registry';
+import { subscribeToPlugin } from '@/lib/plugins/billing';
 import { Plugin } from '@/types/plugin';
 
 /**
@@ -41,15 +42,30 @@ export async function GET(request: NextRequest) {
     }
 
     // בדיקה אילו תוספים מותקנים ופעילים לחנות זו
-    const installedPlugins = await query<Plugin>(
+    const installedPlugins = await query<Plugin & { plugin_id: number }>(
       `SELECT * FROM plugins 
        WHERE store_id = $1 OR store_id IS NULL`,
       [storeId]
     );
 
-    // הוספת מידע על התקנה ופעילות
+    // קבלת מנויים לתוספים
+    const subscriptions = await query<{
+      plugin_id: number;
+      status: string;
+      end_date: Date | null;
+      next_billing_date: Date | null;
+      is_active: boolean;
+    }>(
+      `SELECT plugin_id, status, end_date, next_billing_date, is_active
+       FROM plugin_subscriptions
+       WHERE store_id = $1`,
+      [storeId]
+    );
+
+    // הוספת מידע על התקנה, פעילות ומנוי
     const pluginsWithStatus = plugins.map(pluginDef => {
       const installed = installedPlugins.find(p => p.slug === pluginDef.slug);
+      const subscription = installed ? subscriptions.find(s => s.plugin_id === installed.id) : null;
       
       return {
         ...pluginDef,
@@ -57,6 +73,11 @@ export async function GET(request: NextRequest) {
         is_active: installed?.is_active || false,
         config: installed?.config || pluginDef.defaultConfig,
         installed_at: installed?.installed_at || null,
+        subscription: subscription ? {
+          status: subscription.status,
+          end_date: subscription.end_date,
+          next_billing_date: subscription.next_billing_date,
+        } : null,
       };
     });
 
@@ -75,6 +96,9 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/plugins - התקנת תוסף חדש
+ * 
+ * לתוספים חינמיים: התקנה ישירה
+ * לתוספים בתשלום: חיוב מהטוקן הקיים והתקנה
  */
 export async function POST(request: NextRequest) {
   try {
@@ -103,60 +127,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // בדיקה אם התוסף כבר מותקן
-    const existing = await queryOne<{ id: number }>(
-      `SELECT id FROM plugins 
-       WHERE slug = $1 AND store_id = $2`,
-      [pluginSlug, storeId]
-    );
+    // שימוש בפונקציה המאוחדת שמטפלת גם בתוספים חינמיים וגם בתשלום
+    const result = await subscribeToPlugin(storeId, pluginSlug);
 
-    if (existing) {
+    if (!result.success) {
+      // קודי שגיאה ספציפיים
+      const statusCode = result.errorCode === 'NO_TOKEN' || result.errorCode === 'NOT_PAYING' 
+        ? 402 // Payment Required 
+        : result.errorCode === 'ALREADY_SUBSCRIBED' 
+        ? 409 // Conflict
+        : 400;
+      
       return NextResponse.json(
-        { error: 'Plugin already installed' },
-        { status: 400 }
+        { 
+          error: result.error, 
+          errorCode: result.errorCode,
+        },
+        { status: statusCode }
       );
     }
 
-    // יצירת התוסף במסד הנתונים
-    const plugin = await queryOne<Plugin>(
-      `INSERT INTO plugins (
-        store_id, name, slug, description, icon, version, author,
-        type, category, is_built_in, is_free, price, currency,
-        script_url, script_content, inject_location,
-        config_schema, config, metadata, display_order,
-        is_installed, is_active, installed_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-        $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20,
-        true, true, now()
-      ) RETURNING *`,
-      [
-        storeId,
-        pluginDef.name,
-        pluginDef.slug,
-        pluginDef.description,
-        pluginDef.icon || null,
-        pluginDef.version,
-        pluginDef.author || null,
-        pluginDef.type,
-        pluginDef.category,
-        pluginDef.is_built_in,
-        pluginDef.is_free,
-        pluginDef.price || null,
-        pluginDef.currency || 'ILS',
-        pluginDef.script_url || null,
-        pluginDef.script_content || null,
-        pluginDef.inject_location || null,
-        pluginDef.config_schema || null,
-        JSON.stringify(pluginDef.defaultConfig),
-        JSON.stringify(pluginDef.metadata || {}),
-        pluginDef.display_order || 0,
-      ]
-    );
-
     return NextResponse.json({
       success: true,
-      plugin,
+      subscriptionId: result.subscriptionId,
     });
   } catch (error: any) {
     console.error('Error installing plugin:', error);

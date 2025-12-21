@@ -2,7 +2,7 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Footer } from '@/components/layout/Footer';
 import { NavigationProgress } from '@/components/ui/NavigationProgress';
-import { PrintStyles } from '@/components/layout/PrintStyles';
+import { ToastProvider } from '@/components/ui/Toast';
 
 // Prevent prerendering to avoid clientReferenceManifest error
 export const dynamic = 'force-dynamic';
@@ -14,8 +14,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <PrintStyles />
+    <ToastProvider>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <NavigationProgress />
         <Header />
@@ -27,7 +26,7 @@ export default function DashboardLayout({
         </main>
         <Footer />
       </div>
-    </>
+    </ToastProvider>
   );
 }
 

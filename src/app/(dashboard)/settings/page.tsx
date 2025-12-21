@@ -346,6 +346,7 @@ export default function SettingsPage() {
     { id: 'api', label: 'API' },
     { id: 'advanced', label: 'מתקדם' },
     { id: 'premium-club', label: 'מועדון פרימיום', href: '/settings/premium-club' },
+    { id: 'gdpr', label: 'GDPR ועוגיות', href: '/settings/gdpr' },
     { id: 'cron-status', label: 'סטטוס CRON', href: '/settings/cron-status' },
   ];
 

@@ -7,8 +7,29 @@ import { PageViewTracker } from '@/components/storefront/PageViewTracker';
 import { CustomizerLayoutWrapper } from '@/components/storefront/CustomizerLayoutWrapper';
 import { LocaleSetter } from '@/components/storefront/LocaleSetter';
 import { PopupManager } from '@/components/storefront/PopupManager';
+import { CookieBanner } from '@/components/storefront/CookieBanner';
 import { getStoreBySlug } from '@/lib/utils/store';
 import { getActivePixels, getActiveTrackingCodes } from '@/lib/tracking/pixels';
+
+// Get cookie translations based on locale
+function getCookieTranslations(locale: string) {
+  const isHebrew = locale?.startsWith('he');
+  return isHebrew ? {
+    cookieNotice: 'הודעת עוגיות',
+    cookieDescription: 'אנו משתמשים בעוגיות כדי לשפר את חווית הגלישה שלך באתר. המשך השימוש באתר מהווה הסכמה לשימוש בעוגיות.',
+    accept: 'אני מסכים',
+    decline: 'לא מסכים',
+    learnMore: 'קרא עוד',
+    showLess: 'הצג פחות',
+  } : {
+    cookieNotice: 'Cookie Notice',
+    cookieDescription: 'We use cookies to improve your browsing experience on our site. Continuing to use the site constitutes consent to our use of cookies.',
+    accept: 'Accept',
+    decline: 'Decline',
+    learnMore: 'Learn More',
+    showLess: 'Show Less',
+  };
+}
 
 // בדיקה אם הנתיב הוא צ'ק אאוט
 function isCheckoutPath(pathname: string, storeSlug: string): boolean {
@@ -187,6 +208,12 @@ export default async function StoreSlugLayout({
             dangerouslySetInnerHTML={{ __html: code.code_content }}
           />
         ))}
+
+      {/* Cookie Consent Banner */}
+      <CookieBanner 
+        storeSlug={storeSlug} 
+        translations={getCookieTranslations(store.locale || 'he-IL')}
+      />
     </>
   );
 }

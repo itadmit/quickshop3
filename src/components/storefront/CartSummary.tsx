@@ -128,15 +128,19 @@ export function CartSummary({
               <HiTag className="w-5 h-5 text-green-600" />
               <span className="font-medium text-green-800">{discountCode}</span>
             </div>
-            <button
-              onClick={async () => {
-                await removeDiscountCode();
-              }}
-              className="text-green-600 hover:text-green-800 transition-colors"
-              type="button"
-            >
-              <HiX className="w-5 h-5" />
-            </button>
+            {validatingCode ? (
+              <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <button
+                onClick={async () => {
+                  await removeDiscountCode();
+                }}
+                className="text-green-600 hover:text-green-800 transition-colors"
+                type="button"
+              >
+                <HiX className="w-5 h-5" />
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex gap-2">

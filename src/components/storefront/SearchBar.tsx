@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { HiSearch, HiX } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextSkeleton } from '@/components/ui/Skeleton';
+import { emitTrackingEvent } from '@/lib/tracking/events';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -47,6 +48,12 @@ export function SearchBar({ placeholder }: SearchBarProps = {}) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      // Track Search event
+      emitTrackingEvent({
+        event: 'Search',
+        search_string: searchQuery.trim(),
+      });
+      
       router.push(`/shops/${storeSlug}/search?q=${encodeURIComponent(searchQuery)}`);
       setIsOpen(false);
       setIsExpanded(false);

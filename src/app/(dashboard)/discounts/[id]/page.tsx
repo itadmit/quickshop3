@@ -236,6 +236,15 @@ export default function EditDiscountPage() {
         });
         return;
       }
+    } else if (formData.discount_type === 'fixed_price') {
+      if (!formData.fixed_price_quantity || !formData.fixed_price_amount) {
+        toast({
+          title: 'שגיאה',
+          description: 'כמות פריטים ומחיר קבוע הם שדות חובה',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else if (formData.discount_type !== 'free_shipping' && (!formData.value || !formData.value.trim())) {
       toast({
         title: 'שגיאה',
@@ -253,7 +262,7 @@ export default function EditDiscountPage() {
       const payload: UpdateDiscountCodeRequest = {
         code: formData.code!.toUpperCase().trim(),
         discount_type: formData.discount_type,
-        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume') ? (formData.value || null) : null,
+        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume' && formData.discount_type !== 'fixed_price') ? (formData.value || null) : null,
         // BOGO fields
         buy_quantity: formData.discount_type === 'bogo' && formData.buy_quantity ? parseInt(formData.buy_quantity) : null,
         get_quantity: formData.discount_type === 'bogo' && formData.get_quantity ? parseInt(formData.get_quantity) : null,
@@ -686,6 +695,41 @@ export default function EditDiscountPage() {
               </div>
             )}
 
+            {/* Fixed Price Fields */}
+            {formData.discount_type === 'fixed_price' && (
+              <>
+                <div>
+                  <Label htmlFor="fixed_price_quantity">כמות פריטים *</Label>
+                  <Input
+                    id="fixed_price_quantity"
+                    type="number"
+                    min="1"
+                    value={formData.fixed_price_quantity || ''}
+                    onChange={(e) => setFormData({ ...formData, fixed_price_quantity: e.target.value })}
+                    placeholder="2"
+                    required
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">כמות הפריטים לחבילה (לדוגמא: 2)</p>
+                </div>
+                <div>
+                  <Label htmlFor="fixed_price_amount">מחיר קבוע (₪) *</Label>
+                  <Input
+                    id="fixed_price_amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.fixed_price_amount || ''}
+                    onChange={(e) => setFormData({ ...formData, fixed_price_amount: e.target.value })}
+                    placeholder="55"
+                    required
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">המחיר הכולל לכמות שנבחרה (לדוגמא: 55 ש"ח ל-2 פריטים)</p>
+                </div>
+              </>
+            )}
+
             <div>
               <Label htmlFor="priority">עדיפות</Label>
               <Input
@@ -795,6 +839,21 @@ export default function EditDiscountPage() {
               <p className="text-sm text-gray-500 mt-1">רק קודים פעילים יכולים לשמש בהזמנות</p>
             </div>
           </div>
+        </Card>
+
+        {/* Gift Product */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <HiGift className="w-5 h-5" />
+            מתנה אוטומטית
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            מוצר שיתווסף אוטומטית לעגלה כאשר קוד ההנחה מוחל
+          </p>
+          <GiftProductSelector
+            selectedProductId={formData.gift_product_id || null}
+            onProductChange={(productId) => setFormData({ ...formData, gift_product_id: productId })}
+          />
         </Card>
 
         {/* Order Conditions */}

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
-import { useTranslation } from '@/hooks/useTranslation';
+import { emitTrackingEvent } from '@/lib/tracking/events';
 
 interface NewsletterProps {
   section: SectionSettings;
@@ -14,7 +14,6 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
-  const { t } = useTranslation('storefront');
   
   const [email, setEmail] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -142,6 +141,12 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
         setSubmitStatus('success');
         setEmail('');
         setPrivacyConsent(false);
+        
+        // Track Subscribe event
+        emitTrackingEvent({
+          event: 'Subscribe',
+          subscription_type: 'newsletter',
+        });
       } else {
         setSubmitStatus('error');
       }
@@ -164,13 +169,13 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
               </svg>
             </div>
             <h2 className="text-2xl font-bold mb-4" style={{ color: textColor }}>
-              {settings.success_message || t('newsletter.success') || 'תודה שנרשמת!'}
+              {settings.success_message || 'תודה שנרשמת!'}
             </h2>
             <button
               onClick={() => setSubmitStatus('idle')}
               className="mt-4 px-6 py-2 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50"
             >
-              {t('newsletter.subscribe_another') || 'הירשם עם מייל אחר'}
+              הירשם עם מייל אחר
             </button>
           </div>
         </div>
@@ -200,7 +205,7 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={settings.form_settings?.email_placeholder || t('newsletter.email_placeholder') || 'הכנס את כתובת המייל'}
+                placeholder={settings.form_settings?.email_placeholder || 'הכנס את כתובת המייל'}
                 className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-shadow"
                 style={{ textAlign: 'right' }}
                 required
@@ -231,7 +236,7 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
                     }
                 }}
               >
-                {isSubmitting ? '...' : (textBlock?.content?.button_text || t('newsletter.subscribe') || 'הירשם')}
+                {isSubmitting ? '...' : (textBlock?.content?.button_text || 'הירשם')}
               </button>
             </div>
 
@@ -245,16 +250,16 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
                   required
                 />
                 <span className="text-sm" style={{ color: textColor }}>
-                  {settings.privacy_text || t('newsletter.privacy_consent') || 'אני מאשר/ת את'}{' '}
+                  {settings.privacy_text || 'אני מאשר/ת את'}{' '}
                   <a href={settings.privacy_url || '/privacy-policy'} target="_blank" className="text-gray-600 hover:underline">
-                    {t('newsletter.privacy_policy') || 'מדיניות הפרטיות'}
+                    מדיניות הפרטיות
                   </a>
                 </span>
               </label>
             )}
 
             {submitStatus === 'error' && (
-              <p className="text-rose-400 text-sm">{t('newsletter.error') || 'אירעה שגיאה. אנא נסו שוב.'}</p>
+              <p className="text-rose-400 text-sm">אירעה שגיאה. אנא נסו שוב.</p>
             )}
           </form>
         </div>

@@ -1849,17 +1849,26 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     <div className="mb-4 flex items-center gap-2 flex-wrap">
                       <span className="text-sm text-gray-600">קופון פעיל:</span>
                       <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 border border-green-300 rounded-md">
-                        <span className="text-sm font-medium text-green-800">{discountCode}</span>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await removeDiscountCode();
-                          }}
-                          className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-0.5 transition-colors"
-                          aria-label="הסר קופון"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        {validatingCode ? (
+                          <>
+                            <span className="text-sm font-medium text-green-800">{discountCode}</span>
+                            <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm font-medium text-green-800">{discountCode}</span>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await removeDiscountCode();
+                              }}
+                              className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-0.5 transition-colors"
+                              aria-label="הסר קופון"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}

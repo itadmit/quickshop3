@@ -89,8 +89,8 @@ export async function GET(
           }
         }
 
-        // בדיקת סף משלוח חינם
-        if (subtotal && finalFreeThreshold !== null) {
+        // בדיקת סף משלוח חינם - רק אם יש סף חיובי
+        if (subtotal && finalFreeThreshold !== null && finalFreeThreshold > 0) {
           if (parseFloat(subtotal) >= finalFreeThreshold) {
             finalPrice = 0;
           }

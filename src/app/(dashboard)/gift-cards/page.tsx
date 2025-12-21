@@ -21,6 +21,7 @@ export default function GiftCardsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCards, setSelectedCards] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadGiftCards();
@@ -40,6 +41,26 @@ export default function GiftCardsPage() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את הגיפט קארד? פעולה זו תשבית אותו לצמיתות.')) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/gift-cards/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete gift card');
+      setGiftCards(giftCards.filter(card => card.id !== id));
+    } catch (error) {
+      console.error('Error deleting gift card:', error);
+      alert('שגיאה במחיקת גיפט קארד');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const columns: TableColumn<GiftCard>[] = [
     {
       key: 'code',
@@ -49,18 +70,34 @@ export default function GiftCardsPage() {
       ),
     },
     {
-      key: 'value',
-      label: 'ערך',
+      key: 'initial_value',
+      label: 'ערך התחלתי',
       render: (card) => (
-        <div>
-          <div className="font-semibold text-gray-900">
-            ₪{parseFloat(card.current_value).toLocaleString('he-IL')}
-          </div>
-          <div className="text-sm text-gray-500">
-            מתוך ₪{parseFloat(card.initial_value).toLocaleString('he-IL')}
-          </div>
+        <div className="font-semibold text-gray-900">
+          ₪{parseFloat(card.initial_value).toLocaleString('he-IL')}
         </div>
       ),
+    },
+    {
+      key: 'current_value',
+      label: 'יתרה',
+      render: (card) => {
+        const initial = parseFloat(card.initial_value);
+        const current = parseFloat(card.current_value);
+        const percentage = initial > 0 ? (current / initial) * 100 : 0;
+        return (
+          <div>
+            <div className={`font-semibold ${current === 0 ? 'text-red-600' : current < initial ? 'text-orange-600' : 'text-green-600'}`}>
+              ₪{current.toLocaleString('he-IL')}
+            </div>
+            {current !== initial && (
+              <div className="text-xs text-gray-500">
+                {percentage.toFixed(0)}% נותר
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'expires_at',
@@ -136,6 +173,17 @@ export default function GiftCardsPage() {
               title="ערוך"
             >
               <HiPencil className="w-5 h-5 text-gray-600" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(card.id);
+              }}
+              disabled={deletingId === card.id}
+              className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              title="מחק"
+            >
+              <HiTrash className={`w-5 h-5 ${deletingId === card.id ? 'text-gray-400' : 'text-red-600'}`} />
             </button>
           </div>
         )}

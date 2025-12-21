@@ -6,12 +6,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog';
-import { Label } from '@/components/ui/Label';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
+import Link from 'next/link';
 import { 
   HiSearch, 
   HiCheckCircle, 
-  HiXCircle, 
   HiCog, 
   HiStar,
   HiCube,
@@ -21,15 +20,23 @@ import {
   HiCog as HiSettings,
   HiShoppingBag,
   HiSparkles,
-  HiShieldCheck
+  HiExclamationCircle,
+  HiClock,
+  HiTrash,
+  HiRefresh
 } from 'react-icons/hi';
-import { PluginDefinition } from '@/types/plugin';
+import { PluginDefinition, PluginSubscription } from '@/types/plugin';
 
 interface PluginWithStatus extends PluginDefinition {
   is_installed: boolean;
   is_active: boolean;
   config?: any;
   installed_at?: Date | null;
+  subscription?: {
+    status: string;
+    end_date: Date | null;
+    next_billing_date: Date | null;
+  };
 }
 
 const categoryIcons: Record<string, any> = {
@@ -62,11 +69,18 @@ export default function PluginsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [installingSlug, setInstallingSlug] = useState<string | null>(null);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [selectedPlugin, setSelectedPlugin] = useState<PluginWithStatus | null>(null);
-  const [cardToken, setCardToken] = useState('');
-  const [processingPayment, setProcessingPayment] = useState(false);
   const [cancellingSlug, setCancellingSlug] = useState<string | null>(null);
+  const [removingSlug, setRemovingSlug] = useState<string | null>(null);
+  
+  // Dialog states
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'subscribe' | 'cancel' | 'remove' | null>(null);
+  const [selectedPlugin, setSelectedPlugin] = useState<PluginWithStatus | null>(null);
+  
+  // Error dialog for payment issues
+  const [showPaymentErrorDialog, setShowPaymentErrorDialog] = useState(false);
+  const [paymentErrorCode, setPaymentErrorCode] = useState<string | null>(null);
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState<string>('');
 
   useEffect(() => {
     loadPlugins();
@@ -116,7 +130,8 @@ export default function PluginsPage() {
     setFilteredPlugins(filtered);
   };
 
-  const handleInstall = async (pluginSlug: string) => {
+  // התקנת תוסף חינמי
+  const handleInstallFree = async (pluginSlug: string) => {
     try {
       setInstallingSlug(pluginSlug);
       const response = await fetch('/api/plugins', {
@@ -152,52 +167,46 @@ export default function PluginsPage() {
     }
   };
 
-  const handleSubscribe = async (pluginSlug: string) => {
-    const plugin = plugins.find(p => p.slug === pluginSlug);
-    if (!plugin) return;
+  // רכישת תוסף בתשלום - משתמש בטוקן הקיים
+  const handleSubscribe = async () => {
+    if (!selectedPlugin) return;
     
-    setSelectedPlugin(plugin);
-    setShowPaymentDialog(true);
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (!selectedPlugin || !cardToken.trim()) {
-      toast({
-        title: 'שגיאה',
-        description: 'אנא הזן token כרטיס אשראי',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
-      setProcessingPayment(true);
+      setInstallingSlug(selectedPlugin.slug);
+      setShowConfirmDialog(false);
+      
       const response = await fetch(`/api/plugins/${selectedPlugin.slug}/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          cardToken: cardToken.trim(),
-          paymentProviderSlug: 'quickshop_payments'
-        }),
+        body: JSON.stringify({}), // לא צריך cardToken - משתמשים בטוקן הקיים
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         toast({
-          title: 'הצלחה',
-          description: 'התוסף נרכש בהצלחה והמנוי הופעל',
+          title: 'הצלחה! 🎉',
+          description: 'התוסף הותקן והחיוב בוצע בהצלחה',
         });
-        setShowPaymentDialog(false);
-        setCardToken('');
-        setSelectedPlugin(null);
         loadPlugins();
       } else {
-        const error = await response.json();
-        toast({
-          title: 'שגיאה',
-          description: error.error || 'לא ניתן לרכוש את התוסף',
-          variant: 'destructive',
-        });
+        // טיפול בקודי שגיאה ספציפיים
+        if (data.errorCode === 'NO_TOKEN' || data.errorCode === 'NOT_PAYING') {
+          setPaymentErrorCode(data.errorCode);
+          setPaymentErrorMessage(data.error);
+          setShowPaymentErrorDialog(true);
+        } else if (data.errorCode === 'CHARGE_FAILED') {
+          setPaymentErrorCode('CHARGE_FAILED');
+          setPaymentErrorMessage(data.error);
+          setShowPaymentErrorDialog(true);
+        } else {
+          toast({
+            title: 'שגיאה',
+            description: data.error || 'לא ניתן לרכוש את התוסף',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       console.error('Error subscribing to plugin:', error);
@@ -207,33 +216,38 @@ export default function PluginsPage() {
         variant: 'destructive',
       });
     } finally {
-      setProcessingPayment(false);
+      setInstallingSlug(null);
+      setSelectedPlugin(null);
     }
   };
 
-  const handleCancel = async (pluginSlug: string) => {
-    if (!confirm('האם אתה בטוח שברצונך לבטל את המנוי? התוסף יישאר פעיל עד סוף החודש.')) {
-      return;
-    }
-
+  // ביטול מנוי לתוסף
+  const handleCancel = async () => {
+    if (!selectedPlugin) return;
+    
     try {
-      setCancellingSlug(pluginSlug);
-      const response = await fetch(`/api/plugins/${pluginSlug}/cancel`, {
-        method: 'POST',
+      setCancellingSlug(selectedPlugin.slug);
+      setShowConfirmDialog(false);
+      
+      const response = await fetch(`/api/plugins/${selectedPlugin.slug}`, {
+        method: 'DELETE',
         credentials: 'include',
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         toast({
-          title: 'הצלחה',
-          description: 'המנוי בוטל בהצלחה. התוסף יישאר פעיל עד סוף החודש.',
+          title: 'המנוי בוטל',
+          description: data.endDate 
+            ? `התוסף יישאר פעיל עד ${new Date(data.endDate).toLocaleDateString('he-IL')}`
+            : 'התוסף הוסר בהצלחה',
         });
         loadPlugins();
       } else {
-        const error = await response.json();
         toast({
           title: 'שגיאה',
-          description: error.error || 'לא ניתן לבטל את המנוי',
+          description: data.error || 'לא ניתן לבטל את המנוי',
           variant: 'destructive',
         });
       }
@@ -246,17 +260,76 @@ export default function PluginsPage() {
       });
     } finally {
       setCancellingSlug(null);
+      setSelectedPlugin(null);
     }
   };
 
+  // הסרת תוסף (לתוספים חינמיים)
+  const handleRemove = async () => {
+    if (!selectedPlugin) return;
+    
+    try {
+      setRemovingSlug(selectedPlugin.slug);
+      setShowConfirmDialog(false);
+      
+      const response = await fetch(`/api/plugins/${selectedPlugin.slug}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'הצלחה',
+          description: 'התוסף הוסר בהצלחה',
+        });
+        loadPlugins();
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'שגיאה',
+          description: error.error || 'לא ניתן להסיר את התוסף',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error removing plugin:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להסיר את התוסף',
+        variant: 'destructive',
+      });
+    } finally {
+      setRemovingSlug(null);
+      setSelectedPlugin(null);
+    }
+  };
+
+  // פתיחת דיאלוג אישור
+  const openConfirmDialog = (plugin: PluginWithStatus, action: 'subscribe' | 'cancel' | 'remove') => {
+    setSelectedPlugin(plugin);
+    setConfirmAction(action);
+    setShowConfirmDialog(true);
+  };
+
   const handleSettings = (pluginSlug: string) => {
-    // TODO: ניתוב לדף הגדרות התוסף
-    if (pluginSlug === 'premium-club') {
-      window.location.href = '/settings/premium-club';
+    const settingsRoutes: Record<string, string> = {
+      'premium-club': '/settings/premium-club',
+      'smart-advisor': '/smart-advisor',
+      'reviews': '/reviews',
+    };
+    
+    const route = settingsRoutes[pluginSlug];
+    if (route) {
+      window.location.href = route;
     }
   };
 
   const categories = Array.from(new Set(plugins.map((p) => p.category)));
+
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('he-IL');
+  };
 
   if (loading) {
     return (
@@ -280,6 +353,10 @@ export default function PluginsPage() {
             הוסף תכונות חדשות לחנות שלך עם תוספים מותאמים אישית
           </p>
         </div>
+        <Button variant="outline" onClick={loadPlugins}>
+          <HiRefresh className="w-4 h-4 ml-2" />
+          רענן
+        </Button>
       </div>
 
       {/* Search & Filters */}
@@ -307,10 +384,11 @@ export default function PluginsPage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              הכל
+              הכל ({plugins.length})
             </button>
             {categories.map((category) => {
               const Icon = categoryIcons[category];
+              const count = plugins.filter(p => p.category === category).length;
               return (
                 <button
                   key={category}
@@ -322,7 +400,7 @@ export default function PluginsPage() {
                   }`}
                 >
                   {Icon && <Icon className="w-4 h-4" />}
-                  {categoryLabels[category] || category}
+                  {categoryLabels[category] || category} ({count})
                 </button>
               );
             })}
@@ -342,8 +420,11 @@ export default function PluginsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPlugins.map((plugin) => {
             const CategoryIcon = categoryIcons[plugin.category];
+            const isProcessing = installingSlug === plugin.slug || cancellingSlug === plugin.slug || removingSlug === plugin.slug;
+            const isCancelled = plugin.subscription?.status === 'CANCELLED';
+            
             return (
-              <Card key={plugin.slug} className="hover:shadow-lg transition-shadow">
+              <Card key={plugin.slug} className={`hover:shadow-lg transition-shadow ${isCancelled ? 'border-yellow-300 bg-yellow-50/30' : ''}`}>
                 <div className="p-6 space-y-4">
                   {/* Header */}
                   <div className="flex items-start justify-between">
@@ -364,13 +445,26 @@ export default function PluginsPage() {
                         <p className="text-xs text-gray-500">{categoryLabels[plugin.category]}</p>
                       </div>
                     </div>
-                    {plugin.is_installed && plugin.is_active && (
+                    {plugin.is_installed && plugin.is_active && !isCancelled && (
                       <HiCheckCircle className="w-5 h-5 text-green-500" />
+                    )}
+                    {isCancelled && (
+                      <HiClock className="w-5 h-5 text-yellow-500" />
                     )}
                   </div>
 
                   {/* Description */}
                   <p className="text-sm text-gray-600 line-clamp-2">{plugin.description}</p>
+
+                  {/* Subscription Status */}
+                  {isCancelled && plugin.subscription?.end_date && (
+                    <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 text-sm">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <HiClock className="w-4 h-4" />
+                        <span>מבוטל - פעיל עד {formatDate(plugin.subscription.end_date)}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Badges */}
                   <div className="flex flex-wrap gap-2">
@@ -411,33 +505,43 @@ export default function PluginsPage() {
                           <HiCog className="w-4 h-4 ml-1" />
                           הגדרות
                         </Button>
-                        {!plugin.is_free && (
+                        {plugin.is_free ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleCancel(plugin.slug)}
-                            disabled={cancellingSlug === plugin.slug}
-                            className="text-red-600 hover:text-red-700"
+                            onClick={() => openConfirmDialog(plugin, 'remove')}
+                            disabled={isProcessing}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            {cancellingSlug === plugin.slug ? 'מבטל...' : 'בטל מנוי'}
+                            <HiTrash className="w-4 h-4" />
                           </Button>
-                        )}
+                        ) : !isCancelled ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openConfirmDialog(plugin, 'cancel')}
+                            disabled={isProcessing}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            {isProcessing ? 'מעבד...' : 'בטל'}
+                          </Button>
+                        ) : null}
                       </>
                     ) : (
                       <Button
                         onClick={() =>
                           plugin.is_free
-                            ? handleInstall(plugin.slug)
-                            : handleSubscribe(plugin.slug)
+                            ? handleInstallFree(plugin.slug)
+                            : openConfirmDialog(plugin, 'subscribe')
                         }
-                        disabled={installingSlug === plugin.slug}
+                        disabled={isProcessing}
                         className="flex-1"
                         size="sm"
                       >
-                        {installingSlug === plugin.slug
-                          ? 'מתקין...'
+                        {isProcessing
+                          ? 'מעבד...'
                           : plugin.is_free
-                          ? 'התקן'
+                          ? 'התקן חינם'
                           : `התקן - ₪${plugin.price}/חודש`}
                       </Button>
                     )}
@@ -449,81 +553,152 @@ export default function PluginsPage() {
         </div>
       )}
 
-      {/* Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+      {/* Confirm Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>רכישת תוסף בתשלום</DialogTitle>
+            <DialogTitle>
+              {confirmAction === 'subscribe' && 'רכישת תוסף'}
+              {confirmAction === 'cancel' && 'ביטול מנוי'}
+              {confirmAction === 'remove' && 'הסרת תוסף'}
+            </DialogTitle>
             <DialogDescription>
-              {selectedPlugin && (
-                <>
-                  רכישת התוסף <strong>{selectedPlugin.name}</strong> במחיר של{' '}
-                  <strong>₪{selectedPlugin.price}/חודש</strong>
-                </>
+              {confirmAction === 'subscribe' && selectedPlugin && (
+                <div className="space-y-3 mt-2">
+                  <p>
+                    האם ברצונך לרכוש את התוסף <strong>{selectedPlugin.name}</strong>?
+                  </p>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>מחיר חודשי:</span>
+                      <span className="font-semibold">₪{selectedPlugin.price}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>מע"מ (17%):</span>
+                      <span className="font-semibold">₪{((selectedPlugin.price || 0) * 0.17).toFixed(2)}</span>
+                    </div>
+                    <hr />
+                    <div className="flex justify-between">
+                      <span className="font-medium">סה"כ לחיוב:</span>
+                      <span className="font-bold text-green-600">
+                        ₪{((selectedPlugin.price || 0) * 1.17).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    התשלום יתבצע מהכרטיס השמור בחשבונך. המנוי יחודש אוטומטית כל חודש.
+                  </p>
+                </div>
+              )}
+              {confirmAction === 'cancel' && selectedPlugin && (
+                <div className="space-y-3 mt-2">
+                  <p>
+                    האם אתה בטוח שברצונך לבטל את המנוי ל<strong>{selectedPlugin.name}</strong>?
+                  </p>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+                    <strong>שים לב:</strong> התוסף ימשיך לעבוד עד סוף התקופה ששילמת עליה.
+                    לא יתבצע חיוב נוסף.
+                  </div>
+                </div>
+              )}
+              {confirmAction === 'remove' && selectedPlugin && (
+                <p className="mt-2">
+                  האם אתה בטוח שברצונך להסיר את התוסף <strong>{selectedPlugin.name}</strong>?
+                </p>
               )}
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="p-6 space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <HiShieldCheck className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-semibold mb-1">תשלום מאובטח</p>
-                  <p>התשלום מתבצע דרך QuickShop Payments. המנוי יחודש אוטומטית כל חודש.</p>
-                </div>
-              </div>
-            </div>
 
-            <div>
-              <Label>Card Token</Label>
-              <Input
-                type="text"
-                placeholder="הזן token כרטיס אשראי"
-                value={cardToken}
-                onChange={(e) => setCardToken(e.target.value)}
-                className="mt-2"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Token זה מתקבל מ-QuickShop Payments לאחר הזנת פרטי הכרטיס
-              </p>
-            </div>
-
-            {selectedPlugin && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">מחיר חודשי:</span>
-                  <span className="font-semibold text-gray-900">₪{selectedPlugin.price}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm mt-2">
-                  <span className="text-gray-600">תשלום ראשון:</span>
-                  <span className="font-semibold text-gray-900">₪{selectedPlugin.price}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => {
-                setShowPaymentDialog(false);
-                setCardToken('');
+                setShowConfirmDialog(false);
                 setSelectedPlugin(null);
+                setConfirmAction(null);
               }}
             >
               ביטול
             </Button>
             <Button
-              onClick={handlePaymentSubmit}
-              disabled={processingPayment || !cardToken.trim()}
+              onClick={() => {
+                if (confirmAction === 'subscribe') handleSubscribe();
+                else if (confirmAction === 'cancel') handleCancel();
+                else if (confirmAction === 'remove') handleRemove();
+              }}
+              variant={confirmAction === 'subscribe' ? 'default' : 'destructive'}
             >
-              {processingPayment ? 'מעבד...' : 'רכוש עכשיו'}
+              {confirmAction === 'subscribe' && 'רכוש עכשיו'}
+              {confirmAction === 'cancel' && 'בטל מנוי'}
+              {confirmAction === 'remove' && 'הסר תוסף'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Error Dialog */}
+      <Dialog open={showPaymentErrorDialog} onOpenChange={setShowPaymentErrorDialog}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <HiExclamationCircle className="w-6 h-6" />
+              שגיאה בתשלום
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 px-2">
+            <p className="text-gray-700 mb-4">{paymentErrorMessage}</p>
+            
+            {paymentErrorCode === 'NO_TOKEN' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                <p className="font-medium mb-2">לא נמצא אמצעי תשלום</p>
+                <p>יש להוסיף כרטיס אשראי בהגדרות הבילינג כדי לרכוש תוספים.</p>
+              </div>
+            )}
+            
+            {paymentErrorCode === 'NOT_PAYING' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+                <p className="font-medium mb-2">נדרש מנוי פעיל</p>
+                <p>יש להפעיל מנוי בתשלום (Lite או Pro) לפני רכישת תוספים.</p>
+              </div>
+            )}
+            
+            {paymentErrorCode === 'CHARGE_FAILED' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+                <p className="font-medium mb-2">החיוב נכשל</p>
+                <p>יש לעדכן את פרטי הכרטיס בהגדרות הבילינג ולנסות שוב.</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowPaymentErrorDialog(false);
+                setPaymentErrorCode(null);
+                setPaymentErrorMessage('');
+              }}
+            >
+              סגור
+            </Button>
+            {(paymentErrorCode === 'NO_TOKEN' || paymentErrorCode === 'CHARGE_FAILED') && (
+              <Link href="/billing">
+                <Button>
+                  לדף הבילינג
+                </Button>
+              </Link>
+            )}
+            {paymentErrorCode === 'NOT_PAYING' && (
+              <Link href="/pricing">
+                <Button>
+                  לעמוד התוכניות
+                </Button>
+              </Link>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-
