@@ -458,8 +458,20 @@ export default function OrdersPage() {
   };
 
   const getFulfillmentStatusBadgeColor = (status: string) => {
+    // First, check if it's a custom status with a color
+    const customStatus = customStatuses.find(s => s.name === status);
+    if (customStatus && customStatus.color) {
+      // If color is a hex value or CSS color, return inline style compatible classes
+      if (customStatus.color.startsWith('#') || customStatus.color.startsWith('rgb')) {
+        return 'bg-gray-100'; // Will use inline style for custom colors
+      }
+      // If it's a tailwind-like color class
+      return `bg-${customStatus.color}-100 text-${customStatus.color}-800`;
+    }
+    
     switch (status) {
       case 'pending':
+      case 'unfulfilled':
         return 'bg-orange-100 text-orange-800';
       case 'approved':
         return 'bg-blue-100 text-blue-800';
@@ -487,6 +499,13 @@ export default function OrdersPage() {
   };
 
   const getFulfillmentStatusLabel = (status: string) => {
+    // First, check if it's a custom status
+    const customStatus = customStatuses.find(s => s.name === status);
+    if (customStatus) {
+      return customStatus.display_name;
+    }
+    
+    // Fallback to built-in labels
     const labels: Record<string, string> = {
       'pending': 'ממתין',
       'approved': 'מאושר',
@@ -499,6 +518,7 @@ export default function OrdersPage() {
       'fulfilled': 'בוצע',
       'partial': 'חלקי',
       'restocked': 'הוחזר למלאי',
+      'unfulfilled': 'ממתין לביצוע',
     };
     return labels[status] || status;
   };
@@ -658,19 +678,25 @@ export default function OrdersPage() {
               className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all w-full md:w-[180px] flex-shrink-0"
             >
               <option value="">כל הסטטוסים</option>
-              <option value="pending">ממתין</option>
-              <option value="approved">מאושר</option>
-              <option value="paid">שולם</option>
-              <option value="processing">מעובד</option>
-              <option value="shipped">נשלח</option>
-              <option value="delivered">נמסר</option>
-              <option value="canceled">בוטל</option>
-              <option value="returned">הוחזר</option>
-              {customStatuses.map((status) => (
-                <option key={status.id} value={status.name}>
-                  {status.display_name}
-                </option>
-              ))}
+              {/* Use custom statuses if available, otherwise show defaults */}
+              {customStatuses.length > 0 ? (
+                customStatuses.map((status) => (
+                  <option key={status.id} value={status.name}>
+                    {status.display_name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="pending">ממתין</option>
+                  <option value="approved">מאושר</option>
+                  <option value="paid">שולם</option>
+                  <option value="processing">מעובד</option>
+                  <option value="shipped">נשלח</option>
+                  <option value="delivered">נמסר</option>
+                  <option value="canceled">בוטל</option>
+                  <option value="returned">הוחזר</option>
+                </>
+              )}
             </select>
           </div>
         </div>

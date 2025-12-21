@@ -99,6 +99,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     show_order_notes: boolean;
     show_shipping_options: boolean;
     show_payment_methods: boolean;
+    terms_checkbox: {
+      enabled: boolean;
+      text_before: string;
+      link_text: string;
+      terms_page: string;
+      open_in: 'modal' | 'new_tab';
+    };
   }>({
     layout: { left_column_color: '#fafafa', right_column_color: '#ffffff' },
     button: { text: 'לתשלום', background_color: '#000000', text_color: '#ffffff', border_radius: '8' },
@@ -106,8 +113,20 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     custom_fields: [],
     show_order_notes: true,
     show_shipping_options: true,
-    show_payment_methods: true
+    show_payment_methods: true,
+    terms_checkbox: {
+      enabled: false,
+      text_before: 'קראתי ואני מסכים/ה ל',
+      link_text: 'תקנון האתר',
+      terms_page: 'terms',
+      open_in: 'modal'
+    }
   });
+  
+  // Terms agreement state
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsContent, setTermsContent] = useState<string>('');
   
   // Autocomplete hooks לערים ורחובות
   const citySearch = useCitySearch(storeSlug);
@@ -164,7 +183,25 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     deliveryMethod: 'shipping' as 'shipping' | 'pickup',
     customFields: {} as Record<string, any>,
     storeCreditAmount: 0, // סכום קרדיט לשימוש
+    useDifferentBillingAddress: false, // כתובת חיוב שונה מכתובת המשלוח
   });
+  
+  // Billing address state (separate from shipping)
+  const [billingAddress, setBillingAddress] = useState({
+    firstName: '',
+    lastName: '',
+    address: '',
+    houseNumber: '',
+    apartment: '',
+    floor: '',
+    city: '',
+    zip: '',
+    phone: '',
+  });
+  
+  // Billing address autocomplete hooks (after state definition)
+  const billingCitySearch = useCitySearch(storeSlug);
+  const billingStreetSearch = useStreetSearch(storeSlug, billingAddress.city);
 
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
@@ -409,6 +446,22 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         return;
       }
 
+      // Validate billing address if different billing address is selected
+      if (formData.useDifferentBillingAddress && formData.deliveryMethod === 'shipping') {
+        if (!billingAddress.city || !billingAddress.address || !billingAddress.houseNumber || !billingAddress.firstName || !billingAddress.lastName) {
+          alert('אנא מלא את כל פרטי כתובת החיוב');
+          setProcessing(false);
+          return;
+        }
+      }
+
+      // Validate terms acceptance
+      if (checkoutSettings.terms_checkbox.enabled && !termsAccepted) {
+        alert('יש לאשר את התקנון לפני המשך התשלום');
+        setProcessing(false);
+        return;
+      }
+
       const total = getTotal();
       const storeCreditAmount = formData.paymentMethod === 'store_credit' ? formData.storeCreditAmount : 0;
       const giftCardAmount = appliedGiftCard ? appliedGiftCard.amountToUse : 0;
@@ -437,7 +490,21 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           postalCode: formData.zip,
           country: 'ישראל',
           notes: formData.orderNotes,
+          companyName: formData.companyName || undefined,
         },
+        newsletter: formData.newsletter,
+        billingAddress: formData.useDifferentBillingAddress && formData.deliveryMethod === 'shipping' ? {
+          firstName: billingAddress.firstName,
+          lastName: billingAddress.lastName,
+          address: billingAddress.address,
+          houseNumber: billingAddress.houseNumber,
+          apartment: billingAddress.apartment,
+          floor: billingAddress.floor,
+          city: billingAddress.city,
+          postalCode: billingAddress.zip,
+          country: 'ישראל',
+          phone: billingAddress.phone || formData.phone,
+        } : undefined,
         total: finalTotalAfterCredits > 0 ? finalTotalAfterCredits : 0, // אם הקרדיט/גיפט קארד מכסה הכל, הסכום הוא 0
         deliveryMethod: formData.deliveryMethod,
         paymentMethod: formData.paymentMethod,
@@ -1309,6 +1376,191 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   </div>
                 )}
 
+                {/* Billing Address Section */}
+                {formData.deliveryMethod === 'shipping' && (
+                  <div 
+                    className="pb-6"
+                    style={{ 
+                      borderBottom: '1px solid #e5e7eb'
+                    }}
+                  >
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="useDifferentBillingAddress"
+                          checked={formData.useDifferentBillingAddress}
+                          onCheckedChange={(checked) => {
+                            setFormData((prev) => ({ ...prev, useDifferentBillingAddress: checked as boolean }));
+                            if (!checked) {
+                              // Reset billing address when unchecked
+                              setBillingAddress({
+                                firstName: '',
+                                lastName: '',
+                                address: '',
+                                houseNumber: '',
+                                apartment: '',
+                                floor: '',
+                                city: '',
+                                zip: '',
+                                phone: '',
+                              });
+                            }
+                          }}
+                        />
+                        <Label htmlFor="useDifferentBillingAddress" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          כתובת חיוב שונה מכתובת המשלוח
+                        </Label>
+                      </div>
+                    </div>
+
+                    {formData.useDifferentBillingAddress && (
+                      <div className="space-y-4 mt-4">
+                        <h3 className="text-md font-semibold text-gray-900 mb-3">פרטי כתובת חיוב</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="billingFirstName" className="text-sm font-medium text-gray-700">
+                              שם פרטי *
+                            </Label>
+                            <Input
+                              id="billingFirstName"
+                              value={billingAddress.firstName}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, firstName: e.target.value }))}
+                              required
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="billingLastName" className="text-sm font-medium text-gray-700">
+                              שם משפחה *
+                            </Label>
+                            <Input
+                              id="billingLastName"
+                              value={billingAddress.lastName}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, lastName: e.target.value }))}
+                              required
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="billingCity" className="text-sm font-medium text-gray-700">
+                            עיר *
+                          </Label>
+                          <Autocomplete
+                            id="billingCity"
+                            value={billingAddress.city}
+                            onChange={(value) => {
+                              setBillingAddress((prev) => ({ ...prev, city: value }));
+                              billingCitySearch.setQuery(value);
+                            }}
+                            onSelect={(option) => {
+                              setBillingAddress((prev) => ({ ...prev, city: option.value }));
+                            }}
+                            options={billingCitySearch.cities.map((city: any) => ({
+                              value: city.cityName,
+                              label: city.cityName,
+                            }))}
+                            loading={billingCitySearch.loading}
+                            placeholder="התחל להקליד עיר..."
+                            className="mt-1"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="billingAddress" className="text-sm font-medium text-gray-700">
+                            רחוב *
+                          </Label>
+                          <Autocomplete
+                            id="billingAddress"
+                            value={billingAddress.address}
+                            onChange={(value) => {
+                              setBillingAddress((prev) => ({ ...prev, address: value }));
+                              billingStreetSearch.setQuery(value);
+                            }}
+                            onSelect={(option) => {
+                              setBillingAddress((prev) => ({ ...prev, address: option.value }));
+                            }}
+                            options={billingStreetSearch.streets.map((street: any) => ({
+                              value: street.streetName,
+                              label: street.streetName,
+                            }))}
+                            loading={billingStreetSearch.loading}
+                            placeholder={billingAddress.city ? 'התחל להקליד רחוב...' : 'בחר עיר תחילה...'}
+                            className="mt-1"
+                            required
+                            disabled={!billingAddress.city}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="billingHouseNumber" className="text-sm font-medium text-gray-700">
+                              מספר בית *
+                            </Label>
+                            <Input
+                              id="billingHouseNumber"
+                              value={billingAddress.houseNumber}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, houseNumber: e.target.value }))}
+                              required
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="billingApartment" className="text-sm font-medium text-gray-700">
+                              דירה
+                            </Label>
+                            <Input
+                              id="billingApartment"
+                              value={billingAddress.apartment}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, apartment: e.target.value }))}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="billingFloor" className="text-sm font-medium text-gray-700">
+                              קומה
+                            </Label>
+                            <Input
+                              id="billingFloor"
+                              value={billingAddress.floor}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, floor: e.target.value }))}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="billingZip" className="text-sm font-medium text-gray-700">
+                              מיקוד
+                            </Label>
+                            <Input
+                              id="billingZip"
+                              value={billingAddress.zip}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, zip: e.target.value }))}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="billingPhone" className="text-sm font-medium text-gray-700">
+                              טלפון
+                            </Label>
+                            <Input
+                              id="billingPhone"
+                              value={billingAddress.phone}
+                              onChange={(e) => setBillingAddress((prev) => ({ ...prev, phone: e.target.value }))}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Custom Fields from Customizer */}
                 {checkoutSettings.custom_fields.length > 0 && (
                   <div 
@@ -1592,29 +1844,27 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     })}
                   </div>
 
-                  {/* Coupon/Discount Code - מועבר למטה לסיכום */}
+                  {/* Applied Coupons */}
                   {discountCode && (
-                    <div className="mb-4 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-green-800">
-                          {discountCode}
-                        </div>
+                    <div className="mb-4 flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-gray-600">קופון פעיל:</span>
+                      <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 border border-green-300 rounded-md">
+                        <span className="text-sm font-medium text-green-800">{discountCode}</span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await removeDiscountCode();
+                          }}
+                          className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-0.5 transition-colors"
+                          aria-label="הסר קופון"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-green-700 hover:text-green-900 hover:bg-green-100"
-                        onClick={async () => {
-                          await removeDiscountCode();
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
                     </div>
                   )}
                   
-                  {/* Applied Gift Card */}
+                  {/* Applied Gift Card - Full Display */}
                   {appliedGiftCard && (
                     <div className="mb-4 flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                       <div className="flex-1">
@@ -1638,7 +1888,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     </div>
                   )}
                   
-                  {!discountCode && !appliedGiftCard && (
+                  {/* Show code input if either coupon OR gift card can still be added */}
+                  {(!discountCode || !appliedGiftCard) && (
                     <div className="mb-4 flex gap-2">
                       <Input
                         type="text"
@@ -1648,7 +1899,11 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           setCodeError('');
                         }}
                         onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
-                        placeholder={translationsLoading ? '' : 'קוד קופון או גיפט קארד'}
+                        placeholder={translationsLoading ? '' : 
+                          discountCode ? 'קוד גיפט קארד' : 
+                          appliedGiftCard ? 'קוד קופון' : 
+                          'קוד קופון או גיפט קארד'
+                        }
                         className="flex-1"
                         style={{ backgroundColor: '#ffffff' }}
                       />
@@ -1676,34 +1931,6 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   )}
                   {codeError && (
                     <p className="mb-4 text-sm text-red-600">{codeError}</p>
-                  )}
-                  
-                  {/* Show input even if discount code is applied (for gift card) */}
-                  {discountCode && !appliedGiftCard && (
-                    <div className="mb-4 flex gap-2">
-                      <Input
-                        type="text"
-                        value={codeInput}
-                        onChange={(e) => {
-                          setCodeInput(e.target.value);
-                          setCodeError('');
-                        }}
-                        onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
-                        placeholder="קוד גיפט קארד"
-                        className="flex-1"
-                        style={{ backgroundColor: '#ffffff' }}
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="px-6"
-                        style={{ backgroundColor: '#e5e7eb' }}
-                        onClick={handleApplyCode}
-                        disabled={validatingGiftCard || !codeInput.trim()}
-                      >
-                        {validatingGiftCard ? 'בודק...' : 'החל'}
-                      </Button>
-                    </div>
                   )}
 
                   {/* Summary */}
@@ -1859,6 +2086,53 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   </div>
 
                   {/* Submit Button */}
+                  {/* Terms checkbox */}
+                  {checkoutSettings.terms_checkbox.enabled && (
+                    <div className="mt-4">
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="terms-agreement"
+                          checked={termsAccepted}
+                          onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <Label htmlFor="terms-agreement" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
+                          {checkoutSettings.terms_checkbox.text_before}
+                          {checkoutSettings.terms_checkbox.open_in === 'modal' ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                // Load terms content
+                                try {
+                                  const res = await fetch(`/api/storefront/${storeSlug}/pages/${checkoutSettings.terms_checkbox.terms_page}`);
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    setTermsContent(data.content || data.body_html || '');
+                                  }
+                                } catch (e) {
+                                  console.error('Failed to load terms:', e);
+                                }
+                                setShowTermsModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 underline mx-1"
+                            >
+                              {checkoutSettings.terms_checkbox.link_text}
+                            </button>
+                          ) : (
+                            <a
+                              href={`/shops/${storeSlug}/${checkoutSettings.terms_checkbox.terms_page}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline mx-1"
+                            >
+                              {checkoutSettings.terms_checkbox.link_text}
+                            </a>
+                          )}
+                        </Label>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Minimum order warning */}
                   {minimumOrderAmount > 0 && getTotal() < minimumOrderAmount && (
                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm text-center">
@@ -1875,7 +2149,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       borderRadius: `${checkoutSettings.button.border_radius}px`
                     }}
                     size="lg"
-                    disabled={processing || loadingPaymentMethods || paymentMethods.length === 0 || (minimumOrderAmount > 0 && getTotal() < minimumOrderAmount)}
+                    disabled={processing || loadingPaymentMethods || paymentMethods.length === 0 || (minimumOrderAmount > 0 && getTotal() < minimumOrderAmount) || (checkoutSettings.terms_checkbox.enabled && !termsAccepted)}
                   >
                     {processing ? (
                       translationsLoading ? (
@@ -1915,6 +2189,41 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
       
       {/* Checkout Footer */}
       <CheckoutFooter storeSlug={storeSlug} />
+      
+      {/* Terms Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">{checkoutSettings.terms_checkbox.link_text}</h2>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 prose prose-sm max-w-none">
+              {termsContent ? (
+                <div dangerouslySetInnerHTML={{ __html: termsContent }} />
+              ) : (
+                <p className="text-gray-500 text-center py-8">טוען...</p>
+              )}
+            </div>
+            <div className="p-4 border-t">
+              <Button
+                onClick={() => {
+                  setTermsAccepted(true);
+                  setShowTermsModal(false);
+                }}
+                className="w-full"
+              >
+                קראתי ואני מסכים/ה
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

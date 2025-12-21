@@ -4452,6 +4452,26 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 ], true)}
               </div>
             </SettingGroup>
+
+            <SettingGroup title="הסכמה לתקנון">
+              <div className="space-y-4">
+                {renderSelect('הצג צ\'קבוקס הסכמה לתקנון', 'terms_checkbox.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], false)}
+                {getValue('terms_checkbox.enabled', false) && (
+                  <>
+                    {renderInput('טקסט לפני הלינק', 'terms_checkbox.text_before', 'קראתי ואני מסכים/ה ל')}
+                    {renderInput('טקסט הלינק', 'terms_checkbox.link_text', 'תקנון האתר')}
+                    {renderInput('עמוד התקנון (handle)', 'terms_checkbox.terms_page', 'terms', 'text', 'ברירת מחדל: terms')}
+                    {renderSelect('פתיחה ב', 'terms_checkbox.open_in', [
+                      { label: 'מודל (חלונית)', value: 'modal' },
+                      { label: 'עמוד חדש', value: 'new_tab' },
+                    ], 'modal')}
+                  </>
+                )}
+              </div>
+            </SettingGroup>
           </div>
         );
 

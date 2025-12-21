@@ -129,6 +129,35 @@ export async function DELETE(
       return NextResponse.json({ error: 'Tier not found' }, { status: 404 });
     }
 
+    // Check if there are customers assigned to this tier
+    const customersWithTier = await queryOne<{ count: string }>(
+      'SELECT COUNT(*) as count FROM customer_loyalty_points WHERE tier_id = $1 AND store_id = $2',
+      [tierId, user.store_id]
+    );
+
+    const customerCount = parseInt(customersWithTier?.count || '0');
+    if (customerCount > 0) {
+      // Find another tier to reassign customers to
+      const otherTier = await queryOne<{ id: number }>(
+        'SELECT id FROM customer_loyalty_tiers WHERE id != $1 AND store_id = $2 ORDER BY tier_level ASC LIMIT 1',
+        [tierId, user.store_id]
+      );
+
+      if (otherTier) {
+        // Reassign customers to another tier
+        await query(
+          'UPDATE customer_loyalty_points SET tier_id = $1 WHERE tier_id = $2 AND store_id = $3',
+          [otherTier.id, tierId, user.store_id]
+        );
+      } else {
+        // No other tier exists, set tier_id to NULL
+        await query(
+          'UPDATE customer_loyalty_points SET tier_id = NULL WHERE tier_id = $1 AND store_id = $2',
+          [tierId, user.store_id]
+        );
+      }
+    }
+
     await query(
       'DELETE FROM customer_loyalty_tiers WHERE id = $1 AND store_id = $2',
       [tierId, user.store_id]
@@ -143,9 +172,23 @@ export async function DELETE(
       user_id: user.id,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      message: customerCount > 0 
+        ? `${customerCount} לקוחות הועברו לרמה אחרת` 
+        : 'הרמה נמחקה בהצלחה'
+    });
   } catch (error: any) {
     console.error('Error deleting tier:', error);
+    
+    // Check for foreign key constraint violation
+    if (error.message?.includes('foreign key') || error.message?.includes('violates foreign key')) {
+      return NextResponse.json(
+        { error: 'לא ניתן למחוק רמה זו מכיוון שיש לקוחות המשויכים אליה. יש להעביר את הלקוחות לרמה אחרת תחילה.' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: error.message || 'Failed to delete tier' },
       { status: 500 }

@@ -96,11 +96,20 @@ export default function LoyaltyTierDetailsPage() {
         method: 'DELETE',
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to delete tier');
-      router.push('/loyalty');
-    } catch (error) {
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (data.message) {
+          alert(data.message);
+        }
+        router.push('/loyalty');
+      } else {
+        alert(data.error || 'שגיאה במחיקת הרמה');
+      }
+    } catch (error: any) {
       console.error('Error deleting tier:', error);
-      alert('שגיאה במחיקת הרמה');
+      alert(error.message || 'שגיאה במחיקת הרמה');
     }
   };
 

@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { OrderWithDetails } from '@/types/order';
-import { HiX, HiPrinter, HiMail, HiRefresh } from 'react-icons/hi';
+import { HiPrinter } from 'react-icons/hi';
 import { useRouter } from 'next/navigation';
 
 interface OrderQuickViewProps {
@@ -12,10 +12,9 @@ interface OrderQuickViewProps {
   open: boolean;
   onClose: () => void;
   onMarkAsRead?: (orderId: number) => void;
-  onPrint?: (order: OrderWithDetails) => void;
 }
 
-export function OrderQuickView({ order, open, onClose, onMarkAsRead, onPrint }: OrderQuickViewProps) {
+export function OrderQuickView({ order, open, onClose, onMarkAsRead }: OrderQuickViewProps) {
   const router = useRouter();
 
   if (!order) return null;
@@ -86,39 +85,33 @@ export function OrderQuickView({ order, open, onClose, onMarkAsRead, onPrint }: 
   };
 
   const handlePrint = () => {
-    if (onPrint) {
-      onPrint(order);
-    } else {
-      // Fallback to old method if onPrint not provided
-      window.open(`/orders/${order.id}?print=true`, '_blank');
-    }
+    window.open(`/orders/${order.id}?print=true`, '_blank');
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>
-              הזמנה {order.order_name || `#${order.order_number || order.id}`}
-            </DialogTitle>
-            <div className="flex items-center gap-2">
-              {!order.is_read && onMarkAsRead && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    onMarkAsRead(order.id);
-                    onClose();
-                  }}
-                >
-                  סמן כנקרא
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <HiX className="w-5 h-5" />
-              </Button>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <DialogTitle>
+                הזמנה {order.order_name || `#${order.order_number || order.id}`}
+              </DialogTitle>
             </div>
+            {!order.is_read && onMarkAsRead && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onMarkAsRead(order.id);
+                  onClose();
+                }}
+                className="flex items-center gap-2 border-gray-300 hover:bg-gray-50 flex-shrink-0 whitespace-nowrap"
+              >
+                <span>✓</span>
+                <span className="mr-1">סמן כנקרא</span>
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
@@ -180,7 +173,7 @@ export function OrderQuickView({ order, open, onClose, onMarkAsRead, onPrint }: 
                   <div key={item.id} className="flex items-start gap-4 pb-3 border-b border-gray-200 last:border-0">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900">{item.title}</div>
-                      {item.variant_title && (
+                      {item.variant_title && item.variant_title !== 'Default Title' && (
                         <div className="text-sm text-gray-500">{item.variant_title}</div>
                       )}
                       {item.sku && (

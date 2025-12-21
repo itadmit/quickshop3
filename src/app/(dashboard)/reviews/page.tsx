@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { HiStar, HiCheckCircle, HiXCircle, HiPlus, HiDotsVertical, HiPencil, HiTrash, HiCheck, HiX } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
@@ -505,7 +505,7 @@ export default function ReviewsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <DialogBody className="space-y-4">
             {/* Product Selection */}
             <div>
               <Label htmlFor="product_id">מוצר *</Label>
@@ -637,7 +637,7 @@ export default function ReviewsPage() {
                 </Label>
               </div>
             </div>
-          </div>
+          </DialogBody>
 
           <DialogFooter className="flex gap-2">
             <Button

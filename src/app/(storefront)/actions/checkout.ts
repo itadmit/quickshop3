@@ -30,6 +30,19 @@ interface CreateOrderInput {
     postalCode: string;
     country: string;
     notes?: string;
+    companyName?: string; // שם חברה (אופציונלי)
+  };
+  billingAddress?: { // כתובת חיוב נפרדת (אופציונלי)
+    firstName: string;
+    lastName: string;
+    address: string;
+    houseNumber?: string;
+    apartment?: string;
+    floor?: string;
+    city: string;
+    postalCode: string;
+    country: string;
+    phone?: string;
   };
   total: number;
   deliveryMethod?: 'shipping' | 'pickup';
@@ -39,6 +52,7 @@ interface CreateOrderInput {
   giftCardAmount?: number; // סכום גיפט קארד ששומש
   customFields?: Record<string, any>;
   discountCodes?: string[]; // קודי קופונים שהוחלו על ההזמנה
+  newsletter?: boolean; // הסכמה לקבלת דיוור
 }
 
 export async function createOrder(input: CreateOrderInput) {
@@ -56,10 +70,12 @@ export async function createOrder(input: CreateOrderInput) {
   );
 
   let isNewCustomer = false;
+  const acceptsMarketing = input.newsletter ?? false;
+  
   if (!customer) {
     const newCustomer = await queryOne<{ id: number; first_name: string | null; last_name: string | null; phone: string | null; accepts_marketing: boolean; tags: string | null; note: string | null }>(
       `INSERT INTO customers (store_id, first_name, last_name, email, phone, accepts_marketing, state)
-       VALUES ($1, $2, $3, $4, $5, false, 'enabled')
+       VALUES ($1, $2, $3, $4, $5, $6, 'enabled')
        RETURNING id, first_name, last_name, phone, accepts_marketing, tags, note`,
       [
         storeId,
@@ -67,6 +83,7 @@ export async function createOrder(input: CreateOrderInput) {
         input.customer.lastName,
         input.customer.email,
         input.customer.phone,
+        acceptsMarketing,
       ]
     );
     customer = newCustomer;
@@ -79,7 +96,7 @@ export async function createOrder(input: CreateOrderInput) {
         first_name: customer.first_name,
         last_name: customer.last_name,
         phone: customer.phone,
-        accepts_marketing: customer.accepts_marketing,
+        accepts_marketing: acceptsMarketing,
         tags: customer.tags,
         note: customer.note,
       }).catch((error) => {
@@ -95,6 +112,14 @@ export async function createOrder(input: CreateOrderInput) {
     }).catch((error) => {
       console.warn('Failed to send welcome email:', error);
     });
+  } else {
+    // Update existing customer's marketing preference if they opted in
+    if (acceptsMarketing && !customer.accepts_marketing) {
+      await queryOne(
+        `UPDATE customers SET accepts_marketing = true, updated_at = now() WHERE id = $1`,
+        [customer.id]
+      );
+    }
   }
 
   if (!customer) {
@@ -172,7 +197,7 @@ export async function createOrder(input: CreateOrderInput) {
     input.customer.floor ? `קומה ${input.customer.floor}` : '',
   ].filter(Boolean);
   
-  const addressObject = {
+  const shippingAddressObject = {
     first_name: input.customer.firstName,
     last_name: input.customer.lastName,
     address1: fullAddress,
@@ -183,11 +208,37 @@ export async function createOrder(input: CreateOrderInput) {
     phone: input.customer.phone,
   };
   
+  // Create billing address - use separate billing address if provided, otherwise use shipping address
+  let billingAddressObject = shippingAddressObject;
+  if (input.billingAddress) {
+    const billingFullAddress = [
+      input.billingAddress.address,
+      input.billingAddress.houseNumber ? `מספר ${input.billingAddress.houseNumber}` : '',
+    ].filter(Boolean).join(' ');
+    
+    const billingAddress2Parts = [
+      input.billingAddress.apartment ? `דירה ${input.billingAddress.apartment}` : '',
+      input.billingAddress.floor ? `קומה ${input.billingAddress.floor}` : '',
+    ].filter(Boolean);
+    
+    billingAddressObject = {
+      first_name: input.billingAddress.firstName,
+      last_name: input.billingAddress.lastName,
+      address1: billingFullAddress,
+      address2: billingAddress2Parts.length > 0 ? billingAddress2Parts.join(', ') : undefined,
+      city: input.billingAddress.city,
+      zip: input.billingAddress.postalCode,
+      country: input.billingAddress.country,
+      phone: input.billingAddress.phone || input.customer.phone,
+    };
+  }
+  
   // Prepare note_attributes with delivery and payment methods
   const noteAttributes: Record<string, any> = {
     ...(input.customFields || {}),
     delivery_method: input.deliveryMethod || 'shipping',
     payment_method: input.paymentMethod || 'credit_card',
+    ...(input.customer.companyName ? { company_name: input.customer.companyName } : {}),
   };
   
   // Set financial status based on payment method
@@ -221,6 +272,22 @@ export async function createOrder(input: CreateOrderInput) {
     }
   }
 
+  // Get default fulfillment status for the store
+  const defaultStatus = await queryOne<{ name: string }>(
+    `SELECT name FROM custom_order_statuses 
+     WHERE store_id = $1 AND is_default = true 
+     ORDER BY position ASC LIMIT 1`,
+    [storeId]
+  );
+  // If no default status, try to get the first one by position
+  const firstStatus = defaultStatus || await queryOne<{ name: string }>(
+    `SELECT name FROM custom_order_statuses 
+     WHERE store_id = $1 
+     ORDER BY position ASC LIMIT 1`,
+    [storeId]
+  );
+  const fulfillmentStatus = firstStatus?.name || 'pending';
+
   const order = await queryOne<{ id: number; order_number: number; order_handle: string }>(
     `INSERT INTO orders (
       store_id, customer_id, order_number, order_name, order_handle,
@@ -230,16 +297,17 @@ export async function createOrder(input: CreateOrderInput) {
     )
     VALUES (
       $1, $2, $7, $8, $12,
-      $14, 'unfulfilled',
+      $14, $16,
       $3, $3, 'ILS',
-      $4, $4, $5, $9, $10, $6, $11, $13, $15
+      $4, $5, $6, $9, $10, $11, $13, $15, $17
     )
     RETURNING id, order_number, order_handle`,
     [
       storeId,
       customer.id,
       finalTotal, // Use finalTotal instead of input.total
-      JSON.stringify(addressObject),
+      JSON.stringify(billingAddressObject),
+      JSON.stringify(shippingAddressObject),
       input.customer.email,
       input.customer.notes || null,
       orderNumber,
@@ -251,6 +319,7 @@ export async function createOrder(input: CreateOrderInput) {
       input.paymentMethod || 'credit_card',
       financialStatus,
       discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : null,
+      fulfillmentStatus,
     ]
   );
 

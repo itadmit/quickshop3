@@ -143,14 +143,20 @@ export default function LoyaltyPage() {
                                 method: 'DELETE',
                                 credentials: 'include',
                               });
+                              
+                              const data = await response.json();
+                              
                               if (response.ok) {
+                                if (data.message) {
+                                  alert(data.message);
+                                }
                                 loadData();
                               } else {
-                                alert('שגיאה במחיקת הרמה');
+                                alert(data.error || 'שגיאה במחיקת הרמה');
                               }
-                            } catch (error) {
+                            } catch (error: any) {
                               console.error('Error deleting tier:', error);
-                              alert('שגיאה במחיקת הרמה');
+                              alert(error.message || 'שגיאה במחיקת הרמה');
                             }
                           }
                         }}

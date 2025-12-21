@@ -8,7 +8,7 @@ interface AutocompleteOption {
 }
 
 interface AutocompleteProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onSelect'> {
-  options: AutocompleteOption[];
+  options?: AutocompleteOption[];
   loading?: boolean;
   onSelect?: (option: AutocompleteOption) => void;
   onChange?: (value: string) => void;
@@ -16,7 +16,7 @@ interface AutocompleteProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 }
 
 export function Autocomplete({
-  options,
+  options = [],
   loading = false,
   onSelect,
   onChange,
@@ -90,7 +90,7 @@ export function Autocomplete({
     }
   };
 
-  const filteredOptions = options.slice(0, 20); // מגבילים ל-20 תוצאות
+  const filteredOptions = (options || []).slice(0, 20); // מגבילים ל-20 תוצאות
 
   return (
     <div className="relative w-full">

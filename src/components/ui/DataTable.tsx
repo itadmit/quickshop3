@@ -38,6 +38,7 @@ export interface DataTableProps<T> {
     label: string;
     onClick: () => void;
   }[];
+  headerActions?: ReactNode; // Custom header actions (takes precedence over primaryAction/secondaryActions)
   
   // Filters
   searchPlaceholder?: string;
@@ -76,6 +77,7 @@ export function DataTable<T>({
   description,
   primaryAction,
   secondaryActions,
+  headerActions,
   searchPlaceholder,
   onSearch,
   filters,
@@ -119,7 +121,7 @@ export function DataTable<T>({
   return (
     <div className={`${noPadding ? '' : 'space-y-4 md:space-y-6'}`}>
       {/* Page Header with Actions - Only show if there's content */}
-      {(title || description || primaryAction || secondaryActions) && (
+      {(title || description || primaryAction || secondaryActions || headerActions) && (
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           {(title || description) && (
             <div>
@@ -129,7 +131,11 @@ export function DataTable<T>({
           )}
           
           {/* Action Buttons - In Header */}
-          {(primaryAction || secondaryActions) && (
+          {headerActions ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              {headerActions}
+            </div>
+          ) : (primaryAction || secondaryActions) && (
             <div className="flex items-center gap-2 flex-wrap">
               {secondaryActions?.map((action, index) => (
                 <button

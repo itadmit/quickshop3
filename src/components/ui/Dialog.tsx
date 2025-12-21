@@ -1,7 +1,13 @@
 'use client';
 
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, useEffect, useRef, createContext, useContext } from 'react';
 import { HiX } from 'react-icons/hi';
+
+interface DialogContextType {
+  onOpenChange: (open: boolean) => void;
+}
+
+const DialogContext = createContext<DialogContextType | null>(null);
 
 interface DialogProps {
   open: boolean;
@@ -70,15 +76,17 @@ export function Dialog({ open, onOpenChange, children, closeOnBackdropClick = tr
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
-        className="fixed inset-0 bg-black/50 transition-opacity duration-200"
-        onClick={() => closeOnBackdropClick && onOpenChange(false)}
-      />
-      <div className="relative z-50 transition-all duration-200 transform">
-        {children}
+    <DialogContext.Provider value={{ onOpenChange }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 transition-opacity duration-200"
+          onClick={() => closeOnBackdropClick && onOpenChange(false)}
+        />
+        <div className="relative z-50 transition-all duration-200 transform">
+          {children}
+        </div>
       </div>
-    </div>
+    </DialogContext.Provider>
   );
 }
 
@@ -91,6 +99,15 @@ export function DialogContent({
   maxWidth = '3xl'
 }: DialogContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const dialogContext = useContext(DialogContext);
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else if (dialogContext) {
+      dialogContext.onOpenChange(false);
+    }
+  };
 
   const maxWidthClasses = {
     sm: 'min-w-[400px] max-w-sm',
@@ -111,7 +128,7 @@ export function DialogContent({
     >
       {showCloseButton && (
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute left-6 top-6 z-10 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           aria-label="סגור"
         >

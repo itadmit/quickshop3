@@ -49,7 +49,14 @@ export async function GET(
       custom_fields: [],
       show_order_notes: true,
       show_shipping_options: true,
-      show_payment_methods: true
+      show_payment_methods: true,
+      terms_checkbox: {
+        enabled: false,
+        text_before: 'קראתי ואני מסכים/ה ל',
+        link_text: 'תקנון האתר',
+        terms_page: 'terms',
+        open_in: 'modal'
+      }
     };
 
     // Get checkout page layout and its sections
