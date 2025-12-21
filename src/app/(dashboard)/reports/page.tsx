@@ -67,7 +67,7 @@ const reportCategories: ReportCategory[] = [
         id: 'utm-analysis',
         title: 'ניתוח UTM',
         description: 'מעקב קמפיינים שיווקיים',
-        href: '/reports/utm-analysis',
+        href: '/reports/traffic-sources',
         icon: <HiTag className="w-5 h-5" />,
       },
       {
@@ -133,7 +133,7 @@ const reportCategories: ReportCategory[] = [
         id: 'sales-by-discount',
         title: 'מכירות לפי הנחה',
         description: 'ביצועי קופונים והנחות',
-        href: '/reports/sales-by-discount',
+        href: '/reports/discounts-performance',
         icon: <HiTag className="w-5 h-5" />,
       },
     ],
@@ -157,7 +157,7 @@ const reportCategories: ReportCategory[] = [
         id: 'first-vs-returning',
         title: 'לקוחות חדשים vs חוזרים',
         description: 'השוואת ערך לפי סוג לקוח',
-        href: '/reports/first-vs-returning',
+        href: '/reports/customers',
         icon: <HiRefresh className="w-5 h-5" />,
       },
       {
@@ -180,7 +180,7 @@ const reportCategories: ReportCategory[] = [
         id: 'top-customers',
         title: 'לקוחות מובילים',
         description: 'הלקוחות הכי רווחיים',
-        href: '/reports/top-customers',
+        href: '/reports/customers',
         icon: <HiTrendingUp className="w-5 h-5" />,
       },
       {
@@ -212,7 +212,7 @@ const reportCategories: ReportCategory[] = [
         id: 'cart-analysis',
         title: 'ניתוח עגלות',
         description: 'נטישת עגלות ושיעורי המרה',
-        href: '/reports/cart-analysis',
+        href: '/reports/conversion-funnel',
         icon: <HiShoppingCart className="w-5 h-5" />,
       },
       {
