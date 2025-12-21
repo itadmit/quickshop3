@@ -36,6 +36,7 @@ import {
 } from "react-icons/hi"
 import Link from "next/link"
 import { Skeleton, TextSkeleton } from "@/components/ui/Skeleton"
+import { emitTrackingEvent } from "@/lib/tracking/events"
 
 interface Store {
   id: number
@@ -554,6 +555,12 @@ export default function StorefrontAccountPage() {
   }
 
   const handleLogout = () => {
+    // Track Logout event
+    emitTrackingEvent({
+      event: 'Logout',
+      user_id: customer?.id ? String(customer.id) : undefined,
+    })
+    
     localStorage.removeItem(`storefront_token_${storeSlug}`)
     localStorage.removeItem(`storefront_customer_${storeSlug}`)
     // מחיקת cookie

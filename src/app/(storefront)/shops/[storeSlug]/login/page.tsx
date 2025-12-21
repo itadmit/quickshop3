@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/Label"
 import { useOptimisticToast } from "@/hooks/useOptimisticToast"
 import { HiMail, HiArrowLeft, HiKey } from "react-icons/hi"
 import Link from "next/link"
+import { StorefrontHeader } from "@/components/storefront/StorefrontHeader"
 import { Skeleton } from "@/components/ui/Skeleton"
+import { emitTrackingEvent } from "@/lib/tracking/events"
 
 interface Store {
   id: number
@@ -143,6 +145,13 @@ export default function StorefrontLoginPage() {
       localStorage.setItem(`storefront_token_${storeSlug}`, data.token)
       localStorage.setItem(`storefront_customer_${storeSlug}`, JSON.stringify(data.customer))
 
+      // Track Login event
+      emitTrackingEvent({
+        event: 'Login',
+        method: 'otp',
+        user_id: String(data.customer.id || data.customer.email),
+      })
+
       toast({
         title: "התחברות הצליחה!",
         description: `ברוך הבא, ${data.customer.first_name || data.customer.email}`,
@@ -197,28 +206,35 @@ export default function StorefrontLoginPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          {/* Logo/Title Skeleton */}
-          <div className="text-center space-y-4">
-            <Skeleton className="h-16 w-32 mx-auto" />
-            <Skeleton className="h-8 w-64 mx-auto" />
-            <Skeleton className="h-4 w-48 mx-auto" />
-          </div>
-          
-          {/* Form Skeleton */}
-          <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-3 w-48" />
+      <div className="min-h-screen bg-gray-50" dir="rtl">
+        <StorefrontHeader 
+          storeSlug={storeSlug}
+          storeName={undefined}
+          storeLogo={undefined}
+        />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            {/* Logo/Title Skeleton */}
+            <div className="text-center space-y-4">
+              <Skeleton className="h-16 w-32 mx-auto" />
+              <Skeleton className="h-8 w-64 mx-auto" />
+              <Skeleton className="h-4 w-48 mx-auto" />
             </div>
-            <Skeleton className="h-12 w-full" />
-          </div>
-          
-          {/* Back Link Skeleton */}
-          <div className="text-center">
-            <Skeleton className="h-4 w-32 mx-auto" />
+            
+            {/* Form Skeleton */}
+            <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-12 w-full" />
+            </div>
+            
+            {/* Back Link Skeleton */}
+            <div className="text-center">
+              <Skeleton className="h-4 w-32 mx-auto" />
+            </div>
           </div>
         </div>
       </div>
@@ -226,7 +242,14 @@ export default function StorefrontLoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] py-8 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <div className="min-h-screen bg-gray-50" dir="rtl">
+      <StorefrontHeader 
+        storeSlug={storeSlug}
+        storeName={store?.name}
+        storeLogo={store?.logo || undefined}
+      />
+      
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-6 sm:space-y-8">
           {/* Header Section */}
           <div className="text-center space-y-3 sm:space-y-4">
@@ -394,6 +417,7 @@ export default function StorefrontLoginPage() {
           </div>
         </div>
       </div>
+    </div>
   )
 }
 
