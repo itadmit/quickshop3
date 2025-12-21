@@ -74,6 +74,22 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [minimumOrderAmount, setMinimumOrderAmount] = useState(0);
   
+  // Shipping rates from store settings
+  const [shippingRates, setShippingRates] = useState<Array<{
+    id: number;
+    name: string;
+    price: number;
+    free_shipping_threshold: number | null;
+    is_pickup: boolean;
+  }>>([]);
+  const [selectedShippingRate, setSelectedShippingRate] = useState<{
+    id: number;
+    name: string;
+    price: number;
+    free_shipping_threshold: number | null;
+  } | null>(null);
+  const [loadingShippingRates, setLoadingShippingRates] = useState(true);
+  
   // Checkout customizer settings
   const [checkoutSettings, setCheckoutSettings] = useState<{
     layout: { left_column_color: string; right_column_color: string };
@@ -116,6 +132,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   } = useCartCalculator({
     storeId,
     cartItems,
+    shippingRate: selectedShippingRate ? {
+      id: selectedShippingRate.id,
+      name: selectedShippingRate.name,
+      price: selectedShippingRate.price,
+      free_shipping_threshold: selectedShippingRate.free_shipping_threshold,
+    } : undefined,
     autoCalculate: true,
   });
 
@@ -148,6 +170,26 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   const [codeError, setCodeError] = useState('');
   const [storeCredit, setStoreCredit] = useState<{ balance: number; id: number } | null>(null);
   const [loadingStoreCredit, setLoadingStoreCredit] = useState(false);
+  
+  // Gift Card state
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{
+    id: number;
+    code: string;
+    balance: number;
+    amountToUse: number;
+  } | null>(null);
+  const [validatingGiftCard, setValidatingGiftCard] = useState(false);
+
+  // Update gift card amountToUse when total changes
+  useEffect(() => {
+    if (appliedGiftCard) {
+      const total = getTotal();
+      const newAmountToUse = Math.min(appliedGiftCard.balance, total);
+      if (newAmountToUse !== appliedGiftCard.amountToUse) {
+        setAppliedGiftCard(prev => prev ? { ...prev, amountToUse: newAmountToUse } : null);
+      }
+    }
+  }, [appliedGiftCard?.balance, getTotal]);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -180,6 +222,36 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     
     loadPaymentMethods();
   }, [isMounted, storeSlug]);
+
+  // Load shipping rates
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    const loadShippingRates = async () => {
+      try {
+        setLoadingShippingRates(true);
+        const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const response = await fetch(`/api/storefront/${storeSlug}/shipping-rates?subtotal=${subtotal}`);
+        if (response.ok) {
+          const data = await response.json();
+          setShippingRates(data.rates || []);
+          // Set default shipping rate (first non-pickup rate or first rate)
+          if (data.defaultRate) {
+            setSelectedShippingRate(data.defaultRate);
+          } else if (data.rates?.length > 0) {
+            const defaultRate = data.rates.find((r: any) => !r.is_pickup) || data.rates[0];
+            setSelectedShippingRate(defaultRate);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading shipping rates:', error);
+      } finally {
+        setLoadingShippingRates(false);
+      }
+    };
+    
+    loadShippingRates();
+  }, [isMounted, storeSlug, cartItems]);
 
   // Load checkout customizer settings
   useEffect(() => {
@@ -268,6 +340,43 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     if (!codeInput.trim()) return;
 
     setCodeError('');
+    
+    // נסה קודם לבדוק אם זה קוד גיפט קארד
+    setValidatingGiftCard(true);
+    try {
+      const giftCardResponse = await fetch('/api/gift-cards/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: codeInput.trim(),
+          storeId,
+        }),
+      });
+      
+      const giftCardResult = await giftCardResponse.json();
+      
+      if (giftCardResult.valid && giftCardResult.giftCard) {
+        // זה קוד גיפט קארד תקף!
+        const giftCard = giftCardResult.giftCard;
+        const total = getTotal();
+        const amountToUse = Math.min(giftCard.balance, total);
+        
+        setAppliedGiftCard({
+          id: giftCard.id,
+          code: giftCard.code,
+          balance: giftCard.balance,
+          amountToUse,
+        });
+        setCodeInput('');
+        setValidatingGiftCard(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error validating gift card:', error);
+    }
+    setValidatingGiftCard(false);
+    
+    // אם זה לא גיפט קארד, נסה קוד קופון רגיל
     const result = await applyDiscountCode(codeInput.trim());
     
     if (result.valid) {
@@ -275,6 +384,11 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     } else {
       setCodeError(result.error || t('checkout.invalid_code'));
     }
+  };
+  
+  // פונקציה להסרת גיפט קארד
+  const removeGiftCard = () => {
+    setAppliedGiftCard(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -297,7 +411,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
       const total = getTotal();
       const storeCreditAmount = formData.paymentMethod === 'store_credit' ? formData.storeCreditAmount : 0;
-      const finalTotal = Math.max(0, total - storeCreditAmount);
+      const giftCardAmount = appliedGiftCard ? appliedGiftCard.amountToUse : 0;
+      const finalTotalAfterCredits = Math.max(0, total - storeCreditAmount - giftCardAmount);
       
       const order = await createOrder({
         storeId, // ✅ מעביר את storeId מה-prop
@@ -315,21 +430,46 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           email: formData.email,
           phone: formData.phone,
           address: formData.address,
+          houseNumber: formData.houseNumber,
+          apartment: formData.apartment,
+          floor: formData.floor,
           city: formData.city,
           postalCode: formData.zip,
           country: 'ישראל',
           notes: formData.orderNotes,
         },
-        total: finalTotal > 0 ? finalTotal : 0, // אם הקרדיט מכסה הכל, הסכום הוא 0
+        total: finalTotalAfterCredits > 0 ? finalTotalAfterCredits : 0, // אם הקרדיט/גיפט קארד מכסה הכל, הסכום הוא 0
         deliveryMethod: formData.deliveryMethod,
         paymentMethod: formData.paymentMethod,
         storeCreditAmount: storeCreditAmount,
+        giftCardCode: appliedGiftCard?.code, // ✅ קוד גיפט קארד
+        giftCardAmount: giftCardAmount, // ✅ סכום גיפט קארד
         customFields: formData.customFields,
         discountCodes: discountCode ? [discountCode] : [], // ✅ מוסיף את קוד הקופון להזמנה
       });
 
+      // מימוש גיפט קארד אם יש
+      if (appliedGiftCard && giftCardAmount > 0) {
+        try {
+          await fetch('/api/gift-cards/redeem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: appliedGiftCard.code,
+              storeId,
+              amount: giftCardAmount,
+              orderId: order.id,
+              orderNumber: order.order_number,
+            }),
+          });
+        } catch (error) {
+          console.error('Error redeeming gift card:', error);
+          // לא נכשל את ההזמנה אם מימוש הגיפט קארד נכשל
+        }
+      }
+
       // אם תשלום בכרטיס אשראי - הפניה לדף סליקה
-      if (formData.paymentMethod === 'credit_card' && finalTotal > 0) {
+      if (formData.paymentMethod === 'credit_card' && finalTotalAfterCredits > 0) {
         try {
           const baseUrl = window.location.origin;
           const paymentResponse = await fetch('/api/payments/init', {
@@ -356,7 +496,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
               event: 'InitiatePayment',
               content_ids: cartItems.map(item => String(item.product_id)),
               currency: 'ILS',
-              value: finalTotal,
+              value: finalTotalAfterCredits,
               order_id: String(order.id),
             });
 
@@ -1473,7 +1613,32 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       </Button>
                     </div>
                   )}
-                  {!discountCode && (
+                  
+                  {/* Applied Gift Card */}
+                  {appliedGiftCard && (
+                    <div className="mb-4 flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                          <span>🎁</span>
+                          <span>גיפט קארד: {appliedGiftCard.code}</span>
+                        </div>
+                        <div className="text-xs text-purple-600 mt-1">
+                          יתרה: ₪{appliedGiftCard.balance.toFixed(2)} | שימוש: ₪{appliedGiftCard.amountToUse.toFixed(2)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-purple-700 hover:text-purple-900 hover:bg-purple-100"
+                        onClick={removeGiftCard}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!discountCode && !appliedGiftCard && (
                     <div className="mb-4 flex gap-2">
                       <Input
                         type="text"
@@ -1483,7 +1648,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           setCodeError('');
                         }}
                         onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
-                        placeholder={translationsLoading ? '' : 'קוד קופון או הנחה'}
+                        placeholder={translationsLoading ? '' : 'קוד קופון או גיפט קארד'}
                         className="flex-1"
                         style={{ backgroundColor: '#ffffff' }}
                       />
@@ -1493,9 +1658,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         className="px-6"
                         style={{ backgroundColor: '#e5e7eb' }}
                         onClick={handleApplyCode}
-                        disabled={validatingCode || !codeInput.trim()}
+                        disabled={validatingCode || validatingGiftCard || !codeInput.trim()}
                       >
-                        {validatingCode ? (
+                        {(validatingCode || validatingGiftCard) ? (
                           translationsLoading ? (
                             <TextSkeleton width="w-12" height="h-4" />
                           ) : (
@@ -1511,6 +1676,34 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   )}
                   {codeError && (
                     <p className="mb-4 text-sm text-red-600">{codeError}</p>
+                  )}
+                  
+                  {/* Show input even if discount code is applied (for gift card) */}
+                  {discountCode && !appliedGiftCard && (
+                    <div className="mb-4 flex gap-2">
+                      <Input
+                        type="text"
+                        value={codeInput}
+                        onChange={(e) => {
+                          setCodeInput(e.target.value);
+                          setCodeError('');
+                        }}
+                        onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
+                        placeholder="קוד גיפט קארד"
+                        className="flex-1"
+                        style={{ backgroundColor: '#ffffff' }}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="px-6"
+                        style={{ backgroundColor: '#e5e7eb' }}
+                        onClick={handleApplyCode}
+                        disabled={validatingGiftCard || !codeInput.trim()}
+                      >
+                        {validatingGiftCard ? 'בודק...' : 'החל'}
+                      </Button>
+                    </div>
                   )}
 
                   {/* Summary */}
@@ -1606,6 +1799,21 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       </div>
                     )}
                     
+                    {/* Gift Card Applied */}
+                    {appliedGiftCard && appliedGiftCard.amountToUse > 0 && (
+                      <div className="flex justify-between text-purple-600">
+                        <span className="flex items-center gap-1">
+                          <span>🎁</span>
+                          {translationsLoading ? (
+                            <TextSkeleton width="w-24" height="h-4" />
+                          ) : (
+                            'גיפט קארד'
+                          )}
+                        </span>
+                        <span>-₪{appliedGiftCard.amountToUse.toFixed(2)}</span>
+                      </div>
+                    )}
+                    
                     {/* Store Credit Applied */}
                     {formData.paymentMethod === 'store_credit' && formData.storeCreditAmount > 0 && (
                       <div className="flex justify-between text-green-600">
@@ -1630,15 +1838,22 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         {translationsLoading ? (
                           <TextSkeleton width="w-16" height="h-6" />
                         ) : (
-                          formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal
-                            ? 'סה"כ לתשלום'
-                            : 'סה"כ'
+                          'סה"כ לתשלום'
                         )}
                       </span>
                       <span>
-                        {formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal
-                          ? '₪0.00'
-                          : `₪${Math.max(0, finalTotal - (formData.storeCreditAmount || 0)).toFixed(2)}`}
+                        {(() => {
+                          let total = finalTotal;
+                          // הפחתת גיפט קארד
+                          if (appliedGiftCard) {
+                            total -= appliedGiftCard.amountToUse;
+                          }
+                          // הפחתת קרדיט חנות
+                          if (formData.paymentMethod === 'store_credit') {
+                            total -= formData.storeCreditAmount || 0;
+                          }
+                          return `₪${Math.max(0, total).toFixed(2)}`;
+                        })()}
                       </span>
                     </div>
                   </div>
@@ -1670,11 +1885,17 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       )
                     ) : translationsLoading ? (
                       <TextSkeleton width="w-32" height="h-5" />
-                    ) : formData.paymentMethod === 'store_credit' && formData.storeCreditAmount >= finalTotal ? (
-                      'אישור הזמנה'
-                    ) : (
-                      `${checkoutSettings.button.text} ₪${Math.max(0, finalTotal - (formData.storeCreditAmount || 0)).toFixed(2)}`
-                    )}
+                    ) : (() => {
+                      let totalToPay = finalTotal;
+                      if (appliedGiftCard) totalToPay -= appliedGiftCard.amountToUse;
+                      if (formData.paymentMethod === 'store_credit') totalToPay -= formData.storeCreditAmount || 0;
+                      totalToPay = Math.max(0, totalToPay);
+                      
+                      if (totalToPay === 0) {
+                        return 'אישור הזמנה';
+                      }
+                      return `${checkoutSettings.button.text} ₪${totalToPay.toFixed(2)}`;
+                    })()}
                   </Button>
                   
                   <div className="text-xs text-gray-500 text-center mt-4 flex items-center justify-center gap-1">

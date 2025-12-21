@@ -24,7 +24,7 @@ export default function NewAutomaticDiscountPage() {
   const [formData, setFormData] = useState<{
     name: string;
     description?: string;
-    discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+    discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
@@ -63,6 +63,9 @@ export default function NewAutomaticDiscountPage() {
       discount_type: 'percentage' | 'fixed_amount';
       value: number;
     }>;
+    // Fixed Price fields
+    fixed_price_quantity?: string;
+    fixed_price_amount?: string;
     // Gift Product
     gift_product_id?: number | null;
   }>({
@@ -103,6 +106,9 @@ export default function NewAutomaticDiscountPage() {
     bundle_discount_value: undefined,
     // Volume defaults
     volume_tiers: [],
+    // Fixed Price defaults
+    fixed_price_quantity: undefined,
+    fixed_price_amount: undefined,
     // Gift Product default
     gift_product_id: null,
   });
@@ -155,6 +161,15 @@ export default function NewAutomaticDiscountPage() {
         });
         return;
       }
+    } else if (formData.discount_type === 'fixed_price') {
+      if (!formData.fixed_price_quantity || !formData.fixed_price_amount) {
+        toast({
+          title: 'שגיאה',
+          description: 'כמות פריטים ומחיר קבוע הם שדות חובה',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else if (formData.discount_type !== 'free_shipping' && (!formData.value || !formData.value.trim())) {
       toast({
         title: 'שגיאה',
@@ -171,7 +186,7 @@ export default function NewAutomaticDiscountPage() {
         name: formData.name!.trim(),
         description: formData.description || null,
         discount_type: formData.discount_type!,
-        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume') ? (formData.value || null) : null,
+        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume' && formData.discount_type !== 'fixed_price') ? (formData.value || null) : null,
         // BOGO fields
         buy_quantity: formData.discount_type === 'bogo' && formData.buy_quantity ? parseInt(formData.buy_quantity) : null,
         get_quantity: formData.discount_type === 'bogo' && formData.get_quantity ? parseInt(formData.get_quantity) : null,
@@ -184,6 +199,9 @@ export default function NewAutomaticDiscountPage() {
         bundle_discount_value: formData.discount_type === 'bundle' && formData.bundle_discount_value ? formData.bundle_discount_value : null,
         // Volume fields
         volume_tiers: formData.discount_type === 'volume' && formData.volume_tiers && formData.volume_tiers.length > 0 ? formData.volume_tiers : null,
+        // Fixed Price fields
+        fixed_price_quantity: formData.discount_type === 'fixed_price' && formData.fixed_price_quantity ? parseInt(formData.fixed_price_quantity) : null,
+        fixed_price_amount: formData.discount_type === 'fixed_price' && formData.fixed_price_amount ? formData.fixed_price_amount : null,
         // Gift Product
         gift_product_id: formData.gift_product_id || null,
         minimum_order_amount: formData.minimum_order_amount || null,
@@ -327,6 +345,7 @@ export default function NewAutomaticDiscountPage() {
                   <SelectItem value="bogo">קנה X קבל Y (BOGO)</SelectItem>
                   <SelectItem value="bundle">הנחת חבילה</SelectItem>
                   <SelectItem value="volume">הנחה לפי כמות (Volume)</SelectItem>
+                  <SelectItem value="fixed_price">מחיר קבוע לכמות</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -426,10 +445,14 @@ export default function NewAutomaticDiscountPage() {
                       onCheckedChange={(checked) => setFormData({ ...formData, applies_to_same_product: checked as boolean })}
                     />
                     <Label htmlFor="applies_to_same_product" className="cursor-pointer">
-                      חל על אותו מוצר
+                      חל רק על אותו המוצר
                     </Label>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">אם לא מסומן, ההנחה תחול על מוצרים שונים</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formData.applies_to_same_product !== false 
+                      ? 'הלקוח חייב לקנות את הכמות הנדרשת מאותו מוצר בדיוק'
+                      : 'הלקוח יכול לקנות מוצרים שונים (ההנחה תחול על הזולים ביותר)'}
+                  </p>
                 </div>
               </>
             )}
@@ -571,6 +594,41 @@ export default function NewAutomaticDiscountPage() {
                 </div>
                 <p className="text-sm text-gray-500 mt-1">הדרגה הגבוהה ביותר שהכמות מגיעה אליה תוחל</p>
               </div>
+            )}
+
+            {/* Fixed Price Fields */}
+            {formData.discount_type === 'fixed_price' && (
+              <>
+                <div>
+                  <Label htmlFor="fixed_price_quantity">כמות פריטים *</Label>
+                  <Input
+                    id="fixed_price_quantity"
+                    type="number"
+                    min="1"
+                    value={formData.fixed_price_quantity || ''}
+                    onChange={(e) => setFormData({ ...formData, fixed_price_quantity: e.target.value })}
+                    placeholder="2"
+                    required
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">כמות הפריטים לחבילה (לדוגמא: 2)</p>
+                </div>
+                <div>
+                  <Label htmlFor="fixed_price_amount">מחיר קבוע (₪) *</Label>
+                  <Input
+                    id="fixed_price_amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.fixed_price_amount || ''}
+                    onChange={(e) => setFormData({ ...formData, fixed_price_amount: e.target.value })}
+                    placeholder="55"
+                    required
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">המחיר הכולל לכמות שנבחרה (לדוגמא: 55 ש"ח ל-2 פריטים)</p>
+                </div>
+              </>
             )}
 
             <div>

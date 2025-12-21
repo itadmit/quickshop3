@@ -182,7 +182,7 @@ function SortableOptionItem({
           onDragEnd={onValuesDragEnd(optionIndex)}
         >
           <SortableContext
-            items={option.values?.map(v => v.id) || []}
+            items={option.values?.map(v => String(v.id)) || []}
             strategy={horizontalListSortingStrategy}
           >
             <div className="flex flex-wrap gap-2 mb-2">
@@ -324,7 +324,7 @@ function SortableValueItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: value.id });
+  } = useSortable({ id: String(value.id) });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -453,13 +453,21 @@ export function VariantsManager({
       const option = options[optionIndex];
       if (!option.values) return;
       
-      const oldIndex = option.values.findIndex((val) => val.id === Number(active.id));
-      const newIndex = option.values.findIndex((val) => val.id === Number(over.id));
+      // Compare IDs as strings for consistency (dnd-kit uses string IDs)
+      const activeIdStr = String(active.id);
+      const overIdStr = String(over.id);
+      
+      const oldIndex = option.values.findIndex((val) => String(val.id) === activeIdStr);
+      const newIndex = option.values.findIndex((val) => String(val.id) === overIdStr);
+      
+      if (oldIndex === -1 || newIndex === -1) return;
       
       const newOptions = [...options];
+      const newValues = arrayMove([...option.values], oldIndex, newIndex);
+      // Update positions after reorder
       newOptions[optionIndex] = {
         ...newOptions[optionIndex],
-        values: arrayMove(option.values, oldIndex, newIndex),
+        values: newValues.map((v, idx) => ({ ...v, position: idx + 1 })),
       };
       onOptionsChange(newOptions);
       generateVariants(newOptions);

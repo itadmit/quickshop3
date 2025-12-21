@@ -58,7 +58,7 @@ export async function GET(
       query<ProductOption & { values: any }>(
         `SELECT po.*, 
          COALESCE(
-           (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position) ORDER BY pov.position)
+           (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position, 'metadata', pov.metadata) ORDER BY pov.position)
             FROM product_option_values pov WHERE pov.option_id = po.id),
            '[]'::json
          ) as values

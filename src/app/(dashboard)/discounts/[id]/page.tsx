@@ -31,7 +31,7 @@ export default function EditDiscountPage() {
   const [showUsage, setShowUsage] = useState(false);
   const [formData, setFormData] = useState<{
     code?: string;
-    discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+    discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
@@ -71,6 +71,9 @@ export default function EditDiscountPage() {
       discount_type: 'percentage' | 'fixed_amount';
       value: number;
     }>;
+    // Fixed Price fields
+    fixed_price_quantity?: string;
+    fixed_price_amount?: string;
     // Gift Product (מתנה אוטומטית)
     gift_product_id?: number | null;
     gift_product?: any; // מוצר המתנה (לצורך תצוגה)
@@ -166,6 +169,9 @@ export default function EditDiscountPage() {
         bundle_discount_value: data.discount.bundle_discount_value || undefined,
         // Volume fields
         volume_tiers: data.discount.volume_tiers ? (typeof data.discount.volume_tiers === 'string' ? JSON.parse(data.discount.volume_tiers) : data.discount.volume_tiers) : undefined,
+        // Fixed Price fields
+        fixed_price_quantity: data.discount.fixed_price_quantity ? String(data.discount.fixed_price_quantity) : undefined,
+        fixed_price_amount: data.discount.fixed_price_amount || undefined,
         // Gift Product
         gift_product_id: data.discount.gift_product_id || null,
         gift_product: data.discount.gift_product || null,
@@ -260,6 +266,9 @@ export default function EditDiscountPage() {
         bundle_discount_value: formData.discount_type === 'bundle' && formData.bundle_discount_value ? formData.bundle_discount_value : null,
         // Volume fields
         volume_tiers: formData.discount_type === 'volume' && formData.volume_tiers && formData.volume_tiers.length > 0 ? formData.volume_tiers : null,
+        // Fixed Price fields
+        fixed_price_quantity: formData.discount_type === 'fixed_price' && formData.fixed_price_quantity ? parseInt(formData.fixed_price_quantity) : null,
+        fixed_price_amount: formData.discount_type === 'fixed_price' && formData.fixed_price_amount ? formData.fixed_price_amount : null,
         minimum_order_amount: formData.minimum_order_amount || null,
         maximum_order_amount: formData.maximum_order_amount || null,
         minimum_quantity: formData.minimum_quantity ? parseInt(formData.minimum_quantity) : null,
@@ -426,6 +435,7 @@ export default function EditDiscountPage() {
                   <SelectItem value="bogo">קנה X קבל Y (BOGO)</SelectItem>
                   <SelectItem value="bundle">הנחת חבילה</SelectItem>
                   <SelectItem value="volume">הנחה לפי כמות (Volume)</SelectItem>
+                  <SelectItem value="fixed_price">מחיר קבוע לכמות</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -525,10 +535,14 @@ export default function EditDiscountPage() {
                       onCheckedChange={(checked) => setFormData({ ...formData, applies_to_same_product: checked as boolean })}
                     />
                     <Label htmlFor="applies_to_same_product" className="cursor-pointer">
-                      חל על אותו מוצר
+                      חל רק על אותו המוצר
                     </Label>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">אם לא מסומן, ההנחה תחול על מוצרים שונים</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formData.applies_to_same_product !== false 
+                      ? 'הלקוח חייב לקנות את הכמות הנדרשת מאותו מוצר בדיוק'
+                      : 'הלקוח יכול לקנות מוצרים שונים (ההנחה תחול על הזולים ביותר)'}
+                  </p>
                 </div>
               </>
             )}
@@ -858,21 +872,6 @@ export default function EditDiscountPage() {
               </p>
             </div>
           </div>
-        </Card>
-
-        {/* Gift Product */}
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <HiGift className="w-5 h-5" />
-            מתנה אוטומטית
-          </h2>
-          <p className="text-sm text-gray-600 mb-4">
-            מוצר שיתווסף אוטומטית לעגלה כאשר קוד ההנחה מוחל
-          </p>
-          <GiftProductSelector
-            selectedProductId={formData.gift_product_id || null}
-            onProductChange={(productId) => setFormData({ ...formData, gift_product_id: productId })}
-          />
         </Card>
 
         {/* Customer Conditions */}

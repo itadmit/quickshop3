@@ -83,25 +83,97 @@
   margin: 0;
 }
 
+html {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 html,
 body {
-  max-width: 100vw;
+  max-width: 100%;
+  width: 100%;
   overflow-x: hidden;
   direction: rtl;
   font-family: var(--font-family-base) !important;
   font-size: var(--text-base);
   line-height: 1.5;
   color: var(--text-primary);
+  margin: 0;
+  padding: 0;
 }
 
 body {
   color: var(--text-primary);
-  background: var(--bg-gray-50);
+  background: var(--bg-white);
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Mobile menu slide-in animation from right */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.mobile-menu-enter {
+  animation: slideInFromRight 0.3s ease-in-out forwards;
+}
+
+.mobile-menu-exit {
+  animation: slideOutToRight 0.3s ease-in-out forwards;
+}
+
+/* Ensure mobile menu is flush to right edge - no gap */
+@media (max-width: 768px) {
+  .mobile-menu-enter {
+    right: 0 !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    border-right: none !important;
+    outline: none !important;
+  }
+  
+  /* Ensure fixed elements don't have gaps */
+  [style*="right: 0"] {
+    right: 0 !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  /* Prevent body/html from creating gaps */
+  body.menu-open,
+  html.menu-open {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Fix mobile viewport width issues */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 /* Ensure icons are inline */

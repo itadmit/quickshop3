@@ -1,7 +1,8 @@
 'use client';
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { SectionSettings } from '@/lib/customizer/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { HiShoppingCart, HiPhotograph, HiTag, HiStar, HiCube } from 'react-icons/hi';
@@ -317,6 +318,25 @@ export function ProductTitleSection({ section, product, onUpdate }: ProductSecti
 export function ProductPriceSection({ section, product, onUpdate }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
+  const params = useParams();
+  const storeSlug = params.storeSlug as string;
+  
+  // Premium club state
+  const [premiumClub, setPremiumClub] = useState<{
+    enabled: boolean;
+    lowestTier?: { name: string; discount: { type: string; value: number } };
+    signupUrl?: string;
+  } | null>(null);
+  
+  // Fetch premium club config
+  useEffect(() => {
+    if (!storeSlug) return;
+    
+    fetch(`/api/storefront/${storeSlug}/premium-club`)
+      .then(res => res.json())
+      .then(data => setPremiumClub(data))
+      .catch(() => setPremiumClub({ enabled: false }));
+  }, [storeSlug]);
   
   // Get settings
   const priceSize = settings.price_size || 'large';
@@ -331,6 +351,7 @@ export function ProductPriceSection({ section, product, onUpdate }: ProductSecti
   const badgeTextColor = settings.badge_text_color || '#DC2626';
   const showTaxInfo = settings.show_tax_info === true;
   const taxInfoText = settings.tax_info_text || 'כולל מע"מ';
+  const showClubPrice = settings.show_club_price !== false; // Default: show
 
   // Price size classes
   const priceSizeClasses = {
@@ -374,14 +395,27 @@ export function ProductPriceSection({ section, product, onUpdate }: ProductSecti
   const hasDiscount = comparePrice && comparePrice > price;
   const discountPercent = hasDiscount ? Math.round((1 - price / comparePrice) * 100) : 0;
 
+  // חישוב מחיר לחברי מועדון
+  const clubPrice = useMemo(() => {
+    if (!premiumClub?.enabled || !premiumClub.lowestTier?.discount) return null;
+    
+    const discount = premiumClub.lowestTier.discount;
+    if (discount.type === 'PERCENTAGE') {
+      return price * (1 - discount.value / 100);
+    } else {
+      return Math.max(0, price - discount.value);
+    }
+  }, [price, premiumClub]);
+
   return (
     <div className="py-2">
       <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-gray-600 text-base">מחיר:</span>
         <span 
           className={`${priceSizeClasses}`}
           style={{ color: priceColor, fontWeight }}
         >
-          ₪{price.toFixed(2)}
+          {price.toFixed(2)} ₪
         </span>
         
         {hasDiscount && showComparePrice && (
@@ -403,6 +437,33 @@ export function ProductPriceSection({ section, product, onUpdate }: ProductSecti
           </>
         )}
       </div>
+      
+      {/* מחיר לחברי מועדון */}
+      {showClubPrice && premiumClub?.enabled && clubPrice !== null && clubPrice < price && (
+        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-2 text-green-700">
+            <span className="text-lg">🎁</span>
+            <span className="font-medium">
+              לחברי מועדון: <span className="font-bold">{clubPrice.toFixed(2)} ₪</span>
+              {premiumClub.lowestTier?.discount && (
+                <span className="text-green-600 mr-1">
+                  ({premiumClub.lowestTier.discount.type === 'PERCENTAGE' 
+                    ? `${premiumClub.lowestTier.discount.value}% הנחה`
+                    : `₪${premiumClub.lowestTier.discount.value} הנחה`})
+                </span>
+              )}
+            </span>
+          </div>
+          {premiumClub.signupUrl && (
+            <Link 
+              href={premiumClub.signupUrl}
+              className="inline-flex items-center gap-1 mt-2 text-sm text-green-600 hover:text-green-800 font-medium underline decoration-green-400 underline-offset-2"
+            >
+              הצטרף למועדון הלקוחות וקבל הנחה מיוחדת →
+            </Link>
+          )}
+        </div>
+      )}
       
       {showTaxInfo && (
         <p className="text-sm text-gray-500 mt-1">{taxInfoText}</p>

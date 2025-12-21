@@ -30,6 +30,7 @@ export async function GET(
       coupon_code: string;
       coupon_id: number;
       status: string;
+      customer_name: string | null;
     }>(
       `SELECT 
         o.id,
@@ -39,9 +40,15 @@ export async function GET(
         COALESCE(o.total_discounts, 0) as discount_amount,
         dc.code as coupon_code,
         dc.id as coupon_id,
-        COALESCE(o.fulfillment_status, o.financial_status, 'pending') as status
+        COALESCE(o.fulfillment_status, o.financial_status, 'pending') as status,
+        COALESCE(
+          (o.shipping_address->>'first_name') || ' ' || (o.shipping_address->>'last_name'),
+          (o.billing_address->>'first_name') || ' ' || (o.billing_address->>'last_name'),
+          c.first_name || ' ' || c.last_name
+        ) as customer_name
       FROM orders o
       INNER JOIN discount_codes dc ON o.discount_codes @> jsonb_build_array(dc.code)
+      LEFT JOIN customers c ON o.customer_id = c.id
       WHERE o.id = $1 AND dc.influencer_id = $2`,
       [orderId, influencer.id]
     );
@@ -81,6 +88,7 @@ export async function GET(
         coupon_code: order.coupon_code,
         coupon_id: order.coupon_id,
         status: order.status,
+        customer_name: order.customer_name || 'לקוח',
         items: items.map(i => ({
           product_title: i.product_title,
           quantity: i.quantity,

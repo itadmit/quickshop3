@@ -53,15 +53,12 @@ export default function InfluencerOrdersPage() {
 
   const columns: TableColumn<InfluencerOrder>[] = [
     {
-      key: 'order_number',
-      label: 'מספר הזמנה',
+      key: 'customer_name',
+      label: 'שם לקוח',
       render: (order) => (
-        <Link
-          href={`/influencer/orders/${order.id}`}
-          className="font-medium text-green-600 hover:text-green-700"
-        >
-          #{order.order_number}
-        </Link>
+        <div className="font-medium text-gray-900">
+          {order.customer_name || 'לקוח'}
+        </div>
       ),
     },
     {
@@ -73,8 +70,6 @@ export default function InfluencerOrdersPage() {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
           })}
         </div>
       ),

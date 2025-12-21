@@ -124,11 +124,37 @@ export default function LoyaltyPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => router.push(`/loyalty/tiers/${tier.id}`)}
+                      >
                         <HiPencil className="w-4 h-4 ml-1" />
                         ערוך
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={async () => {
+                          if (confirm('האם אתה בטוח שברצונך למחוק את הרמה?')) {
+                            try {
+                              const response = await fetch(`/api/loyalty/tiers/${tier.id}`, {
+                                method: 'DELETE',
+                                credentials: 'include',
+                              });
+                              if (response.ok) {
+                                loadData();
+                              } else {
+                                alert('שגיאה במחיקת הרמה');
+                              }
+                            } catch (error) {
+                              console.error('Error deleting tier:', error);
+                              alert('שגיאה במחיקת הרמה');
+                            }
+                          }
+                        }}
+                      >
                         <HiTrash className="w-4 h-4 ml-1" />
                         מחק
                       </Button>

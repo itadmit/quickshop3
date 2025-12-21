@@ -19,9 +19,9 @@ export async function verifyStorefrontCustomer(
   storeSlug: string
 ): Promise<StorefrontAuthResult> {
   try {
-    // מציאת החנות
+    // Find store by slug, domain or id
     let store = await queryOne<{ id: number; name: string; myshopify_domain: string }>(
-      'SELECT id, name, myshopify_domain FROM stores WHERE myshopify_domain = $1 OR id::text = $1',
+      'SELECT id, name, myshopify_domain FROM stores WHERE slug = $1 OR myshopify_domain = $1 OR id::text = $1',
       [storeSlug]
     );
 
@@ -117,9 +117,9 @@ export async function verifyStorefrontCustomerOptional(
   req: NextRequest,
   storeSlug: string
 ): Promise<StorefrontAuthResult & { store: any }> {
-  // מציאת החנות
+  // Find store by slug, domain or id
   let store = await queryOne<{ id: number; name: string; myshopify_domain: string }>(
-    'SELECT id, name, myshopify_domain FROM stores WHERE myshopify_domain = $1 OR id::text = $1',
+    'SELECT id, name, myshopify_domain FROM stores WHERE slug = $1 OR myshopify_domain = $1 OR id::text = $1',
     [storeSlug]
   );
 

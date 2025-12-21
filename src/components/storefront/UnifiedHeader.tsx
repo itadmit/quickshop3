@@ -12,10 +12,12 @@ import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
 import { SectionSettings } from '@/lib/customizer/types';
 
-// Regular imports - we'll use isMounted to prevent hydration mismatch
-import { SideCart } from '@/components/storefront/SideCart';
-import { SearchBar } from '@/components/storefront/SearchBar';
-import { CountrySelector } from '@/components/storefront/CountrySelector';
+// Dynamic imports for real components (only used in storefront)
+import dynamic from 'next/dynamic';
+
+const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { ssr: false });
+const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { ssr: false });
+const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { ssr: false });
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -35,17 +37,83 @@ export function UnifiedHeader({
   storeId
 }: UnifiedHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [shouldRenderMenu, setShouldRenderMenu] = useState(false);
+  const [isMenuAnimating, setIsMenuAnimating] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
-
-  // Fix hydration mismatch - only render client-side components after mount
+  
+  // Mobile menu animation handling (exactly like SideCart)
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (isMobileMenuOpen) {
+      // פתיחה: מוסיף ל-DOM ואז מפעיל אנימציה
+      setShouldRenderMenu(true);
+      // מונע scrollbar ומרווחים
+      document.body.classList.add('menu-open');
+      document.documentElement.classList.add('menu-open');
+      document.body.style.overflow = 'hidden';
+      document.body.style.marginRight = '0';
+      document.body.style.paddingRight = '0';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.marginRight = '0';
+      document.documentElement.style.paddingRight = '0';
+      // delay כדי שהאנימציה תרוץ (הקומפוננטה תהיה ב-DOM לפני האנימציה)
+      // משתמשים ב-requestAnimationFrame כפול כדי לוודא שה-DOM נצבע לפני האנימציה
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsMenuAnimating(true);
+        });
+      });
+    } else {
+      // סגירה: מפעיל אנימציה ואז מסיר מה-DOM
+      setIsMenuAnimating(false);
+      const timer = setTimeout(() => {
+        setShouldRenderMenu(false);
+        document.body.classList.remove('menu-open');
+        document.documentElement.classList.remove('menu-open');
+        document.body.style.overflow = 'unset';
+        document.body.style.marginRight = '';
+        document.body.style.paddingRight = '';
+        document.documentElement.style.overflow = 'unset';
+        document.documentElement.style.marginRight = '';
+        document.documentElement.style.paddingRight = '';
+      }, 300); // אותו זמן כמו האנימציה
+      return () => clearTimeout(timer);
+    }
+  }, [isMobileMenuOpen]);
+  
+  // Close menu on Escape key (like SideCart)
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    if (isMobileMenuOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMobileMenuOpen]);
   
   const settings = section.settings || {};
   const style = section.style || {};
+  
+  // Sticky enabled defaults to true if not explicitly set to false
+  const isStickyEnabled = settings.sticky?.enabled !== false;
+  
+  // Sticky header shrink effect - must be before any early returns
+  useEffect(() => {
+    if (!isPreview && isStickyEnabled && settings.sticky?.shrink === 'shrink') {
+      const handleScroll = () => {
+        setIsScrolled(window.scrollY > 50);
+      };
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, [isPreview, isStickyEnabled, settings.sticky?.shrink]);
+  
   const isMobileView = editorDevice === 'mobile' || editorDevice === 'tablet';
 
   // Layout style
@@ -251,15 +319,15 @@ export function UnifiedHeader({
       );
     }
 
-    // Storefront mode - real components (only after mount to prevent hydration mismatch)
+    // Storefront mode - real components
     if (split) {
       if (position === 'right') {
-        return settings.search?.enabled === true && isMounted ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
+        return settings.search?.enabled === true ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
       }
       if (position === 'left') {
         return (
           <div className="flex items-center gap-1">
-            {settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
+            {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
             {settings.wishlist?.enabled === true && (
               <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
                 <HiHeart className="w-5 h-5" />
@@ -277,9 +345,9 @@ export function UnifiedHeader({
 
     return (
       <div className="flex items-center gap-1">
-        {settings.search?.enabled === true && isMounted && <SearchBar placeholder={settings.search?.placeholder} />}
-        {settings.currency_selector?.enabled === true && isMounted && <CountrySelector />}
-        {settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
+        {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
+        {settings.currency_selector?.enabled === true && <CountrySelector />}
+        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
         {settings.wishlist?.enabled === true && (
           <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
             <HiHeart className="w-5 h-5" />
@@ -306,53 +374,157 @@ export function UnifiedHeader({
     </button>
   );
 
-  // Mobile Menu Dropdown
+  // Mobile Menu Sidebar - opens from right with animation like SideCart
   const MobileMenu = () => {
     // Use mobile menu items if available, otherwise use desktop menu items
     const mobileMenuItems = settings.navigation?.menu_items_mobile && settings.navigation.menu_items_mobile.length > 0
       ? settings.navigation.menu_items_mobile
       : settings.navigation?.menu_items || [];
     
+    if (isPreview || !shouldRenderMenu) return null;
+    
     return (
-      !isPreview && isMobileMenuOpen && (
-        <div 
-          className="md:hidden absolute top-full left-0 right-0 shadow-lg py-4 px-4 z-40 animate-in slide-in-from-top-2 duration-200"
-          style={{ 
-            backgroundColor: bgColor,
-            borderBottom: `1px solid ${borderColor}` 
+      <>
+        {/* Backdrop - exactly like SideCart, flush to all edges */}
+        <div
+          className="fixed bg-black z-40 transition-opacity duration-300 ease-in-out"
+          style={{
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            opacity: isMenuAnimating ? 0.5 : 0
           }}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+        {/* Sidebar from right - with CSS animation, flush to right edge */}
+        <div 
+          className={`fixed inset-y-0 bg-white z-50 flex flex-col ${
+            isMenuAnimating ? 'mobile-menu-enter' : ''
+          }`}
+          style={{ 
+            top: 0,
+            bottom: 0,
+            right: 0,
+            left: 'auto',
+            width: '100%',
+            maxWidth: '28rem',
+            margin: 0,
+            padding: 0,
+            boxShadow: '-4px 0 6px -1px rgba(0, 0, 0, 0.1)',
+            transform: isMenuAnimating ? 'translateX(0)' : 'translateX(100%)',
+            transition: !isMenuAnimating ? 'transform 300ms ease-in-out' : 'none',
+            willChange: 'transform',
+            overflow: 'hidden',
+            borderRight: 'none',
+            outline: 'none'
+          }}
+          dir="rtl"
         >
-          <nav className="flex flex-col gap-3">
-            {mobileMenuItems.map((item: any, index: number) => (
-            <Link
-              key={index}
-              href={item.url?.startsWith('/') ? `/shops/${storeSlug}${item.url}` : item.url || '#'}
-              className="font-medium text-lg py-2 border-b border-gray-100 last:border-0 transition-colors"
-              style={{ color: navColor }}
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold" style={{ color: textColor }}>תפריט</h2>
+            <button
               onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              style={{ color: iconColor }}
             >
-              {item.label}
-            </Link>
-            ))}
+              <HiX className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {/* Menu items */}
+          <nav className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-1">
+              {mobileMenuItems.map((item: any, index: number) => (
+                <Link
+                  key={index}
+                  href={item.url?.startsWith('/') ? `/shops/${storeSlug}${item.url}` : item.url || '#'}
+                  className="block font-medium text-base py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors"
+                  style={{ color: navColor }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            
             {settings.user_account?.enabled === true && (
-              <Link
-                href={`/shops/${storeSlug}/account`}
-                className="flex items-center gap-2 font-medium text-lg py-2 mt-2"
-                style={{ color: navColor }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <HiUser className="w-5 h-5" />
-                החשבון שלי
-              </Link>
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <Link
+                  href={`/shops/${storeSlug}/account`}
+                  className="flex items-center gap-3 font-medium text-base py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors"
+                  style={{ color: navColor }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <HiUser className="w-5 h-5" />
+                  החשבון שלי
+                </Link>
+              </div>
             )}
           </nav>
         </div>
-      )
+      </>
     );
   };
 
-  // Mobile view for customizer preview
+  // Mobile Icons Component for Preview
+  const MobileIconsPreview = () => (
+    <div className="flex items-center gap-1">
+      {settings.wishlist?.enabled === true && (
+        <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
+      )}
+      {settings.user_account?.enabled === true && (
+        <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
+      )}
+      {settings.cart?.enabled !== false && (
+        <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
+      )}
+    </div>
+  );
+
+  // Mobile view for customizer preview - respects layout style
   if (isPreview && isMobileView) {
+    const renderMobilePreviewLayout = () => {
+      switch (layoutStyle) {
+        // Logo Center layouts
+        case 'menu_right_logo_center':
+        case 'logo_center_menu_below':
+          return (
+            <div className="flex items-center justify-between w-full relative">
+              <MobileMenuButton />
+              <div className="absolute left-1/2 transform -translate-x-1/2">
+                <Logo mobile />
+              </div>
+              <MobileIconsPreview />
+            </div>
+          );
+        // Logo Left
+        case 'logo_left_menu_center':
+          return (
+            <div className="flex items-center justify-between w-full">
+              <Logo mobile />
+              <div className="flex items-center gap-1">
+                <MobileIconsPreview />
+                <MobileMenuButton />
+              </div>
+            </div>
+          );
+        // Logo Right (default)
+        case 'logo_right_menu_center':
+        default:
+          return (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-1">
+                <MobileMenuButton />
+                <MobileIconsPreview />
+              </div>
+              <Logo mobile />
+            </div>
+          );
+      }
+    };
+
     return (
       <header 
         className="sticky top-0 z-50"
@@ -362,44 +534,61 @@ export function UnifiedHeader({
           className="max-w-7xl mx-auto px-4 flex items-center justify-between"
           style={{ height: heightMobile }}
         >
-          <Logo mobile />
-          <Icons />
+          {renderMobilePreviewLayout()}
         </div>
       </header>
     );
   }
 
-  // Desktop layouts
-  const renderDesktopLayout = () => {
+  // Mobile Icons Component (without cart - handled separately)
+  const MobileIcons = () => (
+    <div className="flex items-center gap-1">
+      {settings.wishlist?.enabled === true && (
+        isPreview ? (
+          <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
+        ) : (
+          <Link href={`/shops/${storeSlug}/wishlist`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
+            <HiHeart className="w-5 h-5" />
+          </Link>
+        )
+      )}
+      {settings.user_account?.enabled === true && (
+        isPreview ? (
+          <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
+        ) : (
+          <Link href={`/shops/${storeSlug}/account`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
+            <HiUser className="w-5 h-5" />
+          </Link>
+        )
+      )}
+      {settings.cart?.enabled !== false && (
+        !isPreview && storeId ? (
+          <SideCart storeId={storeId} />
+        ) : (
+          <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
+        )
+      )}
+    </div>
+  );
+
+  // Layouts - Desktop and Mobile combined
+  const renderLayout = () => {
     switch (layoutStyle) {
+      // Logo Center layouts: hamburger right, logo center, icons left
       case 'menu_right_logo_center':
         return (
           <>
+            {/* Desktop */}
             <div className="hidden md:contents"><Navigation /></div>
-            <Logo />
+            <div className="hidden md:block"><Logo /></div>
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
-            <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
-              {isPreview && settings.cart?.enabled === true && (
-                <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
-              )}
+            {/* Mobile: hamburger right, logo center, icons left */}
+            <div className="md:hidden flex items-center justify-between w-full">
               <MobileMenuButton />
-            </div>
-          </>
-        );
-
-      case 'logo_left_menu_center':
-        return (
-          <>
-            <div className="hidden md:flex items-center gap-2"><Icons /></div>
-            <div className="hidden md:contents"><Navigation /></div>
-            <Logo />
-            <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
-              {isPreview && settings.cart?.enabled === true && (
-                <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
-              )}
-              <MobileMenuButton />
+              <div className="absolute left-1/2 transform -translate-x-1/2">
+                <Logo mobile />
+              </div>
+              <MobileIcons />
             </div>
           </>
         );
@@ -407,82 +596,93 @@ export function UnifiedHeader({
       case 'logo_center_menu_below':
         return (
           <div className="w-full">
-            <div className="flex items-center justify-between" style={{ minHeight: heightDesktop }}>
-              <div className="hidden md:flex"><Icons split position="right" /></div>
+            {/* Desktop */}
+            <div className="hidden md:flex items-center justify-between" style={{ minHeight: heightDesktop }}>
+              <Icons split position="right" />
               <Logo />
-              <div className="hidden md:flex"><Icons split position="left" /></div>
-              <div className="md:hidden flex items-center gap-2">
-                {!isPreview && settings.cart?.enabled !== false && storeId && isMounted && <SideCart storeId={storeId} />}
-                {isPreview && settings.cart?.enabled !== false && (
-                  <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
-                )}
-                <MobileMenuButton />
-              </div>
+              <Icons split position="left" />
             </div>
             <div className="hidden md:flex justify-center pb-3 -mt-1">
               <Navigation />
             </div>
+            {/* Mobile: hamburger right, logo center, icons left */}
+            <div className="md:hidden flex items-center justify-between w-full" style={{ minHeight: heightMobile }}>
+              <MobileMenuButton />
+              <div className="absolute left-1/2 transform -translate-x-1/2">
+                <Logo mobile />
+              </div>
+              <MobileIcons />
+            </div>
           </div>
         );
 
+      // Logo Left: logo left, icons+hamburger right
+      case 'logo_left_menu_center':
+        return (
+          <>
+            {/* Desktop */}
+            <div className="hidden md:flex items-center gap-2"><Icons /></div>
+            <div className="hidden md:contents"><Navigation /></div>
+            <div className="hidden md:block"><Logo /></div>
+            {/* Mobile: logo left, icons+hamburger right */}
+            <div className="md:hidden flex items-center justify-between w-full">
+              <Logo mobile />
+              <div className="flex items-center gap-1">
+                <MobileIcons />
+                <MobileMenuButton />
+              </div>
+            </div>
+          </>
+        );
+
+      // Logo Right (default): logo right, hamburger+icons left
       case 'logo_right_menu_center':
       default:
         return (
           <>
-            <Logo />
+            {/* Desktop */}
+            <div className="hidden md:block"><Logo /></div>
             <div className="hidden md:contents"><Navigation /></div>
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
-            <div className="md:hidden flex items-center gap-2">
-              {!isPreview && settings.cart?.enabled === true && storeId && isMounted && <SideCart storeId={storeId} />}
-              {isPreview && settings.cart?.enabled === true && (
-                <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
-              )}
-              <MobileMenuButton />
+            {/* Mobile: logo right, hamburger+icons left */}
+            <div className="md:hidden flex items-center justify-between w-full">
+              <div className="flex items-center gap-1">
+                <MobileMenuButton />
+                <MobileIcons />
+              </div>
+              <Logo mobile />
             </div>
           </>
         );
     }
   };
 
-  // Sticky header shrink effect
-  const [isScrolled, setIsScrolled] = useState(false);
-  
-  // Sticky enabled defaults to true if not explicitly set to false
-  const isStickyEnabled = settings.sticky?.enabled !== false;
-  
-  useEffect(() => {
-    if (!isPreview && isStickyEnabled && settings.sticky?.shrink === 'shrink') {
-      const handleScroll = () => {
-        setIsScrolled(window.scrollY > 50);
-      };
-      window.addEventListener('scroll', handleScroll);
-      return () => window.removeEventListener('scroll', handleScroll);
-    }
-  }, [isPreview, isStickyEnabled, settings.sticky?.shrink]);
-
   const headerHeight = isScrolled && settings.sticky?.shrink === 'shrink' 
     ? (parseInt(heightDesktop) * 0.8) + 'px' 
     : heightDesktop;
 
   return (
-    <header 
-      className={`${isStickyEnabled ? 'sticky top-0' : 'relative'} z-50 transition-all duration-300`}
-      style={{ 
-        backgroundColor: bgColor, 
-        ...getBorderStyles(),
-        ...(isScrolled && settings.sticky?.shrink === 'shrink' && {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        })
-      }}
-    >
-      <div 
-        className="max-w-7xl mx-auto px-4 flex items-center justify-between"
-        style={{ minHeight: layoutStyle === 'logo_center_menu_below' ? 'auto' : headerHeight }}
+    <>
+      <header 
+        className={`${isStickyEnabled ? 'sticky top-0' : 'relative'} z-50 transition-all duration-300`}
+        style={{ 
+          backgroundColor: bgColor, 
+          ...getBorderStyles(),
+          ...(isScrolled && settings.sticky?.shrink === 'shrink' && {
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          })
+        }}
       >
-        {renderDesktopLayout()}
-      </div>
+        <div 
+          className="max-w-7xl mx-auto px-4 flex items-center justify-between relative"
+          style={{ minHeight: layoutStyle === 'logo_center_menu_below' ? 'auto' : headerHeight }}
+        >
+          {renderLayout()}
+        </div>
+      </header>
+      {/* Mobile Menu - outside header to avoid sticky/fixed conflicts */}
       <MobileMenu />
-    </header>
+    </>
   );
 }
 

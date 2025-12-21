@@ -16,6 +16,7 @@ export default function NewGiftCardPage() {
   const router = useRouter();
   const { toast } = useOptimisticToast();
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     code: '',
     initial_value: '',
@@ -46,32 +47,34 @@ export default function NewGiftCardPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset errors
+    const newErrors: Record<string, string> = {};
+    
     if (!formData.code || !formData.code.trim()) {
-      toast({
-        title: 'שגיאה',
-        description: 'קוד הגיפט קארד הוא שדה חובה',
-        variant: 'destructive',
-      });
-      return;
+      newErrors.code = 'קוד הגיפט קארד הוא שדה חובה';
     }
 
     if (!formData.initial_value || parseFloat(formData.initial_value) <= 0) {
-      toast({
-        title: 'שגיאה',
-        description: 'ערך ראשוני חייב להיות גדול מ-0',
-        variant: 'destructive',
-      });
-      return;
+      newErrors.initial_value = 'ערך ראשוני חייב להיות גדול מ-0';
     }
 
     if (formData.send_email && !formData.recipient_email) {
+      newErrors.recipient_email = 'אימייל נמען הוא חובה כאשר בוחרים לשלוח מייל';
+    }
+    
+    // If there are errors, show them and return
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       toast({
         title: 'שגיאה',
-        description: 'אימייל נמען הוא חובה כאשר בוחרים לשלוח מייל',
+        description: Object.values(newErrors)[0], // Show first error in toast
         variant: 'destructive',
       });
       return;
     }
+    
+    // Clear errors if validation passed
+    setErrors({});
 
     try {
       setLoading(true);
@@ -148,15 +151,18 @@ export default function NewGiftCardPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="code">קוד הגיפט קארד *</Label>
+              <Label htmlFor="code" className={errors.code ? 'text-red-600' : ''}>קוד הגיפט קארד *</Label>
               <div className="flex gap-2 mt-1">
                 <Input
                   id="code"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, code: e.target.value });
+                    if (errors.code) setErrors(prev => ({ ...prev, code: '' }));
+                  }}
                   placeholder="GIFT12345678"
                   required
-                  className="flex-1"
+                  className={`flex-1 ${errors.code ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
                 <Button
                   type="button"
@@ -167,23 +173,34 @@ export default function NewGiftCardPage() {
                   צור קוד
                 </Button>
               </div>
-              <p className="text-sm text-gray-500 mt-1">הקוד יומר לאותיות גדולות אוטומטית</p>
+              {errors.code ? (
+                <p className="text-sm text-red-600 mt-1">{errors.code}</p>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">הקוד יומר לאותיות גדולות אוטומטית</p>
+              )}
             </div>
 
             <div>
-              <Label htmlFor="initial_value">ערך ראשוני (₪) *</Label>
+              <Label htmlFor="initial_value" className={errors.initial_value ? 'text-red-600' : ''}>ערך ראשוני (₪) *</Label>
               <Input
                 id="initial_value"
                 type="number"
                 step="0.01"
                 min="0.01"
                 value={formData.initial_value}
-                onChange={(e) => setFormData({ ...formData, initial_value: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, initial_value: e.target.value });
+                  if (errors.initial_value) setErrors(prev => ({ ...prev, initial_value: '' }));
+                }}
                 placeholder="100"
                 required
-                className="mt-1"
+                className={`mt-1 ${errors.initial_value ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
-              <p className="text-sm text-gray-500 mt-1">הסכום הראשוני של הגיפט קארד</p>
+              {errors.initial_value ? (
+                <p className="text-sm text-red-600 mt-1">{errors.initial_value}</p>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">הסכום הראשוני של הגיפט קארד</p>
+              )}
             </div>
 
             <div>
@@ -281,16 +298,25 @@ export default function NewGiftCardPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="recipient_email">אימייל נמען</Label>
+              <Label htmlFor="recipient_email" className={errors.recipient_email ? 'text-red-600' : ''}>
+                אימייל נמען {formData.send_email && <span className="text-red-500">*</span>}
+              </Label>
               <Input
                 id="recipient_email"
                 type="email"
                 value={formData.recipient_email}
-                onChange={(e) => setFormData({ ...formData, recipient_email: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, recipient_email: e.target.value });
+                  if (errors.recipient_email) setErrors(prev => ({ ...prev, recipient_email: '' }));
+                }}
                 placeholder="recipient@example.com"
-                className="mt-1"
+                className={`mt-1 ${errors.recipient_email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
-              <p className="text-sm text-gray-500 mt-1">אימייל של מקבל הגיפט קארד</p>
+              {errors.recipient_email ? (
+                <p className="text-sm text-red-600 mt-1">{errors.recipient_email}</p>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">אימייל של מקבל הגיפט קארד</p>
+              )}
             </div>
 
             <div>

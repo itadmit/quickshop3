@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
           query<ProductOption & { values: any }>(
             `SELECT po.id, po.product_id, po.name, po.type, po.position, po.created_at,
              COALESCE(
-               (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position) ORDER BY pov.position)
+               (SELECT json_agg(json_build_object('id', pov.id, 'value', pov.value, 'position', pov.position, 'metadata', pov.metadata) ORDER BY pov.position)
                 FROM product_option_values pov WHERE pov.option_id = po.id),
                '[]'::json
              ) as values

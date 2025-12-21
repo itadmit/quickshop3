@@ -36,21 +36,45 @@ const CACHE_TTL = 60000; // 1 minute cache
 // Page-Specific Skeletons
 // ============================================
 
+// Responsive Header Skeleton - shared between all page skeletons
+function HeaderSkeleton() {
+  return (
+    <header className="h-14 md:h-16 bg-white border-b border-gray-200">
+      {/* Desktop Header */}
+      <div className="hidden md:flex max-w-7xl mx-auto px-4 h-full items-center justify-between">
+        <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+        <div className="flex gap-4">
+          <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
+          <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
+          <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+        </div>
+      </div>
+      {/* Mobile Header: hamburger right, logo center, icons left */}
+      <div className="md:hidden flex max-w-7xl mx-auto px-4 h-full items-center justify-between">
+        {/* Right side - Hamburger menu */}
+        <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+        {/* Center - Logo */}
+        <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+        {/* Left side - Cart, Wishlist, Account */}
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 bg-gray-200 rounded-full animate-pulse" />
+          <div className="h-7 w-7 bg-gray-200 rounded-full animate-pulse" />
+          <div className="h-7 w-7 bg-gray-200 rounded-full animate-pulse" />
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function HomePageSkeleton() {
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      {/* Header Skeleton */}
-      <header className="h-16 bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-          <div className="flex gap-4">
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-          </div>
-          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-        </div>
-      </header>
+      <HeaderSkeleton />
       
       {/* Hero Banner Skeleton */}
       <div className="w-full h-64 md:h-96 bg-gradient-to-l from-gray-100 to-gray-200 animate-pulse" />
@@ -90,17 +114,7 @@ function HomePageSkeleton() {
 function ProductPageSkeleton() {
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      {/* Header Skeleton */}
-      <header className="h-16 bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-          <div className="flex gap-4">
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-          </div>
-          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-        </div>
-      </header>
+      <HeaderSkeleton />
       
       {/* Product Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -156,17 +170,7 @@ function ProductPageSkeleton() {
 function CollectionPageSkeleton() {
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      {/* Header Skeleton */}
-      <header className="h-16 bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-          <div className="flex gap-4">
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-          </div>
-          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-        </div>
-      </header>
+      <HeaderSkeleton />
       
       {/* Collection Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -203,17 +207,7 @@ function CollectionPageSkeleton() {
 function DefaultPageSkeleton() {
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      {/* Header Skeleton */}
-      <header className="h-16 bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-          <div className="flex gap-4">
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-          </div>
-          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-        </div>
-      </header>
+      <HeaderSkeleton />
       
       {/* Content Skeleton */}
       <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">

@@ -61,10 +61,12 @@ export async function POST(
           const valueStr = typeof val === 'string' 
             ? val 
             : (val.value || val.name || String(val));
+          // Extract metadata (color, image, pattern, etc.)
+          const metadata = typeof val === 'object' && val.metadata ? val.metadata : null;
           await query(
-            `INSERT INTO product_option_values (option_id, value, position, created_at)
-             VALUES ($1, $2, $3, now())`,
-            [optionId, valueStr, j + 1]
+            `INSERT INTO product_option_values (option_id, value, position, metadata, created_at)
+             VALUES ($1, $2, $3, $4, now())`,
+            [optionId, valueStr, j + 1, metadata ? JSON.stringify(metadata) : null]
           );
         }
       }

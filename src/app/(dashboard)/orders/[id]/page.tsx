@@ -709,8 +709,30 @@ export default function OrderDetailsPage() {
                 )}
                 {parseFloat(order.total_discounts || '0') > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>הנחה</span>
+                    <span>
+                      הנחה
+                      {order.discount_codes && order.discount_codes.length > 0 && (
+                        <span className="mr-1 text-xs text-gray-500">
+                          ({Array.isArray(order.discount_codes) 
+                            ? order.discount_codes.join(', ')
+                            : typeof order.discount_codes === 'string' 
+                              ? JSON.parse(order.discount_codes).join(', ')
+                              : ''})
+                        </span>
+                      )}
+                    </span>
                     <span>-₪{parseFloat(order.total_discounts || '0').toLocaleString('he-IL')}</span>
+                  </div>
+                )}
+                {/* הצגת קודי קופון גם אם אין הנחה כספית (למשל משלוח חינם) */}
+                {order.discount_codes && order.discount_codes.length > 0 && parseFloat(order.total_discounts || '0') === 0 && (
+                  <div className="flex justify-between text-sm text-blue-600">
+                    <span>קופון: {Array.isArray(order.discount_codes) 
+                      ? order.discount_codes.join(', ')
+                      : typeof order.discount_codes === 'string' 
+                        ? JSON.parse(order.discount_codes).join(', ')
+                        : ''}</span>
+                    <span>✓</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">

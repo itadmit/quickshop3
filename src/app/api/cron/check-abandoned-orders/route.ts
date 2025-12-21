@@ -23,7 +23,11 @@ async function handler(request: NextRequest) {
     // Get all active stores
     const stores = await query(
       `SELECT s.id, s.name, 
-              COALESCE((ss.settings->>'abandonedCartTimeoutHours')::int, 4) as timeout_hours
+              COALESCE(
+                (ss.settings->'themeSettings'->>'abandonedCartTimeoutHours')::int,
+                (ss.settings->>'abandonedCartTimeoutHours')::int,
+                4
+              ) as timeout_hours
        FROM stores s
        LEFT JOIN store_settings ss ON ss.store_id = s.id
        WHERE s.is_active = true`

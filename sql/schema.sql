@@ -728,6 +728,9 @@ CREATE TABLE discount_codes (
   bundle_discount_value NUMERIC(12,2), -- ערך ההנחה על החבילה
   -- Volume fields (הנחה לפי כמות)
   volume_tiers JSONB, -- [{quantity: 5, discount_type: 'percentage', value: 10}, ...]
+  -- Fixed Price fields (מחיר קבוע לכמות - לדוגמא: 2 פריטים ב-55 ש"ח)
+  fixed_price_quantity INT, -- כמות הפריטים במחיר הקבוע
+  fixed_price_amount NUMERIC(12,2), -- המחיר הקבוע לכמות
   is_active BOOLEAN DEFAULT true,
   influencer_id INT REFERENCES influencers(id) ON DELETE SET NULL, -- קישור למשפיען (אם הקופון שייך למשפיען)
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -780,6 +783,9 @@ CREATE TABLE automatic_discounts (
   bundle_discount_value NUMERIC(12,2), -- ערך ההנחה על החבילה
   -- Volume fields (הנחה לפי כמות)
   volume_tiers JSONB, -- [{quantity: 5, discount_type: 'percentage', value: 10}, ...]
+  -- Fixed Price fields (מחיר קבוע לכמות - לדוגמא: 2 פריטים ב-55 ש"ח)
+  fixed_price_quantity INT, -- כמות הפריטים במחיר הקבוע
+  fixed_price_amount NUMERIC(12,2), -- המחיר הקבוע לכמות
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
@@ -1163,6 +1169,7 @@ CREATE TABLE navigation_menus (
   name VARCHAR(200) NOT NULL,
   handle VARCHAR(200) NOT NULL,
   position VARCHAR(50), -- header, footer, sidebar
+  display_on VARCHAR(20) DEFAULT 'both' CHECK (display_on IN ('desktop', 'mobile', 'both')), -- desktop, mobile, both
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   UNIQUE(store_id, handle)

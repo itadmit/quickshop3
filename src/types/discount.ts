@@ -4,7 +4,7 @@ export interface DiscountCode {
   id: number;
   store_id: number;
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value: string | null;
   minimum_order_amount: string | null;
   maximum_order_amount: string | null;
@@ -43,6 +43,9 @@ export interface DiscountCode {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Fixed Price fields (מחיר קבוע לכמות - לדוגמא: 2 פריטים ב-55 ש"ח)
+  fixed_price_quantity: number | null;
+  fixed_price_amount: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -54,7 +57,7 @@ export interface DiscountCode {
 // API Request/Response types
 export interface CreateDiscountCodeRequest {
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -90,6 +93,9 @@ export interface CreateDiscountCodeRequest {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }>;
+  // Fixed Price fields
+  fixed_price_quantity?: number;
+  fixed_price_amount?: string;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -98,7 +104,7 @@ export interface CreateDiscountCodeRequest {
 
 export interface UpdateDiscountCodeRequest {
   code?: string;
-  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value?: string | null;
   minimum_order_amount?: string | null;
   maximum_order_amount?: string | null;
@@ -136,6 +142,9 @@ export interface UpdateDiscountCodeRequest {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Fixed Price fields
+  fixed_price_quantity?: number | null;
+  fixed_price_amount?: string | null;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -148,7 +157,7 @@ export interface AutomaticDiscount {
   store_id: number;
   name: string;
   description: string | null;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value: string | null;
   minimum_order_amount: string | null;
   maximum_order_amount: string | null;
@@ -185,6 +194,9 @@ export interface AutomaticDiscount {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Fixed Price fields (מחיר קבוע לכמות)
+  fixed_price_quantity?: number | null;
+  fixed_price_amount?: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -196,7 +208,7 @@ export interface AutomaticDiscount {
 export interface CreateAutomaticDiscountRequest {
   name: string;
   description?: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -231,6 +243,9 @@ export interface CreateAutomaticDiscountRequest {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }>;
+  // Fixed Price fields
+  fixed_price_quantity?: number;
+  fixed_price_amount?: string;
   // Gift Product (מתנה אוטומטית)
   gift_product_id?: number | null;
   is_active?: boolean;
@@ -242,7 +257,7 @@ export interface CreateAutomaticDiscountRequest {
 export interface UpdateAutomaticDiscountRequest {
   name?: string;
   description?: string | null;
-  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value?: string | null;
   minimum_order_amount?: string | null;
   maximum_order_amount?: string | null;
@@ -279,6 +294,9 @@ export interface UpdateAutomaticDiscountRequest {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Fixed Price fields
+  fixed_price_quantity?: number | null;
+  fixed_price_amount?: string | null;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];

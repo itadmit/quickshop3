@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
       bundle_discount_value,
       volume_tiers,
       gift_product_id,
+      fixed_price_quantity,
+      fixed_price_amount,
       product_ids,
       collection_ids,
       tag_names,
@@ -105,11 +107,12 @@ export async function POST(request: NextRequest) {
         buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
         bundle_min_products, bundle_discount_type, bundle_discount_value,
         volume_tiers, gift_product_id,
+        fixed_price_quantity, fixed_price_amount,
         is_active, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
         $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-        $28, $29, $30, $31, $32, true, now(), now()
+        $28, $29, $30, $31, $32, $33, $34, true, now(), now()
       )
       RETURNING *`,
       [
@@ -145,6 +148,8 @@ export async function POST(request: NextRequest) {
         bundle_discount_value || null,
         volume_tiers ? JSON.stringify(volume_tiers) : null,
         gift_product_id || null,
+        fixed_price_quantity || null,
+        fixed_price_amount || null,
       ]
     );
 

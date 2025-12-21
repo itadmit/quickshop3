@@ -70,7 +70,9 @@ export default function AbandonedCartsPage() {
         const data = await response.json();
         if (data.store) {
           const settings = data.store.settings || {};
-          const timeout = settings.abandonedCartTimeoutHours || 4;
+          // ההגדרה נמצאת תחת themeSettings.abandonedCartTimeoutHours
+          const themeSettings = settings.themeSettings || {};
+          const timeout = themeSettings.abandonedCartTimeoutHours || settings.abandonedCartTimeoutHours || 4;
           setTimeoutHours(timeout);
           setStoreInfo({ 
             slug: data.store.slug, 

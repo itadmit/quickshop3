@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     // Get orders (include all orders, even cancelled/voided, so influencer can see them)
     // But filter out cancelled/voided from stats queries
-    const orders = await query<InfluencerOrder & { coupon_code: string; item_count: string }>(
+    const orders = await query<InfluencerOrder & { coupon_code: string; item_count: string; customer_name: string | null }>(
       `SELECT 
         o.id,
         o.order_number,
@@ -63,9 +63,15 @@ export async function GET(req: NextRequest) {
         dc.code as coupon_code,
         dc.id as coupon_id,
         COALESCE(o.fulfillment_status, o.financial_status, 'pending') as status,
-        (SELECT COUNT(*) FROM order_line_items WHERE order_id = o.id) as item_count
+        (SELECT COUNT(*) FROM order_line_items WHERE order_id = o.id) as item_count,
+        COALESCE(
+          (o.shipping_address->>'first_name') || ' ' || (o.shipping_address->>'last_name'),
+          (o.billing_address->>'first_name') || ' ' || (o.billing_address->>'last_name'),
+          c.first_name || ' ' || c.last_name
+        ) as customer_name
       FROM discount_codes dc
       INNER JOIN orders o ON o.discount_codes @> jsonb_build_array(dc.code)
+      LEFT JOIN customers c ON o.customer_id = c.id
       ${whereClause}
       ORDER BY o.created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
@@ -83,6 +89,7 @@ export async function GET(req: NextRequest) {
         coupon_id: o.coupon_id,
         status: o.status,
         item_count: parseInt(o.item_count || '0'),
+        customer_name: o.customer_name || 'לקוח אנונימי',
       })),
       pagination: {
         page,

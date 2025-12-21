@@ -23,6 +23,9 @@ interface CreateOrderInput {
     email: string;
     phone: string;
     address: string;
+    houseNumber?: string;
+    apartment?: string;
+    floor?: string;
     city: string;
     postalCode: string;
     country: string;
@@ -32,6 +35,8 @@ interface CreateOrderInput {
   deliveryMethod?: 'shipping' | 'pickup';
   paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash' | 'store_credit';
   storeCreditAmount?: number; // סכום קרדיט לשימוש
+  giftCardCode?: string; // קוד גיפט קארד שהוחל
+  giftCardAmount?: number; // סכום גיפט קארד ששומש
   customFields?: Record<string, any>;
   discountCodes?: string[]; // קודי קופונים שהוחלו על ההזמנה
 }
@@ -156,11 +161,22 @@ export async function createOrder(input: CreateOrderInput) {
   // Create order with customer name
   const customerName = `${input.customer.firstName} ${input.customer.lastName}`;
   
-  // Prepare address object
+  // Prepare address object with full street address
+  const fullAddress = [
+    input.customer.address,
+    input.customer.houseNumber ? `${input.customer.houseNumber}` : '',
+  ].filter(Boolean).join(' ');
+  
+  const address2Parts = [
+    input.customer.apartment ? `דירה ${input.customer.apartment}` : '',
+    input.customer.floor ? `קומה ${input.customer.floor}` : '',
+  ].filter(Boolean);
+  
   const addressObject = {
     first_name: input.customer.firstName,
     last_name: input.customer.lastName,
-    address1: input.customer.address,
+    address1: fullAddress,
+    address2: address2Parts.length > 0 ? address2Parts.join(', ') : undefined,
     city: input.customer.city,
     zip: input.customer.postalCode,
     country: input.customer.country,

@@ -473,7 +473,32 @@ export default function InventoryPage() {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {history.map((item: any, index) => {
+                {history
+                  // סינון רשומות ריקות - רק אלה שיש להן מידע על שינוי מלאי
+                  .filter((item: any) => {
+                    // נסה לפרסר context
+                    let ctx: any = {};
+                    try {
+                      if (typeof item.context === 'string') {
+                        const cleaned = item.context.replace(/^[^{]*{/, '{').replace(/}[^}]*$/, '}');
+                        ctx = JSON.parse(cleaned);
+                      } else if (item.context) {
+                        ctx = item.context;
+                      }
+                    } catch (e) {}
+                    
+                    // בדוק אם יש מידע על כמויות
+                    const hasQuantityData = 
+                      item.new_quantity !== null && item.new_quantity !== undefined ||
+                      item.old_quantity !== null && item.old_quantity !== undefined ||
+                      ctx.quantity !== undefined ||
+                      ctx.new_quantity !== undefined ||
+                      ctx.old_quantity !== undefined ||
+                      ctx.change !== undefined;
+                    
+                    return hasQuantityData;
+                  })
+                  .map((item: any, index) => {
                   // נסה לפרסר את ה-context אם זה JSON string
                   let contextData: any = {};
                   try {
@@ -507,8 +532,10 @@ export default function InventoryPage() {
                   const productTitle = item.product_title || (variantId ? items.find(i => i.id === variantId)?.product_title : null) || 'מוצר לא ידוע';
                   const variantTitle = item.variant_title || (variantId ? items.find(i => i.id === variantId)?.variant_title : null);
                   const sku = item.sku || (variantId ? items.find(i => i.id === variantId)?.sku : null);
-                  const variantDisplay = variantTitle || (item.option1 || item.option2 || item.option3 
-                    ? getVariantDisplayName(item.variant_title, item.option1, item.option2, item.option3)
+                  // לא להציג "Default Title" - זה לא מועיל למשתמש
+                  const cleanVariantTitle = variantTitle && variantTitle !== 'Default Title' ? variantTitle : null;
+                  const variantDisplay = cleanVariantTitle || (item.option1 || item.option2 || item.option3 
+                    ? getVariantDisplayName(null, item.option1, item.option2, item.option3)
                     : null);
                   
                   const quantityChange = change !== null && change !== undefined
@@ -553,8 +580,8 @@ export default function InventoryPage() {
                             </div>
                           )}
                           
-                          {/* פרטי השינוי בכמות */}
-                          {quantity !== undefined ? (
+                          {/* פרטי השינוי בכמות - מציגים רק אם יש נתונים */}
+                          {(quantity !== undefined || oldQuantity !== undefined) ? (
                             <div className="mb-2 p-3 bg-gray-50 rounded-lg">
                               <div className="flex items-center gap-4 flex-wrap">
                                 {oldQuantity !== undefined && (
@@ -563,10 +590,12 @@ export default function InventoryPage() {
                                     <span className="font-semibold text-gray-700">{oldQuantity}</span>
                                   </div>
                                 )}
-                                <div className="text-sm">
-                                  <span className="text-gray-500">אחרי:</span>{' '}
-                                  <span className="font-semibold text-gray-900 text-lg">{quantity}</span>
-                                </div>
+                                {quantity !== undefined && (
+                                  <div className="text-sm">
+                                    <span className="text-gray-500">אחרי:</span>{' '}
+                                    <span className="font-semibold text-gray-900 text-lg">{quantity}</span>
+                                  </div>
+                                )}
                                 {quantityChange !== null && quantityChange !== 0 && (
                                   <div className={`text-sm font-semibold ${
                                     quantityChange > 0 ? 'text-green-600' : 'text-red-600'
@@ -576,13 +605,7 @@ export default function InventoryPage() {
                                 )}
                               </div>
                             </div>
-                          ) : (
-                            <div className="mb-2 p-3 bg-gray-50 rounded-lg">
-                              <div className="text-sm text-gray-600">
-                                עדכון מלאי
-                              </div>
-                            </div>
-                          )}
+                          ) : null}
                           
                           {/* סיבה */}
                           {reason && reason !== 'עדכון מלאי' && (

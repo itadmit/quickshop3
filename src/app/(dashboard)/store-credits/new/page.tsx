@@ -45,8 +45,10 @@ export default function NewStoreCreditPage() {
     try {
       setCustomerError(null);
       const params = new URLSearchParams();
-      params.append('limit', '10');
+      params.append('limit', '20');
       params.append('page', '1');
+      // Only fetch contacts that have a customer_id (required for store credit)
+      params.append('has_customer', 'true');
       if (searchTerm && searchTerm.trim()) {
         params.append('search', searchTerm.trim());
       }
@@ -96,9 +98,18 @@ export default function NewStoreCreditPage() {
   };
 
   const handleSelectContact = (contact: ContactWithDetails) => {
+    if (!contact.customer_id) {
+      toast({
+        title: 'שגיאה',
+        description: 'איש קשר זה אינו מקושר ללקוח. יש לבחור לקוח שביצע הזמנה בעבר.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setFormData({
       ...formData,
-      customer_id: contact.customer_id?.toString() || '',
+      customer_id: contact.customer_id.toString(),
       customer_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email || 'לקוח',
     });
     setShowCustomerDialog(false);
@@ -348,7 +359,7 @@ export default function NewStoreCreditPage() {
             <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-md">
               {contacts.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 text-sm">
-                  {customerError ? 'שגיאה בטעינת לקוחות' : 'לא נמצאו לקוחות'}
+                  {customerError ? 'שגיאה בטעינת לקוחות' : 'לא נמצאו לקוחות שביצעו הזמנה'}
                 </div>
               ) : (
                 <div className="divide-y divide-gray-200">
@@ -383,11 +394,14 @@ export default function NewStoreCreditPage() {
                 </div>
               )}
             </div>
-            {contacts.length === 10 && (
+            {contacts.length >= 10 && (
               <div className="text-center text-sm text-gray-500 pt-2">
-                מוצגים 10 תוצאות ראשונות. השתמש בחיפוש כדי למצוא לקוחות ספציפיים.
+                מוצגים עד 20 תוצאות ראשונות. השתמש בחיפוש כדי למצוא לקוחות ספציפיים.
               </div>
             )}
+            <div className="text-center text-xs text-gray-400 pt-2 pb-2">
+              מוצגים רק לקוחות שביצעו הזמנה (יש להם מזהה לקוח)
+            </div>
           </div>
         </DialogContent>
       </Dialog>

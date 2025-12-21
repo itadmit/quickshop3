@@ -25,8 +25,11 @@ export function AdvancedSettings() {
         if (response.ok) {
           const data = await response.json();
           const settings = data.store?.settings || {};
-          if (settings.abandonedCartTimeoutHours !== undefined) {
-            setAbandonedCartTimeoutHours(settings.abandonedCartTimeoutHours);
+          const themeSettings = settings.themeSettings || {};
+          // קודם בודקים ב-themeSettings, אחר כך ב-settings ישירות (תאימות לאחור)
+          const timeout = themeSettings.abandonedCartTimeoutHours ?? settings.abandonedCartTimeoutHours;
+          if (timeout !== undefined) {
+            setAbandonedCartTimeoutHours(timeout);
           }
         }
       } catch (error) {

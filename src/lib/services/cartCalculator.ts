@@ -41,7 +41,7 @@ export interface CartItem {
 export interface DiscountCode {
   id: number;
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value: number | null;
   minimum_order_amount: number | null;
   maximum_order_amount: number | null;
@@ -74,6 +74,9 @@ export interface DiscountCode {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Fixed Price fields (מחיר קבוע לכמות)
+  fixed_price_quantity?: number | null;
+  fixed_price_amount?: number | null;
   // Gift product
   gift_product_id?: number | null;
   product_ids?: number[];
@@ -85,7 +88,7 @@ export interface AutomaticDiscount {
   id: number;
   name: string;
   description: string | null;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
   value: number | null;
   minimum_order_amount: number | null;
   maximum_order_amount: number | null;
@@ -120,6 +123,9 @@ export interface AutomaticDiscount {
     discount_type: 'percentage' | 'fixed_amount';
     value: number;
   }> | null;
+  // Fixed Price fields (מחיר קבוע לכמות)
+  fixed_price_quantity?: number | null;
+  fixed_price_amount?: number | null;
   // Gift product
   gift_product_id?: number | null;
   product_ids?: number[];
@@ -274,6 +280,8 @@ export class CartCalculator {
         bundle_discount_value: string | null;
         volume_tiers: any;
         gift_product_id: number | null;
+        fixed_price_quantity: number | null;
+        fixed_price_amount: string | null;
       }>(
         `SELECT 
           id, code, discount_type, value,
@@ -290,7 +298,8 @@ export class CartCalculator {
           day_of_week, hour_start, hour_end,
           buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
           bundle_min_products, bundle_discount_type, bundle_discount_value,
-          volume_tiers, gift_product_id
+          volume_tiers, gift_product_id,
+          fixed_price_quantity, fixed_price_amount
         FROM discount_codes
         WHERE store_id = $1 AND code = $2 AND is_active = true`,
         [this.storeId, code.toUpperCase()]
@@ -405,6 +414,9 @@ export class CartCalculator {
         bundle_discount_value: discount.bundle_discount_value || null,
         // Volume fields
         volume_tiers: discount.volume_tiers ? (typeof discount.volume_tiers === 'string' ? JSON.parse(discount.volume_tiers) : discount.volume_tiers) : null,
+        // Fixed Price fields
+        fixed_price_quantity: discount.fixed_price_quantity,
+        fixed_price_amount: discount.fixed_price_amount ? parseFloat(discount.fixed_price_amount) : null,
         // Gift product
         gift_product_id: discount.gift_product_id,
         product_ids: productIds.map(p => p.product_id),
@@ -491,6 +503,8 @@ export class CartCalculator {
         bundle_discount_value: string | null;
         volume_tiers: any;
         gift_product_id: number | null;
+        fixed_price_quantity: number | null;
+        fixed_price_amount: string | null;
       }>(
         `SELECT 
           id, name, description, discount_type, value,
@@ -506,7 +520,8 @@ export class CartCalculator {
           day_of_week, hour_start, hour_end,
           buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
           bundle_min_products, bundle_discount_type, bundle_discount_value,
-          volume_tiers, gift_product_id
+          volume_tiers, gift_product_id,
+          fixed_price_quantity, fixed_price_amount
         FROM automatic_discounts
         WHERE store_id = $1 
           AND is_active = true
@@ -590,6 +605,9 @@ export class CartCalculator {
           bundle_discount_type: discount.bundle_discount_type as 'percentage' | 'fixed_amount' | null,
           bundle_discount_value: discount.bundle_discount_value ? String(discount.bundle_discount_value) : null,
           volume_tiers: discount.volume_tiers ? (typeof discount.volume_tiers === 'string' ? JSON.parse(discount.volume_tiers) : discount.volume_tiers) : null,
+          // Fixed Price fields
+          fixed_price_quantity: discount.fixed_price_quantity,
+          fixed_price_amount: discount.fixed_price_amount ? parseFloat(discount.fixed_price_amount) : null,
           gift_product_id: discount.gift_product_id,
           product_ids: productIds.map(p => p.product_id),
           collection_ids: collectionIds.map(c => c.collection_id),
@@ -804,21 +822,21 @@ export class CartCalculator {
           'code'
         );
 
+        // יצירת AppliedDiscount object - גם אם ההנחה היא 0 (כדי לאפשר מתנות)
+        const appliedDiscount: AppliedDiscount = {
+          id: this.discountCode.id,
+          name: this.discountCode.code,
+          code: this.discountCode.code,
+          type: this.discountCode.discount_type,
+          amount: discountResult.amount,
+          description: discountResult.description || (this.discountCode.gift_product_id ? 'מתנה חינם' : ''),
+          source: 'code',
+          priority: this.discountCode.priority,
+        };
+
         if (discountResult.amount > 0) {
           itemsDiscount += discountResult.amount;
           remainingSubtotal -= discountResult.amount;
-
-          // יצירת AppliedDiscount object
-          const appliedDiscount: AppliedDiscount = {
-            id: this.discountCode.id,
-            name: this.discountCode.code,
-            code: this.discountCode.code,
-            type: this.discountCode.discount_type,
-            amount: discountResult.amount,
-            description: discountResult.description,
-            source: 'code',
-            priority: this.discountCode.priority,
-          };
 
           // עדכון פריטים + עדכון appliedDiscounts על כל פריט שההנחה חלה עליו
           discountResult.items.forEach((itemDiscount, index) => {
@@ -832,7 +850,11 @@ export class CartCalculator {
               });
             }
           });
+        }
 
+        // הוספת הקופון לרשימת ההנחות המוחלות (גם אם ההנחה 0 - עבור מתנות)
+        // או אם יש סכום הנחה, או מתנה, או free_shipping
+        if (discountResult.amount > 0 || this.discountCode.gift_product_id || this.discountCode.discount_type === 'free_shipping') {
           allAppliedDiscounts.push(appliedDiscount);
         }
       } else {
@@ -1216,6 +1238,63 @@ export class CartCalculator {
               description = `${(volumeDiscount as AutomaticDiscount).name}: ${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
             } else {
               description = `קופון ${(volumeDiscount as DiscountCode).code}: ${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
+            }
+          }
+        }
+        break;
+
+      case 'fixed_price':
+        // Fixed Price - מחיר קבוע לכמות (לדוגמא: 2 פריטים ב-55 ש"ח)
+        const fixedPriceDiscount = discount as AutomaticDiscount | DiscountCode;
+        if (fixedPriceDiscount.fixed_price_quantity && fixedPriceDiscount.fixed_price_amount) {
+          const fixedQuantity = fixedPriceDiscount.fixed_price_quantity;
+          const fixedPrice = fixedPriceDiscount.fixed_price_amount;
+          
+          // חישוב כמה "חבילות" של מחיר קבוע יש
+          const totalQuantity = applicableItems.reduce((sum, item) => sum + item.item.quantity, 0);
+          const bundleCount = Math.floor(totalQuantity / fixedQuantity);
+          
+          if (bundleCount > 0) {
+            // מחשב את המחיר המקורי של הפריטים בחבילות
+            // ממיין מהזול לייקר ובוחר את הפריטים לחבילות
+            const allUnits: Array<{ price: number; originalIdx: number }> = [];
+            applicableItems.forEach((itemData, idx) => {
+              const originalIdx = items.findIndex(i => i.item === itemData.item);
+              const pricePerUnit = itemData.item.price;
+              for (let i = 0; i < itemData.item.quantity; i++) {
+                allUnits.push({ price: pricePerUnit, originalIdx });
+              }
+            });
+            
+            // מיון מהזול לייקר - הפריטים הזולים יהיו בחבילות (כדי למקסם חיסכון ללקוח)
+            allUnits.sort((a, b) => a.price - b.price);
+            
+            const unitsInBundles = bundleCount * fixedQuantity;
+            const originalPriceForBundles = allUnits.slice(0, unitsInBundles).reduce((sum, u) => sum + u.price, 0);
+            const fixedPriceForBundles = bundleCount * fixedPrice;
+            
+            // ההנחה היא ההפרש בין המחיר המקורי למחיר הקבוע
+            discountAmount = Math.max(0, originalPriceForBundles - fixedPriceForBundles);
+            
+            // חלוקת ההנחה על הפריטים שבחבילות
+            if (discountAmount > 0) {
+              const discountPerUnit = discountAmount / unitsInBundles;
+              const unitCountPerItem: { [key: number]: number } = {};
+              
+              for (let i = 0; i < unitsInBundles; i++) {
+                const unit = allUnits[i];
+                unitCountPerItem[unit.originalIdx] = (unitCountPerItem[unit.originalIdx] || 0) + 1;
+              }
+              
+              Object.entries(unitCountPerItem).forEach(([idx, count]) => {
+                itemDiscounts[parseInt(idx)] = discountPerUnit * count;
+              });
+            }
+            
+            if (source === 'automatic') {
+              description = `${(fixedPriceDiscount as AutomaticDiscount).name}: ${fixedQuantity} פריטים ב-₪${fixedPrice.toFixed(2)}`;
+            } else {
+              description = `קופון ${(fixedPriceDiscount as DiscountCode).code}: ${fixedQuantity} פריטים ב-₪${fixedPrice.toFixed(2)}`;
             }
           }
         }

@@ -87,7 +87,7 @@ export default function InfluencerOrderDetailsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">הזמנה #{order.order_number}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">הזמנה מ-{order.customer_name || 'לקוח'}</h1>
           <p className="text-sm text-gray-600 mt-1">
             {new Date(order.created_at).toLocaleDateString('he-IL', {
               year: 'numeric',

@@ -67,6 +67,7 @@ export interface InfluencerOrder {
   coupon_id: number;
   status: string;
   item_count: number;
+  customer_name?: string;
 }
 
 export interface InfluencerCouponStats {

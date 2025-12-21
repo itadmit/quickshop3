@@ -3,10 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
-import { HiTrendingUp, HiShoppingCart, HiCurrencyDollar, HiTicket } from 'react-icons/hi';
+import { HiShoppingCart, HiCurrencyDollar, HiTicket, HiStar } from 'react-icons/hi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { InfluencerStats, InfluencerCouponStats, InfluencerOrder } from '@/types/influencer';
 import Link from 'next/link';
+
+interface TopProduct {
+  product_id: number;
+  product_title: string;
+  quantity_sold: number;
+  total_revenue: number;
+  image_url?: string;
+}
 
 export default function InfluencerDashboardPage() {
   const router = useRouter();
@@ -19,6 +27,7 @@ export default function InfluencerDashboardPage() {
     orders: [],
   });
   const [recentOrders, setRecentOrders] = useState<InfluencerOrder[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -58,6 +67,16 @@ export default function InfluencerDashboardPage() {
         const ordersData = await ordersResponse.json();
         setRecentOrders(ordersData.orders || []);
       }
+
+      // Load top products
+      const productsResponse = await fetch('/api/influencers/top-products?limit=10', {
+        credentials: 'include',
+      });
+
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        setTopProducts(productsData.products || []);
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -75,7 +94,7 @@ export default function InfluencerDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -100,20 +119,6 @@ export default function InfluencerDashboardPage() {
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
               <HiShoppingCart className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">ממוצע הזמנה</p>
-              <h3 className="text-3xl font-bold text-gray-900">
-                {loading ? '...' : `₪${(stats?.average_order_value || 0).toLocaleString('he-IL')}`}
-              </h3>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <HiTrendingUp className="w-8 h-8 text-purple-600" />
             </div>
           </div>
         </Card>
@@ -182,48 +187,50 @@ export default function InfluencerDashboardPage() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Orders */}
+        {/* Top Selling Products */}
         <Card>
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">הזמנות אחרונות</h2>
-              <Link
-                href="/influencer/orders"
-                className="text-sm text-green-600 hover:text-green-700 font-medium"
-              >
-                צפייה בכל ההזמנות →
-              </Link>
+            <div className="flex items-center gap-2 mb-4">
+              <HiStar className="w-5 h-5 text-yellow-500" />
+              <h2 className="text-lg font-semibold text-gray-900">טופ 10 מוצרים נמכרים</h2>
             </div>
             {loading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 animate-pulse bg-gray-200 rounded"></div>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-14 animate-pulse bg-gray-200 rounded"></div>
                 ))}
               </div>
-            ) : recentOrders.length > 0 ? (
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
+            ) : topProducts.length > 0 ? (
+              <div className="space-y-2">
+                {topProducts.map((product, index) => (
                   <div
-                    key={order.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    key={product.product_id}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                   >
-                    <div>
-                      <p className="font-medium text-gray-900">#{order.order_number}</p>
-                      <p className="text-sm text-gray-600">
-                        {new Date(order.created_at).toLocaleDateString('he-IL')}
-                      </p>
+                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                      {index + 1}
+                    </span>
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.product_title}
+                        className="w-10 h-10 object-cover rounded"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{product.product_title}</p>
+                      <p className="text-xs text-gray-500">{product.quantity_sold} יחידות</p>
                     </div>
                     <div className="text-left">
                       <p className="font-semibold text-gray-900">
-                        ₪{order.total_amount.toLocaleString('he-IL')}
+                        ₪{product.total_revenue.toLocaleString('he-IL')}
                       </p>
-                      <p className="text-xs text-gray-500">{order.coupon_code}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">אין הזמנות</div>
+              <div className="text-center py-8 text-gray-500">אין נתונים על מוצרים</div>
             )}
           </div>
         </Card>
@@ -266,6 +273,45 @@ export default function InfluencerDashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* Recent Orders - showing only customer name and amount */}
+      <Card>
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">הזמנות אחרונות</h2>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-10 animate-pulse bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          ) : recentOrders.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-right py-2 text-sm font-medium text-gray-600">שם לקוח</th>
+                    <th className="text-left py-2 text-sm font-medium text-gray-600">סכום</th>
+                    <th className="text-left py-2 text-sm font-medium text-gray-600">תאריך</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => (
+                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 text-sm text-gray-900">{order.customer_name || 'לקוח'}</td>
+                      <td className="py-3 text-sm font-semibold text-gray-900">₪{order.total_amount.toLocaleString('he-IL')}</td>
+                      <td className="py-3 text-sm text-gray-500">
+                        {new Date(order.created_at).toLocaleDateString('he-IL')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">אין הזמנות</div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

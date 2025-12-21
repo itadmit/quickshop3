@@ -218,6 +218,18 @@ export async function PUT(
       paramIndex++;
     }
 
+    if (body.fixed_price_quantity !== undefined) {
+      updates.push(`fixed_price_quantity = $${paramIndex}`);
+      values.push(body.fixed_price_quantity);
+      paramIndex++;
+    }
+
+    if (body.fixed_price_amount !== undefined) {
+      updates.push(`fixed_price_amount = $${paramIndex}`);
+      values.push(body.fixed_price_amount);
+      paramIndex++;
+    }
+
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
