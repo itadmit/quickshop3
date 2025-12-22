@@ -280,7 +280,7 @@ export default function AnalyticsPage() {
               <div className="text-sm text-gray-500">סה"כ הזמנות</div>
               <HiShoppingCart className="w-6 h-6 text-green-500" />
             </div>
-            <div className="text-2xl font-bold text-gray-900">{totals.total_orders}</div>
+            <div className="text-2xl font-bold text-gray-900">{totals.total_orders || 0}</div>
           </div>
         </Card>
 
@@ -291,7 +291,7 @@ export default function AnalyticsPage() {
               <HiCurrencyDollar className="w-6 h-6 text-green-500" />
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              ₪{parseFloat(totals.total_revenue).toLocaleString('he-IL')}
+              ₪{(parseFloat(totals.total_revenue) || 0).toLocaleString('he-IL')}
             </div>
           </div>
         </Card>
@@ -303,7 +303,7 @@ export default function AnalyticsPage() {
               <HiTrendingUp className="w-6 h-6 text-green-500" />
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              ₪{parseFloat(totals.average_order_value).toLocaleString('he-IL')}
+              ₪{(parseFloat(totals.average_order_value) || 0).toLocaleString('he-IL')}
             </div>
           </div>
         </Card>

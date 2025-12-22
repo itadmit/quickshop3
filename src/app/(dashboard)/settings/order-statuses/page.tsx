@@ -369,7 +369,7 @@ export default function OrderStatusesPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 px-6">
             <div>
               <Label htmlFor="display_name">שם תצוגה *</Label>
               <Input
