@@ -877,7 +877,7 @@ export class CartCalculator {
 
       const hasFreeShippingThreshold = 
         this.shippingRate.free_shipping_threshold && 
-        subtotalAfterDiscount >= this.shippingRate.free_shipping_threshold;
+        subtotal >= this.shippingRate.free_shipping_threshold; // בדיקה על subtotal לפני הנחה
 
       // בדיקת משלוח חינם לפי premium club tier
       let hasFreeShippingFromTier = false;

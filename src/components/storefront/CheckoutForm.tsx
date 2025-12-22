@@ -1897,47 +1897,46 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     </div>
                   )}
                   
-                  {/* Show code input if either coupon OR gift card can still be added */}
-                  {(!discountCode || !appliedGiftCard) && (
-                    <div className="mb-4 flex gap-2">
-                      <Input
-                        type="text"
-                        value={codeInput}
-                        onChange={(e) => {
-                          setCodeInput(e.target.value);
-                          setCodeError('');
-                        }}
-                        onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
-                        placeholder={translationsLoading ? '' : 
-                          discountCode ? 'קוד גיפט קארד' : 
-                          appliedGiftCard ? 'קוד קופון' : 
-                          'קוד קופון או גיפט קארד'
-                        }
-                        className="flex-1"
-                        style={{ backgroundColor: '#ffffff' }}
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="px-6"
-                        style={{ backgroundColor: '#e5e7eb' }}
-                        onClick={handleApplyCode}
-                        disabled={validatingCode || validatingGiftCard || !codeInput.trim()}
-                      >
-                        {(validatingCode || validatingGiftCard) ? (
-                          translationsLoading ? (
-                            <TextSkeleton width="w-12" height="h-4" />
-                          ) : (
-                            t('checkout.checking')
-                          )
-                        ) : translationsLoading ? (
+                  {/* Show code input always - for multiple coupons/gift cards */}
+                  <div className="mb-4 flex gap-2">
+                    <Input
+                      type="text"
+                      value={codeInput}
+                      onChange={(e) => {
+                        setCodeInput(e.target.value);
+                        setCodeError('');
+                      }}
+                      onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
+                      placeholder={translationsLoading ? '' : 
+                        discountCode && appliedGiftCard ? 'קוד נוסף' :
+                        discountCode ? 'קוד גיפט קארד' : 
+                        appliedGiftCard ? 'קוד קופון' : 
+                        'קוד קופון או גיפט קארד'
+                      }
+                      className="flex-1"
+                      style={{ backgroundColor: '#ffffff' }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="px-6"
+                      style={{ backgroundColor: '#e5e7eb' }}
+                      onClick={handleApplyCode}
+                      disabled={validatingCode || validatingGiftCard || !codeInput.trim()}
+                    >
+                      {(validatingCode || validatingGiftCard) ? (
+                        translationsLoading ? (
                           <TextSkeleton width="w-12" height="h-4" />
                         ) : (
-                          t('checkout.apply')
-                        )}
-                      </Button>
-                    </div>
-                  )}
+                          t('checkout.checking')
+                        )
+                      ) : translationsLoading ? (
+                        <TextSkeleton width="w-12" height="h-4" />
+                      ) : (
+                        t('checkout.apply')
+                      )}
+                    </Button>
+                  </div>
                   {codeError && (
                     <p className="mb-4 text-sm text-red-600">{codeError}</p>
                   )}

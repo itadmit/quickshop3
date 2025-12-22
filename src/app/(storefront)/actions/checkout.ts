@@ -153,14 +153,14 @@ export async function createOrder(input: CreateOrderInput) {
       [newBalance, storeCredit.id]
     );
 
-    // Create transaction record
+    // Create transaction record (amount should be negative for 'used' transactions)
     await queryOne(
-      `INSERT INTO store_credit_transactions (store_credit_id, order_id, amount, transaction_type, description)
-       VALUES ($1, NULL, $2, 'used', $3)
+      `INSERT INTO store_credit_transactions (store_credit_id, order_id, amount, transaction_type, description, created_at)
+       VALUES ($1, NULL, $2, 'used', $3, now())
        RETURNING id`,
       [
         storeCredit.id,
-        creditToUse,
+        -Math.abs(creditToUse), // Make sure amount is negative for usage
         `תשלום עבור הזמנה`,
       ]
     );
