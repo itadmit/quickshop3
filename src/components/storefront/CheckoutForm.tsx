@@ -1819,10 +1819,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                             <div className="font-medium text-sm line-clamp-2">
                               {item.product_title}
                             </div>
-                            {/* הצגת אפשרויות המוצר (מידה, צבע וכו') */}
+                            {/* הצגת אפשרויות המוצר (מידה, צבע וכו') - ללא המאפיין "מתנה" */}
                             {item.properties && item.properties.length > 0 ? (
                               <div className="text-xs mt-0.5 text-gray-500 space-y-0.5">
-                                {item.properties.map((prop: { name: string; value: string }, idx: number) => (
+                                {item.properties.filter((prop: { name: string; value: string }) => prop.name !== 'מתנה').map((prop: { name: string; value: string }, idx: number) => (
                                   <div key={idx}>
                                     {prop.name}: {prop.value}
                                   </div>

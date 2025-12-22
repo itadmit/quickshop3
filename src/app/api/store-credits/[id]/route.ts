@@ -95,15 +95,14 @@ export async function PUT(
       if (balanceDiff !== 0) {
         await query(
           `INSERT INTO store_credit_transactions (
-            store_credit_id, amount, transaction_type, description, admin_user_id, created_at
+            store_credit_id, amount, transaction_type, description, created_at
           )
-          VALUES ($1, $2, $3, $4, $5, now())`,
+          VALUES ($1, $2, $3, $4, now())`,
           [
             storeCreditId,
             balanceDiff,
             'manual_adjustment',
             body.description || 'עריכת יתרה ידנית',
-            user.id,
           ]
         );
       }

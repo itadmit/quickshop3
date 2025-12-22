@@ -106,16 +106,15 @@ export async function POST(request: NextRequest) {
     // Create transaction record
     await query(
       `INSERT INTO store_credit_transactions (
-        store_credit_id, order_id, amount, transaction_type, description, admin_user_id, created_at
+        store_credit_id, order_id, amount, transaction_type, description, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, now())`,
+      VALUES ($1, $2, $3, $4, $5, now())`,
       [
         storeCredit.id,
         body.order_id || null,
         balance,
         transaction_type,
         description || null,
-        user.id,
       ]
     );
 

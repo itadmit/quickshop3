@@ -571,7 +571,7 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                             </div>
                             {item.properties && item.properties.length > 0 && (
                               <div className="text-xs mt-0.5 text-gray-500 space-y-0.5">
-                                {item.properties.map((prop, idx) => (
+                                {item.properties.filter((prop) => prop.name !== 'מתנה').map((prop, idx) => (
                                   <div key={idx}>
                                     {prop.name}: {prop.value}
                                   </div>
