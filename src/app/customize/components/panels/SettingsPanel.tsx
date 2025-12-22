@@ -2823,6 +2823,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'product_variations':
+      case 'product_variants':
         return (
           <div className="space-y-1">
             <SettingGroup title="סגנון תצוגה">
@@ -3310,6 +3311,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'product_recently_viewed':
+      case 'recently_viewed':
         return (
           <div className="space-y-1">
             <SettingGroup title="כללי">

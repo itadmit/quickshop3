@@ -42,6 +42,15 @@ import {
 import { ProductBreadcrumbs } from './ProductBreadcrumbs';
 import { CheckoutFormSection } from './CheckoutFormSection';
 
+// Import collection page section components
+import {
+  CollectionHeaderSection,
+  CollectionDescriptionSection,
+  CollectionFiltersSection,
+  CollectionProductsSection,
+  CollectionPaginationSection
+} from './CollectionPageSections';
+
 interface SectionRendererProps {
   section: SectionSettings;
   isSelected: boolean;
@@ -295,6 +304,7 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
       );
 
     case 'product_variations':
+    case 'product_variants':
       return (
         <SectionWrapper className="py-2">
           <ProductVariantsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
@@ -337,9 +347,46 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
       );
 
     case 'product_recently_viewed':
+    case 'recently_viewed':
       return (
         <SectionWrapper className="py-8">
-          <RecentlyViewedSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+          <RecentlyViewedSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} isPreview={true} />
+        </SectionWrapper>
+      );
+
+    // ========== Collection Page Sections ==========
+    case 'collection_header':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionHeaderSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_description':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionDescriptionSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_filters':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionFiltersSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_products':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionProductsSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'collection_pagination':
+      return (
+        <SectionWrapper className="py-4">
+          <CollectionPaginationSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
         </SectionWrapper>
       );
 

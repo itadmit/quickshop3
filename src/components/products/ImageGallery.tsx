@@ -124,7 +124,13 @@ export function ImageGallery({ images, onImagesChange, productId, shopId }: Imag
   );
 
   const handleMediaSelect = (selectedFiles: string[]) => {
-    const newImages: ProductImage[] = selectedFiles.map((src, i) => ({
+    // סינון רק תמונות חדשות שלא קיימות כבר
+    const existingSrcs = new Set(images.map(img => img.src));
+    const newSrcs = selectedFiles.filter(src => !existingSrcs.has(src));
+    
+    if (newSrcs.length === 0) return; // אין תמונות חדשות להוסיף
+    
+    const newImages: ProductImage[] = newSrcs.map((src, i) => ({
       id: Date.now() + i,
       product_id: productId,
       position: images.length + i + 1,

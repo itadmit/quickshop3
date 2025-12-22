@@ -417,6 +417,44 @@ export async function POST(request: NextRequest) {
             [existingContact.id, category.id]
           );
         }
+        
+        // If adding CLUB_MEMBER category, ensure customer exists for login
+        if (body.category_types.includes('CLUB_MEMBER') && !existingContact.customer_id) {
+          // Check if customer already exists with this email
+          const existingCustomer = await queryOne<{ id: number }>(
+            'SELECT id FROM customers WHERE store_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))',
+            [storeId, existingContact.email]
+          );
+          
+          let customerId: number | null = null;
+          if (existingCustomer) {
+            customerId = existingCustomer.id;
+          } else {
+            // Create customer so they can login
+            const newCustomer = await queryOne<{ id: number }>(
+              `INSERT INTO customers (store_id, email, first_name, last_name, phone, state, accepts_marketing, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, 'enabled', $6, now(), now())
+               RETURNING id`,
+              [
+                storeId,
+                existingContact.email,
+                existingContact.first_name || body.first_name || null,
+                existingContact.last_name || body.last_name || null,
+                existingContact.phone || body.phone || null,
+                existingContact.email_marketing_consent || body.email_marketing_consent || false,
+              ]
+            );
+            customerId = newCustomer?.id || null;
+          }
+          
+          // Update contact with customer_id
+          if (customerId) {
+            await query(
+              'UPDATE contacts SET customer_id = $1 WHERE id = $2',
+              [customerId, existingContact.id]
+            );
+          }
+        }
       }
 
       // Emit event
@@ -434,16 +472,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ contact: updatedContact }, { status: 200 });
     }
 
+    // Check if we need to create a customer (for CLUB_MEMBER category)
+    let customerId: number | null = null;
+    const needsCustomer = body.category_types?.includes('CLUB_MEMBER');
+    
+    if (needsCustomer) {
+      // Check if customer already exists with this email
+      const existingCustomer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))',
+        [storeId, body.email]
+      );
+      
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+      } else {
+        // Create customer so they can login
+        const newCustomer = await queryOne<{ id: number }>(
+          `INSERT INTO customers (store_id, email, first_name, last_name, phone, state, accepts_marketing, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'enabled', $6, now(), now())
+           RETURNING id`,
+          [
+            storeId,
+            body.email,
+            body.first_name || null,
+            body.last_name || null,
+            body.phone || null,
+            body.email_marketing_consent || false,
+          ]
+        );
+        customerId = newCustomer?.id || null;
+      }
+    }
+
     // Create new contact
     const contactResult = await queryOne<Contact>(
       `INSERT INTO contacts (
         store_id, email, first_name, last_name, phone, company,
         notes, tags, email_marketing_consent, email_marketing_consent_at,
-        source, created_at, updated_at
+        source, customer_id, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, 
         CASE WHEN $9 = true THEN now() ELSE NULL END,
-        $10, now(), now()
+        $10, $11, now(), now()
       ) RETURNING *`,
       [
         storeId,
@@ -456,6 +526,7 @@ export async function POST(request: NextRequest) {
         body.tags || null,
         body.email_marketing_consent || false,
         body.source || 'manual',
+        customerId,
       ]
     );
 
