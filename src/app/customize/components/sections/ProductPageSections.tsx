@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { SectionSettings } from '@/lib/customizer/types';
 import { useTranslation } from '@/hooks/useTranslation';
-import { HiShoppingCart, HiPhotograph, HiTag, HiStar, HiCube } from 'react-icons/hi';
+import { HiShoppingCart, HiPhotograph, HiTag, HiStar, HiCube, HiHeart, HiOutlineHeart, HiExternalLink } from 'react-icons/hi';
 import { useCart } from '@/hooks/useCart';
 import { useCartOpen } from '@/hooks/useCartOpen';
+import { useWishlist } from '@/hooks/useWishlist';
 import { useProductPage } from '@/contexts/ProductPageContext';
 import { DEMO_RELATED_PRODUCTS, DEMO_RECENTLY_VIEWED, DEMO_REVIEWS } from '@/lib/customizer/demoData';
 import { emitTrackingEvent } from '@/lib/tracking/events';
@@ -237,6 +238,8 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
 export function ProductTitleSection({ section, product, onUpdate }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   
   // Get settings
   const titleSize = settings.title_size || 'large';
@@ -245,8 +248,22 @@ export function ProductTitleSection({ section, product, onUpdate }: ProductSecti
   const showVendor = settings.show_vendor !== false;
   const showSku = settings.show_sku === true;
   const showRating = settings.show_rating === true;
+  const showWishlist = settings.show_wishlist !== false;
   const vendorColor = settings.vendor_color || '#6B7280';
   const textAlign = settings.text_align || 'right';
+  
+  // Wishlist state
+  const inWishlist = product ? isInWishlist(product.id) : false;
+  
+  const handleWishlistClick = async () => {
+    if (!product || wishlistLoading) return;
+    setWishlistLoading(true);
+    try {
+      await toggleWishlist(product.id);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   // Title size classes
   const titleSizeClasses = {
@@ -283,12 +300,33 @@ export function ProductTitleSection({ section, product, onUpdate }: ProductSecti
 
   return (
     <div className={`py-2 ${textAlignClasses}`}>
-      <h1 
-        className={`${titleSizeClasses} ${fontWeightClasses}`}
-        style={{ color: titleColor }}
-      >
-        {product.title}
-      </h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 
+          className={`${titleSizeClasses} ${fontWeightClasses} flex-1`}
+          style={{ color: titleColor }}
+        >
+          {product.title}
+        </h1>
+        
+        {showWishlist && (
+          <button
+            onClick={handleWishlistClick}
+            disabled={wishlistLoading}
+            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+              inWishlist
+                ? 'bg-red-100 hover:bg-red-200'
+                : 'bg-gray-100 hover:bg-gray-200'
+            } ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            aria-label={inWishlist ? 'הסר מרשימת המשאלות' : 'הוסף לרשימת המשאלות'}
+          >
+            {inWishlist ? (
+              <HiHeart className="w-5 h-5 text-red-500" />
+            ) : (
+              <HiOutlineHeart className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
+        )}
+      </div>
       
       {showVendor && product.vendor && (
         <p 
@@ -885,17 +923,147 @@ export function ProductCustomFieldsSection({ section, product, onUpdate }: Produ
     return null;
   }
 
+  // Check if value is a file URL (PDF, image, etc.)
+  const isFileUrl = (value: string) => {
+    if (!value) return false;
+    const lowerValue = value.toLowerCase();
+    return lowerValue.startsWith('http') && (
+      lowerValue.includes('.pdf') ||
+      lowerValue.includes('.doc') ||
+      lowerValue.includes('.docx') ||
+      lowerValue.includes('.xls') ||
+      lowerValue.includes('.xlsx') ||
+      lowerValue.includes('/uploads/files/') ||
+      lowerValue.includes('/files/')
+    );
+  };
+
+  // Check if value is a PDF
+  const isPdfUrl = (value: string) => {
+    if (!value) return false;
+    return value.toLowerCase().includes('.pdf');
+  };
+
+  // Get file name from URL
+  const getFileName = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+      // Decode URL encoded characters
+      return decodeURIComponent(fileName);
+    } catch {
+      return url.split('/').pop() || 'קובץ';
+    }
+  };
+
+  // Render field value based on type
+  const renderFieldValue = (field: any) => {
+    const value = field.value;
+    const valueType = field.value_type;
+
+    // If value_type is 'file' or 'url', or if the value looks like a file URL
+    if (valueType === 'file' || valueType === 'url' || isFileUrl(value)) {
+      const fileName = getFileName(value);
+      const isPdf = isPdfUrl(value);
+      
+      return (
+        <a
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90 ${
+            isPdf ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {isPdf ? (
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <HiExternalLink className="w-5 h-5" />
+          )}
+          <span>{field.key === 'label_pdf' || field.key === 'תווית' ? 'לצפייה בתווית' : 'לצפייה בקובץ'}</span>
+        </a>
+      );
+    }
+
+    // Check if it's a URL (but not a file)
+    if (valueType === 'url' || (value && value.startsWith('http'))) {
+      return (
+        <a
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+        >
+          {value}
+          <HiExternalLink className="w-4 h-4" />
+        </a>
+      );
+    }
+
+    // Check if it's a color
+    if (valueType === 'color' && value && value.startsWith('#')) {
+      return (
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-6 h-6 rounded border border-gray-200" 
+            style={{ backgroundColor: value }}
+          />
+          <span className="font-medium text-gray-900">{value}</span>
+        </div>
+      );
+    }
+
+    // Check if it's a checkbox/boolean
+    if (valueType === 'checkbox' || valueType === 'boolean') {
+      return (
+        <span className={`font-medium ${value === 'true' || value === true ? 'text-green-600' : 'text-red-600'}`}>
+          {value === 'true' || value === true ? 'כן' : 'לא'}
+        </span>
+      );
+    }
+
+    // Default: show as text
+    return <span className="font-medium text-gray-900">{value}</span>;
+  };
+
+  // Separate file fields from regular fields
+  const fileFields = customFields.filter((field: any) => 
+    field.value_type === 'file' || isFileUrl(field.value)
+  );
+  const regularFields = customFields.filter((field: any) => 
+    field.value_type !== 'file' && !isFileUrl(field.value)
+  );
+
   return (
-    <div className="py-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-3">מידע נוסף</h3>
-      <dl className="space-y-2">
-        {customFields.map((field: any, index: number) => (
-          <div key={index} className="flex justify-between py-2 border-b border-gray-100">
-            <dt className="text-gray-500">{field.key || field.name}</dt>
-            <dd className="font-medium text-gray-900">{field.value}</dd>
-          </div>
-        ))}
-      </dl>
+    <div className="py-4 space-y-4">
+      {/* File buttons - displayed prominently */}
+      {fileFields.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {fileFields.map((field: any, index: number) => (
+            <div key={`file-${index}`}>
+              {renderFieldValue(field)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Regular fields - displayed as list */}
+      {regularFields.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">מידע נוסף</h3>
+          <dl className="space-y-2">
+            {regularFields.map((field: any, index: number) => (
+              <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
+                <dt className="text-gray-500">{field.key || field.name}</dt>
+                <dd>{renderFieldValue(field)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }

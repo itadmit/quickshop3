@@ -42,6 +42,8 @@ export async function GET(request: NextRequest) {
       query += ` AND (mime_type LIKE 'image/%' OR path ~* '\\.(jpg|jpeg|png|gif|webp|svg)$')`;
     } else if (type === 'video') {
       query += ` AND (mime_type LIKE 'video/%' OR path ~* '\\.(mp4|webm|ogg|mov|avi)$')`;
+    } else if (type === 'file' || type === 'document') {
+      query += ` AND (mime_type LIKE 'application/%' OR path ~* '\\.(pdf|doc|docx|xls|xlsx|txt|csv)$')`;
     }
     
     query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
@@ -62,6 +64,8 @@ export async function GET(request: NextRequest) {
       countQuery += ` AND (mime_type LIKE 'image/%' OR path ~* '\\.(jpg|jpeg|png|gif|webp|svg)$')`;
     } else if (type === 'video') {
       countQuery += ` AND (mime_type LIKE 'video/%' OR path ~* '\\.(mp4|webm|ogg|mov|avi)$')`;
+    } else if (type === 'file' || type === 'document') {
+      countQuery += ` AND (mime_type LIKE 'application/%' OR path ~* '\\.(pdf|doc|docx|xls|xlsx|txt|csv)$')`;
     }
     
     const countResult = await pool.query(countQuery, countParams);

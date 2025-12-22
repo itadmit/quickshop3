@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -37,6 +37,7 @@ import {
 import Link from "next/link"
 import { Skeleton, TextSkeleton } from "@/components/ui/Skeleton"
 import { emitTrackingEvent } from "@/lib/tracking/events"
+import { useWishlist, WishlistItem } from "@/hooks/useWishlist"
 
 interface Store {
   id: number
@@ -80,8 +81,14 @@ interface Order {
 export default function StorefrontAccountPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const { toast } = useOptimisticToast()
   const storeSlug = params.storeSlug as string
+  
+  // Get tab from URL or default to "profile"
+  const urlTab = searchParams.get('tab') as "profile" | "orders" | "addresses" | "wishlist" | "returns" | "credits" | null;
+  const validTabs = ["profile", "orders", "addresses", "wishlist", "returns", "credits"];
+  const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : "profile";
 
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
@@ -90,7 +97,7 @@ export default function StorefrontAccountPage() {
   const [storeCredit, setStoreCredit] = useState<any>(null)
   const [cartItemCount, setCartItemCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"profile" | "orders" | "addresses" | "wishlist" | "returns" | "credits">("profile")
+  const [activeTab, setActiveTab] = useState<"profile" | "orders" | "addresses" | "wishlist" | "returns" | "credits">(initialTab)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [addresses, setAddresses] = useState<any[]>([])
@@ -1203,22 +1210,7 @@ export default function StorefrontAccountPage() {
             )}
 
             {activeTab === "wishlist" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>רשימת משאלות</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <HiHeart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600">רשימת המשאלות שלך ריקה</p>
-                    <Link href={`/shops/${storeSlug}`}>
-                      <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white">
-                        המשך לקניות
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              <WishlistSection storeSlug={storeSlug} />
             )}
 
             {activeTab === "returns" && (
@@ -1990,5 +1982,137 @@ export default function StorefrontAccountPage() {
       </footer>
     </div>
   )
+}
+
+// Wishlist Section Component
+function WishlistSection({ storeSlug }: { storeSlug: string }) {
+  const { wishlistItems, isLoading, removeFromWishlist } = useWishlist();
+  const [removingId, setRemovingId] = useState<number | null>(null);
+
+  const handleRemove = async (productId: number) => {
+    setRemovingId(productId);
+    await removeFromWishlist(productId);
+    setRemovingId(null);
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('he-IL', {
+      style: 'currency',
+      currency: 'ILS',
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>רשימת משאלות</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-square bg-gray-200 rounded-lg mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (wishlistItems.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>רשימת משאלות</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <HiHeart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-600">רשימת המשאלות שלך ריקה</p>
+            <Link href={`/shops/${storeSlug}`}>
+              <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white">
+                המשך לקניות
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>רשימת משאלות ({wishlistItems.length})</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {wishlistItems.map((item) => (
+            <div 
+              key={item.id} 
+              className="border rounded-lg overflow-hidden group hover:shadow-lg transition-shadow"
+            >
+              <Link href={`/shops/${storeSlug}/products/${item.product_handle}`}>
+                <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.product_title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <HiShoppingBag className="w-12 h-12" />
+                    </div>
+                  )}
+                </div>
+              </Link>
+              
+              <div className="p-3">
+                <Link href={`/shops/${storeSlug}/products/${item.product_handle}`}>
+                  <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 hover:text-green-600 transition-colors">
+                    {item.product_title}
+                  </h3>
+                </Link>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-gray-900">
+                      {formatPrice(item.price)}
+                    </span>
+                    {item.compare_price && item.compare_price > item.price && (
+                      <span className="text-sm text-gray-400 line-through">
+                        {formatPrice(item.compare_price)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={() => handleRemove(item.product_id)}
+                    disabled={removingId === item.product_id}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50"
+                    aria-label="הסר מרשימת המשאלות"
+                  >
+                    {removingId === item.product_id ? (
+                      <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <HiTrash className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 

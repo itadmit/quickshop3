@@ -278,6 +278,20 @@ export default function MediaPage() {
            file.path.match(/\.(mp4|webm|ogg|mov|avi)$/i);
   };
 
+  const isDocument = (file: MediaFile) => {
+    return file.mimeType?.startsWith('application/') || 
+           file.path.match(/\.(pdf|doc|docx|xls|xlsx|txt|csv)$/i);
+  };
+
+  const isPdf = (file: MediaFile) => {
+    return file.mimeType === 'application/pdf' || 
+           file.path.toLowerCase().endsWith('.pdf');
+  };
+
+  const getFileExtension = (path: string) => {
+    return path.split('.').pop()?.toUpperCase() || 'FILE';
+  };
+
   const isLoading = initializing || loading;
 
   return (
@@ -324,7 +338,7 @@ export default function MediaPage() {
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,video/*"
+            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
             onChange={handleFileUpload}
             className="hidden"
           />
@@ -357,7 +371,7 @@ export default function MediaPage() {
             >
               <HiUpload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-600 mb-2">העלה קבצים מהמחשב שלך או גרור אותם לכאן</p>
-              <p className="text-sm text-gray-400">תמונות ווידאו (מקסימום 20MB לוידאו)</p>
+              <p className="text-sm text-gray-400">תמונות, וידאו, PDF ומסמכים (מקסימום 20MB לוידאו)</p>
             </div>
           )}
 
@@ -425,7 +439,7 @@ export default function MediaPage() {
                       </div>
                     </div>
                     
-                    {/* Image/Video */}
+                    {/* Image/Video/Document */}
                     <div className="w-full h-full bg-gray-100">
                       {isVideo(file) ? (
                         <div className="relative w-full h-full">
@@ -442,6 +456,17 @@ export default function MediaPage() {
                               </svg>
                             </div>
                           </div>
+                        </div>
+                      ) : isDocument(file) ? (
+                        <div className="relative w-full h-full flex flex-col items-center justify-center bg-gray-100">
+                          <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${isPdf(file) ? 'bg-red-100' : 'bg-blue-100'}`}>
+                            <svg className={`w-8 h-8 ${isPdf(file) ? 'text-red-600' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <span className={`text-xs font-bold mt-2 uppercase ${isPdf(file) ? 'text-red-600' : 'text-blue-600'}`}>
+                            {getFileExtension(file.path)}
+                          </span>
                         </div>
                       ) : (
                         <img

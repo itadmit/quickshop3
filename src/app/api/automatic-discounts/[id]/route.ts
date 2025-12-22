@@ -142,6 +142,8 @@ export async function PUT(
     addField('gift_product_id', body.gift_product_id ?? null);
     addField('fixed_price_quantity', body.fixed_price_quantity ?? null);
     addField('fixed_price_amount', body.fixed_price_amount ?? null);
+    addField('spend_amount', body.spend_amount ?? null);
+    addField('pay_amount', body.pay_amount ?? null);
     
     // Special handling for volume_tiers (JSON)
     if ('volume_tiers' in body) {

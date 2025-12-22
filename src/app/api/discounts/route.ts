@@ -74,14 +74,15 @@ export async function POST(request: NextRequest) {
         bundle_min_products, bundle_discount_type, bundle_discount_value,
         volume_tiers, gift_product_id,
         fixed_price_quantity, fixed_price_amount,
+        spend_amount, pay_amount,
         is_active, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, now(), now())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, now(), now())
       RETURNING *`,
       [
         storeId,
         body.code,
         body.discount_type,
-        (body.discount_type !== 'free_shipping' && body.discount_type !== 'bogo' && body.discount_type !== 'bundle' && body.discount_type !== 'volume' && body.discount_type !== 'fixed_price') ? (body.value || null) : null,
+        (body.discount_type !== 'free_shipping' && body.discount_type !== 'bogo' && body.discount_type !== 'bundle' && body.discount_type !== 'volume' && body.discount_type !== 'fixed_price' && body.discount_type !== 'spend_x_pay_y') ? (body.value || null) : null,
         body.minimum_order_amount || null,
         body.maximum_order_amount || null,
         body.minimum_quantity || null,
@@ -112,6 +113,8 @@ export async function POST(request: NextRequest) {
         body.gift_product_id || null,
         body.fixed_price_quantity || null,
         body.fixed_price_amount || null,
+        body.spend_amount || null,
+        body.pay_amount || null,
         body.is_active !== undefined ? body.is_active : true,
       ]
     );

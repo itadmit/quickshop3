@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
-import { HiAdjustments, HiPlus, HiX, HiTrash, HiExternalLink } from 'react-icons/hi';
+import { HiAdjustments, HiPlus, HiX, HiTrash, HiExternalLink, HiUpload, HiDocument } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { useRouter } from 'next/navigation';
+import { MediaPicker } from '@/components/MediaPicker';
 
 interface MetaField {
   id?: number;
@@ -51,6 +52,8 @@ export function MetaFieldsCard({
   const [definitions, setDefinitions] = useState<MetaFieldDefinition[]>([]);
   const [metaFields, setMetaFields] = useState<MetaField[]>([]);
   const [availableDefinitions, setAvailableDefinitions] = useState<MetaFieldDefinition[]>([]);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [activeFieldKey, setActiveFieldKey] = useState<string | null>(null);
 
   useEffect(() => {
     loadDefinitions();
@@ -305,6 +308,86 @@ export function MetaFieldsCard({
               const fullKey = `${def.namespace}.${def.key}`;
               const currentValue = field?.value || values[fullKey] || '';
 
+              // Helper function to check if value is a file URL
+              const isFileUrl = (value: string) => {
+                if (!value) return false;
+                const lowerValue = value.toLowerCase();
+                return lowerValue.startsWith('http') && (
+                  lowerValue.includes('.pdf') ||
+                  lowerValue.includes('.doc') ||
+                  lowerValue.includes('.xls') ||
+                  lowerValue.includes('/uploads/files/')
+                );
+              };
+
+              // Render file input for file type fields
+              if (def.value_type === 'file' || def.value_type === 'url') {
+                return (
+                  <div key={`${def.namespace}.${def.key}`} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={fullKey} className="text-sm font-medium text-gray-700">
+                        {def.label}
+                        {def.required && <span className="text-red-500 mr-1">*</span>}
+                      </Label>
+                      <span className="text-xs text-gray-400 font-mono">
+                        {def.namespace}.{def.key}
+                      </span>
+                    </div>
+                    {def.description && (
+                      <p className="text-xs text-gray-500">{def.description}</p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={fullKey}
+                        value={currentValue}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          handleUpdateField(def.namespace, def.key, newValue);
+                        }}
+                        placeholder={def.value_type === 'file' ? 'URL של קובץ או לחץ להעלאה' : 'הזן URL'}
+                        required={def.required}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setActiveFieldKey(fullKey);
+                          setMediaPickerOpen(true);
+                        }}
+                        className="gap-1 shrink-0"
+                      >
+                        <HiUpload className="w-4 h-4" />
+                        העלה
+                      </Button>
+                    </div>
+                    {currentValue && isFileUrl(currentValue) && (
+                      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                        <HiDocument className="w-5 h-5 text-red-600" />
+                        <a 
+                          href={currentValue} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline flex-1 truncate"
+                        >
+                          {currentValue.split('/').pop() || 'קובץ'}
+                        </a>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUpdateField(def.namespace, def.key, '')}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={`${def.namespace}.${def.key}`} className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -335,6 +418,27 @@ export function MetaFieldsCard({
           </div>
         )}
       </div>
+
+      {/* Media Picker for file uploads */}
+      <MediaPicker
+        open={mediaPickerOpen}
+        onOpenChange={setMediaPickerOpen}
+        onSelect={(files) => {
+          if (files.length > 0 && activeFieldKey) {
+            // Find the definition for this field
+            const [namespace, key] = activeFieldKey.split('.');
+            handleUpdateField(namespace, key, files[0]);
+            setActiveFieldKey(null);
+          }
+        }}
+        selectedFiles={[]}
+        shopId={shopId?.toString()}
+        entityType="files"
+        entityId={productId?.toString() || 'new'}
+        multiple={false}
+        title="העלה קובץ"
+        accept="file"
+      />
     </Card>
   );
 }

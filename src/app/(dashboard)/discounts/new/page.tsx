@@ -23,7 +23,7 @@ export default function NewDiscountPage() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<{
     code: string;
-    discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+    discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
     value?: string;
     minimum_order_amount?: string;
     maximum_order_amount?: string;
@@ -66,6 +66,9 @@ export default function NewDiscountPage() {
     // Fixed Price fields
     fixed_price_quantity?: string;
     fixed_price_amount?: string;
+    // Spend X Pay Y fields
+    spend_amount?: string;
+    pay_amount?: string;
     // Gift Product
     gift_product_id?: number | null;
   }>({
@@ -109,6 +112,9 @@ export default function NewDiscountPage() {
     // Fixed Price defaults
     fixed_price_quantity: undefined,
     fixed_price_amount: undefined,
+    // Spend X Pay Y defaults
+    spend_amount: undefined,
+    pay_amount: undefined,
     // Gift Product default
     gift_product_id: null,
   });
@@ -170,6 +176,23 @@ export default function NewDiscountPage() {
         });
         return;
       }
+    } else if (formData.discount_type === 'spend_x_pay_y') {
+      if (!formData.spend_amount || !formData.pay_amount) {
+        toast({
+          title: 'שגיאה',
+          description: 'סכום הקנייה וסכום התשלום הם שדות חובה',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (parseFloat(formData.pay_amount) >= parseFloat(formData.spend_amount)) {
+        toast({
+          title: 'שגיאה',
+          description: 'סכום התשלום חייב להיות נמוך מסכום הקנייה',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else if (formData.discount_type !== 'free_shipping' && (!formData.value || !formData.value.trim())) {
       toast({
         title: 'שגיאה',
@@ -185,7 +208,7 @@ export default function NewDiscountPage() {
       const payload: CreateDiscountCodeRequest = {
         code: formData.code!.toUpperCase().trim(),
         discount_type: formData.discount_type!,
-        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume' && formData.discount_type !== 'fixed_price') ? (formData.value || null) : null,
+        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume' && formData.discount_type !== 'fixed_price' && formData.discount_type !== 'spend_x_pay_y') ? (formData.value || null) : null,
         // BOGO fields
         buy_quantity: formData.discount_type === 'bogo' && formData.buy_quantity ? parseInt(formData.buy_quantity) : null,
         get_quantity: formData.discount_type === 'bogo' && formData.get_quantity ? parseInt(formData.get_quantity) : null,
@@ -201,6 +224,9 @@ export default function NewDiscountPage() {
         // Fixed Price fields
         fixed_price_quantity: formData.discount_type === 'fixed_price' && formData.fixed_price_quantity ? parseInt(formData.fixed_price_quantity) : null,
         fixed_price_amount: formData.discount_type === 'fixed_price' && formData.fixed_price_amount ? formData.fixed_price_amount : null,
+        // Spend X Pay Y fields
+        spend_amount: formData.discount_type === 'spend_x_pay_y' && formData.spend_amount ? formData.spend_amount : null,
+        pay_amount: formData.discount_type === 'spend_x_pay_y' && formData.pay_amount ? formData.pay_amount : null,
         minimum_order_amount: formData.minimum_order_amount || null,
         maximum_order_amount: formData.maximum_order_amount || null,
         minimum_quantity: formData.minimum_quantity ? parseInt(formData.minimum_quantity) : null,
@@ -315,6 +341,7 @@ export default function NewDiscountPage() {
                   <SelectItem value="bundle">הנחת חבילה</SelectItem>
                   <SelectItem value="volume">הנחה לפי כמות (Volume)</SelectItem>
                   <SelectItem value="fixed_price">מחיר קבוע לכמות</SelectItem>
+                  <SelectItem value="spend_x_pay_y">קנה ב-X שלם Y</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -596,6 +623,42 @@ export default function NewDiscountPage() {
                     className="mt-1"
                   />
                   <p className="text-sm text-gray-500 mt-1">המחיר הכולל לכמות שנבחרה (לדוגמא: 55 ש"ח ל-2 פריטים)</p>
+                </div>
+              </>
+            )}
+
+            {/* Spend X Pay Y Fields */}
+            {formData.discount_type === 'spend_x_pay_y' && (
+              <>
+                <div>
+                  <Label htmlFor="spend_amount">סכום קנייה (₪) *</Label>
+                  <Input
+                    id="spend_amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.spend_amount || ''}
+                    onChange={(e) => setFormData({ ...formData, spend_amount: e.target.value })}
+                    placeholder="300"
+                    required
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">הסכום המינימלי לקנייה (לדוגמא: 300 ש"ח)</p>
+                </div>
+                <div>
+                  <Label htmlFor="pay_amount">סכום לתשלום (₪) *</Label>
+                  <Input
+                    id="pay_amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.pay_amount || ''}
+                    onChange={(e) => setFormData({ ...formData, pay_amount: e.target.value })}
+                    placeholder="200"
+                    required
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">הסכום שהלקוח ישלם בפועל (לדוגמא: 200 ש"ח)</p>
                 </div>
               </>
             )}

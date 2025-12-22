@@ -731,6 +731,9 @@ CREATE TABLE discount_codes (
   -- Fixed Price fields (מחיר קבוע לכמות - לדוגמא: 2 פריטים ב-55 ש"ח)
   fixed_price_quantity INT, -- כמות הפריטים במחיר הקבוע
   fixed_price_amount NUMERIC(12,2), -- המחיר הקבוע לכמות
+  -- Spend X Pay Y fields (קנה ב-X שלם Y - לדוגמא: קנה ב-300 שלם 200)
+  spend_amount NUMERIC(12,2), -- סכום הקנייה המינימלי
+  pay_amount NUMERIC(12,2), -- סכום התשלום בפועל
   is_active BOOLEAN DEFAULT true,
   influencer_id INT REFERENCES influencers(id) ON DELETE SET NULL, -- קישור למשפיען (אם הקופון שייך למשפיען)
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
@@ -786,6 +789,9 @@ CREATE TABLE automatic_discounts (
   -- Fixed Price fields (מחיר קבוע לכמות - לדוגמא: 2 פריטים ב-55 ש"ח)
   fixed_price_quantity INT, -- כמות הפריטים במחיר הקבוע
   fixed_price_amount NUMERIC(12,2), -- המחיר הקבוע לכמות
+  -- Spend X Pay Y fields (קנה ב-X שלם Y - לדוגמא: קנה ב-300 שלם 200)
+  spend_amount NUMERIC(12,2), -- סכום הקנייה המינימלי
+  pay_amount NUMERIC(12,2), -- סכום התשלום בפועל
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
@@ -1585,8 +1591,10 @@ CREATE TABLE tracking_pixels (
   pixel_type VARCHAR(50) NOT NULL, -- facebook, google_analytics, tiktok, custom
   pixel_id VARCHAR(255),
   pixel_code TEXT, -- קוד מותאם
+  access_token TEXT, -- טוקן גישה (לפייסבוק Conversions API וכו')
   placement VARCHAR(50) DEFAULT 'head', -- head, body, footer
   is_active BOOLEAN DEFAULT true,
+  events JSONB DEFAULT '[]', -- אירועים לעקוב אחריהם
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );

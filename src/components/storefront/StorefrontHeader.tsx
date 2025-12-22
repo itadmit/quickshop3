@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { HiShoppingCart, HiUser, HiMenu } from 'react-icons/hi';
+import { HiShoppingCart, HiUser, HiMenu, HiHeart } from 'react-icons/hi';
 import { useState } from 'react';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface StorefrontHeaderProps {
   storeName: string;
@@ -21,6 +22,8 @@ export function StorefrontHeader({
   const params = useParams();
   const storeSlug = params.storeSlug as string;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { getWishlistCount } = useWishlist();
+  const wishlistCount = getWishlistCount();
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -59,6 +62,20 @@ export function StorefrontHeader({
 
           {/* Icons */}
           <div className="flex items-center gap-4">
+            {/* Wishlist */}
+            <Link 
+              href={`/shops/${storeSlug}/account?tab=wishlist`}
+              className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="רשימת משאלות"
+            >
+              <HiHeart className="w-6 h-6" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </span>
+              )}
+            </Link>
+            
             {/* Cart */}
             <Link 
               href={`/shops/${storeSlug}/cart`}

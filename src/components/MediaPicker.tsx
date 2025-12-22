@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
-import { HiSearch, HiUpload, HiCheck, HiTrash, HiPhotograph, HiFilter } from 'react-icons/hi';
+import { HiSearch, HiUpload, HiCheck, HiTrash, HiPhotograph, HiFilter, HiVideoCamera } from 'react-icons/hi';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -30,7 +30,7 @@ interface MediaPickerProps {
   entityId?: string;
   multiple?: boolean;
   title?: string;
-  accept?: 'image' | 'video' | 'all';
+  accept?: 'image' | 'video' | 'file' | 'all';
 }
 
 // Constant empty array for default prop to avoid infinite loop in useEffect
@@ -55,10 +55,24 @@ export function MediaPicker({
         return 'image/*';
       case 'video':
         return 'video/*';
+      case 'file':
+        return '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv';
       case 'all':
       default:
-        return 'image/*,video/*';
+        return 'image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx';
     }
+  };
+
+  // Check if a file is a document (PDF, DOC, etc.)
+  const isDocument = (file: MediaFile) => {
+    return file.mimeType?.startsWith('application/') || 
+           file.path.match(/\.(pdf|doc|docx|xls|xlsx|txt|csv)$/i);
+  };
+
+  // Check if a file is a PDF
+  const isPdf = (file: MediaFile) => {
+    return file.mimeType === 'application/pdf' || 
+           file.path.toLowerCase().endsWith('.pdf');
   };
 
   // Check if a file is a video
@@ -515,22 +529,28 @@ export function MediaPicker({
                           <HiVideoCamera className="w-8 h-8 text-gray-400" />
                         ) : accept === 'image' ? (
                           <HiPhotograph className="w-8 h-8 text-gray-400" />
+                        ) : accept === 'file' ? (
+                          <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                          </svg>
                         ) : (
                           <HiUpload className="w-8 h-8 text-gray-400" />
                         )}
                     </div>
                     <h3 className="text-base font-semibold text-gray-900 mb-2">
-                      {accept === 'video' ? 'אין וידאו עדיין' : accept === 'image' ? 'אין תמונות עדיין' : 'אין קבצים עדיין'}
+                      {accept === 'video' ? 'אין וידאו עדיין' : accept === 'image' ? 'אין תמונות עדיין' : accept === 'file' ? 'אין קבצים עדיין' : 'אין קבצים עדיין'}
                     </h3>
                     <p className="text-sm text-gray-500 mb-4 max-w-md leading-relaxed">
                       {accept === 'video' 
                         ? 'העלה וידאו מהמחשב שלך או גרור אותו לכאן כדי להתחיל (מקסימום 20 מגה)'
                         : accept === 'image'
                         ? 'העלה תמונות מהמחשב שלך או גרור אותן לכאן כדי להתחיל'
+                        : accept === 'file'
+                        ? 'העלה קבצים (PDF, DOC, XLS) מהמחשב שלך או גרור אותם לכאן'
                         : 'העלה קבצים מהמחשב שלך או גרור אותם לכאן כדי להתחיל'}
                     </p>
                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
-                      {accept === 'video' ? 'העלה וידאו' : accept === 'image' ? 'העלה תמונה' : 'העלה קבצים'}
+                      {accept === 'video' ? 'העלה וידאו' : accept === 'image' ? 'העלה תמונה' : accept === 'file' ? 'העלה קובץ' : 'העלה קבצים'}
                     </Button>
                   </div>
                 </div>
@@ -647,6 +667,17 @@ export function MediaPicker({
                                         </svg>
                                       </div>
                                     </div>
+                                  </div>
+                                ) : isDocument(file) ? (
+                                  <div className="relative w-full h-full flex flex-col items-center justify-center bg-gray-100">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isPdf(file) ? 'bg-red-100' : 'bg-blue-100'}`}>
+                                      <svg className={`w-6 h-6 ${isPdf(file) ? 'text-red-600' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <span className={`text-[8px] font-bold mt-1 uppercase ${isPdf(file) ? 'text-red-600' : 'text-blue-600'}`}>
+                                      {file.path.split('.').pop()?.toUpperCase() || 'FILE'}
+                                    </span>
                                   </div>
                                 ) : (
                                   <img

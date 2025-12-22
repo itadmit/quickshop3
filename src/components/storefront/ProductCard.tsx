@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { HiHeart, HiOutlineHeart } from 'react-icons/hi';
 import { emitTrackingEvent } from '@/lib/tracking/events';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface ColorOption {
   value: string;
@@ -28,6 +30,10 @@ export function ProductCard({ product, storeSlug: propStoreSlug, variant = 'mini
   const params = useParams();
   const pathname = usePathname();
   const storeSlug = propStoreSlug || (params?.storeSlug as string) || '';
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  
+  const inWishlist = isInWishlist(product.id);
   
   // Track ViewContent when product card is viewed
   useEffect(() => {
@@ -46,6 +52,18 @@ export function ProductCard({ product, storeSlug: propStoreSlug, variant = 'mini
       });
     }
   }, [product.id, product.price, pathname]);
+
+  const handleWishlistClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (wishlistLoading) return;
+    setWishlistLoading(true);
+    try {
+      await toggleWishlist(product.id);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   const hasDiscount = product.compare_at_price && product.compare_at_price > (product.price || 0);
 
@@ -108,6 +126,24 @@ export function ProductCard({ product, storeSlug: propStoreSlug, variant = 'mini
             מבצע
           </div>
         )}
+        
+        {/* Wishlist Button */}
+        <button
+          onClick={handleWishlistClick}
+          disabled={wishlistLoading}
+          className={`absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 ${
+            inWishlist
+              ? 'bg-red-100 hover:bg-red-200'
+              : 'bg-white/90 hover:bg-white shadow-sm'
+          } ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          aria-label={inWishlist ? 'הסר מרשימת המשאלות' : 'הוסף לרשימת המשאלות'}
+        >
+          {inWishlist ? (
+            <HiHeart className="w-4 h-4 text-red-500" />
+          ) : (
+            <HiOutlineHeart className="w-4 h-4 text-gray-600" />
+          )}
+        </button>
       </div>
 
       {/* Product Info */}

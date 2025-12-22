@@ -41,7 +41,7 @@ export interface CartItem {
 export interface DiscountCode {
   id: number;
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
   value: number | null;
   minimum_order_amount: number | null;
   maximum_order_amount: number | null;
@@ -77,6 +77,9 @@ export interface DiscountCode {
   // Fixed Price fields (מחיר קבוע לכמות)
   fixed_price_quantity?: number | null;
   fixed_price_amount?: number | null;
+  // Spend X Pay Y fields (קנה ב-X שלם Y)
+  spend_amount?: number | null;
+  pay_amount?: number | null;
   // Gift product
   gift_product_id?: number | null;
   product_ids?: number[];
@@ -88,7 +91,7 @@ export interface AutomaticDiscount {
   id: number;
   name: string;
   description: string | null;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
   value: number | null;
   minimum_order_amount: number | null;
   maximum_order_amount: number | null;
@@ -126,6 +129,9 @@ export interface AutomaticDiscount {
   // Fixed Price fields (מחיר קבוע לכמות)
   fixed_price_quantity?: number | null;
   fixed_price_amount?: number | null;
+  // Spend X Pay Y fields (קנה ב-X שלם Y)
+  spend_amount?: number | null;
+  pay_amount?: number | null;
   // Gift product
   gift_product_id?: number | null;
   product_ids?: number[];
@@ -299,7 +305,8 @@ export class CartCalculator {
           buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
           bundle_min_products, bundle_discount_type, bundle_discount_value,
           volume_tiers, gift_product_id,
-          fixed_price_quantity, fixed_price_amount
+          fixed_price_quantity, fixed_price_amount,
+          spend_amount, pay_amount
         FROM discount_codes
         WHERE store_id = $1 AND code = $2 AND is_active = true`,
         [this.storeId, code.toUpperCase()]
@@ -417,6 +424,9 @@ export class CartCalculator {
         // Fixed Price fields
         fixed_price_quantity: discount.fixed_price_quantity,
         fixed_price_amount: discount.fixed_price_amount ? parseFloat(discount.fixed_price_amount) : null,
+        // Spend X Pay Y fields
+        spend_amount: (discount as any).spend_amount ? parseFloat((discount as any).spend_amount) : null,
+        pay_amount: (discount as any).pay_amount ? parseFloat((discount as any).pay_amount) : null,
         // Gift product
         gift_product_id: discount.gift_product_id,
         product_ids: productIds.map(p => p.product_id),
@@ -521,7 +531,8 @@ export class CartCalculator {
           buy_quantity, get_quantity, get_discount_type, get_discount_value, applies_to_same_product,
           bundle_min_products, bundle_discount_type, bundle_discount_value,
           volume_tiers, gift_product_id,
-          fixed_price_quantity, fixed_price_amount
+          fixed_price_quantity, fixed_price_amount,
+          spend_amount, pay_amount
         FROM automatic_discounts
         WHERE store_id = $1 
           AND is_active = true
@@ -608,6 +619,9 @@ export class CartCalculator {
           // Fixed Price fields
           fixed_price_quantity: discount.fixed_price_quantity,
           fixed_price_amount: discount.fixed_price_amount ? parseFloat(discount.fixed_price_amount) : null,
+          // Spend X Pay Y fields
+          spend_amount: (discount as any).spend_amount ? parseFloat((discount as any).spend_amount) : null,
+          pay_amount: (discount as any).pay_amount ? parseFloat((discount as any).pay_amount) : null,
           gift_product_id: discount.gift_product_id,
           product_ids: productIds.map(p => p.product_id),
           collection_ids: collectionIds.map(c => c.collection_id),
@@ -1296,6 +1310,25 @@ export class CartCalculator {
             } else {
               description = `קופון ${(fixedPriceDiscount as DiscountCode).code}: ${fixedQuantity} פריטים ב-₪${fixedPrice.toFixed(2)}`;
             }
+          }
+        }
+        break;
+
+      case 'spend_x_pay_y':
+        // Spend X Pay Y - קנה ב-X שלם Y (לדוגמא: קנה ב-300 שלם 200)
+        const spendDiscount = discount as AutomaticDiscount | DiscountCode;
+        const spendAmount = (spendDiscount as any).spend_amount;
+        const payAmount = (spendDiscount as any).pay_amount;
+        
+        if (spendAmount && payAmount && applicableTotal >= spendAmount) {
+          // ההנחה היא ההפרש בין סכום הקנייה לסכום התשלום
+          // אבל לא יותר מסכום ההזמנה
+          discountAmount = Math.min(spendAmount - payAmount, applicableTotal);
+          
+          if (source === 'automatic') {
+            description = `${(spendDiscount as AutomaticDiscount).name}: קנה ב-₪${spendAmount} שלם ₪${payAmount}`;
+          } else {
+            description = `קופון ${(spendDiscount as DiscountCode).code}: קנה ב-₪${spendAmount} שלם ₪${payAmount}`;
           }
         }
         break;

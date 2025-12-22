@@ -4,7 +4,7 @@ export interface DiscountCode {
   id: number;
   store_id: number;
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
   value: string | null;
   minimum_order_amount: string | null;
   maximum_order_amount: string | null;
@@ -46,6 +46,9 @@ export interface DiscountCode {
   // Fixed Price fields (מחיר קבוע לכמות - לדוגמא: 2 פריטים ב-55 ש"ח)
   fixed_price_quantity: number | null;
   fixed_price_amount: string | null;
+  // Spend X Pay Y fields (קנה ב-X שלם Y - לדוגמא: קנה ב-300 שלם 200)
+  spend_amount: string | null;
+  pay_amount: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -57,7 +60,7 @@ export interface DiscountCode {
 // API Request/Response types
 export interface CreateDiscountCodeRequest {
   code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
   value?: string;
   minimum_order_amount?: string;
   maximum_order_amount?: string;
@@ -96,6 +99,9 @@ export interface CreateDiscountCodeRequest {
   // Fixed Price fields
   fixed_price_quantity?: number;
   fixed_price_amount?: string;
+  // Spend X Pay Y fields
+  spend_amount?: string | null;
+  pay_amount?: string | null;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -104,7 +110,7 @@ export interface CreateDiscountCodeRequest {
 
 export interface UpdateDiscountCodeRequest {
   code?: string;
-  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+  discount_type?: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
   value?: string | null;
   minimum_order_amount?: string | null;
   maximum_order_amount?: string | null;
@@ -145,6 +151,9 @@ export interface UpdateDiscountCodeRequest {
   // Fixed Price fields
   fixed_price_quantity?: number | null;
   fixed_price_amount?: string | null;
+  // Spend X Pay Y fields
+  spend_amount?: string | null;
+  pay_amount?: string | null;
   is_active?: boolean;
   product_ids?: number[];
   collection_ids?: number[];
@@ -157,7 +166,7 @@ export interface AutomaticDiscount {
   store_id: number;
   name: string;
   description: string | null;
-  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price';
+  discount_type: 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y';
   value: string | null;
   minimum_order_amount: string | null;
   maximum_order_amount: string | null;
@@ -197,6 +206,9 @@ export interface AutomaticDiscount {
   // Fixed Price fields (מחיר קבוע לכמות)
   fixed_price_quantity?: number | null;
   fixed_price_amount?: string | null;
+  // Spend X Pay Y fields (קנה ב-X שלם Y)
+  spend_amount?: string | null;
+  pay_amount?: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

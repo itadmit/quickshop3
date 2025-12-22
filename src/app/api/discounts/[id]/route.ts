@@ -230,6 +230,18 @@ export async function PUT(
       paramIndex++;
     }
 
+    if (body.spend_amount !== undefined) {
+      updates.push(`spend_amount = $${paramIndex}`);
+      values.push(body.spend_amount);
+      paramIndex++;
+    }
+
+    if (body.pay_amount !== undefined) {
+      updates.push(`pay_amount = $${paramIndex}`);
+      values.push(body.pay_amount);
+      paramIndex++;
+    }
+
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }

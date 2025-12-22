@@ -14,10 +14,6 @@ export interface ProductListItem {
   price: number;
   compare_at_price: number | null;
   available: number;
-  colors?: Array<{
-    value: string;
-    color?: string; // Hex color code
-  }>;
 }
 
 export interface ProductDetails extends ProductListItem {
@@ -163,54 +159,10 @@ export async function getProductsList(
     [...params, limit, offset]
   );
 
-  // If no products, return empty
-  if (products.length === 0) {
-    return [];
-  }
-
-  // Batch query to get color options for all products
-  const productIds = products.map(p => p.id);
-  const colorOptions = await query<{
-    product_id: number;
-    value: string;
-    metadata: string | null;
-  }>(
-    `SELECT 
-      po.product_id,
-      pov.value,
-      pov.metadata::text
-    FROM product_options po
-    INNER JOIN product_option_values pov ON pov.option_id = po.id
-    WHERE po.product_id = ANY($1::int[]) 
-      AND po.type = 'color'
-    ORDER BY pov.position`,
-    [productIds]
-  );
-
-  // Group colors by product
-  const colorsMap = new Map<number, Array<{ value: string; color?: string }>>();
-  for (const opt of colorOptions) {
-    if (!colorsMap.has(opt.product_id)) {
-      colorsMap.set(opt.product_id, []);
-    }
-    let colorHex: string | undefined;
-    if (opt.metadata) {
-      try {
-        const meta = JSON.parse(opt.metadata);
-        colorHex = meta.color;
-      } catch {}
-    }
-    colorsMap.get(opt.product_id)!.push({
-      value: opt.value,
-      color: colorHex,
-    });
-  }
-
-  // Map to use inventory_quantity as available and add colors
+  // Map to use inventory_quantity as available
   return products.map(p => ({
     ...p,
     available: p.inventory_quantity || 0,
-    colors: colorsMap.get(p.id) || undefined,
   }));
 }
 
@@ -223,17 +175,8 @@ export async function getProductByHandle(
   storeId: number,
   customerTier?: string | null
 ): Promise<ProductDetails | null> {
-  // Handle might already be decoded, so only decode if it looks encoded
-  let decodedHandle = handle;
-  try {
-    // Check if it looks URL-encoded (contains %)
-    if (handle.includes('%')) {
-      decodedHandle = decodeURIComponent(handle);
-    }
-  } catch {
-    // If decoding fails, use original
-    decodedHandle = handle;
-  }
+  // Decode URL-encoded handle (for Hebrew slugs)
+  const decodedHandle = decodeURIComponent(handle);
   
   // Build WHERE clause with tier filtering
   let whereClause = 'p.store_id = $1 AND p.handle = $2 AND p.status = \'active\'';
@@ -380,37 +323,6 @@ export async function getProductByHandle(
         [option.id]
       );
 
-      // Helper function to extract value recursively from nested JSON
-      const extractValueRecursively = (val: any, depth = 0): string => {
-        if (depth > 5) return ''; // Prevent infinite recursion
-        if (!val) return '';
-        if (typeof val === 'number') return String(val);
-        if (typeof val === 'string') {
-          if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
-            try {
-              const parsed = JSON.parse(val);
-              if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
-                return extractValueRecursively(parsed.value, depth + 1);
-              }
-              if (parsed && typeof parsed === 'object') {
-                return extractValueRecursively(parsed.value || parsed.label || parsed.name || val, depth + 1);
-              }
-              return String(parsed);
-            } catch {
-              return val;
-            }
-          }
-          return val;
-        }
-        if (val && typeof val === 'object') {
-          if (val.value !== undefined) {
-            return extractValueRecursively(val.value, depth + 1);
-          }
-          return extractValueRecursively(val.label || val.name || '', depth + 1);
-        }
-        return '';
-      };
-
       return {
         id: option.id,
         name: option.name,
@@ -418,7 +330,7 @@ export async function getProductByHandle(
         position: option.position,
         values: values.map(v => ({
           id: v.id,
-          value: extractValueRecursively(v.value),
+          value: v.value,
           position: v.position,
           metadata: v.metadata ? (typeof v.metadata === 'string' ? JSON.parse(v.metadata) : v.metadata) : undefined,
         })),
@@ -426,11 +338,40 @@ export async function getProductByHandle(
     })
   );
 
+  // Batch query למטא fields שמוגדרים להצגה בחנות
+  const metaFields = await query<{
+    namespace: string;
+    key: string;
+    value: string;
+    value_type: string;
+  }>(
+    `SELECT pmf.namespace, pmf.key, pmf.value, pmf.value_type
+     FROM product_meta_fields pmf
+     LEFT JOIN meta_field_definitions mfd 
+       ON mfd.namespace = pmf.namespace 
+       AND mfd.key = pmf.key 
+       AND mfd.store_id = $2
+     WHERE pmf.product_id = $1
+       AND (mfd.id IS NULL OR mfd.show_in_storefront = true)
+     ORDER BY COALESCE(mfd.position, 999)`,
+    [product.id, storeId]
+  );
+
+  // מיפוי meta fields לפורמט מתאים להצגה
+  const metaFieldsForDisplay = metaFields.map(field => ({
+    namespace: field.namespace,
+    key: field.key,
+    value: field.value,
+    value_type: field.value_type,
+    name: field.key, // fallback
+  }));
+
   return {
     ...product,
     images,
     variants,
     options,
+    metafields: metaFieldsForDisplay,
   };
 }
 
