@@ -125,24 +125,32 @@ export function CartSummary({
         
         {/* Show applied discount code if exists */}
         {discountCode && (
-          <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-2">
-            <div className="flex items-center gap-2">
-              <HiTag className="w-5 h-5 text-green-600" />
-              <span className="font-medium text-green-800">{discountCode}</span>
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <HiTag className="w-5 h-5 text-green-600" />
+                <span className="font-medium text-green-800">{discountCode}</span>
+              </div>
+              {validatingCode ? (
+                <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <button
+                  onClick={async () => {
+                    await removeDiscountCode();
+                  }}
+                  className="text-green-600 hover:text-green-800 transition-colors"
+                  type="button"
+                >
+                  <HiX className="w-5 h-5" />
+                </button>
+              )}
             </div>
-            {validatingCode ? (
-              <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <button
-                onClick={async () => {
-                  await removeDiscountCode();
-                }}
-                className="text-green-600 hover:text-green-800 transition-colors"
-                type="button"
-              >
-                <HiX className="w-5 h-5" />
-              </button>
-            )}
+            {/* תיאור ההנחה */}
+            {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
+              <div key={idx} className="text-xs text-green-700 mr-7">
+                {discount.description || discount.name}
+              </div>
+            ))}
           </div>
         )}
         

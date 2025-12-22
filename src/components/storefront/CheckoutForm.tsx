@@ -1846,30 +1846,33 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
                   {/* Applied Coupons */}
                   {discountCode && (
-                    <div className="mb-4 flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-gray-600">קופון פעיל:</span>
-                      <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 border border-green-300 rounded-md">
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">קופון פעיל:</span>
+                          <span className="text-sm font-medium text-green-800">{discountCode}</span>
+                        </div>
                         {validatingCode ? (
-                          <>
-                            <span className="text-sm font-medium text-green-800">{discountCode}</span>
-                            <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                          </>
+                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <>
-                            <span className="text-sm font-medium text-green-800">{discountCode}</span>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await removeDiscountCode();
-                              }}
-                              className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-0.5 transition-colors"
-                              aria-label="הסר קופון"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await removeDiscountCode();
+                            }}
+                            className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-1 transition-colors"
+                            aria-label="הסר קופון"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
+                      {/* תיאור ההנחה */}
+                      {calculation?.discounts?.filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
+                        <div key={idx} className="text-xs text-green-700 mr-7">
+                          {discount.description || discount.name}
+                        </div>
+                      ))}
                     </div>
                   )}
                   
