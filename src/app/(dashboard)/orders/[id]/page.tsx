@@ -697,8 +697,23 @@ export default function OrderDetailsPage() {
                 </div>
                 {parseFloat(order.total_shipping_price || '0') > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">משלוח</span>
+                    <span className="text-gray-600">
+                      משלוח
+                      {(order as any).note_attributes?.shipping_method_name && (
+                        <span className="mr-1 text-xs text-gray-500">
+                          ({(order as any).note_attributes.shipping_method_name})
+                        </span>
+                      )}
+                    </span>
                     <span className="text-gray-900">₪{parseFloat(order.total_shipping_price || '0').toLocaleString('he-IL')}</span>
+                  </div>
+                )}
+                {parseFloat(order.total_shipping_price || '0') === 0 && (order as any).note_attributes?.shipping_method_name && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>
+                      משלוח ({(order as any).note_attributes.shipping_method_name})
+                    </span>
+                    <span>חינם</span>
                   </div>
                 )}
                 {parseFloat(order.total_tax || '0') > 0 && (
@@ -710,16 +725,13 @@ export default function OrderDetailsPage() {
                 {parseFloat(order.total_discounts || '0') > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>
-                      הנחה
-                      {order.discount_codes && order.discount_codes.length > 0 && (
-                        <span className="mr-1 text-xs text-gray-500">
-                          ({Array.isArray(order.discount_codes) 
+                      {order.discount_codes && order.discount_codes.length > 0 
+                        ? `קופון: ${Array.isArray(order.discount_codes) 
                             ? order.discount_codes.join(', ')
                             : typeof order.discount_codes === 'string' 
                               ? JSON.parse(order.discount_codes).join(', ')
-                              : ''})
-                        </span>
-                      )}
+                              : ''}`
+                        : 'הנחה אוטומטית'}
                     </span>
                     <span>-₪{parseFloat(order.total_discounts || '0').toLocaleString('he-IL')}</span>
                   </div>
@@ -732,7 +744,21 @@ export default function OrderDetailsPage() {
                       : typeof order.discount_codes === 'string' 
                         ? JSON.parse(order.discount_codes).join(', ')
                         : ''}</span>
-                    <span>✓</span>
+                    <span>משלוח חינם</span>
+                  </div>
+                )}
+                {/* גיפט קארד */}
+                {(order as any).note_attributes?.gift_card_amount > 0 && (
+                  <div className="flex justify-between text-sm text-purple-600">
+                    <span>גיפט קארד: {(order as any).note_attributes.gift_card_code}</span>
+                    <span>-₪{parseFloat((order as any).note_attributes.gift_card_amount || '0').toLocaleString('he-IL')}</span>
+                  </div>
+                )}
+                {/* קרדיט בחנות */}
+                {(order as any).note_attributes?.store_credit_amount > 0 && (
+                  <div className="flex justify-between text-sm text-orange-600">
+                    <span>קרדיט בחנות</span>
+                    <span>-₪{parseFloat((order as any).note_attributes.store_credit_amount || '0').toLocaleString('he-IL')}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">

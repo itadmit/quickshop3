@@ -49,6 +49,7 @@ interface CreateOrderInput {
   shippingCost?: number; // עלות משלוח
   totalDiscount?: number; // סה"כ הנחות
   deliveryMethod?: 'shipping' | 'pickup';
+  shippingMethodName?: string; // שם שיטת המשלוח (למשל "משלוח רגיל")
   paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash' | 'store_credit';
   storeCreditAmount?: number; // סכום קרדיט לשימוש
   giftCardCode?: string; // קוד גיפט קארד שהוחל
@@ -241,7 +242,10 @@ export async function createOrder(input: CreateOrderInput) {
     ...(input.customFields || {}),
     delivery_method: input.deliveryMethod || 'shipping',
     payment_method: input.paymentMethod || 'credit_card',
+    shipping_method_name: input.shippingMethodName || (input.deliveryMethod === 'pickup' ? 'איסוף עצמי' : 'משלוח'),
     ...(input.customer.companyName ? { company_name: input.customer.companyName } : {}),
+    ...(input.giftCardCode ? { gift_card_code: input.giftCardCode, gift_card_amount: input.giftCardAmount } : {}),
+    ...(input.storeCreditAmount && input.storeCreditAmount > 0 ? { store_credit_amount: input.storeCreditAmount } : {}),
   };
   
   // Set financial status based on payment method and total

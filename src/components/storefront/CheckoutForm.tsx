@@ -513,6 +513,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         shippingCost: getShipping(), // ✅ עלות משלוח
         totalDiscount: getDiscount(), // ✅ סה"כ הנחות
         deliveryMethod: formData.deliveryMethod,
+        shippingMethodName: selectedShippingRate?.name || (formData.deliveryMethod === 'pickup' ? 'איסוף עצמי' : 'משלוח'), // ✅ שם שיטת המשלוח
         paymentMethod: formData.paymentMethod,
         storeCreditAmount: storeCreditAmount,
         giftCardCode: appliedGiftCard?.code, // ✅ קוד גיפט קארד
@@ -2083,7 +2084,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       </div>
                     )}
                     
-                    {shippingCost === 0 && formData.deliveryMethod === 'shipping' && (
+                    {shippingCost === 0 && formData.deliveryMethod === 'shipping' && !calcLoading && calculation && (
                       <div className="flex justify-between text-green-600">
                         <span>
                           {translationsLoading ? (
@@ -2099,6 +2100,14 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                             'חינם'
                           )}
                         </span>
+                      </div>
+                    )}
+                    
+                    {/* Show shipping rate price during loading */}
+                    {calcLoading && formData.deliveryMethod === 'shipping' && selectedShippingRate && (
+                      <div className="flex justify-between">
+                        <span style={{ opacity: 0.7 }}>משלוח</span>
+                        <span>₪{selectedShippingRate.price.toFixed(2)}</span>
                       </div>
                     )}
                     

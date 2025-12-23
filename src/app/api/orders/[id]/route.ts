@@ -221,6 +221,7 @@ export async function GET(
       shipping_address: shippingAddress,
       delivery_method: noteAttributes?.delivery_method || 'shipping',
       payment_method: noteAttributes?.payment_method || order.gateway || 'credit_card',
+      note_attributes: noteAttributes, // ✅ מחזיר את כל ה-note_attributes כולל shipping_method_name
       line_items: items,
     });
   } catch (error: any) {

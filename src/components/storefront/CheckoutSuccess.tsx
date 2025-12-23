@@ -43,6 +43,12 @@ interface Order {
   };
   delivery_method?: 'shipping' | 'pickup';
   payment_method?: 'credit_card' | 'bank_transfer' | 'cash';
+  note_attributes?: {
+    shipping_method_name?: string;
+    delivery_method?: string;
+    payment_method?: string;
+    [key: string]: any;
+  };
   line_items: Array<{
     id: number;
     title: string;
@@ -429,7 +435,8 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                         <div>
                           <span className="text-gray-500">שיטת משלוח: </span>
                           <span className="font-medium">
-                            {order.delivery_method === 'pickup' ? 'איסוף עצמי' : 'משלוח'}
+                            {order.note_attributes?.shipping_method_name || 
+                             (order.delivery_method === 'pickup' ? 'איסוף עצמי' : 'משלוח')}
                           </span>
                         </div>
                         <div>
