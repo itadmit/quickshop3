@@ -1240,7 +1240,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                               <div className="flex justify-between items-center">
                                 <div>
                                   <div className="font-medium">
-                                    {rate.is_pickup ? '🏪 ' : '🚚 '}{rate.name}
+                                    {rate.name}
                                   </div>
                                 </div>
                                 <div className="text-left">
@@ -1872,10 +1872,21 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                               </div>
                             )}
                           </div>
-                          <div className="font-medium">
-                            <div className="text-base font-bold">
-                              ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                            </div>
+                          <div className="font-medium text-left">
+                            {hasDiscount ? (
+                              <>
+                                <div className="text-xs text-gray-400 line-through">
+                                  ₪{calculatedItem.lineTotal.toFixed(2)}
+                                </div>
+                                <div className="text-base font-bold text-green-600">
+                                  ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-base font-bold">
+                                ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1918,9 +1929,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   {appliedGiftCard && (
                     <div className="mb-4 flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-purple-800 flex items-center gap-2">
-                          <span>🎁</span>
-                          <span>גיפט קארד: {appliedGiftCard.code}</span>
+                        <div className="text-sm font-medium text-purple-800">
+                          גיפט קארד: {appliedGiftCard.code}
                         </div>
                         <div className="text-xs text-purple-600 mt-1">
                           יתרה: ₪{appliedGiftCard.balance.toFixed(2)} | שימוש: ₪{appliedGiftCard.amountToUse.toFixed(2)}
@@ -2015,8 +2025,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       <div className="bg-green-50 rounded-lg p-2 space-y-1">
                         {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
                           <div key={`auto-${idx}`} className="flex justify-between text-xs text-green-700">
-                            <span className="flex items-center gap-1">
-                              <span>🎁</span>
+                            <span>
                               {translationsLoading ? (
                                 <TextSkeleton width="w-24" height="h-4" />
                               ) : (
@@ -2035,8 +2044,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         
                         {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
                           <div key={`code-${idx}`} className="flex justify-between text-xs text-green-700">
-                            <span className="flex items-center gap-1">
-                              <span>🏷️</span>
+                            <span>
                               {translationsLoading ? (
                                 <TextSkeleton width="w-16" height="h-4" />
                               ) : (
@@ -2094,8 +2102,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     {/* Gift Card Applied */}
                     {appliedGiftCard && appliedGiftCard.amountToUse > 0 && (
                       <div className="flex justify-between text-purple-600">
-                        <span className="flex items-center gap-1">
-                          <span>🎁</span>
+                        <span>
                           {translationsLoading ? (
                             <TextSkeleton width="w-24" height="h-4" />
                           ) : (

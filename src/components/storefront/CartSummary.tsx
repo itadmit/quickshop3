@@ -117,18 +117,18 @@ export function CartSummary({
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-3 space-y-3">
-      {/* Discount Code - Compact */}
+      {/* Discount Code */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        <label className="block text-sm font-medium text-gray-600 mb-2">
           קופון הנחה
         </label>
         
         {/* Applied discount code - compact badge style */}
         {discountCode && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-200 rounded-full text-xs" dir="rtl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-200 rounded-full text-sm" dir="rtl">
               {validatingCode ? (
-                <div className="w-3.5 h-3.5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <button
                   onClick={async () => {
@@ -137,10 +137,10 @@ export function CartSummary({
                   className="text-green-500 hover:text-red-500 transition-colors"
                   type="button"
                 >
-                  <HiX className="w-3.5 h-3.5" />
+                  <HiX className="w-4 h-4" />
                 </button>
               )}
-              <HiTag className="w-3.5 h-3.5 text-green-600" />
+              <HiTag className="w-4 h-4 text-green-600" />
               {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
                 <span key={idx} className="text-green-600">
                   {discount.description || discount.name}
@@ -152,8 +152,8 @@ export function CartSummary({
           </div>
         )}
         
-        {/* Compact input field */}
-        <div className="flex gap-1.5">
+        {/* Input field - same height for input and button */}
+        <div className="flex gap-2">
           <input
             type="text"
             value={codeInput}
@@ -163,54 +163,54 @@ export function CartSummary({
             }}
             onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
             placeholder={discountCode ? "קוד קופון נוסף" : "הכנס קוד קופון"}
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500"
           />
           <button
             onClick={handleApplyCode}
             disabled={validatingCode || !codeInput.trim()}
-            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {validatingCode ? '...' : 'החל'}
           </button>
         </div>
         
         {codeError && (
-          <p className="mt-1 text-xs text-red-600">{codeError}</p>
+          <p className="mt-1.5 text-sm text-red-600">{codeError}</p>
         )}
       </div>
 
-      {/* Errors & Warnings - Compact */}
+      {/* Errors & Warnings */}
       {hasErrors() && (
-        <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+        <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
           {getErrors().map((error, index) => (
             <p key={index}>{error}</p>
           ))}
         </div>
       )}
       {hasWarnings() && (
-        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-600">
+        <div className="p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-600">
           {getWarnings().map((warning, index) => (
             <p key={index}>{warning}</p>
           ))}
         </div>
       )}
 
-      {/* Summary - Compact */}
-      <div className="border-t border-gray-200 pt-2 space-y-1.5">
+      {/* Summary */}
+      <div className="border-t border-gray-200 pt-3 space-y-2">
         {/* סה"כ פריטים - מוצג רק אם יש הנחה */}
         {getDiscount() > 0 && (
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">סה"כ פריטים:</span>
             <span className="text-gray-900">₪{getSubtotal().toFixed(2)}</span>
           </div>
         )}
 
-        {/* הנחות - סיכום קומפקטי */}
+        {/* הנחות - סיכום */}
         {getDiscount() > 0 && (
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {/* הנחות אוטומטיות */}
             {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
-              <div key={idx} className="flex items-center justify-between text-xs">
+              <div key={idx} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">
                   {discount.name || discount.description || 'הנחה אוטומטית'}:
                 </span>
@@ -222,7 +222,7 @@ export function CartSummary({
 
             {/* הנחת קופון */}
             {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
-              <div key={idx} className="flex items-center justify-between text-xs">
+              <div key={idx} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">
                   קופון {discount.code || discount.name}:
                 </span>
@@ -235,7 +235,7 @@ export function CartSummary({
         )}
 
         {shippingRate && (
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">משלוח:</span>
             <span className="text-gray-900">
               {getShipping() === 0 ? (
@@ -247,7 +247,7 @@ export function CartSummary({
           </div>
         )}
 
-        <div className="flex items-center justify-between text-sm font-bold border-t border-gray-200 pt-2 mt-2">
+        <div className="flex items-center justify-between text-base font-bold border-t border-gray-200 pt-3 mt-3">
           <span className="text-gray-900">סה"כ לתשלום:</span>
           <span className="text-gray-900">₪{getTotal().toFixed(2)}</span>
         </div>
