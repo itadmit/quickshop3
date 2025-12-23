@@ -689,7 +689,6 @@ export default function OrdersPage() {
                 <>
                   <option value="pending">ממתין</option>
                   <option value="approved">מאושר</option>
-                  <option value="paid">שולם</option>
                   <option value="processing">מעובד</option>
                   <option value="shipped">נשלח</option>
                   <option value="delivered">נמסר</option>
@@ -909,7 +908,6 @@ export default function OrdersPage() {
                   {[
                     { value: 'pending', label: 'ממתין', color: 'bg-orange-100 text-orange-800' },
                     { value: 'approved', label: 'מאושר', color: 'bg-blue-100 text-blue-800' },
-                    { value: 'paid', label: 'שולם', color: 'bg-green-100 text-green-800' },
                     { value: 'processing', label: 'מעובד', color: 'bg-purple-100 text-purple-800' },
                     { value: 'shipped', label: 'נשלח', color: 'bg-cyan-100 text-cyan-800' },
                     { value: 'delivered', label: 'נמסר', color: 'bg-green-100 text-green-800' },
