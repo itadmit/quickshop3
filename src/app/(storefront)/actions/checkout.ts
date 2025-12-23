@@ -241,16 +241,24 @@ export async function createOrder(input: CreateOrderInput) {
     ...(input.customer.companyName ? { company_name: input.customer.companyName } : {}),
   };
   
-  // Set financial status based on payment method
+  // Set financial status based on payment method and total
+  // חישוב הסכום הסופי אחרי קרדיטים וגיפט קארד
+  const giftCardAmount = input.giftCardAmount || 0;
+  const storeCreditAmount = input.storeCreditAmount || 0;
+  const finalTotalAfterCredits = Math.max(0, finalTotal - giftCardAmount - storeCreditAmount);
+  
   let financialStatus = 'pending';
-  if (input.paymentMethod === 'store_credit' && finalTotal === 0) {
-    // אם שולם במלואו עם קרדיט, הסטטוס הוא paid
+  if (finalTotalAfterCredits === 0) {
+    // אם הסכום הסופי הוא 0 (גיפט קארד, קרדיט, או שניהם מכסים הכל) - הזמנה שולמה
     financialStatus = 'paid';
   } else if (input.paymentMethod === 'cash') {
-    // מזומן - pending עד שההזמנה נמסרת
+    // מזומן - pending עד שההזמנה נמסרת ומשולמת
     financialStatus = 'pending';
   } else if (input.paymentMethod === 'bank_transfer') {
     // העברה בנקאית - pending עד שהכסף מתקבל
+    financialStatus = 'pending';
+  } else if (input.paymentMethod === 'credit_card') {
+    // כרטיס אשראי - pending עד שהתשלום מאושר בסליקה
     financialStatus = 'pending';
   }
 
