@@ -45,6 +45,9 @@ interface CreateOrderInput {
     phone?: string;
   };
   total: number;
+  subtotal?: number; // סכום לפני הנחות ומשלוח
+  shippingCost?: number; // עלות משלוח
+  totalDiscount?: number; // סה"כ הנחות
   deliveryMethod?: 'shipping' | 'pickup';
   paymentMethod?: 'credit_card' | 'bank_transfer' | 'cash' | 'store_credit';
   storeCreditAmount?: number; // סכום קרדיט לשימוש
@@ -297,17 +300,22 @@ export async function createOrder(input: CreateOrderInput) {
   // אם ההזמנה שולמה (financialStatus = paid), גם fulfillment יהיה paid
   const fulfillmentStatus = financialStatus === 'paid' ? 'paid' : (firstStatus?.name || 'pending');
 
+  // חישוב ערכים לשמירה
+  const subtotalPrice = input.subtotal || finalTotal;
+  const shippingPrice = input.shippingCost || 0;
+  const totalDiscounts = input.totalDiscount || 0;
+
   const order = await queryOne<{ id: number; order_number: number; order_handle: string }>(
     `INSERT INTO orders (
       store_id, customer_id, order_number, order_name, order_handle,
       financial_status, fulfillment_status,
-      total_price, subtotal_price, currency,
+      total_price, subtotal_price, total_shipping_price, total_discounts, currency,
       billing_address, shipping_address, email, phone, name, note, note_attributes, gateway, discount_codes
     )
     VALUES (
       $1, $2, $7, $8, $12,
       $15, $17,
-      $3, $3, 'ILS',
+      $3, $18, $19, $20, 'ILS',
       $4, $5, $6, $9, $10, $11, $13, $14, 
       COALESCE($16::jsonb, '[]'::jsonb)
     )
@@ -315,7 +323,7 @@ export async function createOrder(input: CreateOrderInput) {
     [
       storeId,                                    // $1 - store_id
       customer.id,                                // $2 - customer_id
-      finalTotal,                                 // $3 - total_price, subtotal_price
+      finalTotal,                                 // $3 - total_price
       JSON.stringify(billingAddressObject),       // $4 - billing_address
       JSON.stringify(shippingAddressObject),      // $5 - shipping_address
       input.customer.email,                       // $6 - email
@@ -328,8 +336,11 @@ export async function createOrder(input: CreateOrderInput) {
       JSON.stringify(noteAttributes),             // $13 - note_attributes
       input.paymentMethod || 'credit_card',       // $14 - gateway
       financialStatus,                            // $15 - financial_status
-      discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : '[]', // $16 - discount_codes (JSONB) - must be valid JSON string
-      fulfillmentStatus,                           // $17 - fulfillment_status
+      discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : '[]', // $16 - discount_codes (JSONB)
+      fulfillmentStatus,                          // $17 - fulfillment_status
+      subtotalPrice,                              // $18 - subtotal_price
+      shippingPrice,                              // $19 - total_shipping_price
+      totalDiscounts,                             // $20 - total_discounts
     ]
   );
 

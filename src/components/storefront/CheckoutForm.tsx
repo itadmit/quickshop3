@@ -509,6 +509,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           phone: billingAddress.phone || formData.phone,
         } : undefined,
         total: finalTotalAfterCredits > 0 ? finalTotalAfterCredits : 0, // אם הקרדיט/גיפט קארד מכסה הכל, הסכום הוא 0
+        subtotal: getSubtotal(), // ✅ סכום לפני הנחות ומשלוח
+        shippingCost: getShipping(), // ✅ עלות משלוח
+        totalDiscount: getDiscount(), // ✅ סה"כ הנחות
         deliveryMethod: formData.deliveryMethod,
         paymentMethod: formData.paymentMethod,
         storeCreditAmount: storeCreditAmount,
