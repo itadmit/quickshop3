@@ -294,7 +294,8 @@ export async function createOrder(input: CreateOrderInput) {
      ORDER BY position ASC LIMIT 1`,
     [storeId]
   );
-  const fulfillmentStatus = firstStatus?.name || 'pending';
+  // אם ההזמנה שולמה (financialStatus = paid), גם fulfillment יהיה paid
+  const fulfillmentStatus = financialStatus === 'paid' ? 'paid' : (firstStatus?.name || 'pending');
 
   const order = await queryOne<{ id: number; order_number: number; order_handle: string }>(
     `INSERT INTO orders (

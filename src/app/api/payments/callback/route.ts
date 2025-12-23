@@ -188,12 +188,13 @@ export async function GET(request: NextRequest) {
     await query(
       `UPDATE orders SET 
         financial_status = 'paid',
+        fulfillment_status = 'paid',
         updated_at = now()
        WHERE id = $1`,
       [order.id]
     );
     
-    console.log('[Payment Callback] Order updated to paid:', order.id);
+    console.log('[Payment Callback] Order updated to paid (financial + fulfillment):', order.id);
     
     // ========================================
     // STEP 7: Emit events and send email

@@ -1884,33 +1884,33 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
                   {/* Applied Coupons */}
                   {discountCode && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">קופון פעיל:</span>
-                          <span className="text-sm font-medium text-green-800">{discountCode}</span>
+                    <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {/* תיאור ההנחה + קוד בשורה אחת */}
+                          {calculation?.discounts?.filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
+                            <span key={idx} className="text-sm text-green-700 truncate">
+                              {discount.description || discount.name}
+                            </span>
+                          ))}
+                          <span className="text-xs text-green-600">-</span>
+                          <span dir="ltr" className="text-sm font-medium text-green-800">{discountCode}</span>
                         </div>
                         {validatingCode ? (
-                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-2" />
                         ) : (
                           <button
                             type="button"
                             onClick={async () => {
                               await removeDiscountCode();
                             }}
-                            className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-1 transition-colors"
+                            className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-1 transition-colors mr-2"
                             aria-label="הסר קופון"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         )}
                       </div>
-                      {/* תיאור ההנחה */}
-                      {calculation?.discounts?.filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
-                        <div key={idx} className="text-xs text-green-700 mr-7">
-                          {discount.description || discount.name}
-                        </div>
-                      ))}
                     </div>
                   )}
                   
@@ -1989,7 +1989,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       borderColor: '#e5e7eb'
                     }}
                   >
-                    <div className="flex justify-between">
+                    {/* סכום ביניים - עם מחיר מקורי מחוק אם יש הנחה */}
+                    <div className="flex justify-between items-center">
                       <span style={{ opacity: 0.7 }}>
                         {translationsLoading ? (
                           <TextSkeleton width="w-24" height="h-4" />
@@ -1997,22 +1998,32 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           'סכום ביניים'
                         )}
                       </span>
-                      <span className="font-medium">₪{getSubtotal().toFixed(2)}</span>
+                      <div className="flex items-center gap-2">
+                        {getDiscount() > 0 && (
+                          <span className="text-gray-400 line-through text-sm">
+                            ₪{getSubtotal().toFixed(2)}
+                          </span>
+                        )}
+                        <span className={`font-medium ${getDiscount() > 0 ? 'text-green-600' : ''}`}>
+                          ₪{(getSubtotal() - getDiscount()).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                     
                     {/* הנחות - סיכום מפורט עם שמות */}
                     {getDiscount() > 0 && (
-                      <>
+                      <div className="bg-green-50 rounded-lg p-2 space-y-1">
                         {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
-                          <div key={`auto-${idx}`} className="flex justify-between text-green-600">
-                            <span>
+                          <div key={`auto-${idx}`} className="flex justify-between text-xs text-green-700">
+                            <span className="flex items-center gap-1">
+                              <span>🎁</span>
                               {translationsLoading ? (
                                 <TextSkeleton width="w-24" height="h-4" />
                               ) : (
                                 discount.name || discount.description || 'הנחה אוטומטית'
                               )}
                             </span>
-                            <span>
+                            <span className="font-medium">
                               {discount.type === 'free_shipping' ? (
                                 'משלוח חינם'
                               ) : (
@@ -2023,15 +2034,20 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         ))}
                         
                         {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
-                          <div key={`code-${idx}`} className="flex justify-between text-green-600">
-                            <span>
+                          <div key={`code-${idx}`} className="flex justify-between text-xs text-green-700">
+                            <span className="flex items-center gap-1">
+                              <span>🏷️</span>
                               {translationsLoading ? (
                                 <TextSkeleton width="w-16" height="h-4" />
                               ) : (
-                                `קופון ${discount.code || discount.name || 'הנחה'}`
+                                <>
+                                  <span>{discount.description || discount.name || 'הנחה'}</span>
+                                  <span className="text-green-500">-</span>
+                                  <span dir="ltr" className="font-medium">{discount.code}</span>
+                                </>
                               )}
                             </span>
-                            <span>
+                            <span className="font-medium">
                               {discount.type === 'free_shipping' ? (
                                 'משלוח חינם'
                               ) : (
@@ -2040,7 +2056,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                             </span>
                           </div>
                         ))}
-                      </>
+                      </div>
                     )}
                     
                     {shippingCost > 0 && (
