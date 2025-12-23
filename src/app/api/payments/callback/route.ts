@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     if (order.financial_status === 'paid') {
       console.log('[Payment Callback] Order already paid, redirecting to success');
       return NextResponse.redirect(
-        new URL(`/shops/${order.store_slug}/checkout/success?orderId=${order.id}`, request.url)
+        new URL(`/shops/${order.store_slug}/checkout/success?handle=${order.order_handle}`, request.url)
       );
     }
     
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
         await updateTransactionStatus(transaction.id, 'failed', validationResult);
       }
       return NextResponse.redirect(
-        new URL(`/shops/${order.store_slug}/checkout?error=validation_failed&orderId=${order.id}`, request.url)
+        new URL(`/shops/${order.store_slug}/checkout?error=validation_failed`, request.url)
       );
     }
     
@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
     // ========================================
     
     return NextResponse.redirect(
-      new URL(`/shops/${order.store_slug}/checkout/success?orderId=${order.id}`, request.url)
+      new URL(`/shops/${order.store_slug}/checkout/success?handle=${order.order_handle}`, request.url)
     );
     
   } catch (error: any) {
