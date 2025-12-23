@@ -59,9 +59,9 @@ export class EmailEngine {
           } else if (settings?.branding?.logo) {
             this.logoUrl = settings.branding.logo;
           }
-          
-          // טעינת אימייל לתמיכה (אם הוגדר)
-          this.storeEmail = settings.supportEmail || settings.contactEmail || 'support@quickshop.com';
+      
+      // טעינת אימייל לתמיכה (אם הוגדר)
+      this.storeEmail = settings.supportEmail || settings.contactEmail || 'support@quickshop.com';
         } else {
           this.storeEmail = 'support@quickshop.com';
         }

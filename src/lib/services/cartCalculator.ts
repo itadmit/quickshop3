@@ -763,16 +763,16 @@ export class CartCalculator {
         'automatic'
       );
 
-      // יצירת AppliedDiscount object
-      const appliedDiscount: AppliedDiscount = {
-        id: autoDiscount.id,
-        name: autoDiscount.name,
-        type: autoDiscount.discount_type,
-        amount: discountResult.amount,
+        // יצירת AppliedDiscount object
+        const appliedDiscount: AppliedDiscount = {
+          id: autoDiscount.id,
+          name: autoDiscount.name,
+          type: autoDiscount.discount_type,
+          amount: discountResult.amount,
         description: discountResult.description || (autoDiscount.gift_product_id ? 'מתנה חינם' : ''),
-        source: 'automatic',
-        priority: autoDiscount.priority,
-      };
+          source: 'automatic',
+          priority: autoDiscount.priority,
+        };
 
       if (discountResult.amount > 0) {
         itemsDiscount += discountResult.amount;
@@ -1100,7 +1100,7 @@ export class CartCalculator {
     const allCodes = this.discountCodes.length > 0 
       ? this.discountCodes 
       : (this.discountCode ? [this.discountCode] : []);
-    
+
     for (const discountId of appliedCodeDiscountIds) {
       const matchingCode = allCodes.find(c => c.id === discountId);
       if (matchingCode?.gift_product_id) {

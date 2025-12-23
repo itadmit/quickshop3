@@ -551,46 +551,67 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                   <>
                     {/* Order Items */}
                     <div className="space-y-4 mb-6">
-                      {order.line_items && order.line_items.length > 0 ? order.line_items.map((item) => (
-                        <div key={item.id} className="flex gap-3">
-                          {item.image ? (
-                            <div className="relative">
-                              <img
-                                src={item.image}
-                                alt={item.title}
-                                className="w-16 h-16 object-cover rounded"
-                              />
-                              <div className="absolute -top-2 -right-2 w-5 h-5 bg-gray-500 text-white text-xs rounded-full flex items-center justify-center">
-                                {item.quantity}
+                      {order.line_items && order.line_items.length > 0 ? order.line_items.map((item) => {
+                        // בדיקה אם זה מוצר מתנה
+                        const isGiftProduct = item.properties?.some((prop) => prop.name === 'מתנה');
+                        const giftDiscountName = item.properties?.find((prop) => prop.name === 'מתנה')?.value;
+                        
+                        return (
+                          <div key={item.id} className={`flex gap-3 p-2 rounded-lg ${isGiftProduct ? 'bg-green-50 border border-green-200' : ''}`}>
+                            {item.image ? (
+                              <div className="relative overflow-hidden rounded">
+                                <img
+                                  src={item.image}
+                                  alt={item.title}
+                                  className="w-16 h-16 object-cover"
+                                />
+                                {/* Overlay בתחתית התמונה */}
+                                <div className={`absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[10px] font-medium py-0.5 px-1.5 flex items-center justify-center ${isGiftProduct ? 'bg-green-600 bg-opacity-90' : ''}`}>
+                                  ×{item.quantity}
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="w-16 h-16 rounded flex items-center justify-center relative bg-gray-100">
-                              <Truck className="w-8 h-8 text-gray-400" />
-                              <div className="absolute -top-2 -right-2 w-5 h-5 bg-gray-500 text-white text-xs rounded-full flex items-center justify-center">
-                                {item.quantity}
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm line-clamp-2">
-                              {item.title}
-                            </div>
-                            {item.properties && item.properties.length > 0 && (
-                              <div className="text-xs mt-0.5 text-gray-500 space-y-0.5">
-                                {item.properties.filter((prop) => prop.name !== 'מתנה').map((prop, idx) => (
-                                  <div key={idx}>
-                                    {prop.name}: {prop.value}
-                                  </div>
-                                ))}
+                            ) : (
+                              <div className="w-16 h-16 rounded flex items-center justify-center relative bg-gray-100 overflow-hidden">
+                                <Truck className="w-8 h-8 text-gray-400" />
+                                {/* Overlay בתחתית התמונה */}
+                                <div className={`absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[10px] font-medium py-0.5 px-1.5 flex items-center justify-center ${isGiftProduct ? 'bg-green-600 bg-opacity-90' : ''}`}>
+                                  ×{item.quantity}
+                                </div>
                               </div>
                             )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-sm line-clamp-2">
+                                  {item.title}
+                                </span>
+                                {isGiftProduct && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-green-600 text-white rounded-full flex-shrink-0">
+                                    מתנה
+                                  </span>
+                                )}
+                              </div>
+                              {/* חיווי למוצר מתנה */}
+                              {isGiftProduct && giftDiscountName && (
+                                <p className="text-[10px] text-green-700 font-medium mt-0.5">
+                                  מתנה מהנחת {giftDiscountName}
+                                </p>
+                              )}
+                              {item.properties && item.properties.length > 0 && (
+                                <div className="text-xs mt-0.5 text-gray-500 space-y-0.5">
+                                  {item.properties.filter((prop) => prop.name !== 'מתנה').map((prop, idx) => (
+                                    <div key={idx}>
+                                      {prop.name}: {prop.value}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="font-medium text-base">
+                              ₪{parseFloat(item.price).toFixed(2)}
+                            </div>
                           </div>
-                          <div className="font-medium text-base">
-                            ₪{parseFloat(item.price).toFixed(2)}
-                          </div>
-                        </div>
-                      )) : (
+                        );
+                      }) : (
                         <div className="text-sm text-gray-500 text-center py-4">
                           {translationsLoading ? (
                             <TextSkeleton width="w-32" height="h-4" className="mx-auto" />

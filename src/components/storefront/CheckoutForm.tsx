@@ -1838,26 +1838,28 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       return (
                         <div key={item.variant_id} className={`flex gap-3 p-2 rounded-lg ${isGiftProduct ? 'bg-green-50 border border-green-200' : ''}`}>
                           {item.image ? (
-                            <div className="relative">
+                            <div className="relative overflow-hidden rounded">
                               <img
                                 src={item.image}
                                 alt={item.product_title}
-                                className="w-16 h-16 object-cover rounded"
+                                className="w-16 h-16 object-cover"
                               />
-                              <div className={`absolute -top-2 -right-2 w-5 h-5 text-white text-xs rounded-full flex items-center justify-center ${isGiftProduct ? 'bg-green-600' : 'bg-gray-500'}`}>
-                                {item.quantity}
+                              {/* Overlay בתחתית התמונה */}
+                              <div className={`absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[10px] font-medium py-0.5 px-1.5 flex items-center justify-center ${isGiftProduct ? 'bg-green-600 bg-opacity-90' : ''}`}>
+                                ×{item.quantity}
                               </div>
                             </div>
                           ) : (
                             <div 
-                              className="w-16 h-16 rounded flex items-center justify-center relative"
+                              className="w-16 h-16 rounded flex items-center justify-center relative overflow-hidden"
                               style={{ 
                                 backgroundColor: '#e5e7eb40',
                               }}
                             >
                               <Truck className="w-8 h-8 text-gray-400" />
-                              <div className={`absolute -top-2 -right-2 w-5 h-5 text-white text-xs rounded-full flex items-center justify-center ${isGiftProduct ? 'bg-green-600' : 'bg-gray-500'}`}>
-                                {item.quantity}
+                              {/* Overlay בתחתית התמונה */}
+                              <div className={`absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[10px] font-medium py-0.5 px-1.5 flex items-center justify-center ${isGiftProduct ? 'bg-green-600 bg-opacity-90' : ''}`}>
+                                ×{item.quantity}
                               </div>
                             </div>
                           )}

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Get store slug from request or use storeId
     const storeSlug = request.headers.get('x-store-slug') || storeId.toString();
-    
+
     // Verify customer
     const authResult = await verifyStorefrontCustomerOptional(request, storeSlug);
     if (!authResult.success || !authResult.customer) {
