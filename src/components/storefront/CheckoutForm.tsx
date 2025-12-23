@@ -217,16 +217,16 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   } | null>(null);
   const [validatingGiftCard, setValidatingGiftCard] = useState(false);
 
-  // Update gift card amountToUse when total changes
+  // Update gift card amountToUse when total changes - משתמש ב-calculation.total במקום getTotal() כדי למנוע קריאות מיותרות
+  const currentTotal = calculation?.total || 0;
   useEffect(() => {
     if (appliedGiftCard) {
-      const total = getTotal();
-      const newAmountToUse = Math.min(appliedGiftCard.balance, total);
+      const newAmountToUse = Math.min(appliedGiftCard.balance, currentTotal);
       if (newAmountToUse !== appliedGiftCard.amountToUse) {
         setAppliedGiftCard(prev => prev ? { ...prev, amountToUse: newAmountToUse } : null);
       }
     }
-  }, [appliedGiftCard?.balance, getTotal]);
+  }, [appliedGiftCard?.balance, currentTotal]);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -260,14 +260,17 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     loadPaymentMethods();
   }, [isMounted, storeSlug]);
 
-  // Load shipping rates
+  // Load shipping rates - רק כשהסובטוטל משתנה (לא כל פעם ש-cartItems משתנה)
+  const subtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [cartItems]);
+  
   useEffect(() => {
     if (!isMounted) return;
     
     const loadShippingRates = async () => {
       try {
         setLoadingShippingRates(true);
-        const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const response = await fetch(`/api/storefront/${storeSlug}/shipping-rates?subtotal=${subtotal}`);
         if (response.ok) {
           const data = await response.json();
@@ -288,7 +291,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     };
     
     loadShippingRates();
-  }, [isMounted, storeSlug, cartItems]);
+  }, [isMounted, storeSlug, subtotal]);
 
   // Load checkout customizer settings
   useEffect(() => {

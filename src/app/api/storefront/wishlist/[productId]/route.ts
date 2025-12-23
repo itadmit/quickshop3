@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { verifyStorefrontCustomer } from '@/lib/auth';
+import { verifyStorefrontCustomerOptional } from '@/lib/storefront-auth';
 
 // DELETE /api/storefront/wishlist/[productId] - Remove product from wishlist
 export async function DELETE(
@@ -22,15 +22,20 @@ export async function DELETE(
     }
     
     const storeId = parseInt(storeIdParam);
+    
+    // Get store slug from request or use storeId
+    const storeSlug = request.headers.get('x-store-slug') || storeIdParam;
 
     // Verify customer
-    const customer = await verifyStorefrontCustomer(request);
-    if (!customer) {
+    const authResult = await verifyStorefrontCustomerOptional(request, storeSlug);
+    if (!authResult.success || !authResult.customer) {
       return NextResponse.json(
         { error: 'יש להתחבר כדי להסיר מרשימת המשאלות' },
         { status: 401 }
       );
     }
+    
+    const customer = authResult.customer;
 
     // Get wishlist
     const wishlist = await queryOne<{ id: number }>(

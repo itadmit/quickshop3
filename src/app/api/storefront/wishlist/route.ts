@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { verifyStorefrontCustomer } from '@/lib/auth';
+import { verifyStorefrontCustomerOptional } from '@/lib/storefront-auth';
 
 interface WishlistItem {
   id: number;
@@ -26,12 +26,17 @@ export async function GET(request: NextRequest) {
     
     const storeId = parseInt(storeIdParam);
     
-    // Verify customer
-    const customer = await verifyStorefrontCustomer(request);
-    if (!customer) {
+    // Get store slug from request or use storeId
+    const storeSlug = request.headers.get('x-store-slug') || storeIdParam;
+    
+    // Verify customer (optional - returns empty if not logged in)
+    const authResult = await verifyStorefrontCustomerOptional(request, storeSlug);
+    if (!authResult.success || !authResult.customer) {
       // Guest user - return empty with isLoggedIn: false
       return NextResponse.json({ items: [], isLoggedIn: false });
     }
+    
+    const customer = authResult.customer;
 
     // Get or create wishlist
     let wishlist = await queryOne<{ id: number }>(
@@ -86,14 +91,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get store slug from request or use storeId
+    const storeSlug = request.headers.get('x-store-slug') || storeId.toString();
+    
     // Verify customer
-    const customer = await verifyStorefrontCustomer(request);
-    if (!customer) {
+    const authResult = await verifyStorefrontCustomerOptional(request, storeSlug);
+    if (!authResult.success || !authResult.customer) {
       return NextResponse.json(
         { error: 'יש להתחבר כדי להוסיף לרשימת המשאלות' },
         { status: 401 }
       );
     }
+    
+    const customer = authResult.customer;
 
     // Get or create wishlist
     let wishlist = await queryOne<{ id: number }>(

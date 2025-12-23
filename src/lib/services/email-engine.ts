@@ -29,24 +29,46 @@ export class EmailEngine {
   private async loadStoreSettings() {
     const store = await queryOne<{
       name: string;
-      logo: string;
       slug: string;
-      settings: any;
     }>(
-      'SELECT name, logo, slug, settings FROM stores WHERE id = $1',
+      'SELECT name, slug FROM stores WHERE id = $1',
       [this.storeId]
     );
 
     if (store) {
       this.storeName = store.name;
-      this.logoUrl = store.logo;
       // בייצור זה יהיה הדומיין האמיתי
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       this.storeUrl = `${baseUrl}/shops/${store.slug}`;
       
-      // טעינת אימייל לתמיכה (אם הוגדר)
-      const settings = store.settings || {};
-      this.storeEmail = settings.supportEmail || settings.contactEmail || 'support@quickshop.com';
+      // Try to get logo and settings from store_settings table
+      try {
+        const storeSettings = await queryOne<{ settings: any }>(
+          'SELECT settings FROM store_settings WHERE store_id = $1',
+          [this.storeId]
+        );
+        
+        if (storeSettings?.settings) {
+          const settings = typeof storeSettings.settings === 'string' 
+            ? JSON.parse(storeSettings.settings) 
+            : storeSettings.settings;
+          
+          // Extract logo from settings
+          if (settings?.logo) {
+            this.logoUrl = settings.logo;
+          } else if (settings?.branding?.logo) {
+            this.logoUrl = settings.branding.logo;
+          }
+          
+          // טעינת אימייל לתמיכה (אם הוגדר)
+          this.storeEmail = settings.supportEmail || settings.contactEmail || 'support@quickshop.com';
+        } else {
+          this.storeEmail = 'support@quickshop.com';
+        }
+      } catch (error: any) {
+        // Silently ignore if store_settings table doesn't exist
+        this.storeEmail = 'support@quickshop.com';
+      }
     }
   }
 

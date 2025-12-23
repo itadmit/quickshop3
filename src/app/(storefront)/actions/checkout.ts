@@ -297,29 +297,30 @@ export async function createOrder(input: CreateOrderInput) {
     )
     VALUES (
       $1, $2, $7, $8, $12,
-      $14, $16,
+      $15, $17,
       $3, $3, 'ILS',
-      $4, $5, $6, $9, $10, $11, $13, $15, $17
+      $4, $5, $6, $9, $10, $11, $13, $14, 
+      COALESCE($16::jsonb, '[]'::jsonb)
     )
     RETURNING id, order_number, order_handle`,
     [
-      storeId,
-      customer.id,
-      finalTotal, // Use finalTotal instead of input.total
-      JSON.stringify(billingAddressObject),
-      JSON.stringify(shippingAddressObject),
-      input.customer.email,
-      input.customer.notes || null,
-      orderNumber,
-      orderName,
-      input.customer.phone,
-      customerName,
-      JSON.stringify(noteAttributes),
-      orderHandle,
-      input.paymentMethod || 'credit_card',
-      financialStatus,
-      discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : null,
-      fulfillmentStatus,
+      storeId,                                    // $1 - store_id
+      customer.id,                                // $2 - customer_id
+      finalTotal,                                 // $3 - total_price, subtotal_price
+      JSON.stringify(billingAddressObject),       // $4 - billing_address
+      JSON.stringify(shippingAddressObject),      // $5 - shipping_address
+      input.customer.email,                       // $6 - email
+      orderNumber,                                // $7 - order_number
+      orderName,                                  // $8 - order_name
+      input.customer.phone,                       // $9 - phone
+      customerName,                               // $10 - name
+      input.customer.notes || null,              // $11 - note
+      orderHandle,                                // $12 - order_handle
+      JSON.stringify(noteAttributes),             // $13 - note_attributes
+      input.paymentMethod || 'credit_card',       // $14 - gateway
+      financialStatus,                            // $15 - financial_status
+      discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : '[]', // $16 - discount_codes (JSONB) - must be valid JSON string
+      fulfillmentStatus,                           // $17 - fulfillment_status
     ]
   );
 
