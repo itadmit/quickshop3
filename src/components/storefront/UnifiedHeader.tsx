@@ -282,14 +282,14 @@ export function UnifiedHeader({
         if (position === 'left') {
           return (
             <div className="flex items-center gap-1">
-              {settings.cart?.enabled === true && (
-                <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
+              {settings.user_account?.enabled === true && (
+                <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
               )}
               {settings.wishlist?.enabled && (
                 <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
               )}
-              {settings.user_account?.enabled === true && (
-                <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
+              {settings.cart?.enabled === true && (
+                <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
               )}
             </div>
           );
@@ -301,14 +301,14 @@ export function UnifiedHeader({
           {settings.search?.enabled === true && (
             <IconButton title="חיפוש"><HiSearch className="w-5 h-5" /></IconButton>
           )}
-          {settings.cart?.enabled === true && (
-            <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
+          {!isMobileView && settings.user_account?.enabled === true && (
+            <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
           )}
           {settings.wishlist?.enabled === true && (
             <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
           )}
-          {!isMobileView && settings.user_account?.enabled === true && (
-            <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
+          {settings.cart?.enabled === true && (
+            <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
           )}
           {isMobileView && (
             <button className="p-2 rounded-lg hover:bg-gray-100" style={{ color: iconColor }}>
@@ -327,17 +327,17 @@ export function UnifiedHeader({
       if (position === 'left') {
         return (
           <div className="flex items-center gap-1">
-            {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
-            {settings.wishlist?.enabled === true && (
-              <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
-                <HiHeart className="w-5 h-5" />
-              </IconButton>
-            )}
             {settings.user_account?.enabled === true && (
               <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
                 <HiUser className="w-5 h-5" />
               </IconButton>
             )}
+            {settings.wishlist?.enabled === true && (
+              <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
+                <HiHeart className="w-5 h-5" />
+              </IconButton>
+            )}
+            {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
           </div>
         );
       }
@@ -347,17 +347,17 @@ export function UnifiedHeader({
       <div className="flex items-center gap-1">
         {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
         {settings.currency_selector?.enabled === true && <CountrySelector />}
-        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
-        {settings.wishlist?.enabled === true && (
-          <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
-            <HiHeart className="w-5 h-5" />
-          </IconButton>
-        )}
         {settings.user_account?.enabled === true && (
           <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
             <HiUser className="w-5 h-5" />
           </IconButton>
         )}
+        {settings.wishlist?.enabled === true && (
+          <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
+            <HiHeart className="w-5 h-5" />
+          </IconButton>
+        )}
+        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
       </div>
     );
   };
@@ -468,14 +468,14 @@ export function UnifiedHeader({
     );
   };
 
-  // Mobile Icons Component for Preview
+  // Mobile Icons Component for Preview - Cart is last (extreme position in RTL)
   const MobileIconsPreview = () => (
     <div className="flex items-center gap-1">
-      {settings.wishlist?.enabled === true && (
-        <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
-      )}
       {settings.user_account?.enabled === true && (
         <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
+      )}
+      {settings.wishlist?.enabled === true && (
+        <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
       )}
       {settings.cart?.enabled !== false && (
         <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
@@ -540,24 +540,24 @@ export function UnifiedHeader({
     );
   }
 
-  // Mobile Icons Component (without cart - handled separately)
+  // Mobile Icons Component - Cart is last (extreme position in RTL)
   const MobileIcons = () => (
     <div className="flex items-center gap-1">
-      {settings.wishlist?.enabled === true && (
-        isPreview ? (
-          <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
-        ) : (
-          <Link href={`/shops/${storeSlug}/wishlist`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
-            <HiHeart className="w-5 h-5" />
-          </Link>
-        )
-      )}
       {settings.user_account?.enabled === true && (
         isPreview ? (
           <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
         ) : (
           <Link href={`/shops/${storeSlug}/account`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
             <HiUser className="w-5 h-5" />
+          </Link>
+        )
+      )}
+      {settings.wishlist?.enabled === true && (
+        isPreview ? (
+          <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
+        ) : (
+          <Link href={`/shops/${storeSlug}/wishlist`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
+            <HiHeart className="w-5 h-5" />
           </Link>
         )
       )}

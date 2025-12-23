@@ -340,19 +340,19 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
             }`}
             dir="rtl"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">עגלת קניות</h2>
+            {/* Header - Compact */}
+            <div className="flex items-center justify-between p-3 border-b border-gray-200">
+              <h2 className="text-lg font-bold text-gray-900">עגלת קניות</h2>
               <button
                 onClick={closeCart}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <HiX className="w-5 h-5 text-gray-600" />
               </button>
             </div>
 
             {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-3">
               {cartItems.length === 0 && !calcLoading ? (
                 <div className="text-center py-12">
                   <HiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -366,32 +366,30 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                   </Link>
                 </div>
               ) : (cartItems.length === 0 && calcLoading) ? (
-                <div className="space-y-4">
-                  {/* סקלטון לטעינה ראשונית */}
-                  <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg animate-pulse">
-                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                <div className="space-y-2">
+                  {/* סקלטון לטעינה - Compact */}
+                  <div className="flex items-center gap-3 p-2.5 border border-gray-200 rounded-lg animate-pulse">
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
                   </div>
                 </div>
               ) : !calculation || (calculation.items.length === 0 && cartItems.length > 0) ? (
-                // אם אין calculation אבל יש cartItems - מציגים skeleton עד שהחישוב מוכן
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {cartItems.map((item) => (
-                    <div key={item.variant_id} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg animate-pulse">
-                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div key={item.variant_id} className="flex items-center gap-3 p-2.5 border border-gray-200 rounded-lg animate-pulse">
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {calculation.items.map((calculatedItem, index) => {
                     const item = calculatedItem.item;
                     const hasDiscount = calculatedItem.lineDiscount > 0;
@@ -401,14 +399,14 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                     const giftDiscountName = item.properties?.find(prop => prop.name === 'מתנה')?.value;
                     
                     return (
-                      <div key={item.variant_id} className={`flex items-center gap-4 p-4 border rounded-lg ${isGiftProduct ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
-                        {/* Image */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      <div key={item.variant_id} className={`flex items-center gap-3 p-2.5 border rounded-lg ${isGiftProduct ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                        {/* Image - Smaller */}
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                           {item.image ? (
                             <img src={item.image} alt={item.product_title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400">
-                              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
@@ -420,14 +418,14 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                           )}
                         </div>
 
-                        {/* Info */}
+                        {/* Info - Compact */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between gap-1">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-gray-900 truncate">{item.product_title}</h3>
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="font-medium text-sm text-gray-900 truncate">{item.product_title}</h3>
                                 {isGiftProduct && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full flex-shrink-0">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-green-600 text-white rounded-full flex-shrink-0">
                                     {t('cart.gift')}
                                   </span>
                                 )}
@@ -435,113 +433,104 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                               
                               {/* חיווי למוצר מתנה */}
                               {isGiftProduct && giftDiscountName && (
-                                <p className="text-xs text-green-700 font-medium mt-1">
+                                <p className="text-[10px] text-green-700 font-medium mt-0.5">
                                   {t('cart.gift_from_discount', { discount: giftDiscountName })}
                                 </p>
                               )}
                               
-                              {/* מטא-דאטה מתחת לכותרת: אפשרויות, variant title, וכו' */}
-                              <div className="mt-1 space-y-1">
-                                {/* הצגת אפשרויות שנבחרו (מידה, צבע וכו') - ללא המאפיין "מתנה" */}
+                              {/* מטא-דאטה - Compact */}
+                              <div className="mt-0.5">
                                 {(() => {
                                   const properties = propertiesMap.get(item.variant_id) || item.properties;
                                   const filteredProperties = properties?.filter(prop => prop.name !== 'מתנה');
                                   if (filteredProperties && filteredProperties.length > 0) {
                                     return (
-                                      <div className="flex flex-wrap gap-2">
+                                      <div className="flex flex-wrap gap-1.5">
                                         {filteredProperties.map((prop, idx) => (
-                                          <span key={idx} className="text-xs text-gray-600">
-                                            <span className="font-medium">{prop.name}:</span> {prop.value}
+                                          <span key={idx} className="text-[10px] text-gray-500">
+                                            {prop.name}: {prop.value}
                                           </span>
                                         ))}
                                       </div>
                                     );
                                   } else if (item.variant_title && item.variant_title !== 'Default Title') {
                                     return (
-                                      <p className="text-xs text-gray-500">{item.variant_title}</p>
+                                      <p className="text-[10px] text-gray-500">{item.variant_title}</p>
                                     );
                                   }
                                   return null;
                                 })()}
                               </div>
                             </div>
-                            {/* כפתור מחיקה - מוסתר למוצרי מתנה */}
+                            {/* כפתור מחיקה */}
                             {!isGiftProduct && (
                               <button
                                 onClick={() => removeFromCart(item.variant_id)}
-                                className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                                className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
                                 aria-label={t('cart.remove_item')}
                               >
-                                <HiTrash className="w-4 h-4 text-gray-500 hover:text-red-600" />
+                                <HiTrash className="w-3.5 h-3.5 text-gray-400 hover:text-red-600" />
                               </button>
                             )}
                           </div>
 
-                          {/* כמות ומחיר - המחיר מופיע רק כאן, ליד הכמות */}
-                          <div className="flex items-center justify-between mt-3">
-                            {/* שינוי כמות - מוצרי מתנה קבועים בכמות 1 */}
+                          {/* כמות ומחיר - Compact */}
+                          <div className="flex items-center justify-between mt-2">
+                            {/* שינוי כמות - Compact */}
                             {isGiftProduct ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900 min-w-[2rem] text-center">
-                                  {item.quantity}
-                                </span>
-                              </div>
+                              <span className="text-xs font-medium text-gray-900 px-2">
+                                {item.quantity}
+                              </span>
                             ) : (
-                              <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
+                              <div className="flex items-center border border-gray-300 rounded">
                                 <button
                                   onClick={async () => {
                                     const newQuantity = item.quantity - 1;
                                     await handleQuantityChange(item.variant_id, newQuantity);
-                                    // ✅ החישוב יתעדכן אוטומטית דרך useEffect ב-useCartCalculator
-                                    // כי cartItems משתנה, אז לא צריך recalculate() ידני
                                   }}
                                   disabled={loadingInventory.has(item.variant_id)}
-                                  className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                                  className="p-1 hover:bg-gray-100 transition-colors disabled:opacity-50"
                                   aria-label={t('cart.decrease_quantity')}
                                 >
-                                  <HiMinus className="w-4 h-4 text-gray-600" />
+                                  <HiMinus className="w-3 h-3 text-gray-600" />
                                 </button>
-                                <span className="text-sm font-medium text-gray-900 min-w-[2rem] text-center">
+                                <span className="text-xs font-medium text-gray-900 min-w-[1.5rem] text-center">
                                   {item.quantity}
                                 </span>
                                 <button
                                   onClick={async () => {
                                     const newQuantity = item.quantity + 1;
                                     await handleQuantityChange(item.variant_id, newQuantity);
-                                  // ✅ החישוב יתעדכן אוטומטית דרך useEffect ב-useCartCalculator
-                                  // כי cartItems משתנה, אז לא צריך recalculate() ידני
                                 }}
                                 disabled={
                                   loadingInventory.has(item.variant_id) ||
                                   (inventoryMap.get(item.variant_id) !== undefined && 
                                    item.quantity >= (inventoryMap.get(item.variant_id) || 0))
                                 }
-                                className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-1 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 aria-label={t('cart.increase_quantity')}
                               >
-                                <HiPlus className="w-4 h-4 text-gray-600" />
+                                <HiPlus className="w-3 h-3 text-gray-600" />
                               </button>
                             </div>
                             )}
 
-                            {/* מחיר - מופיע רק כאן, ליד הכמות */}
-                            {/* מציג מחיר מקורי מחוק אם יש הנחה, ואת המחיר הסופי */}
-                            <div className="flex flex-col items-end gap-1">
+                            {/* מחיר - Compact */}
+                            <div className="flex flex-col items-end">
                               {calculatedItem.lineDiscount > 0 ? (
                                 <>
-                                  <p className="text-xs text-gray-400 line-through">
+                                  <p className="text-[10px] text-gray-400 line-through">
                                     ₪{calculatedItem.lineTotal.toFixed(2)}
                                   </p>
-                                  <p className="text-sm font-semibold text-gray-900">
+                                  <p className="text-xs font-semibold text-gray-900">
                                     ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
                                   </p>
-                                  {/* תווית הנחות אוטומטיות */}
                                   {calculatedItem.appliedDiscounts && calculatedItem.appliedDiscounts.length > 0 && (
-                                    <div className="flex flex-col gap-1 items-end">
+                                    <div className="flex flex-col items-end">
                                       {calculatedItem.appliedDiscounts
                                         .filter(discount => discount.source === 'automatic')
                                         .map((discount, idx) => (
-                                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 rounded-full whitespace-nowrap">
+                                          <span key={idx} className="inline-flex px-1.5 py-0.5 text-[9px] font-medium bg-purple-100 text-purple-700 rounded-full whitespace-nowrap">
                                             {discount.name}
                                           </span>
                                         ))
@@ -550,7 +539,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                                   )}
                                 </>
                               ) : (
-                                <p className="text-sm font-semibold text-gray-900">
+                                <p className="text-xs font-semibold text-gray-900">
                                   ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
                                 </p>
                               )}
@@ -564,9 +553,9 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
               )}
             </div>
 
-            {/* Cart Summary & Actions */}
+            {/* Cart Summary & Actions - Compact */}
             {cartItems.length > 0 && (
-              <div className="border-t border-gray-200 p-4 space-y-3 bg-gray-50">
+              <div className="border-t border-gray-200 p-3 space-y-2 bg-gray-50">
                 <CartSummary
                   storeId={storeId}
                   shippingRate={shippingRate}
@@ -576,12 +565,12 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                   // לא מעבירים onCheckout כדי שהכפתור לא יופיע בתוך הסיכום
                 />
                 
-                <div className="space-y-3 pt-2">
+                <div className="space-y-2 pt-1">
                   {/* כפתור מעבר לעגלה מלאה */}
                   <Link
                     href={storeSlug ? `/shops/${storeSlug}/cart` : '/cart'}
                     onClick={closeCart}
-                    className="block w-full text-center bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+                    className="block w-full text-center bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
                   >
                     צפה בעגלה המלאה
                   </Link>
@@ -599,11 +588,11 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                       }
                     }}
                     disabled={!calculation?.isValid || calculation?.total === 0 || isNavigatingToCheckout}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                   >
                     {isNavigatingToCheckout ? (
                       <>
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>

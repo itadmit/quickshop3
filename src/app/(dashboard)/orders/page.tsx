@@ -568,6 +568,25 @@ export default function OrdersPage() {
       },
     },
     {
+      key: 'financial_status',
+      label: 'סטטוס תשלום',
+      render: (order) => {
+        const status = order.financial_status || 'pending';
+        const labels: Record<string, string> = {
+          'paid': 'שולם',
+          'pending': 'ממתין',
+          'refunded': 'הוחזר',
+          'voided': 'בוטל',
+          'partially_refunded': 'הוחזר חלקית',
+        };
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(status)}`}>
+            {labels[status] || status}
+          </span>
+        );
+      },
+    },
+    {
       key: 'total_price',
       label: 'סכום',
       render: (order) => (

@@ -60,8 +60,16 @@ export function StorefrontHeader({
             </Link>
           </nav>
 
-          {/* Icons */}
+          {/* Icons - Cart is last (extreme position in RTL) */}
           <div className="flex items-center gap-4">
+            {/* Account */}
+            <Link 
+              href={`/shops/${storeSlug}/account`}
+              className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <HiUser className="w-6 h-6" />
+            </Link>
+
             {/* Wishlist */}
             <Link 
               href={`/shops/${storeSlug}/account?tab=wishlist`}
@@ -76,7 +84,7 @@ export function StorefrontHeader({
               )}
             </Link>
             
-            {/* Cart */}
+            {/* Cart - extreme position */}
             <Link 
               href={`/shops/${storeSlug}/cart`}
               className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -87,14 +95,6 @@ export function StorefrontHeader({
                   {cartItemCount > 99 ? '99+' : cartItemCount}
                 </span>
               )}
-            </Link>
-
-            {/* Account */}
-            <Link 
-              href={`/shops/${storeSlug}/account`}
-              className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <HiUser className="w-6 h-6" />
             </Link>
 
             {/* Mobile Menu Button */}

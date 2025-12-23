@@ -1249,7 +1249,7 @@ export class CartCalculator {
           discountAmount = (applicableTotal * discount.value) / 100;
           description = source === 'automatic' 
             ? `${(discount as AutomaticDiscount).name}: ${discount.value}% הנחה`
-            : `קופון ${(discount as DiscountCode).code}: ${discount.value}% הנחה`;
+            : `${discount.value}% הנחה`;
         }
         break;
 
@@ -1258,7 +1258,7 @@ export class CartCalculator {
           discountAmount = Math.min(discount.value, applicableTotal);
           description = source === 'automatic'
             ? `${(discount as AutomaticDiscount).name}: ₪${discount.value.toFixed(2)} הנחה`
-            : `קופון ${(discount as DiscountCode).code}: ₪${discount.value.toFixed(2)} הנחה`;
+            : `₪${discount.value.toFixed(2)} הנחה`;
         }
         break;
 
@@ -1293,7 +1293,7 @@ export class CartCalculator {
               `ב-₪${bogoDiscount.get_discount_value}`
             }`;
           } else {
-            description = `קופון ${(bogoDiscount as DiscountCode).code}: קנה ${bogoDiscount.buy_quantity} קבל ${bogoDiscount.get_quantity} ${
+            description = `קנה ${bogoDiscount.buy_quantity} קבל ${bogoDiscount.get_quantity} ${
               bogoDiscount.get_discount_type === 'free' ? 'חינם' :
               bogoDiscount.get_discount_type === 'percentage' ? `ב-${bogoDiscount.get_discount_value}% הנחה` :
               `ב-₪${bogoDiscount.get_discount_value}`
@@ -1315,7 +1315,7 @@ export class CartCalculator {
           if (source === 'automatic') {
             description = `${(bundleDiscount as AutomaticDiscount).name}: הנחה על חבילה של ${bundleDiscount.bundle_min_products}+ מוצרים`;
           } else {
-            description = `קופון ${(bundleDiscount as DiscountCode).code}: הנחה על חבילה של ${bundleDiscount.bundle_min_products}+ מוצרים`;
+            description = `הנחה על חבילה של ${bundleDiscount.bundle_min_products}+ מוצרים`;
           }
         }
         break;
@@ -1343,7 +1343,7 @@ export class CartCalculator {
             if (source === 'automatic') {
               description = `${(volumeDiscount as AutomaticDiscount).name}: ${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
             } else {
-              description = `קופון ${(volumeDiscount as DiscountCode).code}: ${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
+              description = `${applicableTier.discount_type === 'percentage' ? `${applicableTier.value}%` : `₪${applicableTier.value}`} הנחה על ${applicableTier.quantity}+ פריטים`;
             }
           }
         }
@@ -1400,7 +1400,7 @@ export class CartCalculator {
             if (source === 'automatic') {
               description = `${(fixedPriceDiscount as AutomaticDiscount).name}: ${fixedQuantity} פריטים ב-₪${fixedPrice.toFixed(2)}`;
             } else {
-              description = `קופון ${(fixedPriceDiscount as DiscountCode).code}: ${fixedQuantity} פריטים ב-₪${fixedPrice.toFixed(2)}`;
+              description = `${fixedQuantity} פריטים ב-₪${fixedPrice.toFixed(2)}`;
             }
           }
         }
@@ -1420,7 +1420,7 @@ export class CartCalculator {
           if (source === 'automatic') {
             description = `${(spendDiscount as AutomaticDiscount).name}: קנה ב-₪${spendAmount} שלם ₪${payAmount}`;
           } else {
-            description = `קופון ${(spendDiscount as DiscountCode).code}: קנה ב-₪${spendAmount} שלם ₪${payAmount}`;
+            description = `קנה ב-₪${spendAmount} שלם ₪${payAmount}`;
           }
         }
         break;

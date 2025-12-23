@@ -116,46 +116,44 @@ export function CartSummary({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
-      {/* Discount Code */}
+    <div className="bg-white rounded-lg shadow-sm p-3 space-y-3">
+      {/* Discount Code - Compact */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">
           קופון הנחה
         </label>
         
-        {/* Show applied discount code if exists */}
+        {/* Applied discount code - compact badge style */}
         {discountCode && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-2">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <HiTag className="w-5 h-5 text-green-600" />
-                <span className="font-medium text-green-800">{discountCode}</span>
-              </div>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-200 rounded-full text-xs" dir="rtl">
               {validatingCode ? (
-                <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-3.5 h-3.5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <button
                   onClick={async () => {
                     await removeDiscountCode();
                   }}
-                  className="text-green-600 hover:text-green-800 transition-colors"
+                  className="text-green-500 hover:text-red-500 transition-colors"
                   type="button"
                 >
-                  <HiX className="w-5 h-5" />
+                  <HiX className="w-3.5 h-3.5" />
                 </button>
               )}
+              <HiTag className="w-3.5 h-3.5 text-green-600" />
+              {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
+                <span key={idx} className="text-green-600">
+                  {discount.description || discount.name}
+                </span>
+              ))}
+              <span className="text-green-500">-</span>
+              <span className="font-medium text-green-700" dir="ltr">{discountCode}</span>
             </div>
-            {/* תיאור ההנחה */}
-            {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
-              <div key={idx} className="text-xs text-green-700 mr-7">
-                {discount.description || discount.name}
-              </div>
-            ))}
           </div>
         )}
         
-        {/* Always show input field */}
-        <div className="flex gap-2">
+        {/* Compact input field */}
+        <div className="flex gap-1.5">
           <input
             type="text"
             value={codeInput}
@@ -165,79 +163,71 @@ export function CartSummary({
             }}
             onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
             placeholder={discountCode ? "קוד קופון נוסף" : "הכנס קוד קופון"}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500"
           />
           <button
             onClick={handleApplyCode}
             disabled={validatingCode || !codeInput.trim()}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {validatingCode ? 'בודק...' : 'החל'}
+            {validatingCode ? '...' : 'החל'}
           </button>
         </div>
         
         {codeError && (
-          <p className="mt-2 text-sm text-red-600">{codeError}</p>
+          <p className="mt-1 text-xs text-red-600">{codeError}</p>
         )}
       </div>
 
-      {/* Errors & Warnings */}
+      {/* Errors & Warnings - Compact */}
       {hasErrors() && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
           {getErrors().map((error, index) => (
-            <p key={index} className="text-sm text-red-600">{error}</p>
+            <p key={index}>{error}</p>
           ))}
         </div>
       )}
       {hasWarnings() && (
-        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-600">
           {getWarnings().map((warning, index) => (
-            <p key={index} className="text-sm text-yellow-600">{warning}</p>
+            <p key={index}>{warning}</p>
           ))}
         </div>
       )}
 
-      {/* Summary */}
-      <div className="border-t border-gray-200 pt-4 space-y-3">
+      {/* Summary - Compact */}
+      <div className="border-t border-gray-200 pt-2 space-y-1.5">
         {/* סה"כ פריטים - מוצג רק אם יש הנחה */}
         {getDiscount() > 0 && (
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-xs">
             <span className="text-gray-600">סה"כ פריטים:</span>
             <span className="text-gray-900">₪{getSubtotal().toFixed(2)}</span>
           </div>
         )}
 
-        {/* הנחות - סיכום מפורט עם שמות */}
+        {/* הנחות - סיכום קומפקטי */}
         {getDiscount() > 0 && (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {/* הנחות אוטומטיות */}
             {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
-              <div key={idx} className="flex items-center justify-between text-sm">
+              <div key={idx} className="flex items-center justify-between text-xs">
                 <span className="text-gray-600">
                   {discount.name || discount.description || 'הנחה אוטומטית'}:
                 </span>
-                <span className="font-semibold text-green-600">
-                  {discount.type === 'free_shipping' ? (
-                    <span className="text-green-600">משלוח חינם</span>
-                  ) : (
-                    `-₪${discount.amount.toFixed(2)}`
-                  )}
+                <span className="font-medium text-green-600">
+                  {discount.type === 'free_shipping' ? 'משלוח חינם' : `-₪${discount.amount.toFixed(2)}`}
                 </span>
               </div>
             ))}
 
             {/* הנחת קופון */}
             {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
-              <div key={idx} className="flex items-center justify-between text-sm">
+              <div key={idx} className="flex items-center justify-between text-xs">
                 <span className="text-gray-600">
-                  קופון {discount.code || discount.name || 'הנחה'}:
+                  קופון {discount.code || discount.name}:
                 </span>
-                <span className="font-semibold text-green-600">
-                  {discount.type === 'free_shipping' ? (
-                    <span className="text-green-600">משלוח חינם</span>
-                  ) : (
-                    `-₪${discount.amount.toFixed(2)}`
-                  )}
+                <span className="font-medium text-green-600">
+                  {discount.type === 'free_shipping' ? 'משלוח חינם' : `-₪${discount.amount.toFixed(2)}`}
                 </span>
               </div>
             ))}
@@ -245,11 +235,11 @@ export function CartSummary({
         )}
 
         {shippingRate && (
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-xs">
             <span className="text-gray-600">משלוח:</span>
             <span className="text-gray-900">
               {getShipping() === 0 ? (
-                <span className="text-green-600 font-semibold">חינם</span>
+                <span className="text-green-600 font-medium">חינם</span>
               ) : (
                 `₪${getShipping().toFixed(2)}`
               )}
@@ -257,22 +247,22 @@ export function CartSummary({
           </div>
         )}
 
-        <div className="flex items-center justify-between text-lg font-bold border-t border-gray-200 pt-3">
+        <div className="flex items-center justify-between text-sm font-bold border-t border-gray-200 pt-2 mt-2">
           <span className="text-gray-900">סה"כ לתשלום:</span>
           <span className="text-gray-900">₪{getTotal().toFixed(2)}</span>
         </div>
       </div>
 
-      {/* Checkout Button */}
+      {/* Checkout Button - Compact */}
       {onCheckout && (
         <button
           onClick={onCheckout}
           disabled={!calculation.isValid || calculation.total === 0 || isNavigatingToCheckout}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
         >
           {isNavigatingToCheckout ? (
             <>
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
