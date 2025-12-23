@@ -1831,8 +1831,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       const item = calculatedItem.item;
                       const hasDiscount = calculatedItem.lineDiscount > 0;
                       
+                      // בדיקה אם זה מוצר מתנה
+                      const isGiftProduct = item.properties?.some((prop: { name: string; value: string }) => prop.name === 'מתנה');
+                      const giftDiscountName = item.properties?.find((prop: { name: string; value: string }) => prop.name === 'מתנה')?.value;
+                      
                       return (
-                        <div key={item.variant_id} className="flex gap-3">
+                        <div key={item.variant_id} className={`flex gap-3 p-2 rounded-lg ${isGiftProduct ? 'bg-green-50 border border-green-200' : ''}`}>
                           {item.image ? (
                             <div className="relative">
                               <img
@@ -1840,7 +1844,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                                 alt={item.product_title}
                                 className="w-16 h-16 object-cover rounded"
                               />
-                              <div className="absolute -top-2 -right-2 w-5 h-5 bg-gray-500 text-white text-xs rounded-full flex items-center justify-center">
+                              <div className={`absolute -top-2 -right-2 w-5 h-5 text-white text-xs rounded-full flex items-center justify-center ${isGiftProduct ? 'bg-green-600' : 'bg-gray-500'}`}>
                                 {item.quantity}
                               </div>
                             </div>
@@ -1852,15 +1856,28 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                               }}
                             >
                               <Truck className="w-8 h-8 text-gray-400" />
-                              <div className="absolute -top-2 -right-2 w-5 h-5 bg-gray-500 text-white text-xs rounded-full flex items-center justify-center">
+                              <div className={`absolute -top-2 -right-2 w-5 h-5 text-white text-xs rounded-full flex items-center justify-center ${isGiftProduct ? 'bg-green-600' : 'bg-gray-500'}`}>
                                 {item.quantity}
                               </div>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm line-clamp-2">
-                              {item.product_title}
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-sm line-clamp-2">
+                                {item.product_title}
+                              </span>
+                              {isGiftProduct && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-green-600 text-white rounded-full flex-shrink-0">
+                                  מתנה
+                                </span>
+                              )}
                             </div>
+                            {/* חיווי למוצר מתנה */}
+                            {isGiftProduct && giftDiscountName && (
+                              <p className="text-[10px] text-green-700 font-medium mt-0.5">
+                                מתנה מהנחת {giftDiscountName}
+                              </p>
+                            )}
                             {/* הצגת אפשרויות המוצר (מידה, צבע וכו') - ללא המאפיין "מתנה" */}
                             {item.properties && item.properties.length > 0 ? (
                               <div className="text-xs mt-0.5 text-gray-500 space-y-0.5">
@@ -2071,22 +2088,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       </div>
                     )}
                     
-                    {shippingCost > 0 && (
-                      <div className="flex justify-between">
-                        <span style={{ opacity: 0.7 }}>
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-16" height="h-4" />
-                          ) : (
-                            formData.deliveryMethod === 'pickup' ? 'איסוף עצמי' : 'משלוח'
-                          )}
-                        </span>
-                        <span>₪{shippingCost.toFixed(2)}</span>
-                      </div>
-                    )}
-                    
-                    {shippingCost === 0 && formData.deliveryMethod === 'shipping' && !calcLoading && calculation && (
-                      <div className="flex justify-between text-green-600">
-                        <span>
+                    {/* Shipping - Single unified row to prevent jumps */}
+                    {formData.deliveryMethod === 'shipping' && (
+                      <div className={`flex justify-between ${shippingCost === 0 && !calcLoading && calculation ? 'text-green-600' : ''}`}>
+                        <span style={{ opacity: shippingCost > 0 || calcLoading ? 0.7 : 1 }}>
                           {translationsLoading ? (
                             <TextSkeleton width="w-16" height="h-4" />
                           ) : (
@@ -2094,20 +2099,23 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           )}
                         </span>
                         <span>
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-12" height="h-4" />
-                          ) : (
+                          {calcLoading || !calculation ? (
+                            // בזמן טעינה - מציג את מחיר התעריף שנבחר
+                            selectedShippingRate ? `₪${selectedShippingRate.price.toFixed(2)}` : <TextSkeleton width="w-12" height="h-4" />
+                          ) : shippingCost === 0 ? (
                             'חינם'
+                          ) : (
+                            `₪${shippingCost.toFixed(2)}`
                           )}
                         </span>
                       </div>
                     )}
                     
-                    {/* Show shipping rate price during loading */}
-                    {calcLoading && formData.deliveryMethod === 'shipping' && selectedShippingRate && (
+                    {/* Pickup */}
+                    {formData.deliveryMethod === 'pickup' && (
                       <div className="flex justify-between">
-                        <span style={{ opacity: 0.7 }}>משלוח</span>
-                        <span>₪{selectedShippingRate.price.toFixed(2)}</span>
+                        <span style={{ opacity: 0.7 }}>איסוף עצמי</span>
+                        <span>חינם</span>
                       </div>
                     )}
                     
