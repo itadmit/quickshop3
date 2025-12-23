@@ -178,8 +178,8 @@ export default function CartPage() {
 
                       {/* Quantity Controls - מוצרי מתנה קבועים בכמות 1 */}
                       {isGiftProduct ? (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-green-100 border border-green-300 rounded-lg">
-                          <span className="text-sm font-medium text-green-800">{t('cart.quantity_fixed')}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="w-12 text-center font-medium">{item.quantity}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">

@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
       reviewer_name,
       reviewer_email,
       is_verified_purchase = false,
+      is_approved = true,  // ברירת מחדל: מאושר (מהדשבורד)
+      is_published = true, // ברירת מחדל: מפורסם (מהדשבורד)
     } = body;
 
     if (!product_id || !rating) {
@@ -99,9 +101,9 @@ export async function POST(request: NextRequest) {
     const review = await queryOne(
       `INSERT INTO product_reviews (
         store_id, product_id, customer_id, order_id, rating, title, review_text,
-        reviewer_name, reviewer_email, is_verified_purchase, created_at, updated_at
+        reviewer_name, reviewer_email, is_verified_purchase, is_approved, is_published, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
       RETURNING *`,
       [
         storeId,
@@ -114,6 +116,8 @@ export async function POST(request: NextRequest) {
         reviewer_name || null,
         reviewer_email || null,
         is_verified_purchase,
+        is_approved,
+        is_published,
       ]
     );
 

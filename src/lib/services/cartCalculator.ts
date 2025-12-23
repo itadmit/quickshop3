@@ -148,7 +148,8 @@ export interface ShippingRate {
 
 export interface CartCalculationInput {
   items: CartItem[];
-  discountCode?: string;
+  discountCode?: string; // קוד הנחה בודד (backward compatible)
+  discountCodes?: string[]; // מספר קודי הנחה
   shippingRate?: ShippingRate;
   storeId: number;
   customerId?: number; // For customer-specific discounts
@@ -222,7 +223,8 @@ export interface CartCalculationResult {
 export class CartCalculator {
   private storeId: number;
   private items: CartItem[];
-  private discountCode: DiscountCode | null = null;
+  private discountCode: DiscountCode | null = null; // Backward compatible - קוד בודד
+  private discountCodes: DiscountCode[] = []; // מספר קודי הנחה
   private automaticDiscounts: AutomaticDiscount[] = [];
   private shippingRate: ShippingRate | null = null;
   private customerId?: number;
@@ -440,6 +442,59 @@ export class CartCalculator {
       this.errors.push('שגיאה בטעינת קופון');
       return false;
     }
+  }
+
+  /**
+   * טוען מספר קודי הנחה למערך (תמיכה בערימת קופונים)
+   */
+  async loadMultipleDiscountCodes(codes: string[]): Promise<number> {
+    let loadedCount = 0;
+    const previousErrors = [...this.errors]; // שמירת שגיאות קודמות
+    
+    for (const code of codes) {
+      if (!code || code.trim() === '') continue;
+      
+      // טעינת הקופון באופן זמני לתוך this.discountCode
+      this.errors = []; // איפוס שגיאות לבדיקה נקייה
+      const loaded = await this.loadDiscountCode(code);
+      
+      if (loaded && this.discountCode) {
+        // בדיקת שילוב עם קופונים אחרים
+        if (loadedCount > 0 && !this.discountCode.can_combine_with_other_codes) {
+          this.warnings.push(`קופון ${code} לא ניתן לשילוב עם קופונים אחרים`);
+          continue;
+        }
+        
+        // בדיקה שהקופון הראשון מאפשר שילוב
+        if (loadedCount > 0 && this.discountCodes.length > 0) {
+          const firstCode = this.discountCodes[0];
+          if (!firstCode.can_combine_with_other_codes) {
+            this.warnings.push(`קופון ${firstCode.code} לא מאפשר שילוב עם קופונים אחרים`);
+            continue;
+          }
+        }
+        
+        // הוספת הקופון למערך
+        this.discountCodes.push({ ...this.discountCode });
+        loadedCount++;
+        
+        // בדיקת מגבלת שילובים
+        if (loadedCount >= (this.discountCodes[0]?.max_combined_discounts || 99)) {
+          break;
+        }
+      } else {
+        // החזרת השגיאות למערך הראשי
+        this.warnings.push(...this.errors);
+      }
+    }
+    
+    // שחזור שגיאות קודמות + שגיאות חדשות
+    this.errors = previousErrors;
+    
+    // עדכון discountCode הישן לתאימות לאחור (הקופון הראשון)
+    this.discountCode = this.discountCodes.length > 0 ? this.discountCodes[0] : null;
+    
+    return loadedCount;
   }
 
   /**
@@ -708,20 +763,20 @@ export class CartCalculator {
         'automatic'
       );
 
+      // יצירת AppliedDiscount object
+      const appliedDiscount: AppliedDiscount = {
+        id: autoDiscount.id,
+        name: autoDiscount.name,
+        type: autoDiscount.discount_type,
+        amount: discountResult.amount,
+        description: discountResult.description || (autoDiscount.gift_product_id ? 'מתנה חינם' : ''),
+        source: 'automatic',
+        priority: autoDiscount.priority,
+      };
+
       if (discountResult.amount > 0) {
         itemsDiscount += discountResult.amount;
         remainingSubtotal -= discountResult.amount;
-
-        // יצירת AppliedDiscount object
-        const appliedDiscount: AppliedDiscount = {
-          id: autoDiscount.id,
-          name: autoDiscount.name,
-          type: autoDiscount.discount_type,
-          amount: discountResult.amount,
-          description: discountResult.description,
-          source: 'automatic',
-          priority: autoDiscount.priority,
-        };
 
         // עדכון פריטים + עדכון appliedDiscounts על כל פריט שההנחה חלה עליו
         discountResult.items.forEach((itemDiscount, index) => {
@@ -735,9 +790,12 @@ export class CartCalculator {
             });
           }
         });
+      }
 
+      // הוספת ההנחה לרשימת ההנחות המוחלות
+      // גם אם ההנחה 0 - עבור מתנות או משלוח חינם
+      if (discountResult.amount > 0 || autoDiscount.gift_product_id || autoDiscount.discount_type === 'free_shipping') {
         allAppliedDiscounts.push(appliedDiscount);
-
         appliedAutomaticCount++;
       }
     }
@@ -776,53 +834,80 @@ export class CartCalculator {
       });
     }
 
-    // 2.3 קופון (אחרי הנחות אוטומטיות ו-premium club)
-    if (this.discountCode) {
+    // 2.3 קופונים (אחרי הנחות אוטומטיות ו-premium club)
+    // תמיכה בקופון בודד (תאימות לאחור) וגם במערך קופונים
+    const codesToProcess = this.discountCodes.length > 0 
+      ? this.discountCodes 
+      : (this.discountCode ? [this.discountCode] : []);
+    
+    let appliedCodesCount = 0;
+    
+    for (const currentCode of codesToProcess) {
       const currentSubtotal = remainingSubtotal;
       let canApplyCode = true;
       const codeErrors: string[] = [];
 
+      // בדיקת שילוב עם קופונים אחרים
+      if (appliedCodesCount > 0) {
+        // בדיקה שהקופון הנוכחי מאפשר שילוב
+        if (!currentCode.can_combine_with_other_codes) {
+          codeErrors.push(
+            `קופון ${currentCode.code} לא ניתן לשילוב עם קופונים אחרים`
+          );
+          canApplyCode = false;
+        }
+        
+        // בדיקה שהקופון הראשון מאפשר שילוב
+        const firstAppliedCode = codesToProcess[0];
+        if (firstAppliedCode && !firstAppliedCode.can_combine_with_other_codes) {
+          codeErrors.push(
+            `קופון ${firstAppliedCode.code} לא מאפשר שילוב עם קופונים אחרים`
+          );
+          canApplyCode = false;
+        }
+      }
+
       // בדיקת סכום מינימום/מקסימום
-      if (this.discountCode.minimum_order_amount && currentSubtotal < this.discountCode.minimum_order_amount) {
+      if (canApplyCode && currentCode.minimum_order_amount && currentSubtotal < currentCode.minimum_order_amount) {
         codeErrors.push(
-          `קופון ${this.discountCode.code} דורש סכום מינימום של ₪${this.discountCode.minimum_order_amount.toFixed(2)}`
+          `קופון ${currentCode.code} דורש סכום מינימום של ₪${currentCode.minimum_order_amount.toFixed(2)}`
         );
         canApplyCode = false;
-      } else if (this.discountCode.maximum_order_amount && currentSubtotal > this.discountCode.maximum_order_amount) {
+      } else if (canApplyCode && currentCode.maximum_order_amount && currentSubtotal > currentCode.maximum_order_amount) {
         codeErrors.push(
-          `קופון ${this.discountCode.code} תקף עד סכום מקסימום של ₪${this.discountCode.maximum_order_amount.toFixed(2)}`
+          `קופון ${currentCode.code} תקף עד סכום מקסימום של ₪${currentCode.maximum_order_amount.toFixed(2)}`
         );
         canApplyCode = false;
       }
 
       // בדיקת כמות מינימום/מקסימום
-      if (canApplyCode && this.discountCode.minimum_quantity && totalQuantity < this.discountCode.minimum_quantity) {
+      if (canApplyCode && currentCode.minimum_quantity && totalQuantity < currentCode.minimum_quantity) {
         codeErrors.push(
-          `קופון ${this.discountCode.code} דורש כמות מינימום של ${this.discountCode.minimum_quantity} פריטים`
+          `קופון ${currentCode.code} דורש כמות מינימום של ${currentCode.minimum_quantity} פריטים`
         );
         canApplyCode = false;
-      } else if (canApplyCode && this.discountCode.maximum_quantity && totalQuantity > this.discountCode.maximum_quantity) {
+      } else if (canApplyCode && currentCode.maximum_quantity && totalQuantity > currentCode.maximum_quantity) {
         codeErrors.push(
-          `קופון ${this.discountCode.code} תקף עד כמות מקסימום של ${this.discountCode.maximum_quantity} פריטים`
+          `קופון ${currentCode.code} תקף עד כמות מקסימום של ${currentCode.maximum_quantity} פריטים`
         );
         canApplyCode = false;
       }
 
       // בדיקת שילוב עם הנחות אוטומטיות
-      if (canApplyCode && appliedAutomaticCount > 0 && !this.discountCode.can_combine_with_automatic) {
+      if (canApplyCode && appliedAutomaticCount > 0 && !currentCode.can_combine_with_automatic) {
         codeErrors.push(
-          `קופון ${this.discountCode.code} לא ניתן לשילוב עם הנחות אוטומטיות`
+          `קופון ${currentCode.code} לא ניתן לשילוב עם הנחות אוטומטיות`
         );
         canApplyCode = false;
       }
 
       if (canApplyCode) {
         // בדיקה אם הקופון חל על הפריטים
-        const hasApplicableItems = this.checkDiscountAppliesToItems(itemsWithTotals, this.discountCode);
+        const hasApplicableItems = this.checkDiscountAppliesToItems(itemsWithTotals, currentCode);
         
         if (!hasApplicableItems) {
           codeErrors.push(
-            `קופון ${this.discountCode.code} לא חל על הפריטים בעגלה`
+            `קופון ${currentCode.code} לא חל על הפריטים בעגלה`
           );
           canApplyCode = false;
         }
@@ -831,21 +916,21 @@ export class CartCalculator {
       if (canApplyCode) {
         const discountResult = this.calculateDiscount(
           itemsWithTotals,
-          this.discountCode,
+          currentCode,
           currentSubtotal,
           'code'
         );
 
         // יצירת AppliedDiscount object - גם אם ההנחה היא 0 (כדי לאפשר מתנות)
         const appliedDiscount: AppliedDiscount = {
-          id: this.discountCode.id,
-          name: this.discountCode.code,
-          code: this.discountCode.code,
-          type: this.discountCode.discount_type,
+          id: currentCode.id,
+          name: currentCode.code,
+          code: currentCode.code,
+          type: currentCode.discount_type,
           amount: discountResult.amount,
-          description: discountResult.description || (this.discountCode.gift_product_id ? 'מתנה חינם' : ''),
+          description: discountResult.description || (currentCode.gift_product_id ? 'מתנה חינם' : ''),
           source: 'code',
-          priority: this.discountCode.priority,
+          priority: currentCode.priority,
         };
 
         if (discountResult.amount > 0) {
@@ -868,8 +953,9 @@ export class CartCalculator {
 
         // הוספת הקופון לרשימת ההנחות המוחלות (גם אם ההנחה 0 - עבור מתנות)
         // או אם יש סכום הנחה, או מתנה, או free_shipping
-        if (discountResult.amount > 0 || this.discountCode.gift_product_id || this.discountCode.discount_type === 'free_shipping') {
+        if (discountResult.amount > 0 || currentCode.gift_product_id || currentCode.discount_type === 'free_shipping') {
           allAppliedDiscounts.push(appliedDiscount);
+          appliedCodesCount++;
         }
       } else {
         // הוספת אזהרות/שגיאות
@@ -1005,14 +1091,20 @@ export class CartCalculator {
       }
     }
 
-    // איסוף מתנות מקודי הנחה (קופונים)
+    // איסוף מתנות מקודי הנחה (קופונים) - תמיכה במספר קופונים
     const appliedCodeDiscountIds = allAppliedDiscounts
       .filter(d => d.source === 'code')
       .map(d => d.id);
 
+    // מחפש במערך הקופונים (תמיכה במספר קופונים)
+    const allCodes = this.discountCodes.length > 0 
+      ? this.discountCodes 
+      : (this.discountCode ? [this.discountCode] : []);
+    
     for (const discountId of appliedCodeDiscountIds) {
-      if (this.discountCode && this.discountCode.id === discountId && this.discountCode.gift_product_id) {
-        await loadGiftProduct(this.discountCode.gift_product_id, this.discountCode.id, this.discountCode.code);
+      const matchingCode = allCodes.find(c => c.id === discountId);
+      if (matchingCode?.gift_product_id) {
+        await loadGiftProduct(matchingCode.gift_product_id, matchingCode.id, matchingCode.code);
       }
     }
 

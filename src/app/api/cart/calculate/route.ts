@@ -6,10 +6,20 @@ const VISITOR_SESSION_COOKIE_NAME = 'quickshop3_visitor_session';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    let { storeId, items, discountCode, shippingRate, customerId, customerSegment, customerOrdersCount, customerLifetimeValue, customerTier } = body;
+    let { storeId, items, discountCode, discountCodes, shippingRate, customerId, customerSegment, customerOrdersCount, customerLifetimeValue, customerTier } = body;
     
-    // אם לא נשלח discountCode, נטען אותו מהשרת (session)
-    if (!discountCode) {
+    // תמיכה במספר קופונים - אם נשלח discountCodes (מערך), משתמשים בו
+    // אחרת משתמשים ב-discountCode (בודד) לתאימות לאחור
+    let codesToLoad: string[] = [];
+    
+    if (discountCodes && Array.isArray(discountCodes) && discountCodes.length > 0) {
+      codesToLoad = discountCodes.filter((c: string) => c && c.trim() !== '');
+    } else if (discountCode && discountCode.trim() !== '') {
+      codesToLoad = [discountCode];
+    }
+    
+    // אם לא נשלחו קודים, נטען מהשרת (session)
+    if (codesToLoad.length === 0) {
       const visitorSessionId = req.cookies.get(VISITOR_SESSION_COOKIE_NAME)?.value;
       if (visitorSessionId && storeId) {
         const { queryOne } = await import('@/lib/db');
@@ -22,7 +32,8 @@ export async function POST(req: NextRequest) {
           [visitorSessionId, typeof storeId === 'string' ? parseInt(storeId, 10) : storeId]
         );
         if (cartData?.discount_code) {
-          discountCode = cartData.discount_code;
+          // תמיכה בפורמט CSV של מספר קודים
+          codesToLoad = cartData.discount_code.split(',').map(c => c.trim()).filter(c => c !== '');
         }
       }
     }
@@ -122,7 +133,8 @@ export async function POST(req: NextRequest) {
     const calculator = new CartCalculator({
       storeId: storeIdNum,
       items: validatedItems,
-      discountCode: discountCode || undefined,
+      discountCode: codesToLoad.length === 1 ? codesToLoad[0] : undefined, // תאימות לאחור
+      discountCodes: codesToLoad.length > 1 ? codesToLoad : undefined, // מספר קודים
       shippingRate: shippingRate ? {
         id: Number(shippingRate.id),
         name: shippingRate.name,
@@ -142,19 +154,24 @@ export async function POST(req: NextRequest) {
       customerTier: customerTier || undefined,
     });
 
-    // Load discount code if provided (before calculation)
-    if (discountCode) {
-      await calculator.loadDiscountCode(discountCode);
+    // Load discount codes (before calculation)
+    if (codesToLoad.length > 1) {
+      // טעינת מספר קופונים
+      await calculator.loadMultipleDiscountCodes(codesToLoad);
+    } else if (codesToLoad.length === 1) {
+      // טעינת קופון בודד (תאימות לאחור)
+      await calculator.loadDiscountCode(codesToLoad[0]);
     }
 
     // Calculate cart (this will also load automatic discounts)
     const result = await calculator.calculate();
 
-    // Include discountCode in response so client can sync
+    // Include discountCode(s) in response so client can sync
     // IMPORTANT: No cache for prices and calculations - always fresh data for discounts and promotions
     const response = NextResponse.json({
       ...result,
-      discountCode: discountCode || null, // Include current discount code in response
+      discountCode: codesToLoad.length === 1 ? codesToLoad[0] : (codesToLoad.join(',') || null), // תאימות לאחור
+      discountCodes: codesToLoad.length > 0 ? codesToLoad : [], // מערך קודים
     });
     
     // Prevent caching of price calculations

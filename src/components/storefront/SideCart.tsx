@@ -481,8 +481,10 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                           <div className="flex items-center justify-between mt-3">
                             {/* שינוי כמות - מוצרי מתנה קבועים בכמות 1 */}
                             {isGiftProduct ? (
-                              <div className="flex items-center gap-2 px-3 py-1 bg-green-100 border border-green-300 rounded-lg">
-                                <span className="text-sm font-medium text-green-800">{t('cart.quantity_fixed')}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900 min-w-[2rem] text-center">
+                                  {item.quantity}
+                                </span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
