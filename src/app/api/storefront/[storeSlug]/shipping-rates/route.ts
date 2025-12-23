@@ -89,12 +89,9 @@ export async function GET(
           }
         }
 
-        // בדיקת סף משלוח חינם - רק אם יש סף חיובי
-        if (subtotal && finalFreeThreshold !== null && finalFreeThreshold > 0) {
-          if (parseFloat(subtotal) >= finalFreeThreshold) {
-            finalPrice = 0;
-          }
-        }
+        // הערה: לא מאפסים את המחיר כאן!
+        // חישוב משלוח חינם מתבצע ב-cartCalculator
+        // כדי למנוע כפילות בלוגיקה ולאפשר הצגת "משלוח חינם" נכונה
 
         return {
           id: rate.id,

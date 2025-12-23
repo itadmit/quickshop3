@@ -1200,37 +1200,72 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       'שיטת משלוח'
                     )}
                   </h2>
-                  <RadioGroup
-                    value={formData.deliveryMethod}
-                    onValueChange={(value: any) =>
-                      setFormData((prev) => ({ ...prev, deliveryMethod: value }))
-                    }
-                    className="space-y-3"
-                  >
-                    <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">
-                      <RadioGroupItem value="shipping" id="shipping" />
-                      <Label htmlFor="shipping" className="cursor-pointer flex-1">
-                        <div className="font-medium">
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-16" height="h-5" />
-                          ) : (
-                            'משלוח'
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {shippingCost === 0 ? (
-                            translationsLoading ? (
-                              <TextSkeleton width="w-24" height="h-4" />
-                            ) : (
-                              'משלוח חינם'
-                            )
-                          ) : (
-                            `₪${shippingCost.toFixed(2)}`
-                          )}
-                        </div>
-                      </Label>
+                  {/* הצגת כל תעריפי המשלוח */}
+                  {loadingShippingRates ? (
+                    <div className="space-y-3">
+                      <div className="animate-pulse h-16 bg-gray-100 rounded-lg" />
+                      <div className="animate-pulse h-16 bg-gray-100 rounded-lg" />
                     </div>
-                  </RadioGroup>
+                  ) : shippingRates.length > 0 ? (
+                    <RadioGroup
+                      value={selectedShippingRate?.id?.toString() || ''}
+                      onValueChange={(value: string) => {
+                        const rate = shippingRates.find(r => r.id.toString() === value);
+                        if (rate) {
+                          setSelectedShippingRate(rate);
+                          setFormData((prev) => ({ 
+                            ...prev, 
+                            deliveryMethod: rate.is_pickup ? 'pickup' : 'shipping' 
+                          }));
+                        }
+                      }}
+                      className="space-y-3"
+                    >
+                      {shippingRates.map((rate) => {
+                        // בדיקה אם יש משלוח חינם לתעריף זה
+                        const isFreeShipping = rate.free_shipping_threshold && subtotal >= rate.free_shipping_threshold;
+                        const displayPrice = isFreeShipping ? 0 : rate.price;
+                        
+                        return (
+                          <div 
+                            key={rate.id}
+                            className={`flex items-center space-x-2 space-x-reverse border rounded-lg p-4 hover:border-gray-300 cursor-pointer transition-colors ${
+                              selectedShippingRate?.id === rate.id 
+                                ? 'border-green-500 bg-green-50' 
+                                : 'border-gray-200'
+                            }`}
+                          >
+                            <RadioGroupItem value={rate.id.toString()} id={`rate-${rate.id}`} />
+                            <Label htmlFor={`rate-${rate.id}`} className="cursor-pointer flex-1">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <div className="font-medium">
+                                    {rate.is_pickup ? '🏪 ' : '🚚 '}{rate.name}
+                                  </div>
+                                </div>
+                                <div className="text-left">
+                                  {displayPrice === 0 ? (
+                                    <span className="text-green-600 font-medium">חינם</span>
+                                  ) : (
+                                    <span className="font-medium">₪{displayPrice.toFixed(2)}</span>
+                                  )}
+                                  {isFreeShipping && rate.price > 0 && (
+                                    <div className="text-xs text-gray-400 line-through">
+                                      ₪{rate.price.toFixed(2)}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </RadioGroup>
+                  ) : (
+                    <div className="text-sm text-gray-500 p-4 border border-gray-200 rounded-lg">
+                      אין תעריפי משלוח זמינים
+                    </div>
+                  )}
                 </div>
 
                 {/* Shipping Address */}
