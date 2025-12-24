@@ -219,8 +219,8 @@ export default function QuickShopPaymentsPage() {
                      <div className="h-8 w-12 bg-white rounded border border-gray-100 flex items-center justify-center p-1">
                         <span className="text-xs font-bold">VISA</span>
                      </div>
-                     <div className="h-8 w-12 bg-white rounded border border-gray-100 flex items-center justify-center p-1">
-                        <span className="text-xs font-bold">MC</span>
+                     <div className="h-8 px-3 bg-white rounded border border-gray-100 flex items-center justify-center">
+                        <span className="text-xs font-bold">Mastercard</span>
                      </div>
                    </div>
                  </div>
@@ -346,7 +346,7 @@ export default function QuickShopPaymentsPage() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
             {/* Tier 1 */}
-            <Card className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 flex flex-col hover:bg-slate-800/60 transition-all duration-300 group">
+            <Card className="bg-slate-800/20 backdrop-blur-md border border-slate-700/30 rounded-3xl p-8 flex flex-col hover:bg-slate-800/30 transition-all duration-300 group">
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">לא סלקת לא שילמת</h3>
                 <p className="text-slate-400 text-sm">ללא התחייבות חודשית</p>
@@ -357,13 +357,13 @@ export default function QuickShopPaymentsPage() {
                   <span className="text-5xl font-bold text-white tracking-tight">₪0</span>
                   <span className="text-slate-400 mr-2 font-medium">/ חודש + מע״מ</span>
                 </div>
-                <div className="inline-flex items-center gap-2 bg-slate-700/30 px-3 py-1.5 rounded-lg border border-slate-600/30">
+                <div className="inline-flex items-center gap-2 bg-slate-700/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-600/20">
                    <span className="text-white font-bold">₪299</span>
                    <span className="text-slate-400 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
                 </div>
               </div>
               
-              <div className="mb-8 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+              <div className="mb-8 bg-slate-900/30 backdrop-blur-sm p-4 rounded-2xl border border-slate-700/30 text-center">
                 <span className="block text-xs text-slate-400 mb-1 uppercase tracking-wider font-medium">עמלת סליקה</span>
                 <span className="text-3xl font-bold text-white">3.4% <span className="text-sm">+ מע״מ</span></span>
               </div>
@@ -404,7 +404,7 @@ export default function QuickShopPaymentsPage() {
             </Card>
 
             {/* Tier 2 */}
-            <Card className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 flex flex-col hover:bg-slate-800/60 transition-all duration-300 group">
+            <Card className="bg-slate-800/20 backdrop-blur-md border border-slate-700/30 rounded-3xl p-8 flex flex-col hover:bg-slate-800/30 transition-all duration-300 group">
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">רק סליקה</h3>
                 <p className="text-slate-400 text-sm">ללקוחות עם מסוף קיים</p>
@@ -415,13 +415,13 @@ export default function QuickShopPaymentsPage() {
                   <span className="text-5xl font-bold text-white tracking-tight">₪129</span>
                   <span className="text-slate-400 mr-2 font-medium">/ חודש + מע״מ</span>
                 </div>
-                <div className="inline-flex items-center gap-2 bg-slate-700/30 px-3 py-1.5 rounded-lg border border-slate-600/30">
+                <div className="inline-flex items-center gap-2 bg-slate-700/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-600/20">
                    <span className="text-white font-bold">₪249</span>
                    <span className="text-slate-400 text-sm">דמי הקמה חד פעמיים + מע״מ</span>
                 </div>
               </div>
               
-              <div className="mb-8 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+              <div className="mb-8 bg-slate-900/30 backdrop-blur-sm p-4 rounded-2xl border border-slate-700/30 text-center">
                 <span className="block text-xs text-slate-400 mb-1 uppercase tracking-wider font-medium">עמלת סליקה</span>
                 <span className="text-xl font-bold text-white">לפי המסוף שלך</span>
               </div>
@@ -456,7 +456,7 @@ export default function QuickShopPaymentsPage() {
             </Card>
 
             {/* Tier 3 - PRO */}
-            <Card className="bg-slate-900 border border-green-500/50 rounded-3xl p-8 flex flex-col relative transform md:-translate-y-6 shadow-2xl shadow-green-500/10 z-10">
+            <Card className="bg-slate-800/30 backdrop-blur-md border border-green-500/50 rounded-3xl p-8 flex flex-col relative transform md:-translate-y-6 shadow-2xl shadow-green-500/10 z-10">
               <div className="absolute top-4 left-4">
                 <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
                   <HiLightningBolt className="w-3 h-3" /> מומלץ
@@ -468,7 +468,7 @@ export default function QuickShopPaymentsPage() {
                 <p className="text-green-200/80 text-sm">הפתרון המלא לעסקים</p>
               </div>
               
-              <div className="mb-8 pb-8 border-b border-slate-800">
+              <div className="mb-8 pb-8 border-b border-slate-700/30">
                 <div className="flex items-baseline mb-3">
                    <span className="text-5xl font-bold text-white tracking-tight">₪59</span>
                    <span className="text-slate-400 mr-2 font-medium text-lg">/ חודש + מע״מ</span>
@@ -487,7 +487,7 @@ export default function QuickShopPaymentsPage() {
                 </div>
               </div>
               
-              <div className="mb-8 bg-gradient-to-b from-green-900/40 to-green-950/40 p-6 rounded-2xl border border-green-500/20 text-center relative overflow-hidden">
+              <div className="mb-8 bg-gradient-to-b from-green-900/30 to-green-950/30 backdrop-blur-sm p-6 rounded-2xl border border-green-500/30 text-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-green-500/5 animate-pulse" />
                 <span className="block text-xs text-green-200/80 mb-1 uppercase tracking-wider font-bold relative z-10">עמלת סליקה בלבד</span>
                 <span className="text-4xl font-bold text-white relative z-10">1.0% <span className="text-sm">+ מע״מ</span></span>
