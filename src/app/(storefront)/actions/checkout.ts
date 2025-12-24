@@ -13,7 +13,9 @@ interface CreateOrderInput {
     variant_id: number;
     product_id: number;
     quantity: number;
-    price: number;
+    price: number; // מחיר אחרי הנחה
+    original_price?: number; // מחיר מקורי לפני הנחה
+    line_discount?: number; // הנחה על הפריט
     image?: string;
     properties?: Array<{ name: string; value: string }>;
   }>;
@@ -248,11 +250,9 @@ export async function createOrder(input: CreateOrderInput) {
     ...(input.storeCreditAmount && input.storeCreditAmount > 0 ? { store_credit_amount: input.storeCreditAmount } : {}),
   };
   
-  // Set financial status based on payment method and total
-  // חישוב הסכום הסופי אחרי קרדיטים וגיפט קארד
-  const giftCardAmount = input.giftCardAmount || 0;
-  const storeCreditAmount = input.storeCreditAmount || 0;
-  const finalTotalAfterCredits = Math.max(0, finalTotal - giftCardAmount - storeCreditAmount);
+  // ✅ הסכום הסופי כבר מחושב למעלה (finalTotal)
+  // finalTotal כבר כולל את כל ההנחות (גיפט קארד + קרדיט בחנות)
+  const finalTotalAfterCredits = finalTotal;
   
   let financialStatus = 'pending';
   if (finalTotalAfterCredits === 0) {
@@ -264,8 +264,8 @@ export async function createOrder(input: CreateOrderInput) {
   } else if (input.paymentMethod === 'bank_transfer') {
     // העברה בנקאית - pending עד שהכסף מתקבל
     financialStatus = 'pending';
-  } else if (input.paymentMethod === 'credit_card') {
-    // כרטיס אשראי - pending עד שהתשלום מאושר בסליקה
+  } else if (input.paymentMethod === 'credit_card' || (input.paymentMethod === 'store_credit' && finalTotalAfterCredits > 0)) {
+    // ✅ כרטיס אשראי או קרדיט עם סכום נותר - pending עד שהתשלום מאושר בסליקה
     financialStatus = 'pending';
   }
 
@@ -382,22 +382,28 @@ export async function createOrder(input: CreateOrderInput) {
       }
     }
     
+    // ✅ חישוב המחיר המקורי וההנחה
+    const originalPrice = lineItem.original_price || lineItem.price;
+    const lineDiscount = lineItem.line_discount || 0;
+    const finalPrice = lineItem.price; // מחיר אחרי הנחה
+    
     await queryOne(
       `INSERT INTO order_line_items (
         order_id, product_id, variant_id, title, variant_title,
-        quantity, price, properties
+        quantity, price, total_discount, properties
       )
       VALUES ($1, $2, $3, 
         (SELECT title FROM products WHERE id = $2),
         (SELECT title FROM product_variants WHERE id = $3),
-        $4, $5, $6
+        $4, $5, $6, $7
       )`,
       [
         order.id, 
         lineItem.product_id, 
         lineItem.variant_id, 
         lineItem.quantity, 
-        lineItem.price,
+        finalPrice, // מחיר אחרי הנחה
+        lineDiscount, // הנחה על הפריט
         propertiesToSave.length > 0 
           ? JSON.stringify(propertiesToSave) 
           : null

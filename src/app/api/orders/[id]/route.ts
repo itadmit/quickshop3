@@ -204,6 +204,20 @@ export async function GET(
       ? (typeof order.note_attributes === 'string' ? JSON.parse(order.note_attributes) : order.note_attributes)
       : null;
     
+    // ✅ Parse discount_codes
+    let discountCodes: string[] = [];
+    if (order.discount_codes) {
+      try {
+        if (typeof order.discount_codes === 'string') {
+          discountCodes = JSON.parse(order.discount_codes);
+        } else if (Array.isArray(order.discount_codes)) {
+          discountCodes = order.discount_codes;
+        }
+      } catch (e) {
+        console.error('Error parsing discount_codes:', e);
+      }
+    }
+    
     return NextResponse.json({
       id: order.id,
       order_name: order.order_name,
@@ -222,6 +236,7 @@ export async function GET(
       delivery_method: noteAttributes?.delivery_method || 'shipping',
       payment_method: noteAttributes?.payment_method || order.gateway || 'credit_card',
       note_attributes: noteAttributes, // ✅ מחזיר את כל ה-note_attributes כולל shipping_method_name
+      discount_codes: discountCodes, // ✅ מחזיר את קודי הקופון
       line_items: items,
     });
   } catch (error: any) {

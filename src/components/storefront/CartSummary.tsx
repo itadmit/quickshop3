@@ -124,7 +124,8 @@ export function CartSummary({
         </label>
         
         {/* Applied discount code - compact badge style */}
-        {discountCode && (
+        {/* ✅ מציג קופון רק אם הוא תקף (מופיע ב-getDiscounts) */}
+        {discountCode && getDiscounts().some(d => d.source === 'code' && d.code === discountCode) && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-200 rounded-full text-sm" dir="rtl">
               {validatingCode ? (
@@ -141,13 +142,53 @@ export function CartSummary({
                 </button>
               )}
               <HiTag className="w-4 h-4 text-green-600" />
-              {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
-                <span key={idx} className="text-green-600">
-                  {discount.description || discount.name}
-                </span>
-              ))}
-              <span className="text-green-500">-</span>
-              <span className="font-medium text-green-700" dir="ltr">{discountCode}</span>
+              {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => {
+                // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה)
+                const description = discount.description || discount.name || 'הנחה';
+                const codeInDescription = discount.code && description.includes(discount.code);
+                
+                return (
+                  <span key={idx} className="text-green-600">
+                    {description}
+                  </span>
+                );
+              })}
+              {/* ✅ מציג את הקוד רק אם הוא לא מופיע בתיאור */}
+              {(() => {
+                const discount = getDiscounts().find(d => d.source === 'code' && d.code === discountCode);
+                const description = discount?.description || discount?.name || '';
+                const codeInDescription = discountCode && description.includes(discountCode);
+                
+                if (!codeInDescription && discountCode) {
+                  return (
+                    <>
+                      <span className="text-green-500">-</span>
+                      <span className="font-medium text-green-700" dir="ltr">{discountCode}</span>
+                    </>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          </div>
+        )}
+        
+        {/* ✅ מציג קופון לא תקף עם אזהרה */}
+        {discountCode && !getDiscounts().some(d => d.source === 'code' && d.code === discountCode) && (
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full text-sm" dir="rtl">
+              <button
+                onClick={async () => {
+                  await removeDiscountCode();
+                }}
+                className="text-yellow-600 hover:text-red-500 transition-colors"
+                type="button"
+              >
+                <HiX className="w-4 h-4" />
+              </button>
+              <HiTag className="w-4 h-4 text-yellow-600" />
+              <span className="text-yellow-700" dir="ltr">{discountCode}</span>
+              <span className="text-yellow-600 text-xs">(לא תקף)</span>
             </div>
           </div>
         )}
@@ -221,16 +262,23 @@ export function CartSummary({
             ))}
 
             {/* הנחת קופון */}
-            {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
-              <div key={idx} className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  קופון {discount.code || discount.name}:
-                </span>
-                <span className="font-medium text-green-600">
-                  {discount.type === 'free_shipping' ? 'משלוח חינם' : `-₪${discount.amount.toFixed(2)}`}
-                </span>
-              </div>
-            ))}
+            {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => {
+              // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה)
+              const description = discount.description || discount.name || 'הנחה';
+              const codeInDescription = discount.code && description.includes(discount.code);
+              const displayName = codeInDescription ? description : (discount.code || discount.name || 'קופון');
+              
+              return (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    קופון {displayName}:
+                  </span>
+                  <span className="font-medium text-green-600">
+                    {discount.type === 'free_shipping' ? 'משלוח חינם' : `-₪${discount.amount.toFixed(2)}`}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 

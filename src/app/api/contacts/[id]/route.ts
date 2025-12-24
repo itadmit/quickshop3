@@ -52,12 +52,55 @@ export async function GET(
       [contactId]
     );
 
+    // ✅ בדיקה אם יש לקוח קיים עם אותו אימייל (אם אין customer_id קשור)
+    let customerData = null;
+    let finalCustomerId = contact.customer_id;
+
+    if (!contact.customer_id && contact.email) {
+      // בדיקה אם יש לקוח קיים עם אותו אימייל
+      const existingCustomer = await queryOne<{ id: number }>(
+        'SELECT id FROM customers WHERE store_id = $1 AND email = $2',
+        [user.store_id, contact.email]
+      );
+
+      if (existingCustomer) {
+        // ✅ קישור אוטומטי של איש הקשר ללקוח הקיים
+        await query(
+          'UPDATE contacts SET customer_id = $1 WHERE id = $2',
+          [existingCustomer.id, contactId]
+        );
+        finalCustomerId = existingCustomer.id;
+      }
+    }
+
+    // ✅ טעינת נתוני הלקוח אם יש customer_id
+    if (finalCustomerId) {
+      const customerStats = await queryOne<{ total_spent: string; orders_count: number }>(
+        `SELECT 
+          COALESCE(SUM(o.total_price::numeric), 0) as total_spent,
+          COUNT(DISTINCT o.id) as orders_count
+        FROM orders o
+        WHERE o.customer_id = $1`,
+        [finalCustomerId]
+      );
+
+      if (customerStats) {
+        customerData = {
+          id: finalCustomerId,
+          total_spent: customerStats.total_spent,
+          orders_count: customerStats.orders_count,
+        };
+      }
+    }
+
     const contactWithDetails: ContactWithDetails = {
       ...contact,
+      customer_id: finalCustomerId || contact.customer_id, // ✅ עדכון customer_id אם נמצא לקוח קיים
       category_assignments: categoryAssignments.map((ca: any) => ({
         id: ca.id,
         category: ca.category,
       })),
+      customer: customerData || undefined, // ✅ הוספת נתוני הלקוח
     };
 
     return NextResponse.json({ contact: contactWithDetails });

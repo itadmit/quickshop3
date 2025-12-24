@@ -634,12 +634,35 @@ export default function OrderDetailsPage() {
                       </div>
                       {!isEditingItem && (
                         <div className="text-left">
-                          <div className="font-medium text-gray-900">
-                            {item.quantity} × ₪{parseFloat(item.price).toLocaleString('he-IL')}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            ₪{(parseFloat(item.price) * item.quantity).toLocaleString('he-IL')}
-                          </div>
+                          {/* ✅ הצגת מחיר מקורי ומחיר אחרי הנחה אם יש הנחה */}
+                          {parseFloat(item.total_discount || '0') > 0 ? (
+                            <>
+                              {/* מחיר מקורי ליחידה (לפני הנחה) */}
+                              <div className="text-xs text-gray-400 line-through mb-0.5">
+                                {item.quantity} × ₪{((parseFloat(item.price) + parseFloat(item.total_discount) / item.quantity)).toFixed(2)}
+                              </div>
+                              {/* מחיר אחרי הנחה ליחידה */}
+                              <div className="font-medium text-gray-900">
+                                {item.quantity} × ₪{parseFloat(item.price).toFixed(2)}
+                              </div>
+                              {/* סה"כ אחרי הנחה */}
+                              <div className="text-sm text-green-600 font-medium">
+                                ₪{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                                <span className="text-xs text-gray-500 mr-1">
+                                  (הנחה: ₪{parseFloat(item.total_discount).toFixed(2)})
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="font-medium text-gray-900">
+                                {item.quantity} × ₪{parseFloat(item.price).toFixed(2)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                ₪{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

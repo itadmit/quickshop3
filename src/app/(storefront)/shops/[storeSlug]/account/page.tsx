@@ -226,6 +226,7 @@ export default function StorefrontAccountPage() {
       hasTier: !!customer?.premium_club_tier 
     })
     
+    // ✅ טעינת מועדון פרימיום גם אם הלקוח עדיין לא חבר
     if (customer?.id && store?.id) {
       console.log('[Account Page] Calling fetchPremiumProgress')
       fetchPremiumProgress()
@@ -234,34 +235,56 @@ export default function StorefrontAccountPage() {
         fetchMonthlyGift()
       }
     }
-  }, [customer?.id, store?.id, customer?.premium_club_tier])
+  }, [customer?.id, store?.id])
 
   const fetchPremiumProgress = async () => {
     if (!customer?.id || !store?.id) return
     
     setLoadingPremiumProgress(true)
     try {
-      // TODO: Implement premium club progress API endpoint
-      // For now, set basic progress data if customer has tier
-      if (customer.premium_club_tier) {
-        setPremiumProgress({
-          enabled: true,
-          currentTier: {
-            name: customer.premium_club_tier === 'silver' ? 'כסף' : 
-                  customer.premium_club_tier === 'gold' ? 'זהב' : 
-                  customer.premium_club_tier === 'platinum' ? 'פלטינה' : 'לא קיים',
-            color: customer.premium_club_tier === 'silver' ? '#C0C0C0' : 
-                   customer.premium_club_tier === 'gold' ? '#FFD700' : 
-                   customer.premium_club_tier === 'platinum' ? '#E5E4E2' : '#d1d5db',
-          },
-          totalSpent: 0,
-          totalOrders: 0,
-        })
+      const token = localStorage.getItem(`storefront_token_${storeSlug}`)
+      if (!token) {
+        setPremiumProgress(null)
+        return
+      }
+
+      const response = await fetch(`/api/storefront/${storeSlug}/premium-club/progress`, {
+        headers: {
+          'x-customer-id': token,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.enabled) {
+          setPremiumProgress({
+            enabled: true,
+            currentTier: data.currentTier ? {
+              name: data.currentTier.name,
+              color: data.currentTier.color,
+              discount: data.currentTier.discount,
+            } : null,
+            nextTier: data.nextTier ? {
+              name: data.nextTier.name,
+              color: data.nextTier.color,
+              discount: data.nextTier.discount,
+              minSpent: data.nextTier.minSpent,
+              minOrders: data.nextTier.minOrders,
+            } : null,
+            progress: data.progress,
+            totalSpent: data.stats.totalSpent,
+            totalOrders: data.stats.totalOrders,
+            allTiers: data.allTiers || [],
+          })
+        } else {
+          setPremiumProgress(null)
+        }
       } else {
         setPremiumProgress(null)
       }
     } catch (error) {
       console.error("Error fetching premium progress:", error)
+      setPremiumProgress(null)
     } finally {
       setLoadingPremiumProgress(false)
     }
@@ -463,9 +486,43 @@ export default function StorefrontAccountPage() {
 
   const fetchAddresses = async (customerId: number) => {
     try {
-      // TODO: Implement addresses API endpoint
-      // For now, use empty array
-      setAddresses([])
+      const token = localStorage.getItem(`storefront_token_${storeSlug}`)
+      if (!token) {
+        console.log("No token found for addresses")
+        return
+      }
+
+      const response = await fetch(`/api/storefront/${storeSlug}/addresses`, {
+        headers: {
+          "x-customer-id": token,
+        },
+      })
+
+      if (handleAuthError(response)) {
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        // המרת הנתונים לפורמט שמתאים לתצוגה
+        const formattedAddresses = data.map((addr: any) => ({
+          id: addr.id,
+          first_name: addr.first_name,
+          last_name: addr.last_name,
+          address: addr.address1?.split(' ').slice(0, -1).join(' ') || '', // רחוב ללא מספר בית
+          houseNumber: addr.address1?.split(' ').pop() || '', // מספר בית
+          apartment: addr.address2?.match(/דירה (\d+)/)?.[1] || '',
+          floor: addr.address2?.match(/קומה (\d+)/)?.[1] || '',
+          city: addr.city,
+          zip: addr.zip,
+          phone: addr.phone,
+          default_address: addr.default_address,
+        }))
+        setAddresses(formattedAddresses)
+      } else {
+        const errorData = await response.json()
+        console.error("Error fetching addresses:", errorData)
+      }
     } catch (error) {
       console.error("Error fetching addresses:", error)
     }
@@ -543,22 +600,137 @@ export default function StorefrontAccountPage() {
       return
     }
 
-    // TODO: Implement addresses API endpoints
-    toast({
-      title: "לא זמין",
-      description: "תכונה זו תזמין בקרוב",
-      variant: "destructive",
-    })
-    setAddressDialogOpen(false)
+    setSavingAddress(true)
+    try {
+      const token = localStorage.getItem(`storefront_token_${storeSlug}`)
+      if (!token) {
+        toast({
+          title: "שגיאה",
+          description: "אימות נדרש",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const url = editingAddress
+        ? `/api/storefront/${storeSlug}/addresses/${editingAddress.id}`
+        : `/api/storefront/${storeSlug}/addresses`
+      const method = editingAddress ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          "x-customer-id": token,
+        },
+        body: JSON.stringify({
+          first_name: addressForm.first_name,
+          last_name: addressForm.last_name,
+          address: addressForm.address,
+          houseNumber: addressForm.houseNumber,
+          apartment: addressForm.apartment,
+          floor: addressForm.floor,
+          city: addressForm.city,
+          zip: addressForm.zip,
+          phone: addressForm.phone,
+          default_address: addresses.length === 0, // אם זו הכתובת הראשונה, נסמן אותה כברירת מחדל
+        }),
+      })
+
+      if (handleAuthError(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save address')
+      }
+
+      toast({
+        title: "הצלחה",
+        description: editingAddress ? "הכתובת עודכנה בהצלחה" : "הכתובת נוספה בהצלחה",
+        variant: "success",
+      })
+
+      // רענון רשימת הכתובות
+      if (customer) {
+        await fetchAddresses(customer.id)
+      }
+
+      setAddressDialogOpen(false)
+      setEditingAddress(null)
+      setAddressForm({
+        first_name: customer?.first_name || "",
+        last_name: customer?.last_name || "",
+        address: "",
+        houseNumber: "",
+        apartment: "",
+        floor: "",
+        city: "",
+        zip: "",
+      })
+    } catch (error: any) {
+      console.error("Error saving address:", error)
+      toast({
+        title: "שגיאה",
+        description: error.message || "אירעה שגיאה בשמירת הכתובת",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingAddress(false)
+    }
   }
 
   const handleDeleteAddress = async (addressId: string) => {
-    // TODO: Implement addresses API endpoints
-    toast({
-      title: "לא זמין",
-      description: "תכונה זו תזמין בקרוב",
-      variant: "destructive",
-    })
+    if (!confirm("האם אתה בטוח שברצונך למחוק את הכתובת הזו?")) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem(`storefront_token_${storeSlug}`)
+      if (!token) {
+        toast({
+          title: "שגיאה",
+          description: "אימות נדרש",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch(`/api/storefront/${storeSlug}/addresses/${addressId}`, {
+        method: 'DELETE',
+        headers: {
+          "x-customer-id": token,
+        },
+      })
+
+      if (handleAuthError(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete address')
+      }
+
+      toast({
+        title: "הצלחה",
+        description: "הכתובת נמחקה בהצלחה",
+        variant: "success",
+      })
+
+      // רענון רשימת הכתובות
+      if (customer) {
+        await fetchAddresses(customer.id)
+      }
+    } catch (error: any) {
+      console.error("Error deleting address:", error)
+      toast({
+        title: "שגיאה",
+        description: error.message || "אירעה שגיאה במחיקת הכתובת",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleLogout = () => {
@@ -820,7 +992,7 @@ export default function StorefrontAccountPage() {
                           background: premiumProgress.currentTier 
                             ? `linear-gradient(135deg, ${premiumProgress.currentTier.color}15, ${premiumProgress.currentTier.color}30)`
                             : 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-                          borderColor: premiumProgress.currentTier?.color || '#d1d5db'
+                          borderColor: premiumProgress.currentTier?.color || premiumProgress.nextTier?.color || '#d1d5db'
                         }}
                       >
                         {/* כותרת ורמה נוכחית */}
@@ -828,15 +1000,15 @@ export default function StorefrontAccountPage() {
                           <div className="flex items-center gap-3">
                             <HiGift 
                               className="w-8 h-8" 
-                              style={{ color: premiumProgress.currentTier?.color || '#d1d5db' }}
+                              style={{ color: premiumProgress.currentTier?.color || premiumProgress.nextTier?.color || '#d1d5db' }}
                             />
                             <div>
-                              <Label className="text-sm text-gray-600">רמת מועדון פרימיום</Label>
+                              <Label className="text-sm text-gray-600">מועדון פרימיום</Label>
                               <p 
                                 className="text-xl font-bold"
-                                style={{ color: premiumProgress.currentTier?.color || '#374151' }}
+                                style={{ color: premiumProgress.currentTier?.color || premiumProgress.nextTier?.color || '#374151' }}
                               >
-                                {premiumProgress.currentTier?.name || 'אין רמה'}
+                                {premiumProgress.currentTier?.name || 'עדיין לא חבר'}
                               </p>
                             </div>
                           </div>
@@ -849,6 +1021,17 @@ export default function StorefrontAccountPage() {
                                 }
                               </span>
                               <span className="text-xs text-gray-600 mr-1">הנחה</span>
+                            </div>
+                          )}
+                          {!premiumProgress.currentTier && premiumProgress.nextTier?.discount && (
+                            <div className="text-center px-3 py-1 rounded-full bg-white/50">
+                              <span className="text-lg font-bold" style={{ color: premiumProgress.nextTier.color }}>
+                                {premiumProgress.nextTier.discount.type === 'PERCENTAGE' 
+                                  ? `${premiumProgress.nextTier.discount.value}%`
+                                  : `₪${premiumProgress.nextTier.discount.value}`
+                                }
+                              </span>
+                              <span className="text-xs text-gray-600 mr-1">הנחה ברמה הבאה</span>
                             </div>
                           )}
                         </div>
@@ -866,13 +1049,18 @@ export default function StorefrontAccountPage() {
                         </div>
 
                         {/* פרוגרס לרמה הבאה */}
-                        {premiumProgress.nextTier && (
+                        {premiumProgress.nextTier && premiumProgress.progress && (
                           <div className="mt-4 pt-4 border-t border-white/30">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm text-gray-600">
-                                התקדמות לרמת <strong style={{ color: premiumProgress.nextTier.color }}>{premiumProgress.nextTier.name}</strong>
+                                {premiumProgress.currentTier 
+                                  ? `התקדמות לרמת ${premiumProgress.nextTier.name}`
+                                  : `הצטרפות לרמת ${premiumProgress.nextTier.name}`
+                                }
                               </span>
-                              <span className="text-sm font-bold">{premiumProgress.progress}%</span>
+                              <span className="text-sm font-bold" style={{ color: premiumProgress.nextTier.color }}>
+                                {Math.round(premiumProgress.progress.percentage)}%
+                              </span>
                             </div>
                             
                             {/* פרוגרס בר */}
@@ -880,7 +1068,7 @@ export default function StorefrontAccountPage() {
                               <div 
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{ 
-                                  width: `${premiumProgress.progress}%`,
+                                  width: `${premiumProgress.progress.percentage}%`,
                                   backgroundColor: premiumProgress.nextTier.color 
                                 }}
                               />
@@ -888,14 +1076,22 @@ export default function StorefrontAccountPage() {
 
                             {/* מה נותר */}
                             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                              {premiumProgress.spentToNext > 0 && (
+                              {premiumProgress.nextTier.minSpent && (
                                 <span className="bg-white/50 px-2 py-1 rounded-full">
-                                  חסרים עוד ₪{premiumProgress.spentToNext.toLocaleString()}
+                                  {premiumProgress.stats.totalSpent >= premiumProgress.nextTier.minSpent ? (
+                                    <span className="text-green-600">✓ ₪{premiumProgress.stats.totalSpent.toLocaleString()} / ₪{premiumProgress.nextTier.minSpent.toLocaleString()}</span>
+                                  ) : (
+                                    <span>חסרים עוד ₪{(premiumProgress.nextTier.minSpent - premiumProgress.stats.totalSpent).toLocaleString()}</span>
+                                  )}
                                 </span>
                               )}
-                              {premiumProgress.ordersToNext > 0 && (
+                              {premiumProgress.nextTier.minOrders && (
                                 <span className="bg-white/50 px-2 py-1 rounded-full">
-                                  חסרות עוד {premiumProgress.ordersToNext} הזמנות
+                                  {premiumProgress.stats.totalOrders >= premiumProgress.nextTier.minOrders ? (
+                                    <span className="text-green-600">✓ {premiumProgress.stats.totalOrders} / {premiumProgress.nextTier.minOrders} הזמנות</span>
+                                  ) : (
+                                    <span>חסרות עוד {premiumProgress.nextTier.minOrders - premiumProgress.stats.totalOrders} הזמנות</span>
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -1178,10 +1374,19 @@ export default function StorefrontAccountPage() {
                                   {address.first_name} {address.last_name}
                                 </span>
                               </div>
-                              <p className="text-gray-700">{address.address}</p>
-                              <p className="text-gray-600 text-sm">
-                                {address.city} {address.zip}
+                              <p className="text-gray-700">
+                                {address.address} {address.houseNumber}
+                                {address.apartment && `, דירה ${address.apartment}`}
+                                {address.floor && `, קומה ${address.floor}`}
                               </p>
+                              <p className="text-gray-600 text-sm">
+                                {address.city} {address.zip && `, ${address.zip}`}
+                              </p>
+                              {address.phone && (
+                                <p className="text-gray-600 text-sm">
+                                  טלפון: {address.phone}
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -1302,7 +1507,7 @@ export default function StorefrontAccountPage() {
                               <div className="flex items-center gap-4 text-sm text-gray-600">
                                 <div className="flex items-center gap-1">
                                   <HiArchive className="w-4 h-4" />
-                                  הזמנה #{returnItem.order?.orderNumber || "N/A"}
+                                  הזמנה #{returnItem.orderNumber || returnItem.order?.orderNumber || "N/A"}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <HiCalendar className="w-4 h-4" />
@@ -1407,9 +1612,9 @@ export default function StorefrontAccountPage() {
                                         </div>
                                       )}
                                     </div>
-                                    {returnItem.order?.orderNumber && (
+                                    {(returnItem.orderNumber || returnItem.order?.orderNumber) && (
                                       <p className="text-xs text-gray-500 mt-1">
-                                        מהזמנה #{returnItem.order.orderNumber}
+                                        מהזמנה #{returnItem.orderNumber || returnItem.order?.orderNumber}
                                       </p>
                                     )}
                                   </div>
@@ -1582,7 +1787,7 @@ export default function StorefrontAccountPage() {
               בחר הזמנה ופריטים להחזרה
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 px-8 py-6">
             {/* בחירת הזמנה */}
             {!selectedOrderForReturn ? (
               <div className="space-y-2">

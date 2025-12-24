@@ -987,12 +987,14 @@ export class CartCalculator {
       }
 
       if (hasFreeShippingFromDiscounts || hasFreeShippingThreshold || hasFreeShippingFromTier) {
+        // ✅ עדכון shippingDiscount לפי התעריף הנוכחי (תמיד)
         shippingDiscount = this.shippingRate.price;
         if (hasFreeShippingFromDiscounts) {
           const freeShippingDiscount = allAppliedDiscounts.find(d => d.type === 'free_shipping');
           if (freeShippingDiscount) {
-            // עדכון תיאור
-            freeShippingDiscount.description = `משלוח חינם - ${freeShippingDiscount.name}`;
+            // ✅ עדכון תיאור וגם amount לפי התעריף הנוכחי
+            freeShippingDiscount.description = `משלוח חינם - ${freeShippingDiscount.name || freeShippingDiscount.code || 'קופון'}`;
+            freeShippingDiscount.amount = this.shippingRate.price; // ✅ עדכון הסכום לפי התעריף הנוכחי
           }
         } else if (hasFreeShippingFromTier) {
           // הוספת הנחת משלוח חינם לרשימת ההנחות

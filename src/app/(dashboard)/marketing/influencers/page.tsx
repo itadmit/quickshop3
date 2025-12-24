@@ -219,7 +219,7 @@ export default function InfluencersPage() {
     }
   };
 
-  const handleEdit = (influencer: InfluencerWithStats) => {
+  const handleEdit = async (influencer: InfluencerWithStats) => {
     setEditingInfluencer(influencer);
     setFormData({
       name: influencer.name,
@@ -231,6 +231,8 @@ export default function InfluencersPage() {
       coupon_ids: influencer.coupons.map(c => c.id),
     });
     setEditDialogOpen(true);
+    // ✅ טעינת קופונים זמינים לאחר הגדרת המשפיען לעריכה
+    await loadAvailableCoupons();
   };
 
   const handleUpdate = async () => {
@@ -735,65 +737,35 @@ export default function InfluencersPage() {
             <div>
               <Label>קופונים משוייכים</Label>
               <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3">
-                {availableCoupons.length === 0 && editingInfluencer?.coupons.length === 0 ? (
+                {availableCoupons.length === 0 ? (
                   <p className="text-sm text-gray-500">אין קופונים זמינים</p>
                 ) : (
-                  <>
-                    {/* Show already assigned coupons */}
-                    {editingInfluencer?.coupons.map((coupon) => (
-                      <label key={coupon.id} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.coupon_ids.includes(coupon.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData({
-                                ...formData,
-                                coupon_ids: [...formData.coupon_ids, coupon.id],
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                coupon_ids: formData.coupon_ids.filter((id) => id !== coupon.id),
-                              });
-                            }
-                          }}
-                          className="rounded"
-                        />
-                        <span className="text-sm">
-                          {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : `₪${coupon.value}`})
-                        </span>
-                      </label>
-                    ))}
-                    {/* Show available coupons */}
-                    {availableCoupons
-                      .filter((c) => !formData.coupon_ids.includes(c.id))
-                      .map((coupon) => (
-                        <label key={coupon.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.coupon_ids.includes(coupon.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({
-                                  ...formData,
-                                  coupon_ids: [...formData.coupon_ids, coupon.id],
-                                });
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  coupon_ids: formData.coupon_ids.filter((id) => id !== coupon.id),
-                                });
-                              }
-                            }}
-                            className="rounded"
-                          />
-                          <span className="text-sm">
-                            {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : `₪${coupon.value}`})
-                          </span>
-                        </label>
-                      ))}
-                  </>
+                  // ✅ הצגת כל הקופונים הזמינים ברשימה אחת
+                  availableCoupons.map((coupon) => (
+                    <label key={coupon.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={formData.coupon_ids.includes(coupon.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              coupon_ids: [...formData.coupon_ids, coupon.id],
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              coupon_ids: formData.coupon_ids.filter((id) => id !== coupon.id),
+                            });
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">
+                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : `₪${coupon.value}`})
+                      </span>
+                    </label>
+                  ))
                 )}
               </div>
             </div>

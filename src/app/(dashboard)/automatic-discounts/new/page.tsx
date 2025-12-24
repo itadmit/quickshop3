@@ -176,6 +176,23 @@ export default function NewAutomaticDiscountPage() {
         });
         return;
       }
+    } else if (formData.discount_type === 'spend_x_pay_y') {
+      if (!formData.spend_amount || !formData.pay_amount) {
+        toast({
+          title: 'שגיאה',
+          description: 'סכום הקנייה וסכום התשלום הם שדות חובה',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (parseFloat(formData.pay_amount) >= parseFloat(formData.spend_amount)) {
+        toast({
+          title: 'שגיאה',
+          description: 'סכום התשלום חייב להיות נמוך מסכום הקנייה',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else if (formData.discount_type !== 'free_shipping' && (!formData.value || !formData.value.trim())) {
       toast({
         title: 'שגיאה',
@@ -192,7 +209,7 @@ export default function NewAutomaticDiscountPage() {
         name: formData.name!.trim(),
         description: formData.description || null,
         discount_type: formData.discount_type!,
-        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume' && formData.discount_type !== 'fixed_price') ? (formData.value || null) : null,
+        value: (formData.discount_type !== 'free_shipping' && formData.discount_type !== 'bogo' && formData.discount_type !== 'bundle' && formData.discount_type !== 'volume' && formData.discount_type !== 'fixed_price' && formData.discount_type !== 'spend_x_pay_y') ? (formData.value || null) : null,
         // BOGO fields
         buy_quantity: formData.discount_type === 'bogo' && formData.buy_quantity ? parseInt(formData.buy_quantity) : null,
         get_quantity: formData.discount_type === 'bogo' && formData.get_quantity ? parseInt(formData.get_quantity) : null,

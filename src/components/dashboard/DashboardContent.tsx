@@ -35,6 +35,8 @@ interface DashboardStats {
     total_price: string;
     financial_status: string;
     fulfillment_status: string | null;
+    fulfillment_status_display: string | null;
+    fulfillment_status_color: string | null;
     created_at: string;
     customer_id: number | null;
   }>;
@@ -57,10 +59,26 @@ interface DashboardStats {
 export function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [customStatuses, setCustomStatuses] = useState<Array<{ name: string; display_name: string; color: string }>>([]);
 
   useEffect(() => {
     loadStats();
+    loadCustomStatuses();
   }, []);
+
+  const loadCustomStatuses = async () => {
+    try {
+      const response = await fetch('/api/order-statuses', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCustomStatuses(data.statuses || []);
+      }
+    } catch (error) {
+      console.error('Error loading custom statuses:', error);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -110,6 +128,67 @@ export function DashboardContent() {
     if (type.includes('order')) return 'blue';
     if (type.includes('inventory')) return 'orange';
     return 'green';
+  };
+
+  // ✅ פונקציה לקבלת תווית סטטוס ביצוע (מותאם אישית או מובנה)
+  const getFulfillmentStatusLabel = (status: string | null) => {
+    if (!status) return null;
+    // בדיקה אם זה סטטוס מותאם אישית
+    const customStatus = customStatuses.find(s => s.name === status);
+    if (customStatus) {
+      return customStatus.display_name;
+    }
+    // Fallback לסטטוסים מובנים
+    const labels: Record<string, string> = {
+      'pending': 'ממתין',
+      'approved': 'מאושר',
+      'paid': 'שולם',
+      'processing': 'מעובד',
+      'shipped': 'נשלח',
+      'delivered': 'נמסר',
+      'canceled': 'בוטל',
+      'returned': 'הוחזר',
+      'fulfilled': 'בוצע',
+      'partial': 'חלקי',
+      'restocked': 'הוחזר למלאי',
+      'unfulfilled': 'ממתין לביצוע',
+    };
+    return labels[status] || status;
+  };
+
+  // ✅ פונקציה לקבלת צבע סטטוס ביצוע
+  const getFulfillmentStatusColor = (status: string | null, customColor: string | null) => {
+    if (!status) return 'bg-gray-100 text-gray-700';
+    // אם יש צבע מותאם אישית, השתמש בו
+    if (customColor) {
+      const colorMap: Record<string, string> = {
+        'orange': 'bg-orange-100 text-orange-700',
+        'blue': 'bg-blue-100 text-blue-700',
+        'green': 'bg-green-100 text-green-700',
+        'purple': 'bg-purple-100 text-purple-700',
+        'cyan': 'bg-cyan-100 text-cyan-700',
+        'red': 'bg-red-100 text-red-700',
+        'yellow': 'bg-yellow-100 text-yellow-700',
+        'gray': 'bg-gray-100 text-gray-700',
+      };
+      return colorMap[customColor] || 'bg-gray-100 text-gray-700';
+    }
+    // Fallback לסטטוסים מובנים
+    const customStatus = customStatuses.find(s => s.name === status);
+    if (customStatus && customStatus.color) {
+      const colorMap: Record<string, string> = {
+        'orange': 'bg-orange-100 text-orange-700',
+        'blue': 'bg-blue-100 text-blue-700',
+        'green': 'bg-green-100 text-green-700',
+        'purple': 'bg-purple-100 text-purple-700',
+        'cyan': 'bg-cyan-100 text-cyan-700',
+        'red': 'bg-red-100 text-red-700',
+        'yellow': 'bg-yellow-100 text-yellow-700',
+        'gray': 'bg-gray-100 text-gray-700',
+      };
+      return colorMap[customStatus.color] || 'bg-gray-100 text-gray-700';
+    }
+    return 'bg-gray-100 text-gray-700';
   };
 
   const metrics = stats ? [
@@ -249,16 +328,30 @@ export function DashboardContent() {
                         {formatCurrency(order.total_price)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                       <span>{formatTimeAgo(order.created_at)}</span>
-                      <span>•</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        order.financial_status === 'paid' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {order.financial_status === 'paid' ? 'שולם' : 'ממתין לתשלום'}
-                      </span>
+                      {/* ✅ הצגת סטטוס ביצוע אם יש */}
+                      {order.fulfillment_status && (
+                        <>
+                          <span>•</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getFulfillmentStatusColor(order.fulfillment_status, order.fulfillment_status_color)}`}>
+                            {order.fulfillment_status_display || getFulfillmentStatusLabel(order.fulfillment_status) || order.fulfillment_status}
+                          </span>
+                        </>
+                      )}
+                      {/* הצגת סטטוס תשלום רק אם אין סטטוס ביצוע או אם הוא שונה */}
+                      {(!order.fulfillment_status || order.financial_status !== 'paid') && (
+                        <>
+                          <span>•</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            order.financial_status === 'paid' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {order.financial_status === 'paid' ? 'שולם' : 'ממתין לתשלום'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

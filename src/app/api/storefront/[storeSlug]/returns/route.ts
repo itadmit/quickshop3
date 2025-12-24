@@ -38,6 +38,7 @@ export async function GET(
       query<{
         id: number;
         order_id: number;
+        order_number: number; // ✅ הוספת order_number לטיפוס
         status: string;
         reason: string;
         items: any;
@@ -63,9 +64,10 @@ export async function GET(
     const total = totalResult?.count || 0;
 
     return NextResponse.json({
-      returns: returns.map((r) => ({
+      returns: returns.map((r: any) => ({
         id: r.id,
         orderId: r.order_id,
+        orderNumber: r.order_number, // ✅ הוספת מספר ההזמנה
         status: r.status,
         reason: r.reason,
         items: r.items,

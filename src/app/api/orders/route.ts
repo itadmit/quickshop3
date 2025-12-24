@@ -144,8 +144,23 @@ export async function GET(request: NextRequest) {
           );
         }
 
+        // ✅ Parse discount_codes if it's a JSON string
+        let discountCodes: string[] = [];
+        if (order.discount_codes) {
+          try {
+            if (typeof order.discount_codes === 'string') {
+              discountCodes = JSON.parse(order.discount_codes);
+            } else if (Array.isArray(order.discount_codes)) {
+              discountCodes = order.discount_codes;
+            }
+          } catch (e) {
+            console.error('Error parsing discount_codes:', e);
+          }
+        }
+
         return {
           ...order,
+          discount_codes: discountCodes.length > 0 ? discountCodes : null,
           line_items: lineItems,
           fulfillments,
           refunds,

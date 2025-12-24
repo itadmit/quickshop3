@@ -145,6 +145,9 @@ export default function StorefrontLoginPage() {
       localStorage.setItem(`storefront_token_${storeSlug}`, data.token)
       localStorage.setItem(`storefront_customer_${storeSlug}`, JSON.stringify(data.customer))
 
+      // ✅ שליחת event לעדכון הקומפוננטות (כמו צ'ק אאוט)
+      window.dispatchEvent(new Event('customerDataChanged'))
+
       // Track Login event
       emitTrackingEvent({
         event: 'Login',
@@ -157,8 +160,14 @@ export default function StorefrontLoginPage() {
         description: `ברוך הבא, ${data.customer.first_name || data.customer.email}`,
       })
 
-      // הפניה לדף החשבון
-      router.push(`/shops/${storeSlug}/account`)
+      // ✅ בדיקה אם יש redirect parameter (למשל מצ'ק אאוט)
+      const redirectUrl = new URLSearchParams(window.location.search).get('redirect')
+      if (redirectUrl) {
+        router.push(redirectUrl)
+      } else {
+        // הפניה לדף החשבון
+        router.push(`/shops/${storeSlug}/account`)
+      }
     } catch (error: any) {
       console.error("Verify OTP error:", error)
       setError(error.message || "קוד שגוי. נסה שוב.")

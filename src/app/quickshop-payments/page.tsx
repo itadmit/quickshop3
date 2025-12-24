@@ -216,7 +216,7 @@ export default function QuickShopPaymentsPage() {
                  <div className="flex items-center justify-between mb-8">
                    <div className="text-gray-900 font-bold text-xl">תשלום מאובטח</div>
                    <div className="flex gap-2">
-                     <div className="h-8 w-12 bg-white rounded border border-gray-100 flex items-center justify-center p-1">
+                     <div className="h-8 px-3 bg-white rounded border border-gray-100 flex items-center justify-center">
                         <span className="text-xs font-bold">VISA</span>
                      </div>
                      <div className="h-8 px-3 bg-white rounded border border-gray-100 flex items-center justify-center">

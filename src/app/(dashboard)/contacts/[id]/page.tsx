@@ -235,10 +235,25 @@ export default function ContactDetailsPage() {
     <div className="p-6 space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {getContactName(contact)}
-          </h1>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {getContactName(contact)}
+            </h1>
+            {/* ✅ קישור לפרופיל הלקוח אם יש customer_id */}
+            {contact.customer_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/customers/${contact.customer_id}`)}
+                className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <HiUser className="w-4 h-4" />
+                <span>פרופיל לקוח</span>
+                <HiArrowRight className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
           <p className="text-sm text-gray-500 mt-1">
             נוצר ב-{new Date(contact.created_at).toLocaleString('he-IL')}
           </p>

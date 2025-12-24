@@ -112,7 +112,7 @@ export function Sidebar() {
   const [clickedLink, setClickedLink] = useState<string | null>(null);
   
   // Use shared hook for unread counts - prevents duplicate API calls
-  const { notificationsCount: unreadNotificationsCount, ordersCount: unreadOrdersCount, refreshCounts } = useUnreadCounts();
+  const { notificationsCount: unreadNotificationsCount, ordersCount: unreadOrdersCount, returnsCount: pendingReturnsCount, refreshCounts } = useUnreadCounts();
 
   const isActive = (href: string) => pathname === href;
   
@@ -139,10 +139,12 @@ export function Sidebar() {
     const handleRefresh = () => refreshCounts();
     window.addEventListener('orderMarkedAsRead', handleRefresh);
     window.addEventListener('notificationMarkedAsRead', handleRefresh);
+    window.addEventListener('returnStatusChanged', handleRefresh); // ✅ הוספת event listener להחזרות
     
     return () => {
       window.removeEventListener('orderMarkedAsRead', handleRefresh);
       window.removeEventListener('notificationMarkedAsRead', handleRefresh);
+      window.removeEventListener('returnStatusChanged', handleRefresh); // ✅ ניקוי event listener
     };
   }, [refreshCounts]);
   
@@ -204,6 +206,7 @@ export function Sidebar() {
                   <div className="pr-8 mt-1">
                     {item.children.map((child) => {
                       const isOrdersLink = child.href === '/orders';
+                      const isReturnsLink = child.href === '/returns'; // ✅ בדיקה אם זה קישור להחזרות
                       return (
                         <Link
                           key={child.href}
@@ -226,6 +229,11 @@ export function Sidebar() {
                           {isOrdersLink && unreadOrdersCount > 0 && (
                             <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
                               {unreadOrdersCount}
+                            </span>
+                          )}
+                          {isReturnsLink && pendingReturnsCount > 0 && (
+                            <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                              {pendingReturnsCount}
                             </span>
                           )}
                         </Link>

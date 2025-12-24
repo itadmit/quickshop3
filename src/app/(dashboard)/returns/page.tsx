@@ -210,6 +210,8 @@ export default function ReturnsPage() {
         setRefundMethod('');
         setUpdateNotes('');
         loadReturns();
+        // ✅ שליחת event לרענון הספירה בתפריט
+        window.dispatchEvent(new Event('returnStatusChanged'));
       } else {
         const error = await response.json();
         toast({
@@ -228,6 +230,18 @@ export default function ReturnsPage() {
     } finally {
       setUpdatingStatus(false);
     }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const statusLabels: Record<string, string> = {
+      PENDING: 'ממתין',
+      APPROVED: 'אושר',
+      REJECTED: 'נדחה',
+      PROCESSING: 'מעבד',
+      COMPLETED: 'הושלם',
+      CANCELLED: 'בוטל',
+    };
+    return statusLabels[status] || 'ממתין';
   };
 
   const getStatusBadge = (status: string) => {
@@ -386,16 +400,17 @@ export default function ReturnsPage() {
 
       {/* Return Details Dialog */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>פרטי החזרה #{selectedReturn?.id}</DialogTitle>
           </DialogHeader>
-          {loadingDetails ? (
-            <div className="py-8 text-center">
-              <HiRefresh className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-            </div>
-          ) : returnDetails ? (
-            <div className="space-y-6">
+          <div className="overflow-y-auto flex-1 min-h-0 px-8 py-6">
+            {loadingDetails ? (
+              <div className="py-8 text-center">
+                <HiRefresh className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+              </div>
+            ) : returnDetails ? (
+              <div className="space-y-6">
               {/* Order Info */}
               <Card>
                 <CardHeader>
@@ -518,7 +533,8 @@ export default function ReturnsPage() {
                 </CardContent>
               </Card>
             </div>
-          ) : null}
+            ) : null}
+          </div>
           <DialogFooter>
             <Button onClick={() => setIsDetailsDialogOpen(false)}>סגור</Button>
             {selectedReturn && (
@@ -542,12 +558,14 @@ export default function ReturnsPage() {
               עדכן את סטטוס ההחזרה והגדר החזר כספי אם נדרש
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 px-8 py-6">
             <div>
               <Label>סטטוס</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {newStatus ? getStatusLabel(newStatus) : 'בחר סטטוס'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PENDING">ממתין</SelectItem>

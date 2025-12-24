@@ -47,20 +47,23 @@ export async function GET(request: NextRequest) {
       [storeId]
     );
 
-    // Get recent orders (last 5)
+    // Get recent orders (last 5) with custom statuses
     const recentOrders = await query(
       `SELECT 
-        id,
-        order_number,
-        order_name,
-        total_price,
-        financial_status,
-        fulfillment_status,
-        created_at,
-        customer_id
-       FROM orders 
-       WHERE store_id = $1 
-       ORDER BY created_at DESC 
+        o.id,
+        o.order_number,
+        o.order_name,
+        o.total_price,
+        o.financial_status,
+        o.fulfillment_status,
+        o.created_at,
+        o.customer_id,
+        cos.display_name as fulfillment_status_display,
+        cos.color as fulfillment_status_color
+       FROM orders o
+       LEFT JOIN custom_order_statuses cos ON o.fulfillment_status = cos.name AND cos.store_id = $1
+       WHERE o.store_id = $1 
+       ORDER BY o.created_at DESC 
        LIMIT 5`,
       [storeId]
     );

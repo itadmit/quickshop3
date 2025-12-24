@@ -18,6 +18,7 @@ export function LandingHeader() {
             <Link href="/#comparison" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">למה אנחנו?</Link>
             <Link href="/#pricing" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">מחירים</Link>
             <Link href="/for-marketers" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">למשווקים</Link>
+            <Link href="/for-developers" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">למפתחים</Link>
           </nav>
 
           <div className="flex items-center gap-4">

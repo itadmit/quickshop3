@@ -47,7 +47,7 @@ interface Product {
   availability: string;
   vendor: string | null;
   category: string | null;
-  categories: Array<{ categoryId: string; category: { id: string; name: string } }>;
+  categories: Array<{ categoryId: string; category: { id: string; name: string }; parentId?: string | null }>;
   images?: string[] | null;
   variants: ProductVariant[];
 }
@@ -67,6 +67,7 @@ interface BulkEditRow {
   vendor: string | null;
   category: string | null;
   categoryId: string | null;
+  categoryIds: number[]; // ✅ כל הקטגוריות (כולל תת-קטגוריות)
   isHidden: boolean;
   isVariant: boolean;
   image?: string | null;
@@ -129,7 +130,7 @@ export default function BulkEditPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'hidden'>('all');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [categories, setCategories] = useState<Array<{ id: number; title: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: number; title: string; parent_id?: number | null }>>([]);
   const cellRefs = useRef<Map<string, HTMLInputElement | HTMLButtonElement>>(new Map());
 
   // קבלת מוצרים נבחרים מ-query params או טעינת כל המוצרים
@@ -196,6 +197,11 @@ export default function BulkEditPage() {
             const variantComparePrice = singleVariant?.comparePrice ?? variantPrice;
             const variantInventory = singleVariant?.inventoryQty ?? product.inventoryQty ?? 0;
             
+            // ✅ שמירת כל הקטגוריות (כולל תת-קטגוריות)
+            const allCategoryIds = product.categories?.map((c: any) => parseInt(c.categoryId)) || [];
+            // מציאת הקטגוריה הראשית (ללא parent) או הראשונה לתצוגה
+            const mainCategory = product.categories?.find((c: any) => !c.parentId) || product.categories?.[0];
+            
             newRows.push({
               id: product.id,
               type: 'product',
@@ -209,8 +215,9 @@ export default function BulkEditPage() {
               inventoryQty: variantInventory,
               onHandQty: variantInventory,
               vendor: product.vendor,
-              category: product.category,
-              categoryId: product.categories?.[0]?.categoryId || null,
+              category: mainCategory?.category?.name || product.category,
+              categoryId: mainCategory?.categoryId || product.categories?.[0]?.categoryId || null,
+              categoryIds: allCategoryIds, // ✅ כל הקטגוריות
               isHidden: product.status === 'draft' || product.status === 'archived',
               isVariant: false,
               image: productImage,
@@ -230,6 +237,11 @@ export default function BulkEditPage() {
             // מחיר מינימלי מהווריאציות
             const minPrice = Math.min(...variants.map((v: any) => v.price || 0));
             
+            // ✅ שמירת כל הקטגוריות (כולל תת-קטגוריות)
+            const allCategoryIds = product.categories?.map((c: any) => parseInt(c.categoryId)) || [];
+            // מציאת הקטגוריה הראשית (ללא parent) או הראשונה לתצוגה
+            const mainCategory = product.categories?.find((c: any) => !c.parentId) || product.categories?.[0];
+            
             // שורת המוצר - read-only לשדות מחיר/מלאי
             newRows.push({
               id: product.id,
@@ -243,8 +255,9 @@ export default function BulkEditPage() {
               inventoryQty: totalInventory, // סכום המלאי מכל הווריאציות
               onHandQty: totalInventory,
               vendor: product.vendor,
-              category: product.category,
-              categoryId: product.categories?.[0]?.categoryId || null,
+              category: mainCategory?.category?.name || product.category,
+              categoryId: mainCategory?.categoryId || product.categories?.[0]?.categoryId || null,
+              categoryIds: allCategoryIds, // ✅ כל הקטגוריות
               isHidden: product.status === 'draft' || product.status === 'archived',
               isVariant: false,
               image: productImage,
@@ -272,6 +285,10 @@ export default function BulkEditPage() {
                 variantDisplayName = product.name;
               }
               
+              // ✅ שמירת כל הקטגוריות (כולל תת-קטגוריות) גם לווריאציות
+              const variantCategoryIds = product.categories?.map((c: any) => parseInt(c.categoryId)) || [];
+              const variantMainCategory = product.categories?.find((c: any) => !c.parentId) || product.categories?.[0];
+              
               newRows.push({
                 id: `${product.id}-${variant.id}`,
                 type: 'variant',
@@ -287,8 +304,9 @@ export default function BulkEditPage() {
                 inventoryQty: variant.inventoryQty,
                 onHandQty: variant.inventoryQty,
                 vendor: product.vendor,
-                category: product.category,
-                categoryId: product.categories?.[0]?.categoryId || null,
+                category: variantMainCategory?.category?.name || product.category,
+                categoryId: variantMainCategory?.categoryId || product.categories?.[0]?.categoryId || null,
+                categoryIds: variantCategoryIds, // ✅ כל הקטגוריות
                 isHidden: product.status === 'draft' || product.status === 'archived',
                 isVariant: true,
                 image: variantImage,
@@ -344,9 +362,13 @@ export default function BulkEditPage() {
     if (!firstSelectedRow) return;
 
     let valueToCopy: any = null;
+    let categoryIdsToCopy: number[] | null = null; // ✅ עבור קטגוריות - נעתיק את כל הקטגוריות
     switch (columnKey) {
       case 'product-category':
         valueToCopy = firstSelectedRow.category;
+        categoryIdsToCopy = firstSelectedRow.categoryIds && firstSelectedRow.categoryIds.length > 0 
+          ? firstSelectedRow.categoryIds 
+          : (firstSelectedRow.categoryId ? [parseInt(firstSelectedRow.categoryId)] : []);
         break;
       case 'vendor':
         valueToCopy = firstSelectedRow.vendor;
@@ -377,6 +399,8 @@ export default function BulkEditPage() {
               case 'product-category':
                 updated.category = valueToCopy;
                 updated.categoryId = firstSelectedRow.categoryId;
+                // ✅ העתקת כל הקטגוריות (כולל תת-קטגוריות)
+                updated.categoryIds = categoryIdsToCopy || [];
                 break;
               case 'vendor':
                 updated.vendor = valueToCopy;
@@ -675,10 +699,18 @@ export default function BulkEditPage() {
           if (row.isHidden !== (original.status === 'draft' || original.status === 'archived'))
             changes.isHidden = row.isHidden;
 
-          // עדכון קטגוריה - השוואה לפי ID הקטגוריה
-          const originalCategoryId = original.categories?.[0]?.categoryId || null;
-          if (row.categoryId !== originalCategoryId) {
-            changes.categories = row.categoryId ? [row.categoryId] : [];
+          // ✅ עדכון קטגוריות - שמירת כל הקטגוריות (כולל תת-קטגוריות)
+          const originalCategoryIds = original.categories?.map((c: any) => c.categoryId) || [];
+          const currentCategoryIds = row.categoryIds && row.categoryIds.length > 0 
+            ? row.categoryIds.map((id: number) => id.toString())
+            : (row.categoryId ? [row.categoryId] : []);
+          
+          // השוואה לפי כל הקטגוריות (לא רק הראשונה)
+          const originalIdsSorted = [...originalCategoryIds].sort().join(',');
+          const currentIdsSorted = [...currentCategoryIds].sort().join(',');
+          
+          if (originalIdsSorted !== currentIdsSorted) {
+            changes.categories = currentCategoryIds;
           }
 
           // עדכון ספק
@@ -947,8 +979,10 @@ export default function BulkEditPage() {
     }
 
     if (column.key === 'product-category') {
-      // שימוש בקומפוננטה החדשה עם עץ היררכי
-      const selectedCategoryIds = row.categoryId ? [parseInt(row.categoryId.toString())] : [];
+      // ✅ שימוש בכל הקטגוריות (כולל תת-קטגוריות)
+      const selectedCategoryIds = row.categoryIds && row.categoryIds.length > 0 
+        ? row.categoryIds 
+        : (row.categoryId ? [parseInt(row.categoryId.toString())] : []);
       
       return (
         <CategoryTreeSelector
@@ -957,15 +991,28 @@ export default function BulkEditPage() {
             if (ids.length === 0) {
               updateRow(row.id, column.key, '');
               setRows((prevRows) =>
-                prevRows.map((r) => (r.id === row.id ? { ...r, categoryId: null, category: '' } : r))
+                prevRows.map((r) => (r.id === row.id ? { ...r, categoryId: null, category: '', categoryIds: [] } : r))
               );
             } else {
-              // נשתמש בקטגוריה הראשונה שנבחרה
-              const selectedCategoryId = ids[0];
+              // ✅ שמירת כל הקטגוריות שנבחרו (כולל תת-קטגוריות)
+              // מציאת הקטגוריה הראשית (ללא parent) או הראשונה לתצוגה
+              const allCategoriesFlat = categories; // הקטגוריות כבר נטענו עם parent_id
+              const mainCategory = ids
+                .map((id: number) => allCategoriesFlat.find((c: any) => c.id === id))
+                .find((cat: any) => !cat?.parent_id) || allCategoriesFlat.find((c: any) => c.id === ids[0]);
+              
+              const mainCategoryId = mainCategory?.id || ids[0];
+              const mainCategoryName = mainCategory?.title || '';
+              
               setRows((prevRows) =>
                 prevRows.map((r) =>
                   r.id === row.id
-                    ? { ...r, categoryId: selectedCategoryId.toString() }
+                    ? { 
+                        ...r, 
+                        categoryId: mainCategoryId.toString(),
+                        category: mainCategoryName,
+                        categoryIds: ids, // ✅ כל הקטגוריות
+                      }
                     : r
                 )
               );

@@ -181,12 +181,35 @@ export function OrderQuickView({ order, open, onClose, onMarkAsRead }: OrderQuic
                       )}
                     </div>
                     <div className="text-left">
-                      <div className="font-medium text-gray-900">
-                        {item.quantity} × ₪{parseFloat(item.price).toLocaleString('he-IL')}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        ₪{(parseFloat(item.price) * item.quantity).toLocaleString('he-IL')}
-                      </div>
+                      {/* ✅ הצגת מחיר מקורי ומחיר אחרי הנחה אם יש הנחה */}
+                      {parseFloat(item.total_discount || '0') > 0 ? (
+                        <>
+                          {/* מחיר מקורי ליחידה (לפני הנחה) */}
+                          <div className="text-xs text-gray-400 line-through mb-0.5">
+                            {item.quantity} × ₪{((parseFloat(item.price) + parseFloat(item.total_discount) / item.quantity)).toFixed(2)}
+                          </div>
+                          {/* מחיר אחרי הנחה ליחידה */}
+                          <div className="font-medium text-gray-900">
+                            {item.quantity} × ₪{parseFloat(item.price).toFixed(2)}
+                          </div>
+                          {/* סה"כ אחרי הנחה */}
+                          <div className="text-sm text-green-600 font-medium">
+                            ₪{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                            <span className="text-xs text-gray-500 mr-1">
+                              (הנחה: ₪{parseFloat(item.total_discount).toFixed(2)})
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-medium text-gray-900">
+                            {item.quantity} × ₪{parseFloat(item.price).toFixed(2)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ₪{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -213,10 +236,52 @@ export function OrderQuickView({ order, open, onClose, onMarkAsRead }: OrderQuic
                   </div>
                 )}
                 {parseFloat(order.total_discounts) > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>הנחה:</span>
-                    <span className="font-medium">-₪{parseFloat(order.total_discounts).toLocaleString('he-IL')}</span>
-                  </div>
+                  <>
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>הנחה:</span>
+                      <span className="font-medium">-₪{parseFloat(order.total_discounts).toLocaleString('he-IL')}</span>
+                    </div>
+                    {/* ✅ הצגת קוד קופון אם יש */}
+                    {order.discount_codes && (
+                      <div className="mt-1 mr-4">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">קוד קופון:</span>
+                          <div className="flex items-center gap-1.5">
+                            {Array.isArray(order.discount_codes) ? (
+                              order.discount_codes.map((code: string, idx: number) => (
+                                <span 
+                                  key={idx}
+                                  className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium"
+                                >
+                                  {code}
+                                </span>
+                              ))
+                            ) : typeof order.discount_codes === 'string' ? (
+                              (() => {
+                                try {
+                                  const codes = JSON.parse(order.discount_codes);
+                                  return Array.isArray(codes) ? codes.map((code: string, idx: number) => (
+                                    <span 
+                                      key={idx}
+                                      className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium"
+                                    >
+                                      {code}
+                                    </span>
+                                  )) : null;
+                                } catch {
+                                  return (
+                                    <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium">
+                                      {order.discount_codes}
+                                    </span>
+                                  );
+                                }
+                              })()
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300">
                   <span>סה"כ:</span>

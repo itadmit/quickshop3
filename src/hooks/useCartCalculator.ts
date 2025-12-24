@@ -475,6 +475,32 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItems, discountCode, options.shippingRate?.id, options.storeId]);
 
+  // ✅ בדיקה אוטומטית: אם קופון לא תקף אחרי חישוב, הסר אותו
+  useEffect(() => {
+    if (!options.storeId || !discountCode || !calculation) return;
+    
+    // בדוק אם הקופון מופיע ב-discounts (אם לא, הוא לא תקף)
+    const isValidCode = calculation.discounts?.some(d => d.source === 'code' && d.code === discountCode);
+    
+    // בדוק אם יש שגיאות/warnings שמציינות שהקופון לא תקף
+    const hasCodeError = calculation.errors?.some(error => 
+      error.includes(discountCode) || error.includes('קופון')
+    ) || calculation.warnings?.some(warning => 
+      warning.includes(discountCode) || warning.includes('קופון')
+    );
+    
+    // אם הקופון לא תקף, הסר אותו
+    if (!isValidCode && (hasCodeError || calculation.errors?.length > 0 || calculation.warnings?.length > 0)) {
+      // רק אם זה לא בזמן validation (למנוע לולאה אינסופית)
+      if (!validatingCode) {
+        console.log(`Removing invalid discount code: ${discountCode}`);
+        setDiscountCode('');
+        sessionStorage.setItem(`discount_code_${options.storeId}`, '');
+        notifyDiscountListeners();
+      }
+    }
+  }, [calculation, discountCode, options.storeId, validatingCode, setDiscountCode]);
+
   // אימות קופון
   const validateCode = useCallback(async (code: string): Promise<{ valid: boolean; error?: string }> => {
     if (!code || typeof code !== 'string' || code.trim().length === 0) {
@@ -491,6 +517,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
     try {
       const subtotal = calculation?.subtotalAfterDiscount || 
         cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
       
       const response = await fetch('/api/discounts/validate', {
         method: 'POST',
@@ -499,6 +526,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           code,
           storeId: options.storeId,
           subtotal,
+          totalQuantity,
         }),
       });
 

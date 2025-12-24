@@ -69,6 +69,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [redirectingToPayment, setRedirectingToPayment] = useState(false);
   
+  // ✅ בדיקה אם הלקוח מחובר
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [customerData, setCustomerData] = useState<any>(null);
+  
   // Available payment methods from store settings
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
@@ -317,21 +321,89 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     loadCheckoutSettings();
   }, [isMounted, storeSlug]);
 
-  // Load store credit if customer is logged in
+  // ✅ בדיקה אם הלקוח מחובר וטעינת פרטיו
   useEffect(() => {
     if (!isMounted) return;
     
     const token = localStorage.getItem(`storefront_token_${storeSlug}`);
-    if (token) {
-      loadStoreCredit();
+    const customerDataStr = localStorage.getItem(`storefront_customer_${storeSlug}`);
+    
+    if (token && customerDataStr) {
+      try {
+        const customer = JSON.parse(customerDataStr);
+        setIsLoggedIn(true);
+        setCustomerData(customer);
+        // ✅ מילוי פרטי הלקוח בטופס (רק אם השדות ריקים, כדי לא לדרוס שינויים של המשתמש)
+        setFormData(prev => ({
+          ...prev,
+          email: prev.email || customer.email || '',
+          firstName: prev.firstName || customer.first_name || '',
+          lastName: prev.lastName || customer.last_name || '',
+          phone: prev.phone || customer.phone || '',
+        }));
+        // ✅ טעינת קרדיט בחנות
+        loadStoreCredit();
+      } catch (error) {
+        console.error('Error parsing customer data:', error);
+        setIsLoggedIn(false);
+        setCustomerData(null);
+      }
+    } else {
+      setIsLoggedIn(false);
+      setCustomerData(null);
     }
-  }, [isMounted, storeSlug]);
+    
+    // ✅ האזנה לשינויים ב-localStorage (כשמתחברים/מתנתקים)
+    const handleStorageChange = () => {
+      const newToken = localStorage.getItem(`storefront_token_${storeSlug}`);
+      const newCustomerDataStr = localStorage.getItem(`storefront_customer_${storeSlug}`);
+      
+      if (newToken && newCustomerDataStr) {
+        try {
+          const customer = JSON.parse(newCustomerDataStr);
+          setIsLoggedIn(true);
+          setCustomerData(customer);
+          // ✅ מילוי פרטי הלקוח בטופס (רק אם השדות ריקים)
+          setFormData(prev => ({
+            ...prev,
+            email: prev.email || customer.email || '',
+            firstName: prev.firstName || customer.first_name || '',
+            lastName: prev.lastName || customer.last_name || '',
+            phone: prev.phone || customer.phone || '',
+          }));
+          loadStoreCredit();
+        } catch (error) {
+          console.error('Error parsing customer data:', error);
+          setIsLoggedIn(false);
+          setCustomerData(null);
+        }
+      } else {
+        setIsLoggedIn(false);
+        setCustomerData(null);
+        setStoreCredit(null);
+        // ✅ איפוס סכום קרדיט כשמתנתקים
+        setFormData(prev => ({
+          ...prev,
+          storeCreditAmount: 0,
+          paymentMethod: prev.paymentMethod === 'store_credit' ? 'credit_card' : prev.paymentMethod,
+        }));
+      }
+    };
+    
+    window.addEventListener('customerDataChanged', handleStorageChange);
+    return () => {
+      window.removeEventListener('customerDataChanged', handleStorageChange);
+    };
+  }, [isMounted, storeSlug]); // ✅ loadStoreCredit מוגדר לפני ה-useEffect, אז אין צורך ב-dependency
 
   const loadStoreCredit = async () => {
     try {
       setLoadingStoreCredit(true);
       const token = localStorage.getItem(`storefront_token_${storeSlug}`);
-      if (!token) return;
+      if (!token) {
+        setStoreCredit(null);
+        return;
+      }
 
       const response = await fetch(`/api/storefront/${storeSlug}/store-credit`, {
         headers: {
@@ -341,14 +413,56 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.balance > 0) {
+        // ✅ הצגת קרדיט רק אם יש יתרה חיובית
+        if (data && data.balance !== undefined && data.balance > 0) {
           setStoreCredit({ balance: data.balance, id: data.id });
+          // ✅ אם יש קרדיט, נבחר אותו כברירת מחדל (רק אם עדיין לא נבחרה שיטת תשלום אחרת)
+          setFormData(prev => {
+            // רק אם עדיין לא נבחרה שיטת תשלום אחרת (או שנבחר credit_card כברירת מחדל)
+            if (prev.paymentMethod === 'credit_card' || !prev.paymentMethod || prev.paymentMethod === '') {
+              // נשתמש ב-calculation אם יש, אחרת נשתמש ב-balance המלא
+              const currentTotal = calculation?.total || 0;
+              return {
+                ...prev,
+                paymentMethod: 'store_credit',
+                storeCreditAmount: currentTotal > 0 ? Math.min(data.balance, currentTotal) : data.balance,
+              };
+            }
+            return prev;
+          });
         } else {
           setStoreCredit(null);
+          // ✅ אם אין קרדיט, נאפס את הסכום ונחזיר לכרטיס אשראי
+          if (formData.paymentMethod === 'store_credit') {
+            setFormData(prev => ({
+              ...prev,
+              paymentMethod: 'credit_card',
+              storeCreditAmount: 0,
+            }));
+          }
+        }
+      } else {
+        setStoreCredit(null);
+        // ✅ אם יש שגיאה בטעינת הקרדיט, נחזיר לכרטיס אשראי
+        if (formData.paymentMethod === 'store_credit') {
+          setFormData(prev => ({
+            ...prev,
+            paymentMethod: 'credit_card',
+            storeCreditAmount: 0,
+          }));
         }
       }
     } catch (error) {
       console.error('Error loading store credit:', error);
+      setStoreCredit(null);
+      // ✅ אם יש שגיאה בטעינת הקרדיט, נחזיר לכרטיס אשראי
+      if (formData.paymentMethod === 'store_credit') {
+        setFormData(prev => ({
+          ...prev,
+          paymentMethod: 'credit_card',
+          storeCreditAmount: 0,
+        }));
+      }
     } finally {
       setLoadingStoreCredit(false);
     }
@@ -466,20 +580,68 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
       }
 
       const total = getTotal();
-      const storeCreditAmount = formData.paymentMethod === 'store_credit' ? formData.storeCreditAmount : 0;
+      // ✅ וידוא שהקרדיט לא גדול מהיתרה או מהסכום הכולל
+      const maxStoreCreditAmount = storeCredit && storeCredit.balance > 0 
+        ? Math.min(storeCredit.balance, total) 
+        : 0;
+      const storeCreditAmount = formData.paymentMethod === 'store_credit' 
+        ? Math.min(formData.storeCreditAmount || 0, maxStoreCreditAmount)
+        : 0;
       const giftCardAmount = appliedGiftCard ? appliedGiftCard.amountToUse : 0;
+      // ✅ וידוא שהסכום הסופי לא שלילי
       const finalTotalAfterCredits = Math.max(0, total - storeCreditAmount - giftCardAmount);
       
-      const order = await createOrder({
-        storeId, // ✅ מעביר את storeId מה-prop
-        lineItems: cartItems.map((item) => ({
+      // ✅ בדיקת תקינות: אם בחר קרדיט אבל אין יתרה או שהסכום לא תקין
+      if (formData.paymentMethod === 'store_credit') {
+        if (!storeCredit || storeCredit.balance <= 0) {
+          alert('אין קרדיט בחנות זמין. אנא בחר שיטת תשלום אחרת.');
+          setProcessing(false);
+          return;
+        }
+        if (storeCreditAmount <= 0) {
+          alert('סכום קרדיט לא תקין. אנא הזן סכום תקין או בחר שיטת תשלום אחרת.');
+          setProcessing(false);
+          return;
+        }
+        if (storeCreditAmount > storeCredit.balance) {
+          alert(`סכום הקרדיט גדול מהיתרה הזמינה (₪${storeCredit.balance.toFixed(2)}).`);
+          setProcessing(false);
+          return;
+        }
+      }
+      
+      // ✅ בניית lineItems עם מחיר מקורי והנחה לכל פריט
+      const lineItemsWithDiscounts = cartItems.map((item) => {
+        // מציאת הפריט ב-calculation כדי לקבל את ההנחה
+        const calculatedItem = calculation?.items?.find(ci => 
+          ci.item.variant_id === item.variant_id && 
+          ci.item.product_id === item.product_id
+        );
+        
+        // מחיר מקורי ליחידה
+        const originalPricePerUnit = item.price;
+        // הנחה כוללת על הפריט
+        const totalLineDiscount = calculatedItem?.lineDiscount || 0;
+        // מחיר אחרי הנחה ליחידה
+        const priceAfterDiscountPerUnit = calculatedItem 
+          ? (calculatedItem.lineTotalAfterDiscount / item.quantity)
+          : item.price;
+        
+        return {
           variant_id: item.variant_id,
           product_id: item.product_id,
           quantity: item.quantity,
-          price: item.price,
+          price: priceAfterDiscountPerUnit, // מחיר ליחידה אחרי הנחה
+          original_price: originalPricePerUnit, // מחיר מקורי ליחידה לפני הנחה
+          line_discount: totalLineDiscount, // הנחה כוללת על הפריט
           image: item.image,
           properties: item.properties,
-        })),
+        };
+      });
+      
+      const order = await createOrder({
+        storeId, // ✅ מעביר את storeId מה-prop
+        lineItems: lineItemsWithDiscounts,
         customer: {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -542,8 +704,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         }
       }
 
-      // אם תשלום בכרטיס אשראי - הפניה לדף סליקה
-      if (formData.paymentMethod === 'credit_card' && finalTotalAfterCredits > 0) {
+      // ✅ אם יש סכום נותר לתשלום - הפניה לדף סליקה בכרטיס אשראי
+      // זה קורה גם אם בחרו קרדיט בחנות אבל יש סכום נותר
+      if (finalTotalAfterCredits > 0) {
         try {
           const baseUrl = window.location.origin;
           const paymentResponse = await fetch('/api/payments/init', {
@@ -978,26 +1141,79 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         </Label>
                       </div>
 
-                      {/* Create Account Checkbox */}
-                      <div className="flex items-center space-x-2 space-x-reverse mt-2">
-                        <Checkbox
-                          id="createAccount"
-                          checked={formData.createAccount}
-                          onCheckedChange={(checked) =>
-                            setFormData((prev) => ({ ...prev, createAccount: checked === true }))
-                          }
-                        />
-                        <Label 
-                          htmlFor="createAccount" 
-                          className="text-sm text-gray-700 cursor-pointer"
-                        >
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-64" height="h-4" />
-                          ) : (
-                            'צור חשבון כדי לעקוב אחרי הזמנות ולשמור פרטים לפעם הבאה'
+                      {/* ✅ התחברות לחשבון קיים */}
+                      {!isLoggedIn && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">
+                              יש לך כבר חשבון?
+                            </span>
+                            <Link
+                              href={`/shops/${storeSlug}/login?redirect=${encodeURIComponent(`/shops/${storeSlug}/checkout`)}`}
+                              className="text-sm font-medium text-blue-600 hover:text-blue-700 underline"
+                            >
+                              התחבר לחשבון
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* ✅ הצגת מידע על הלקוח המחובר */}
+                      {isLoggedIn && customerData && (
+                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-green-600" />
+                              <span className="text-sm text-gray-700">
+                                מחובר כ-{customerData.first_name || customerData.email}
+                              </span>
+                            </div>
+                            <Link
+                              href={`/shops/${storeSlug}/account`}
+                              className="text-sm font-medium text-green-600 hover:text-green-700 underline"
+                            >
+                              חשבון שלי
+                            </Link>
+                          </div>
+                          {/* ✅ הצגת קרדיט בחנות אם יש */}
+                          {storeCredit && storeCredit.balance > 0 && (
+                            <div className="mt-2 pt-2 border-t border-green-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Coins className="w-4 h-4 text-green-600" />
+                                  <span className="text-sm text-gray-700">קרדיט בחנות זמין:</span>
+                                </div>
+                                <span className="text-sm font-semibold text-green-700">
+                                  ₪{storeCredit.balance.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
                           )}
-                        </Label>
-                      </div>
+                        </div>
+                      )}
+
+                      {/* Create Account Checkbox - רק אם לא מחובר */}
+                      {!isLoggedIn && (
+                        <div className="flex items-center space-x-2 space-x-reverse mt-2">
+                          <Checkbox
+                            id="createAccount"
+                            checked={formData.createAccount}
+                            onCheckedChange={(checked) =>
+                              setFormData((prev) => ({ ...prev, createAccount: checked === true }))
+                            }
+                          />
+                          <Label 
+                            htmlFor="createAccount" 
+                            className="text-sm text-gray-700 cursor-pointer"
+                          >
+                            {translationsLoading ? (
+                              <TextSkeleton width="w-64" height="h-4" />
+                            ) : (
+                              'צור חשבון כדי לעקוב אחרי הזמנות ולשמור פרטים לפעם הבאה'
+                            )}
+                          </Label>
+                        </div>
+                      )}
                     </div>
                     
                     <div>
@@ -1722,26 +1938,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       }}
                       className="space-y-3"
                     >
-                      {paymentMethods.map((method) => (
-                        <div 
-                          key={method.id}
-                          className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer"
-                        >
-                          <RadioGroupItem value={method.id} id={method.id} />
-                          <Label htmlFor={method.id} className="cursor-pointer flex-1">
-                            <div className="font-medium flex items-center gap-2">
-                              {method.name}
-                              {method.fee && method.fee > 0 && (
-                                <span className="text-xs text-gray-500">(+₪{method.fee})</span>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-500">{method.description}</div>
-                          </Label>
-                          {method.id === 'credit_card' && <Lock className="w-5 h-5 text-gray-400" />}
-                        </div>
-                      ))}
-                      
-                      {/* Store Credit Option - shows only if customer has balance */}
+                      {/* ✅ Store Credit Option - ראשון ברשימה אם יש קרדיט */}
                       {storeCredit && storeCredit.balance > 0 && (
                         <div className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer">
                           <RadioGroupItem value="store_credit" id="store_credit" />
@@ -1764,6 +1961,26 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           </Label>
                         </div>
                       )}
+                      
+                      {/* שיטות תשלום אחרות */}
+                      {paymentMethods.map((method) => (
+                        <div 
+                          key={method.id}
+                          className="flex items-center space-x-2 space-x-reverse border border-gray-200 rounded-lg p-4 hover:border-gray-300 cursor-pointer"
+                        >
+                          <RadioGroupItem value={method.id} id={method.id} />
+                          <Label htmlFor={method.id} className="cursor-pointer flex-1">
+                            <div className="font-medium flex items-center gap-2">
+                              {method.name}
+                              {method.fee && method.fee > 0 && (
+                                <span className="text-xs text-gray-500">(+₪{method.fee})</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">{method.description}</div>
+                          </Label>
+                          {method.id === 'credit_card' && <Lock className="w-5 h-5 text-gray-400" />}
+                        </div>
+                      ))}
                     </RadioGroup>
                   )}
                   
@@ -1783,10 +2000,24 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         onChange={(e) => {
                           const value = parseFloat(e.target.value) || 0;
                           const maxAmount = Math.min(storeCredit.balance, getTotal());
+                          // ✅ וידוא שהערך לא שלילי ולא גדול מהמקסימום
+                          const clampedValue = Math.max(0, Math.min(value, maxAmount));
                           setFormData((prev) => ({
                             ...prev,
-                            storeCreditAmount: Math.min(value, maxAmount),
+                            storeCreditAmount: clampedValue,
                           }));
+                        }}
+                        onBlur={(e) => {
+                          // ✅ וידוא שהערך תקין כשהשדה מאבד פוקוס
+                          const value = parseFloat(e.target.value) || 0;
+                          const maxAmount = Math.min(storeCredit.balance, getTotal());
+                          const clampedValue = Math.max(0, Math.min(value, maxAmount));
+                          if (clampedValue !== formData.storeCreditAmount) {
+                            setFormData((prev) => ({
+                              ...prev,
+                              storeCreditAmount: clampedValue,
+                            }));
+                          }
                         }}
                         className="mt-1"
                         placeholder={`0.00 (מקסימום: ₪${Math.min(storeCredit.balance, getTotal()).toFixed(2)})`}
@@ -1917,7 +2148,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   </div>
 
                   {/* Applied Coupons */}
-                  {discountCode && (
+                  {/* ✅ מציג קופון רק אם הוא תקף (מופיע ב-discounts) */}
+                  {discountCode && calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && (
                     <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1944,6 +2176,28 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                             <X className="w-4 h-4" />
                           </button>
                         )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* ✅ מציג קופון לא תקף עם אזהרה */}
+                  {discountCode && !calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && (
+                    <div className="mb-4 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span dir="ltr" className="text-sm font-medium text-yellow-800">{discountCode}</span>
+                          <span className="text-xs text-yellow-600">(לא תקף)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await removeDiscountCode();
+                          }}
+                          className="text-yellow-700 hover:text-red-600 hover:bg-yellow-200 rounded p-1 transition-colors mr-2"
+                          aria-label="הסר קופון"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )}
@@ -2065,28 +2319,38 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           </div>
                         ))}
                         
-                        {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => (
-                          <div key={`code-${idx}`} className="flex justify-between text-xs text-green-700">
-                            <span>
-                              {translationsLoading ? (
-                                <TextSkeleton width="w-16" height="h-4" />
-                              ) : (
-                                <>
-                                  <span>{discount.description || discount.name || 'הנחה'}</span>
-                                  <span className="text-green-500">-</span>
-                                  <span dir="ltr" className="font-medium">{discount.code}</span>
-                                </>
-                              )}
-                            </span>
-                            <span className="font-medium">
-                              {discount.type === 'free_shipping' ? (
-                                'משלוח חינם'
-                              ) : (
-                                `-₪${discount.amount.toFixed(2)}`
-                              )}
-                            </span>
-                          </div>
-                        ))}
+                        {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => {
+                          // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה)
+                          const description = discount.description || discount.name || 'הנחה';
+                          const codeInDescription = discount.code && description.includes(discount.code);
+                          
+                          return (
+                            <div key={`code-${idx}`} className="flex justify-between text-xs text-green-700">
+                              <span>
+                                {translationsLoading ? (
+                                  <TextSkeleton width="w-16" height="h-4" />
+                                ) : (
+                                  <>
+                                    <span>{description}</span>
+                                    {!codeInDescription && discount.code && (
+                                      <>
+                                        <span className="text-green-500">-</span>
+                                        <span dir="ltr" className="font-medium">{discount.code}</span>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+                              </span>
+                              <span className="font-medium">
+                                {discount.type === 'free_shipping' ? (
+                                  'משלוח חינם'
+                                ) : (
+                                  `-₪${discount.amount.toFixed(2)}`
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     

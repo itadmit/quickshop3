@@ -4,7 +4,7 @@ import { queryOne } from '@/lib/db';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { code, storeId, subtotal } = body;
+    const { code, storeId, subtotal, totalQuantity } = body;
 
     // בדיקת תקינות פרמטרים
     if (!code || typeof code !== 'string' || code.trim().length === 0) {
@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
       value: string | null;
       minimum_order_amount: string | null;
       maximum_order_amount: string | null;
+      minimum_quantity: number | null;
+      maximum_quantity: number | null;
       usage_limit: number | null;
       usage_count: number;
       applies_to: string;
@@ -45,6 +47,7 @@ export async function POST(req: NextRequest) {
       `SELECT 
         id, code, discount_type, value,
         minimum_order_amount, maximum_order_amount,
+        minimum_quantity, maximum_quantity,
         usage_limit, usage_count, applies_to, is_active,
         starts_at, ends_at
       FROM discount_codes
@@ -87,6 +90,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         valid: false,
         error: `סכום מינימום להזמנה: ₪${parseFloat(discount.minimum_order_amount).toFixed(2)}`,
+      });
+    }
+
+    // Check minimum quantity
+    if (totalQuantity !== undefined && discount.minimum_quantity && totalQuantity < discount.minimum_quantity) {
+      return NextResponse.json({
+        valid: false,
+        error: `קופון ${code} דורש כמות מינימום של ${discount.minimum_quantity} פריטים`,
+      });
+    }
+
+    // Check maximum quantity
+    if (totalQuantity !== undefined && discount.maximum_quantity && totalQuantity > discount.maximum_quantity) {
+      return NextResponse.json({
+        valid: false,
+        error: `קופון ${code} תקף עד כמות מקסימום של ${discount.maximum_quantity} פריטים`,
       });
     }
 

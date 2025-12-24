@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 let globalCache = {
   notifications: 0,
   orders: 0,
+  returns: 0, // ✅ הוספת ספירת החזרות ממתינות
   lastFetched: 0,
   isFetching: false,
   subscribers: new Set<() => void>(),
@@ -16,10 +17,12 @@ const CACHE_DURATION = 30000; // 30 seconds
 export function useUnreadCounts() {
   const [notificationsCount, setNotificationsCount] = useState(globalCache.notifications);
   const [ordersCount, setOrdersCount] = useState(globalCache.orders);
+  const [returnsCount, setReturnsCount] = useState(globalCache.returns); // ✅ הוספת state לספירת החזרות
 
   const updateFromCache = useCallback(() => {
     setNotificationsCount(globalCache.notifications);
     setOrdersCount(globalCache.orders);
+    setReturnsCount(globalCache.returns); // ✅ עדכון state
   }, []);
 
   const fetchCounts = useCallback(async (force = false) => {
@@ -37,9 +40,10 @@ export function useUnreadCounts() {
     globalCache.isFetching = true;
 
     try {
-      const [notifRes, ordersRes] = await Promise.all([
+      const [notifRes, ordersRes, returnsRes] = await Promise.all([
         fetch('/api/notifications/unread-count', { credentials: 'include' }),
         fetch('/api/orders/unread-count', { credentials: 'include' }),
+        fetch('/api/returns/pending-count', { credentials: 'include' }), // ✅ הוספת קריאה לספירת החזרות
       ]);
 
       if (notifRes.ok) {
@@ -50,6 +54,11 @@ export function useUnreadCounts() {
       if (ordersRes.ok) {
         const data = await ordersRes.json();
         globalCache.orders = data.count || 0;
+      }
+
+      if (returnsRes.ok) {
+        const data = await returnsRes.json();
+        globalCache.returns = data.count || 0; // ✅ עדכון cache
       }
 
       globalCache.lastFetched = Date.now();
@@ -67,15 +76,11 @@ export function useUnreadCounts() {
     // Subscribe to updates
     globalCache.subscribers.add(updateFromCache);
     
-    // Initial fetch
+    // Initial fetch only - no automatic refresh interval
     fetchCounts();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(() => fetchCounts(true), CACHE_DURATION);
     
     return () => {
       globalCache.subscribers.delete(updateFromCache);
-      clearInterval(interval);
     };
   }, [fetchCounts, updateFromCache]);
 
@@ -86,6 +91,7 @@ export function useUnreadCounts() {
   return {
     notificationsCount,
     ordersCount,
+    returnsCount, // ✅ הוספת returnsCount ל-return
     refreshCounts,
   };
 }

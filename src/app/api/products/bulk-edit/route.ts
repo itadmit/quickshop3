@@ -83,18 +83,29 @@ export async function GET(request: NextRequest) {
           [product.id]
         );
 
-        // Get collections
+        // Get collections - כולל תת-קטגוריות (כל הקטגוריות שהמוצר שייך אליהן)
         const collections = await query(
           `SELECT 
             pc.id,
             pc.title,
-            pc.handle
+            pc.handle,
+            pc.parent_id
           FROM product_collections pc
           INNER JOIN product_collection_map pcm ON pc.id = pcm.collection_id
           WHERE pcm.product_id = $1
-          LIMIT 1`,
+          ORDER BY pc.parent_id NULLS FIRST, pc.title ASC`,
           [product.id]
         );
+
+        // מציאת הקטגוריה הראשית (ללא parent) או הראשונה
+        const mainCategory = collections.find((c: any) => !c.parent_id) || collections[0];
+        
+        // בניית רשימת כל הקטגוריות (כולל תת-קטגוריות)
+        const allCategories = collections.map((c: any) => ({
+          categoryId: c.id.toString(),
+          category: { id: c.id.toString(), name: c.title },
+          parentId: c.parent_id ? c.parent_id.toString() : null,
+        }));
 
         return {
           id: product.id.toString(),
@@ -107,11 +118,8 @@ export async function GET(request: NextRequest) {
           inventoryQty: parseInt(product.inventory_qty || '0'),
           availability: product.status === 'active' ? 'available' : 'unavailable',
           vendor: product.vendor,
-          category: collections[0]?.title || null,
-          categories: collections.map((c: any) => ({
-            categoryId: c.id.toString(),
-            category: { id: c.id.toString(), name: c.title },
-          })),
+          category: mainCategory?.title || null,
+          categories: allCategories,
           images: images.map((img: any) => img.src),
           variants: variants.map((v: any) => {
             // Find cost from meta fields (if exists)

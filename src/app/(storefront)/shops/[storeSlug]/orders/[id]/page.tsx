@@ -464,7 +464,8 @@ export default function OrderDetailsPage() {
                   )}
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{item.name}</p>
-                    {item.variant && (
+                    {/* ✅ לא להציג variant אם זה "Default Title" */}
+                    {item.variant && item.variant !== 'Default Title' && (
                       <p className="text-sm text-gray-600">{item.variant}</p>
                     )}
                     <p className="text-sm text-gray-600">כמות: {item.quantity}</p>

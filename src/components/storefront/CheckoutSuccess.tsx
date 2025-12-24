@@ -58,6 +58,7 @@ interface Order {
     image?: string;
     properties?: Array<{ name: string; value: string }>;
   }>;
+  discount_codes?: string[]; // ✅ קודי קופון שהוחלו על ההזמנה
 }
 
 
@@ -640,10 +641,30 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                         </div>
                       )}
                       {parseFloat(order.total_discounts) > 0 && (
-                        <div className="flex justify-between text-sm text-green-600">
-                          <span>{t('order_success.discount')}</span>
-                          <span>-₪{parseFloat(order.total_discounts).toFixed(2)}</span>
-                        </div>
+                        <>
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>{t('order_success.discount')}</span>
+                            <span>-₪{parseFloat(order.total_discounts).toFixed(2)}</span>
+                          </div>
+                          {/* ✅ הצגת קוד קופון אם יש */}
+                          {order.discount_codes && order.discount_codes.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-200">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">קוד קופון:</span>
+                                <div className="flex items-center gap-1.5">
+                                  {order.discount_codes.map((code, idx) => (
+                                    <span 
+                                      key={idx}
+                                      className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium"
+                                    >
+                                      {code}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                       <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
                         <span>{t('order_success.total')}</span>
