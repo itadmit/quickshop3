@@ -290,7 +290,7 @@ export default function CustomersReportPage() {
               <div className="h-80 animate-pulse bg-gray-200 rounded"></div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueByType} layout="vertical" margin={{ right: 20, left: 60 }}>
+                <BarChart data={revenueByType} layout="vertical" margin={{ right: 20, left: 10, top: 20, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     type="number" 
@@ -301,9 +301,12 @@ export default function CustomersReportPage() {
                   <YAxis 
                     dataKey="name" 
                     type="category" 
-                    width={120} 
+                    width={150}
                     tick={{ fontSize: 12 }}
-                    tickMargin={8}
+                    tickMargin={10}
+                    interval={0}
+                    angle={0}
+                    dx={-5}
                   />
                   <Tooltip 
                     contentStyle={{ direction: 'rtl', textAlign: 'right' }}

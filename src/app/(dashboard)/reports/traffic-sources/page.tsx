@@ -294,7 +294,7 @@ export default function TrafficSourcesPage() {
               <div className="h-80 animate-pulse bg-gray-200 rounded"></div>
             ) : barData.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={barData} layout="vertical" margin={{ right: 20, left: 60 }}>
+                <BarChart data={barData} layout="vertical" margin={{ right: 20, left: 10, top: 20, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     type="number" 
@@ -305,9 +305,12 @@ export default function TrafficSourcesPage() {
                   <YAxis 
                     dataKey="name" 
                     type="category" 
-                    width={120} 
+                    width={150}
                     tick={{ fontSize: 12 }}
-                    tickMargin={8}
+                    tickMargin={10}
+                    interval={0}
+                    angle={0}
+                    dx={-5}
                   />
                   <Tooltip
                     contentStyle={{ direction: 'rtl', textAlign: 'right' }}

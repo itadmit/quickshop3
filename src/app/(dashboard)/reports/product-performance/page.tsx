@@ -126,7 +126,7 @@ export default function ProductPerformancePage() {
               <h3 className="text-lg font-semibold mb-4">מוצרים מובילים</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={products.slice(0, 10)} layout="vertical" margin={{ right: 20, left: 60 }}>
+                  <BarChart data={products.slice(0, 10)} layout="vertical" margin={{ right: 20, left: 10, top: 20, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       type="number" 
@@ -137,9 +137,12 @@ export default function ProductPerformancePage() {
                     <YAxis 
                       dataKey="product_title" 
                       type="category" 
-                      width={150} 
+                      width={220}
                       tick={{ fontSize: 11 }}
-                      tickMargin={8}
+                      tickMargin={10}
+                      interval={0}
+                      angle={0}
+                      dx={-5}
                     />
                     <Tooltip 
                       contentStyle={{ direction: 'rtl', textAlign: 'right' }}
