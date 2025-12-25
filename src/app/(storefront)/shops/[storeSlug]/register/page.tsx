@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/Label"
 import { useOptimisticToast } from "@/hooks/useOptimisticToast"
 import { HiMail, HiArrowLeft, HiUser, HiPhone, HiIdentification, HiCalendar } from "react-icons/hi"
 import Link from "next/link"
-import { StorefrontHeader } from "@/components/storefront/StorefrontHeader"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { emitTrackingEvent } from "@/lib/tracking/events"
 
@@ -165,12 +164,7 @@ export default function StorefrontRegisterPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50" dir="rtl">
-        <StorefrontHeader 
-          storeSlug={storeSlug}
-          storeName={undefined}
-          storeLogo={undefined}
-        />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center min-h-screen py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-md w-full space-y-8">
             <div className="text-center space-y-4">
               <Skeleton className="h-16 w-32 mx-auto" />
@@ -192,13 +186,7 @@ export default function StorefrontRegisterPage() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      <StorefrontHeader 
-        storeSlug={storeSlug}
-        storeName={store?.name}
-        storeLogo={store?.logo || undefined}
-      />
-      
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-center min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-6 sm:space-y-8">
           {/* Header Section */}
           <div className="text-center space-y-3 sm:space-y-4">

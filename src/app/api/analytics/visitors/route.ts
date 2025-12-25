@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     );
     const active_carts = parseInt(activeCartsResult[0]?.count || '0');
 
-    // בתהליך תשלום - מ-visitor_sessions עם reached_checkout = true ב-10 דקות האחרונות
-    // או מ-analytics_events עם InitiateCheckout
+    // בתהליך תשלום - מי שהגיע לעמוד checkout אבל לא השלים רכישה
+    // מקור 1: visitor_sessions עם reached_checkout = true ו-completed_purchase = false
     const checkingOutSessions = await query<{ count: string }>(
       `SELECT COUNT(DISTINCT visitor_id) as count
        FROM visitor_sessions
@@ -47,24 +47,36 @@ export async function GET(request: NextRequest) {
       [user.store_id]
     );
     
+    // מקור 2: analytics_events עם InitiateCheckout ב-10 דקות (מינוס מי שכבר קנה)
     const checkingOutEvents = await query<{ count: string }>(
-      `SELECT COUNT(DISTINCT (metadata->>'visitor_id')::text) as count
-       FROM analytics_events
-       WHERE store_id = $1
-       AND event_type IN ('InitiateCheckout', 'BeginCheckout')
-       AND created_at > NOW() - INTERVAL '10 minutes'
-       AND metadata->>'visitor_id' IS NOT NULL`,
+      `SELECT COUNT(DISTINCT COALESCE(
+          metadata->>'visitor_id', 
+          metadata->>'order_id',
+          (metadata->>'timestamp')::text
+        )) as count
+       FROM analytics_events ae
+       WHERE ae.store_id = $1
+       AND ae.event_type IN ('InitiateCheckout', 'BeginCheckout')
+       AND ae.created_at > NOW() - INTERVAL '10 minutes'
+       AND NOT EXISTS (
+         SELECT 1 FROM analytics_events pe 
+         WHERE pe.store_id = ae.store_id 
+         AND pe.event_type = 'Purchase'
+         AND pe.created_at > NOW() - INTERVAL '10 minutes'
+         AND COALESCE(pe.metadata->>'visitor_id', pe.metadata->>'order_id') = 
+             COALESCE(ae.metadata->>'visitor_id', ae.metadata->>'order_id')
+       )`,
       [user.store_id]
     );
     
-    // ניקח את המקסימום בין השניים (יכול להיות שיש sessions בלי events או להיפך)
+    // ניקח את המקסימום בין השניים
     const checking_out = Math.max(
       parseInt(checkingOutSessions[0]?.count || '0'),
       parseInt(checkingOutEvents[0]?.count || '0')
     );
 
-    // רכישות שהושלמו - מ-visitor_sessions עם completed_purchase = true ב-10 דקות האחרונות
-    // או מ-analytics_events עם Purchase
+    // רכישות שהושלמו - מי שהגיע לדף תודה (Purchase event)
+    // מקור 1: visitor_sessions עם completed_purchase = true
     const purchasedSessions = await query<{ count: string }>(
       `SELECT COUNT(DISTINCT visitor_id) as count
        FROM visitor_sessions
@@ -74,20 +86,35 @@ export async function GET(request: NextRequest) {
       [user.store_id]
     );
     
+    // מקור 2: analytics_events עם Purchase
     const purchasedEvents = await query<{ count: string }>(
-      `SELECT COUNT(DISTINCT (metadata->>'order_id')::text) as count
+      `SELECT COUNT(DISTINCT COALESCE(
+          metadata->>'order_id',
+          metadata->>'visitor_id',
+          (metadata->>'timestamp')::text
+        )) as count
        FROM analytics_events
        WHERE store_id = $1
        AND event_type IN ('Purchase', 'CompletePayment')
-       AND created_at > NOW() - INTERVAL '10 minutes'
-       AND metadata->>'order_id' IS NOT NULL`,
+       AND created_at > NOW() - INTERVAL '10 minutes'`,
       [user.store_id]
     );
     
-    // ניקח את המקסימום בין השניים
+    // מקור 3: הזמנות שנוצרו ושולמו ב-10 דקות האחרונות
+    const purchasedOrders = await query<{ count: string }>(
+      `SELECT COUNT(*) as count
+       FROM orders
+       WHERE store_id = $1
+       AND financial_status = 'paid'
+       AND created_at > NOW() - INTERVAL '10 minutes'`,
+      [user.store_id]
+    );
+    
+    // ניקח את המקסימום בין כל המקורות
     const purchased = Math.max(
       parseInt(purchasedSessions[0]?.count || '0'),
-      parseInt(purchasedEvents[0]?.count || '0')
+      parseInt(purchasedEvents[0]?.count || '0'),
+      parseInt(purchasedOrders[0]?.count || '0')
     );
 
     const behavior = {

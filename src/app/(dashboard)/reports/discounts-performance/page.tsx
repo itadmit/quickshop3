@@ -185,7 +185,7 @@ export default function DiscountsPerformancePage() {
                     outerRadius={100}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={false}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -193,7 +193,26 @@ export default function DiscountsPerformancePage() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ direction: 'rtl', textAlign: 'right' }}
-                    formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הנחות']} 
+                    formatter={(value: number, name: string, props: any) => [
+                      `₪${value.toLocaleString('he-IL')}`, 
+                      props.payload.name
+                    ]} 
+                  />
+                  <Legend 
+                    wrapperStyle={{ direction: 'rtl', paddingTop: '20px', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '20px' }}
+                    formatter={(value: string, entry: any) => {
+                      const total = pieData.reduce((sum, d) => sum + d.value, 0);
+                      const percent = total > 0 ? ((entry.payload.value / total) * 100).toFixed(0) : '0';
+                      return (
+                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151', padding: '0 8px' }}>
+                          {value} ({percent}%)
+                        </span>
+                      );
+                    }}
+                    iconType="circle"
+                    layout="horizontal"
+                    align="center"
+                    verticalAlign="bottom"
                   />
                 </PieChart>
               </ResponsiveContainer>

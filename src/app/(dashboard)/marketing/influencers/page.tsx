@@ -639,7 +639,7 @@ export default function InfluencersPage() {
                         className="rounded"
                       />
                       <span className="text-sm">
-                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : coupon.value ? `₪${coupon.value}` : 'null'})
+                        {coupon.code}{coupon.discount_type === 'percentage' && coupon.value ? ` (${coupon.value}%)` : coupon.discount_type === 'fixed_amount' && coupon.value ? ` (₪${coupon.value})` : coupon.discount_type === 'free_shipping' ? ' (משלוח חינם)' : ''}
                       </span>
                     </label>
                   ))
@@ -768,7 +768,7 @@ export default function InfluencersPage() {
                         className="rounded"
                       />
                       <span className="text-sm">
-                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : coupon.value ? `₪${coupon.value}` : 'null'})
+                        {coupon.code}{coupon.discount_type === 'percentage' && coupon.value ? ` (${coupon.value}%)` : coupon.discount_type === 'fixed_amount' && coupon.value ? ` (₪${coupon.value})` : coupon.discount_type === 'free_shipping' ? ' (משלוח חינם)' : ''}
                       </span>
                     </label>
                   ))

@@ -362,9 +362,52 @@ export function emitTrackingEvent(event: TrackingEvent) {
     window.quickshopAnalytics.track(eventName, event);
   }
 
+  // שמירה ב-database (לאנליטיקס פנימי)
+  // רק events חשובים: InitiateCheckout, Purchase, AddToCart
+  const eventsToSave = ['InitiateCheckout', 'Purchase', 'AddToCart', 'ViewContent'];
+  if (eventsToSave.includes(eventName)) {
+    saveEventToDatabase(eventName, event);
+  }
+
   // Log for debugging (only in dev)
   if (process.env.NODE_ENV === 'development') {
     console.log('[Tracking]', eventName, event);
+  }
+}
+
+/**
+ * שומר event ב-database לאנליטיקס פנימי
+ */
+async function saveEventToDatabase(eventName: string, event: TrackingEvent) {
+  try {
+    // קבלת storeSlug ו-storeId מ-window
+    const storeSlug = (window as any).__STORE_SLUG || 
+                      window.location.pathname.match(/\/shops\/([^\/]+)/)?.[1];
+    const storeId = (window as any).__STORE_ID;
+    
+    if (!storeSlug && !storeId) return;
+
+    // קבלת visitor_id מ-localStorage
+    const visitorId = localStorage.getItem('visitor_id') || 
+                      localStorage.getItem(`visitor_id_${storeSlug}`);
+
+    await fetch('/api/analytics/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        storeSlug,
+        storeId,
+        event: eventName,
+        metadata: {
+          ...event,
+          visitor_id: visitorId,
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    });
+  } catch (error) {
+    // Don't block on analytics errors
+    console.error('[Tracking] Failed to save event to DB:', error);
   }
 }
 

@@ -133,41 +133,41 @@ export async function PUT(
 
     // Build update query
     const updates: string[] = [];
-    const params: any[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (body.name !== undefined) {
       updates.push(`name = $${paramIndex++}`);
-      params.push(body.name);
+      queryParams.push(body.name);
     }
     if (body.email !== undefined) {
       updates.push(`email = $${paramIndex++}`);
-      params.push(body.email);
+      queryParams.push(body.email);
     }
     if (body.phone !== undefined) {
       updates.push(`phone = $${paramIndex++}`);
-      params.push(body.phone);
+      queryParams.push(body.phone);
     }
     if (body.instagram_handle !== undefined) {
       updates.push(`instagram_handle = $${paramIndex++}`);
-      params.push(body.instagram_handle);
+      queryParams.push(body.instagram_handle);
     }
     if (body.tiktok_handle !== undefined) {
       updates.push(`tiktok_handle = $${paramIndex++}`);
-      params.push(body.tiktok_handle);
+      queryParams.push(body.tiktok_handle);
     }
     if (body.is_active !== undefined) {
       updates.push(`is_active = $${paramIndex++}`);
-      params.push(body.is_active);
+      queryParams.push(body.is_active);
     }
 
     updates.push(`updated_at = now()`);
-    params.push(influencerId, user.store_id);
+    queryParams.push(influencerId, user.store_id);
 
     if (updates.length > 1) {
       await query(
         `UPDATE influencers SET ${updates.join(', ')} WHERE id = $${paramIndex++} AND store_id = $${paramIndex++}`,
-        params
+        queryParams
       );
     }
 

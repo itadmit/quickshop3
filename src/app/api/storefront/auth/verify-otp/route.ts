@@ -32,7 +32,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find customer
+    // Normalize email for case-insensitive comparison
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
+    // Find customer (case-insensitive email comparison)
     const customer = await queryOne<{
       id: number;
       email: string | null;
@@ -44,8 +47,8 @@ export async function POST(req: NextRequest) {
     }>(
       `SELECT id, email, phone, first_name, last_name, premium_club_tier, state 
        FROM customers 
-       WHERE store_id = $1 AND (email = $2 OR phone = $3)`,
-      [store.id, email || null, phone || null]
+       WHERE store_id = $1 AND (LOWER(TRIM(email)) = LOWER(TRIM($2::text)) OR phone = $3)`,
+      [store.id, normalizedEmail, phone || null]
     );
 
     if (!customer) {
@@ -63,7 +66,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find valid OTP code
+    // Get the OTP (time check done in JavaScript for timezone consistency)
     const otp = await queryOne<{
       id: number;
       attempts: number;
@@ -73,16 +76,24 @@ export async function POST(req: NextRequest) {
       `SELECT id, attempts, max_attempts, expires_at 
        FROM otp_codes 
        WHERE store_id = $1 AND customer_id = $2 AND code = $3 
-       AND used_at IS NULL AND expires_at > now()`,
+       AND used_at IS NULL`,
       [store.id, customer.id, code]
     );
+    
+    // Check expiration in JavaScript
+    if (otp && new Date(otp.expires_at) <= new Date()) {
+      return NextResponse.json(
+        { error: 'קוד פג תוקף. אנא בקש קוד חדש' },
+        { status: 401 }
+      );
+    }
 
     if (!otp) {
       // Increment attempts for any recent OTP for this customer
       await queryOne(
         `UPDATE otp_codes 
          SET attempts = attempts + 1 
-         WHERE customer_id = $1 AND used_at IS NULL AND expires_at > now()
+         WHERE customer_id = $1 AND used_at IS NULL
          RETURNING id`,
         [customer.id]
       );

@@ -576,7 +576,6 @@ export class CartCalculator {
           minimum_order_amount, maximum_order_amount,
           minimum_quantity, maximum_quantity,
           applies_to, priority,
-          // ✅ לא משתמשים ב-COALESCE כדי לשמור על הערך האמיתי (false נשאר false)
           can_combine_with_codes,
           can_combine_with_other_automatic,
           COALESCE(max_combined_discounts, 1) as max_combined_discounts,

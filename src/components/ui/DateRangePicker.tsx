@@ -213,7 +213,7 @@ function Calendar({
   };
 
   return (
-    <div className="p-3">
+    <div className="p-4">
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-3">
         <button
@@ -236,7 +236,7 @@ function Calendar({
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      <div className="grid grid-cols-7 gap-2 mb-2">
         {hebrewDays.map((day) => (
           <div key={day} className="text-center text-xs text-gray-500 font-medium py-1">
             {day}
@@ -247,15 +247,15 @@ function Calendar({
       {/* Days */}
       <div className="grid grid-cols-7 gap-1">
         {days.map((day, index) => (
-          <div key={index} className="aspect-square">
+          <div key={index} className="flex items-center justify-center h-9 w-9">
             {day !== null && (
               <button
                 type="button"
                 disabled={isDisabled(day)}
                 onClick={() => onSelect(new Date(month.getFullYear(), month.getMonth(), day))}
                 className={`
-                  w-full h-full text-sm rounded-lg transition-colors
-                  flex items-center justify-center
+                  w-8 h-8 text-sm rounded-full transition-colors
+                  flex items-center justify-center font-medium
                   ${isDisabled(day) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100'}
                   ${isSelected(day) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : ''}
                   ${isInRange(day) && !isSelected(day) ? 'bg-emerald-50 text-emerald-900' : ''}
@@ -400,7 +400,7 @@ export function DateRangePicker({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden min-w-[280px]">
+        <div className={`absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden ${showCalendar ? 'min-w-[580px]' : 'min-w-[280px]'}`}>
           {!showCalendar ? (
             /* Preset List */
             <div className="py-2">
@@ -451,17 +451,17 @@ export function DateRangePicker({
               </div>
 
               {/* Selection display */}
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                <div className="flex items-center gap-3 text-sm">
-                  <div className={`flex-1 text-center py-2 rounded-lg border-2 ${selectingStart ? 'border-emerald-500 bg-white' : 'border-transparent bg-gray-100'}`}>
-                    <span className="text-xs text-gray-500 block">מתאריך</span>
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
+                <div className="flex items-center gap-4 text-sm">
+                  <div className={`flex-1 min-w-[140px] text-center py-2 px-4 rounded-lg border-2 ${selectingStart ? 'border-emerald-500 bg-white' : 'border-transparent bg-gray-100'}`}>
+                    <span className="text-xs text-gray-500 block mb-0.5">מתאריך</span>
                     <span className="font-medium text-gray-900">
                       {tempStart ? formatDate(tempStart) : 'בחר'}
                     </span>
                   </div>
-                  <span className="text-gray-400">→</span>
-                  <div className={`flex-1 text-center py-2 rounded-lg border-2 ${!selectingStart ? 'border-emerald-500 bg-white' : 'border-transparent bg-gray-100'}`}>
-                    <span className="text-xs text-gray-500 block">עד תאריך</span>
+                  <span className="text-gray-400 flex-shrink-0">→</span>
+                  <div className={`flex-1 min-w-[140px] text-center py-2 px-4 rounded-lg border-2 ${!selectingStart ? 'border-emerald-500 bg-white' : 'border-transparent bg-gray-100'}`}>
+                    <span className="text-xs text-gray-500 block mb-0.5">עד תאריך</span>
                     <span className="font-medium text-gray-900">
                       {tempEnd ? formatDate(tempEnd) : 'בחר'}
                     </span>

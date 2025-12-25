@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+// Select removed - using checkbox instead
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { DataTable, TableColumn } from '@/components/ui/DataTable';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
@@ -51,8 +51,9 @@ export default function OrderStatusesPage() {
   const [formData, setFormData] = useState({
     name: '',
     display_name: '',
-    status_type: 'fulfillment' as 'financial' | 'fulfillment' | 'custom',
+    status_type: 'custom' as 'financial' | 'fulfillment' | 'custom',
     color: 'gray',
+    replaces_paid: false, // האם מחליף את סטטוס "שולם"
   });
 
   useEffect(() => {
@@ -96,14 +97,16 @@ export default function OrderStatusesPage() {
         display_name: status.display_name,
         status_type: status.status_type,
         color: status.color || 'gray',
+        replaces_paid: status.status_type === 'financial', // אם זה financial זה מחליף paid
       });
     } else {
       setEditingStatus(null);
       setFormData({
         name: '',
         display_name: '',
-        status_type: 'fulfillment',
+        status_type: 'custom',
         color: 'gray',
+        replaces_paid: false,
       });
     }
     setDialogOpen(true);
@@ -115,8 +118,9 @@ export default function OrderStatusesPage() {
     setFormData({
       name: '',
       display_name: '',
-      status_type: 'fulfillment',
+      status_type: 'custom',
       color: 'gray',
+      replaces_paid: false,
     });
   };
 
@@ -282,8 +286,12 @@ export default function OrderStatusesPage() {
       key: 'status_type',
       label: 'סוג',
       render: (status) => (
-        <span className="text-sm text-gray-600">
-          {STATUS_TYPE_LABELS[status.status_type] || status.status_type}
+        <span className={`text-sm px-2 py-1 rounded ${
+          status.status_type === 'financial' 
+            ? 'bg-purple-100 text-purple-800' 
+            : 'bg-gray-100 text-gray-800'
+        }`}>
+          {status.status_type === 'financial' ? 'מחליף שולם' : 'מותאם אישית'}
         </span>
       ),
     },
@@ -362,14 +370,14 @@ export default function OrderStatusesPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md p-6" dir="rtl">
           <DialogHeader>
             <DialogTitle>
               {editingStatus ? 'ערוך סטטוס' : 'סטטוס חדש'}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4 px-6">
+          <div className="space-y-4 py-4">
             <div>
               <Label htmlFor="display_name">שם תצוגה *</Label>
               <Input
@@ -398,29 +406,27 @@ export default function OrderStatusesPage() {
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="status_type">סוג סטטוס *</Label>
-              <Select
-                value={formData.status_type}
-                onValueChange={(value: 'financial' | 'fulfillment' | 'custom') => 
-                  setFormData({ ...formData, status_type: value })
-                }
-                disabled={saving || !!editingStatus}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fulfillment">ביצוע</SelectItem>
-                  <SelectItem value="financial">תשלום</SelectItem>
-                  <SelectItem value="custom">מותאם אישית</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                {editingStatus 
-                  ? 'לא ניתן לשנות את סוג הסטטוס' 
-                  : 'בחר את סוג הסטטוס - ביצוע או תשלום'}
-              </p>
+            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="replaces_paid"
+                checked={formData.replaces_paid}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  replaces_paid: e.target.checked,
+                  status_type: e.target.checked ? 'financial' : 'custom'
+                })}
+                disabled={saving}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <div>
+                <Label htmlFor="replaces_paid" className="cursor-pointer font-medium">
+                  החלף את סטטוס &quot;שולם&quot;
+                </Label>
+                <p className="text-xs text-gray-500 mt-1">
+                  אם מסומן, סטטוס זה יופיע כאפשרות בסטטוס תשלום במקום &quot;שולם&quot;
+                </p>
+              </div>
             </div>
 
             <div>

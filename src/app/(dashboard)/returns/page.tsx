@@ -20,6 +20,8 @@ import {
   HiCurrencyDollar,
   HiShoppingBag,
   HiUser,
+  HiPlus,
+  HiSearch,
 } from 'react-icons/hi';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
@@ -42,6 +44,25 @@ interface ReturnItem {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface OrderItem {
+  id: number;
+  title: string;
+  variantTitle: string | null;
+  quantity: number;
+  price: number;
+}
+
+interface OrderOption {
+  id: number;
+  orderNumber: number;
+  orderName: string;
+  totalPrice: number;
+  customerName: string;
+  customerEmail: string;
+  customerId: number;
+  items: OrderItem[];
 }
 
 interface Pagination {
@@ -83,6 +104,21 @@ export default function ReturnsPage() {
   const [refundAmount, setRefundAmount] = useState<string>('');
   const [refundMethod, setRefundMethod] = useState<string>('');
   const [updateNotes, setUpdateNotes] = useState<string>('');
+
+  // Add return dialog
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addingReturn, setAddingReturn] = useState(false);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderSearchResults, setOrderSearchResults] = useState<OrderOption[]>([]);
+  const [searchingOrders, setSearchingOrders] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderOption | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Array<{ orderItemId: number; quantity: number; maxQuantity: number }>>([]);
+  const [addReason, setAddReason] = useState('');
+  const [addRefundAmount, setAddRefundAmount] = useState<string>('');
+  const [addRefundMethod, setAddRefundMethod] = useState<string>('');
+  const [addNotes, setAddNotes] = useState('');
+  const [addStatus, setAddStatus] = useState<string>('PENDING');
+  const debouncedOrderSearch = useDebounce(orderSearch, 300);
 
   useEffect(() => {
     // Cancel previous request if exists
@@ -179,6 +215,169 @@ export default function ReturnsPage() {
     setRefundMethod(returnItem.refundMethod || '');
     setUpdateNotes(returnItem.notes || '');
     setIsUpdateDialogOpen(true);
+  };
+
+  // Search orders for adding a return
+  useEffect(() => {
+    if (debouncedOrderSearch && debouncedOrderSearch.length >= 2) {
+      searchOrders(debouncedOrderSearch);
+    } else {
+      setOrderSearchResults([]);
+    }
+  }, [debouncedOrderSearch]);
+
+  const searchOrders = async (searchQuery: string) => {
+    try {
+      setSearchingOrders(true);
+      const response = await fetch(`/api/orders?search=${encodeURIComponent(searchQuery)}&limit=10`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to search orders');
+      const data = await response.json();
+      
+      // Transform orders to our format
+      const orders: OrderOption[] = (data.orders || []).map((o: any) => ({
+        id: o.id,
+        orderNumber: o.order_number,
+        orderName: o.order_name || `#${o.order_number}`,
+        totalPrice: parseFloat(o.total_price || '0'),
+        customerName: o.customer 
+          ? `${o.customer.first_name || ''} ${o.customer.last_name || ''}`.trim() || 'לקוח אנונימי'
+          : o.name || 'לקוח אנונימי',
+        customerEmail: o.customer?.email || o.email || '',
+        customerId: o.customer_id,
+        items: (o.line_items || []).map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          variantTitle: item.variant_title,
+          quantity: item.quantity,
+          price: parseFloat(item.price || '0'),
+        })),
+      }));
+      
+      setOrderSearchResults(orders);
+    } catch (error: any) {
+      console.error('Error searching orders:', error);
+    } finally {
+      setSearchingOrders(false);
+    }
+  };
+
+  const handleSelectOrder = (order: OrderOption) => {
+    setSelectedOrder(order);
+    setOrderSearchResults([]);
+    setOrderSearch('');
+    // Pre-select all items with max quantity
+    setSelectedItems(order.items.map(item => ({
+      orderItemId: item.id,
+      quantity: item.quantity,
+      maxQuantity: item.quantity,
+    })));
+  };
+
+  const handleItemQuantityChange = (orderItemId: number, quantity: number) => {
+    setSelectedItems(prev => 
+      prev.map(item => 
+        item.orderItemId === orderItemId 
+          ? { ...item, quantity: Math.min(Math.max(0, quantity), item.maxQuantity) }
+          : item
+      )
+    );
+  };
+
+  const handleToggleItem = (orderItemId: number, checked: boolean) => {
+    setSelectedItems(prev => 
+      prev.map(item => 
+        item.orderItemId === orderItemId 
+          ? { ...item, quantity: checked ? item.maxQuantity : 0 }
+          : item
+      )
+    );
+  };
+
+  const handleAddReturn = async () => {
+    if (!selectedOrder) return;
+
+    const itemsToReturn = selectedItems.filter(item => item.quantity > 0);
+    if (itemsToReturn.length === 0) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש לבחור לפחות פריט אחד להחזרה',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!addReason.trim()) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להזין סיבה להחזרה',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setAddingReturn(true);
+      const response = await fetch('/api/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          customerId: selectedOrder.customerId,
+          reason: addReason,
+          items: itemsToReturn.map(item => ({
+            orderItemId: item.orderItemId,
+            quantity: item.quantity,
+          })),
+          refundAmount: addRefundAmount ? parseFloat(addRefundAmount) : null,
+          refundMethod: addRefundMethod || null,
+          notes: addNotes || null,
+          status: addStatus,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'הצלחה',
+          description: 'ההחזרה נוספה בהצלחה',
+        });
+        setIsAddDialogOpen(false);
+        resetAddForm();
+        loadReturns();
+        window.dispatchEvent(new Event('returnStatusChanged'));
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'שגיאה',
+          description: error.error || 'לא הצלחנו להוסיף את ההחזרה',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error adding return:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה בהוספת ההחזרה',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingReturn(false);
+    }
+  };
+
+  const resetAddForm = () => {
+    setSelectedOrder(null);
+    setSelectedItems([]);
+    setOrderSearch('');
+    setOrderSearchResults([]);
+    setAddReason('');
+    setAddRefundAmount('');
+    setAddRefundMethod('');
+    setAddNotes('');
+    setAddStatus('PENDING');
   };
 
   const handleUpdateStatus = async () => {
@@ -373,6 +572,12 @@ export default function ReturnsPage() {
         selectedItems={selectedReturns}
         onSelectionChange={(selected) => setSelectedReturns(selected as Set<number>)}
         loading={loading}
+        actions={
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <HiPlus className="w-4 h-4 ml-2" />
+            הוסף החזרה
+          </Button>
+        }
         filters={[
           {
             type: 'select',
@@ -626,6 +831,237 @@ export default function ReturnsPage() {
             >
               {updatingStatus ? 'מעדכן...' : 'עדכן'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Return Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+        setIsAddDialogOpen(open);
+        if (!open) resetAddForm();
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>הוספת החזרה/החלפה ידנית</DialogTitle>
+            <DialogDescription>
+              הוסף החזרה או החלפה חדשה עבור הזמנה קיימת
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 min-h-0 px-8 py-6 space-y-6">
+            {/* Order Search */}
+            {!selectedOrder ? (
+              <div className="space-y-4">
+                <div>
+                  <Label>חיפוש הזמנה</Label>
+                  <div className="relative mt-2">
+                    <HiSearch className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Input
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      placeholder="חפש לפי מספר הזמנה, שם לקוח או אימייל..."
+                      className="pr-10"
+                    />
+                  </div>
+                </div>
+
+                {searchingOrders && (
+                  <div className="text-center py-4">
+                    <HiRefresh className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+                    <p className="text-sm text-gray-500 mt-2">מחפש הזמנות...</p>
+                  </div>
+                )}
+
+                {orderSearchResults.length > 0 && (
+                  <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                    {orderSearchResults.map((order) => (
+                      <button
+                        key={order.id}
+                        type="button"
+                        onClick={() => handleSelectOrder(order)}
+                        className="w-full px-4 py-3 text-right hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-medium">#{order.orderNumber}</div>
+                            <div className="text-sm text-gray-600">{order.customerName}</div>
+                            <div className="text-sm text-gray-500">{order.customerEmail}</div>
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            ₪{order.totalPrice.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {order.items.length} פריטים
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {orderSearch.length >= 2 && !searchingOrders && orderSearchResults.length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    לא נמצאו הזמנות
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Selected Order Info */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg">הזמנה #{selectedOrder.orderNumber}</CardTitle>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setSelectedOrder(null);
+                        setSelectedItems([]);
+                      }}>
+                        שנה הזמנה
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">{selectedOrder.customerName}</span>
+                      <span className="font-medium">₪{selectedOrder.totalPrice.toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Select Items */}
+                <div>
+                  <Label className="text-base font-medium">בחר פריטים להחזרה</Label>
+                  <div className="mt-3 border rounded-lg divide-y">
+                    {selectedOrder.items.map((item) => {
+                      const selectedItem = selectedItems.find(si => si.orderItemId === item.id);
+                      const isSelected = selectedItem && selectedItem.quantity > 0;
+                      return (
+                        <div key={item.id} className="p-4 flex items-center gap-4">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => handleToggleItem(item.id, e.target.checked)}
+                            className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{item.title}</div>
+                            {item.variantTitle && (
+                              <div className="text-sm text-gray-600">{item.variantTitle}</div>
+                            )}
+                            <div className="text-sm text-gray-500">
+                              ₪{item.price.toFixed(2)} × {item.quantity}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm text-gray-600">כמות:</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max={item.quantity}
+                              value={selectedItem?.quantity || 0}
+                              onChange={(e) => handleItemQuantityChange(item.id, parseInt(e.target.value) || 0)}
+                              className="w-20 text-center"
+                            />
+                            <span className="text-sm text-gray-500">/ {item.quantity}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Return Reason */}
+                <div>
+                  <Label>סיבת ההחזרה *</Label>
+                  <Select value={addReason} onValueChange={setAddReason}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="בחר סיבה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="לא מתאים">לא מתאים</SelectItem>
+                      <SelectItem value="פגם במוצר">פגם במוצר</SelectItem>
+                      <SelectItem value="מוצר לא מתאים">מוצר לא מתאים</SelectItem>
+                      <SelectItem value="הזמנה שגויה">הזמנה שגויה</SelectItem>
+                      <SelectItem value="מוצר לא כמתואר">מוצר לא כמתואר</SelectItem>
+                      <SelectItem value="איחור באספקה">איחור באספקה</SelectItem>
+                      <SelectItem value="שינוי דעה">שינוי דעה</SelectItem>
+                      <SelectItem value="אחר">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <Label>סטטוס התחלתי</Label>
+                  <Select value={addStatus} onValueChange={setAddStatus}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">ממתין</SelectItem>
+                      <SelectItem value="APPROVED">אושר</SelectItem>
+                      <SelectItem value="PROCESSING">בטיפול</SelectItem>
+                      <SelectItem value="COMPLETED">הושלם</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Refund Details (optional) */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>סכום החזר (אופציונלי)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={addRefundAmount}
+                      onChange={(e) => setAddRefundAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>אמצעי החזר</Label>
+                    <Select value={addRefundMethod} onValueChange={setAddRefundMethod}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="בחר..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STORE_CREDIT">קרדיט בחנות</SelectItem>
+                        <SelectItem value="ORIGINAL_PAYMENT_METHOD">החזר לתשלום המקורי</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <Label>הערות</Label>
+                  <Textarea
+                    value={addNotes}
+                    onChange={(e) => setAddNotes(e.target.value)}
+                    placeholder="הוסף הערות (אופציונלי)..."
+                    rows={3}
+                    className="mt-2"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => {
+              setIsAddDialogOpen(false);
+              resetAddForm();
+            }}>
+              ביטול
+            </Button>
+            {selectedOrder && (
+              <Button
+                onClick={handleAddReturn}
+                disabled={addingReturn || !addReason || selectedItems.filter(i => i.quantity > 0).length === 0}
+              >
+                {addingReturn ? 'מוסיף...' : 'הוסף החזרה'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

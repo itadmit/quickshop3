@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query, queryOne } from '@/lib/db';
+import { query, queryOne, execute } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 
 // GET /api/returns - List all returns for a store
@@ -124,6 +124,86 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching returns:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch returns' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/returns - Create a new return manually
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const storeId = user.store_id;
+    const body = await request.json();
+    const { orderId, customerId, reason, items, refundAmount, refundMethod, notes, status } = body;
+
+    // Validate required fields
+    if (!orderId) {
+      return NextResponse.json({ error: 'מספר הזמנה נדרש' }, { status: 400 });
+    }
+    if (!reason) {
+      return NextResponse.json({ error: 'סיבה נדרשת' }, { status: 400 });
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: 'יש לבחור לפחות פריט אחד' }, { status: 400 });
+    }
+
+    // Verify order belongs to this store
+    const order = await queryOne<any>(
+      `SELECT id, customer_id FROM orders WHERE id = $1 AND store_id = $2`,
+      [orderId, storeId]
+    );
+
+    if (!order) {
+      return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
+    }
+
+    // Use the customer from the order if not provided
+    const finalCustomerId = customerId || order.customer_id;
+
+    // Insert the return
+    const result = await queryOne<any>(
+      `INSERT INTO returns (
+        store_id, order_id, customer_id, status, reason, items, refund_amount, refund_method, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [
+        storeId,
+        orderId,
+        finalCustomerId,
+        status || 'PENDING',
+        reason,
+        JSON.stringify(items),
+        refundAmount || null,
+        refundMethod || null,
+        notes || null
+      ]
+    );
+
+    return NextResponse.json({
+      success: true,
+      return: {
+        id: result.id,
+        orderId: result.order_id,
+        customerId: result.customer_id,
+        status: result.status,
+        reason: result.reason,
+        items: typeof result.items === 'string' ? JSON.parse(result.items) : result.items,
+        refundAmount: result.refund_amount ? parseFloat(result.refund_amount) : null,
+        refundMethod: result.refund_method,
+        notes: result.notes,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error creating return:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to create return' },
       { status: 500 }
     );
   }

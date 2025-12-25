@@ -42,6 +42,7 @@ export default function OrderDetailsPage() {
   const [creatingShipment, setCreatingShipment] = useState(false);
   const [shipment, setShipment] = useState<any>(null);
   const [processingRefund, setProcessingRefund] = useState(false);
+  const [customStatuses, setCustomStatuses] = useState<Array<{id: number, name: string, display_name: string, color: string | null, status_type: string}>>([]);
 
   useEffect(() => {
     if (orderId) {
@@ -49,12 +50,27 @@ export default function OrderDetailsPage() {
       const signal = abortController.signal;
 
       loadOrder(signal);
+      loadCustomStatuses();
 
       return () => {
         abortController.abort();
       };
     }
   }, [orderId]);
+
+  const loadCustomStatuses = async () => {
+    try {
+      const response = await fetch('/api/order-statuses', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCustomStatuses(data.statuses || []);
+      }
+    } catch (error) {
+      console.error('Error loading custom statuses:', error);
+    }
+  };
 
   const loadOrder = async (signal?: AbortSignal) => {
     try {
@@ -279,6 +295,23 @@ export default function OrderDetailsPage() {
   };
 
   const getFulfillmentStatusBadgeColor = (status: string) => {
+    // First, check if it's a custom status with a color
+    const customStatus = customStatuses.find(s => s.name === status);
+    if (customStatus && customStatus.color) {
+      // Map color name to tailwind classes
+      const colorMap: Record<string, string> = {
+        'orange': 'bg-orange-100 text-orange-800',
+        'blue': 'bg-blue-100 text-blue-800',
+        'green': 'bg-green-100 text-green-800',
+        'purple': 'bg-purple-100 text-purple-800',
+        'cyan': 'bg-cyan-100 text-cyan-800',
+        'red': 'bg-red-100 text-red-800',
+        'gray': 'bg-gray-100 text-gray-800',
+        'yellow': 'bg-yellow-100 text-yellow-800',
+      };
+      return colorMap[customStatus.color] || 'bg-gray-100 text-gray-800';
+    }
+    
     switch (status) {
       case 'pending':
         return 'bg-orange-100 text-orange-800';
@@ -308,6 +341,13 @@ export default function OrderDetailsPage() {
   };
 
   const getFulfillmentStatusLabel = (status: string) => {
+    // First, check if it's a custom status
+    const customStatus = customStatuses.find(s => s.name === status);
+    if (customStatus) {
+      return customStatus.display_name;
+    }
+    
+    // Fallback to built-in labels
     const labels: Record<string, string> = {
       'pending': 'ממתין',
       'approved': 'מאושר',
@@ -483,7 +523,7 @@ export default function OrderDetailsPage() {
         <Card>
           <div className="p-4">
             <div className="text-sm text-gray-500 mb-2">סטטוס ביצוע</div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               {order.fulfillment_status ? (
                 <span className={`px-3 py-1 rounded text-sm font-medium ${getFulfillmentStatusBadgeColor(order.fulfillment_status)}`}>
                   {getFulfillmentStatusLabel(order.fulfillment_status)}
@@ -491,15 +531,31 @@ export default function OrderDetailsPage() {
               ) : (
                 <span className="text-gray-400 text-sm">לא בוצע</span>
               )}
-              {order.fulfillment_status !== 'fulfilled' && (
-                <Button
-                  size="sm"
-                  onClick={() => updateStatus(undefined, 'fulfilled')}
-                  disabled={updatingStatus}
-                >
-                  סמן כבוצע
-                </Button>
-              )}
+              <Select
+                value={order.fulfillment_status || ''}
+                onValueChange={(value) => updateStatus(undefined, value)}
+                disabled={updatingStatus}
+              >
+                <SelectTrigger className="w-[140px] h-8">
+                  <SelectValue placeholder="שנה סטטוס" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">ממתין</SelectItem>
+                  <SelectItem value="processing">מעובד</SelectItem>
+                  <SelectItem value="shipped">נשלח</SelectItem>
+                  <SelectItem value="delivered">נמסר</SelectItem>
+                  <SelectItem value="fulfilled">הושלם</SelectItem>
+                  <SelectItem value="canceled">בוטל</SelectItem>
+                  {/* Custom Statuses */}
+                  {customStatuses
+                    .filter(s => s.status_type === 'fulfillment' || s.status_type === 'custom')
+                    .map((status) => (
+                      <SelectItem key={status.id} value={status.name}>
+                        {status.display_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </Card>

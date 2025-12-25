@@ -174,27 +174,26 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
     // רק אם יש הזמנה, התשלום הושלם, והעגלה עדיין לא נמחקה
     if (
       order && 
-      (order.financial_status === 'paid' || order.payment_method !== 'credit_card') &&
+      (order.financial_status === 'paid' || order.financial_status === 'pending' || order.payment_method !== 'credit_card') &&
       !cartClearedRef.current
     ) {
       cartClearedRef.current = true;
       
-      // שליחת אירוע Purchase אם תשלום בכרטיס אשראי הושלם
-      if (order.payment_method === 'credit_card' && order.financial_status === 'paid') {
-        emitTrackingEvent({
-          event: 'Purchase',
-          content_ids: order.line_items.map(item => String(item.id)),
-          contents: order.line_items.map(item => ({
-            id: String(item.id),
-            quantity: item.quantity,
-            item_price: parseFloat(item.price),
-          })),
-          currency: 'ILS',
-          value: parseFloat(order.total_price),
-          order_id: String(order.id),
-        });
-        console.log('[CheckoutSuccess] Purchase event emitted after successful payment');
-      }
+      // שליחת אירוע Purchase לכל הזמנה שהגיעה לדף תודה (לא רק כרטיס אשראי)
+      // זה מודד את כל מי שהגיע לדף success - בין אם שילם או בהמתנה לתשלום
+      emitTrackingEvent({
+        event: 'Purchase',
+        content_ids: order.line_items.map(item => String(item.id)),
+        contents: order.line_items.map(item => ({
+          id: String(item.id),
+          quantity: item.quantity,
+          item_price: parseFloat(item.price),
+        })),
+        currency: 'ILS',
+        value: parseFloat(order.total_price),
+        order_id: String(order.id),
+      });
+      console.log('[CheckoutSuccess] Purchase event emitted - order reached thank you page');
       
       // מחיקת העגלה
       if (cartItems.length > 0) {
@@ -506,7 +505,7 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                         )}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-4">
-                        <Link
+                        <a
                           href={`/shops/${storeSlug}/products`}
                           className="inline-block bg-black hover:bg-gray-800 text-white font-semibold px-8 py-3 rounded-lg transition-colors text-center"
                         >
@@ -515,8 +514,8 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                           ) : (
                             t('order_success.continue_shopping')
                           )}
-                        </Link>
-                        <Link
+                        </a>
+                        <a
                           href={`/shops/${storeSlug}`}
                           className="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-colors text-center"
                         >
@@ -525,7 +524,7 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                           ) : (
                             t('order_success.back_to_home')
                           )}
-                        </Link>
+                        </a>
                       </div>
                     </div>
                   </div>

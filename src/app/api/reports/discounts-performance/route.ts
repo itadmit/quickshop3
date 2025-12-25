@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         dc.code as discount_code,
         dc.discount_type,
-        COALESCE(dc.times_used, 0) as usage_count,
+        COALESCE(dc.usage_count, 0) as usage_count,
         COUNT(DISTINCT o.id) as orders_count,
         SUM(o.total_discounts) as total_discount_amount,
         SUM(o.total_price) as revenue_generated,

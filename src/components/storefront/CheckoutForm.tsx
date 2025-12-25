@@ -816,16 +816,38 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   };
 
   const finalTotal = useMemo(() => {
-    return getTotal();
-  }, [getTotal]);
+    // חשב subtotal
+    const subtotal = calculation?.subtotal || cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    
+    // חשב משלוח עם בדיקת free_shipping_threshold
+    let shipping = 0;
+    if (selectedShippingRate) {
+      if (selectedShippingRate.free_shipping_threshold && subtotal >= selectedShippingRate.free_shipping_threshold) {
+        shipping = 0;
+      } else {
+        shipping = selectedShippingRate.price;
+      }
+    }
+    
+    // הנחות מהחישוב (אם קיים)
+    const discount = calculation?.itemsDiscount || 0;
+    
+    return subtotal - discount + shipping;
+  }, [calculation, cartItems, selectedShippingRate]);
 
   const shippingCost = useMemo(() => {
-    // ✅ אם calculation עדיין לא מעודכן, מחזיר את המחיר של selectedShippingRate
-    if (!calculation && selectedShippingRate) {
+    // ✅ תמיד משתמש ב-selectedShippingRate אם קיים - זה המקור האמיתי
+    if (selectedShippingRate) {
+      // בדוק אם יש משלוח חינם מעל סכום מסוים
+      const subtotal = calculation?.subtotal || cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      if (selectedShippingRate.free_shipping_threshold && subtotal >= selectedShippingRate.free_shipping_threshold) {
+        return 0;
+      }
       return selectedShippingRate.price;
     }
+    // אם אין selectedShippingRate, נשתמש ב-calculation (אם קיים)
     return getShipping();
-  }, [getShipping, calculation, selectedShippingRate]);
+  }, [getShipping, calculation, selectedShippingRate, cartItems]);
 
   // Redirect אם אין פריטים - רק ב-client אחרי mount
   // לא מפנים אם ההזמנה הושלמה (כדי לאפשר redirect לעמוד התודה)
@@ -862,13 +884,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
             {/* CheckoutHeader - מתפרס על כל הרוחב */}
             <div className="lg:col-span-3 flex justify-end bg-white border-b border-gray-200">
               <div className="w-full max-w-3xl pl-8 pr-4 py-4 flex items-center">
-                <Link 
+                <a 
                   href={`/shops/${storeSlug}`}
                   className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   <span>→</span>
                   <span>חזרה לחנות</span>
-                </Link>
+                </a>
               </div>
             </div>
             <div className="lg:col-span-2 border-b border-gray-200 flex justify-start" style={{ backgroundColor: checkoutSettings.layout.left_column_color }}>
@@ -1043,13 +1065,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         <div className="w-full bg-white border-b border-gray-200">
           {/* Mobile: Logo and Back in same row */}
           <div className="lg:hidden flex items-center justify-between px-4 py-4">
-            <Link 
+            <a 
               href={`/shops/${storeSlug}`}
               className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               <span>→</span>
               <span>חזרה לחנות</span>
-            </Link>
+            </a>
             <div className="flex items-center gap-3">
               {storeLogo && (
                 <img
@@ -1066,13 +1088,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           <div className="hidden lg:grid grid-cols-5 gap-0">
             <div className="col-span-3 flex justify-end">
               <div className="w-full max-w-3xl pl-8 pr-4 py-4 flex items-center">
-                <Link 
+                <a 
                   href={`/shops/${storeSlug}`}
                   className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   <span>→</span>
                   <span>חזרה לחנות</span>
-                </Link>
+                </a>
               </div>
             </div>
             <div className="col-span-2 border-b border-gray-200 flex justify-start" style={{ backgroundColor: '#fafafa' }}>
@@ -1503,6 +1525,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         return (
                           <div 
                             key={rate.id}
+                            onClick={() => {
+                              setSelectedShippingRate(rate);
+                              setFormData((prev) => ({ 
+                                ...prev, 
+                                deliveryMethod: rate.is_pickup ? 'pickup' : 'shipping' 
+                              }));
+                            }}
                             className={`flex items-center space-x-2 space-x-reverse border rounded-lg p-4 hover:border-gray-300 cursor-pointer transition-colors ${
                               selectedShippingRate?.id === rate.id 
                                 ? 'border-green-500 bg-green-50' 
@@ -2448,8 +2477,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     
                     {/* Shipping - Single unified row to prevent jumps */}
                     {formData.deliveryMethod === 'shipping' && (
-                      <div className={`flex justify-between ${shippingCost === 0 && !calcLoading && calculation ? 'text-green-600' : ''}`}>
-                        <span style={{ opacity: shippingCost > 0 || calcLoading ? 0.7 : 1 }}>
+                      <div className={`flex justify-between ${!calcLoading && calculation && shippingCost === 0 ? 'text-green-600' : ''}`}>
+                        <span style={{ opacity: (!calcLoading && calculation && shippingCost === 0) ? 1 : 0.7 }}>
                           {translationsLoading ? (
                             <TextSkeleton width="w-16" height="h-4" />
                           ) : (
@@ -2457,11 +2486,14 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           )}
                         </span>
                         <span>
-                          {calcLoading || !calculation ? (
-                            // ✅ בזמן טעינה או כש-calculation עדיין לא מעודכן - מציג את מחיר התעריף שנבחר
+                          {calcLoading ? (
+                            // ✅ בזמן טעינה - מציג skeleton
+                            <TextSkeleton width="w-12" height="h-4" />
+                          ) : !calculation ? (
+                            // ✅ כש-calculation עדיין לא מוכן - מציג מחיר נבחר או skeleton
                             selectedShippingRate ? `₪${selectedShippingRate.price.toFixed(2)}` : <TextSkeleton width="w-12" height="h-4" />
                           ) : (
-                            // ✅ רק אחרי ש-calculation מעודכן, בודק אם המשלוח חינם
+                            // ✅ אחרי ש-calculation מוכן - מציג לפי calculation
                             shippingCost === 0 ? (
                               'חינם'
                             ) : (
@@ -2522,7 +2554,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         )}
                       </span>
                       <span>
-                        {(() => {
+                        {calcLoading ? (
+                          <TextSkeleton width="w-16" height="h-6" />
+                        ) : (() => {
                           let total = finalTotal;
                           // הפחתת גיפט קארד
                           if (appliedGiftCard) {
@@ -2610,7 +2644,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       ) : (
                         'מעבד...'
                       )
-                    ) : translationsLoading ? (
+                    ) : translationsLoading || calcLoading ? (
                       <TextSkeleton width="w-32" height="h-5" />
                     ) : (() => {
                       let totalToPay = finalTotal;

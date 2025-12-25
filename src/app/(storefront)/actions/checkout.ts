@@ -142,6 +142,8 @@ export async function createOrder(input: CreateOrderInput) {
 
   // Handle store credit payment
   // ✅ מטפל בקרדיט גם אם paymentMethod הוא credit_card (לשימוש חלקי בקרדיט + אשראי)
+  // ⚠️ שימו לב: input.total כבר מחושב אחרי ניכוי הקרדיט על ידי הפרונטאנד
+  // אז finalTotal = input.total (לא מנכים שוב!)
   let finalTotal = input.total;
   let actualStoreCreditAmount = 0;
   
@@ -155,7 +157,8 @@ export async function createOrder(input: CreateOrderInput) {
 
     if (storeCredit) {
       const creditBalance = parseFloat(storeCredit.balance);
-      const creditToUse = Math.min(input.storeCreditAmount, creditBalance, input.total);
+      // חשוב: הפרונטאנד כבר חישב את storeCreditAmount, פשוט מוודאים שלא חורגים מהיתרה
+      const creditToUse = Math.min(input.storeCreditAmount, creditBalance);
 
       if (creditToUse > 0) {
         // Update store credit balance
@@ -177,9 +180,9 @@ export async function createOrder(input: CreateOrderInput) {
           ]
         );
 
-        // Update final total
+        // Update actual credit used (לא משנים את finalTotal כי הוא כבר נכון!)
         actualStoreCreditAmount = creditToUse;
-        finalTotal = Math.max(0, input.total - creditToUse);
+        // ⚠️ לא מנכים מ-finalTotal! הפרונטאנד כבר שלח את הסכום המנוכה
       }
     } else if (input.paymentMethod === 'store_credit') {
       // רק אם paymentMethod הוא store_credit בלבד, נזרוק שגיאה
@@ -530,8 +533,11 @@ export async function createOrder(input: CreateOrderInput) {
       await queryOne(
         `UPDATE store_credit_transactions 
          SET order_id = $1 
-         WHERE store_credit_id = $2 AND order_id IS NULL AND transaction_type = 'used'
-         ORDER BY created_at DESC LIMIT 1`,
+         WHERE id = (
+           SELECT id FROM store_credit_transactions 
+           WHERE store_credit_id = $2 AND order_id IS NULL AND transaction_type = 'used'
+           ORDER BY created_at DESC LIMIT 1
+         )`,
         [order.id, storeCredit.id]
       );
     }

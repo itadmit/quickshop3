@@ -265,7 +265,7 @@ export default function StoreCreditsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingCredit} onOpenChange={(open) => !open && setEditingCredit(null)}>
-        <DialogContent>
+        <DialogContent className="p-6">
           <DialogHeader>
             <DialogTitle>עריכת קרדיט - {editingCredit?.customer_name}</DialogTitle>
           </DialogHeader>

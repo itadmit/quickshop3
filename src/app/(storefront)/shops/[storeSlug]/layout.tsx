@@ -70,6 +70,15 @@ export default async function StoreSlugLayout({
 
   return (
     <>
+      {/* Store Slug for Analytics */}
+      <Script
+        id="store-slug-init"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `window.__STORE_SLUG = '${storeSlug}'; window.__STORE_ID = ${store.id};`,
+        }}
+      />
+      
       {/* Head Tracking Pixels */}
       {headPixels.map((pixel) => {
         if (pixel.pixel_type === 'facebook' && pixel.pixel_id) {

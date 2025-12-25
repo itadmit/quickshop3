@@ -67,7 +67,7 @@ export async function GET(
         'order.status_changed' as event_type,
         CONCAT('סטטוס עודכן: ', financial_status, ' -> ', fulfillment_status) as message,
         updated_at as created_at,
-        user_id
+        NULL::int as user_id
       FROM orders
       WHERE id = $1 AND store_id = $2
       UNION ALL
@@ -76,7 +76,7 @@ export async function GET(
         'order.created' as event_type,
         CONCAT('הזמנה נוצרה: ', order_name) as message,
         created_at,
-        user_id
+        NULL::int as user_id
       FROM orders
       WHERE id = $1 AND store_id = $2
       ORDER BY created_at DESC`,

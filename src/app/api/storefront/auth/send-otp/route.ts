@@ -32,8 +32,6 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    
-    console.log(`[OTP] Store found: id=${store.id}, name=${store.name}, slug=${store.slug}, requested_slug=${storeSlug}`);
 
     // Normalize email to lowercase for consistent comparison
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
@@ -48,14 +46,11 @@ export async function POST(req: NextRequest) {
     );
     
     if (storeOwner) {
-      console.log(`[OTP] Email ${normalizedEmail} belongs to store_owner (id: ${storeOwner.id}), blocking storefront login`);
       return NextResponse.json(
         { error: 'בעלי חנויות מתחברים דרך דשבורד המנהל. אנא השתמש בדף ההתחברות למנהלים.' },
         { status: 403 }
       );
     }
-    
-    console.log(`[OTP] Email ${normalizedEmail} is not a store_owner, checking customers...`);
     
     // Find existing customer only - don't create new customers on login
     // Use LOWER() for case-insensitive email comparison
@@ -79,14 +74,11 @@ export async function POST(req: NextRequest) {
 
     // Customer must exist - don't allow login for non-registered emails
     if (!customer) {
-      console.log(`[OTP] Customer not found for email: ${normalizedEmail}, store_id: ${store.id}, store_slug: ${storeSlug}`);
       return NextResponse.json(
         { error: 'חשבון לא נמצא. אנא הירשם תחילה או בדוק את כתובת המייל' },
         { status: 404 }
       );
     }
-    
-    console.log(`[OTP] Customer found: ${customer.id}, email: ${customer.email}, store_id: ${store.id}`);
 
     // Check if customer is enabled
     if (customer.state !== 'enabled') {
@@ -105,12 +97,13 @@ export async function POST(req: NextRequest) {
                      req.headers.get('x-real-ip') || 
                      'unknown';
 
-    // Invalidate previous unused OTPs for this customer
+    // Invalidate previous unused OTPs for this customer (use JS timestamp for timezone consistency)
+    const nowTimestamp = new Date().toISOString();
     await query(
       `UPDATE otp_codes 
-       SET used_at = now() 
-       WHERE customer_id = $1 AND used_at IS NULL AND expires_at > now()`,
-      [customer.id]
+       SET used_at = $2::timestamp
+       WHERE customer_id = $1 AND used_at IS NULL AND expires_at > $2::timestamp`,
+      [customer.id, nowTimestamp]
     );
 
     // Save OTP code
