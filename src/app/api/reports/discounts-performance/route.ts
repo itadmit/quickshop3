@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       JOIN discount_codes dc ON dc.code = COALESCE(
         dc_elem->>'code',
         CASE 
-          WHEN jsonb_typeof(dc_elem) = 'string' THEN dc_elem::text
+          WHEN jsonb_typeof(dc_elem) = 'string' THEN dc_elem#>>'{}'
           WHEN jsonb_typeof(dc_elem) = 'number' THEN dc_elem::text
           ELSE NULL
         END
