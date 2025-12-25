@@ -126,8 +126,9 @@ export default function EditAutomaticDiscountPage() {
         maximum_quantity: data.discount.maximum_quantity !== null && data.discount.maximum_quantity !== undefined ? String(data.discount.maximum_quantity) : undefined,
         applies_to: data.discount.applies_to,
         priority: String(data.discount.priority || 0),
-        can_combine_with_codes: data.discount.can_combine_with_codes,
-        can_combine_with_other_automatic: data.discount.can_combine_with_other_automatic,
+        // ✅ שימוש בערך האמיתי מהמסד הנתונים (גם אם הוא false)
+        can_combine_with_codes: data.discount.can_combine_with_codes !== undefined && data.discount.can_combine_with_codes !== null ? data.discount.can_combine_with_codes : true,
+        can_combine_with_other_automatic: data.discount.can_combine_with_other_automatic !== undefined && data.discount.can_combine_with_other_automatic !== null ? data.discount.can_combine_with_other_automatic : false,
         max_combined_discounts: String(data.discount.max_combined_discounts || 1),
         customer_segment: data.discount.customer_segment || 'all',
         minimum_orders_count: data.discount.minimum_orders_count !== null && data.discount.minimum_orders_count !== undefined ? String(data.discount.minimum_orders_count) : undefined,
@@ -293,8 +294,9 @@ export default function EditAutomaticDiscountPage() {
         maximum_quantity: formData.maximum_quantity ? parseInt(formData.maximum_quantity) : null,
         applies_to: formData.applies_to,
         priority: formData.priority ? parseInt(formData.priority) : 0,
-        can_combine_with_codes: formData.can_combine_with_codes,
-        can_combine_with_other_automatic: formData.can_combine_with_other_automatic,
+        // ✅ שולח את הערך האמיתי (גם אם הוא false)
+        can_combine_with_codes: formData.can_combine_with_codes !== undefined ? formData.can_combine_with_codes : true,
+        can_combine_with_other_automatic: formData.can_combine_with_other_automatic !== undefined ? formData.can_combine_with_other_automatic : false,
         max_combined_discounts: formData.max_combined_discounts ? parseInt(formData.max_combined_discounts) : 1,
         customer_segment: formData.customer_segment || null,
         minimum_orders_count: formData.minimum_orders_count ? parseInt(formData.minimum_orders_count) : null,

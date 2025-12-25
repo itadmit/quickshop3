@@ -124,8 +124,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Return not found' }, { status: 404 });
     }
 
-    // If approving and refund method is STORE_CREDIT, create/update store credit
-    if (data.status === 'APPROVED' && data.refundMethod === 'STORE_CREDIT') {
+    // ✅ אם מעדכנים ל-COMPLETED או APPROVED עם קרדיט בחנות, עדכן קרדיט
+    // ✅ בדיקה שההחזרה לא כבר הושלמה כדי למנוע כפילות
+    // ✅ גם בדיקה שהקרדיט לא כבר נוסף (אם הסטטוס הקודם היה APPROVED או COMPLETED)
+    const shouldUpdateCredit = (
+      (data.status === 'APPROVED' || data.status === 'COMPLETED') && 
+      (data.refundMethod === 'STORE_CREDIT' || returnItem.refund_method === 'STORE_CREDIT') &&
+      returnItem.status !== 'COMPLETED' && // ✅ רק אם הסטטוס הקודם לא היה COMPLETED
+      returnItem.status !== 'APPROVED' // ✅ גם לא APPROVED (כי אז הקרדיט כבר נוסף)
+    );
+
+    if (shouldUpdateCredit) {
       const refundAmount = data.refundAmount || returnItem.refund_amount;
       
       if (!refundAmount || refundAmount <= 0) {
@@ -216,23 +225,24 @@ export async function PATCH(
       updateParams
     );
 
-    // Create event for return status change
-    await query(
-      `INSERT INTO store_events (store_id, event_type, entity_type, entity_id, payload, created_at)
-       VALUES ($1, $2, $3, $4, $5, now())`,
-      [
-        user.store_id,
-        'return.updated',
-        'return',
+    // ✅ Create event for return status change (עטוף ב-try-catch כדי לא לכשל את כל התהליך)
+    try {
+      // ניסיון להשתמש ב-eventBus אם קיים
+      const { eventBus } = await import('@/lib/events/eventBus');
+      await eventBus.emitEvent('return.updated', {
         returnId,
-        JSON.stringify({
-          returnId,
-          status: data.status,
-          refundAmount: data.refundAmount,
-          refundMethod: data.refundMethod,
-        }),
-      ]
-    );
+        status: data.status,
+        refundAmount: data.refundAmount,
+        refundMethod: data.refundMethod,
+      }, {
+        store_id: user.store_id,
+        source: 'api',
+        user_id: user.id,
+      });
+    } catch (eventError) {
+      // אם יש שגיאה ב-eventBus, רק נרשום ללוג ולא נכשל את כל התהליך
+      console.warn('Error emitting return.updated event:', eventError);
+    }
 
     // Fetch updated return
     const updatedReturn = await queryOne<any>(

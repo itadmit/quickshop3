@@ -329,7 +329,7 @@ export function useCart() {
   }, [storeId, saveCartToServer, areItemsEqual]);
 
   // REMOVE FROM CART (user action - cannot remove gifts)
-  const removeFromCart = useCallback((variantId: number) => {
+  const removeFromCart = useCallback(async (variantId: number) => {
     if (!storeId) return;
     
     const currentItems = globalCartItems[storeId] || [];
@@ -370,11 +370,13 @@ export function useCart() {
       ? newItems 
       : newItems.filter(item => !item.properties?.some(p => p.name === 'מתנה'));
     
+    // ✅ עדכון מיידי של state
     globalCartItems[storeId] = finalItems;
     setCartToStorage(finalItems, storeId);
     notifyCartListeners();
     
-    saveCartToServer(finalItems);
+    // ✅ שמירה לשרת (async)
+    await saveCartToServer(finalItems);
   }, [storeId, saveCartToServer]);
 
   // REMOVE GIFT FROM CART (system action - for discount management)

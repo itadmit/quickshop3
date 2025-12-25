@@ -65,6 +65,7 @@ interface UseCartCalculatorOptions {
   customerSegment?: 'vip' | 'new_customer' | 'returning_customer';
   customerOrdersCount?: number;
   customerLifetimeValue?: number;
+  customerTier?: string | null; // Premium club tier (silver, gold, platinum, etc.)
 }
 
 /**
@@ -293,6 +294,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         customerSegment: options.customerSegment,
         customerOrdersCount: options.customerOrdersCount,
         customerLifetimeValue: options.customerLifetimeValue,
+        customerTier: options.customerTier || undefined,
       };
 
       // Call API route - SINGLE SOURCE OF TRUTH
@@ -313,6 +315,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           customerSegment: options.customerSegment,
           customerOrdersCount: options.customerOrdersCount,
           customerLifetimeValue: options.customerLifetimeValue,
+          customerTier: options.customerTier || undefined,
         }),
       });
 

@@ -58,6 +58,14 @@ interface CreateOrderInput {
   giftCardAmount?: number; // סכום גיפט קארד ששומש
   customFields?: Record<string, any>;
   discountCodes?: string[]; // קודי קופונים שהוחלו על ההזמנה
+  appliedDiscounts?: Array<{ // ✅ פרטי הנחות שהוחלו (אוטומטיות וקופונים)
+    name: string;
+    description?: string;
+    code?: string;
+    type: string;
+    amount: number;
+    source: 'automatic' | 'code';
+  }>;
   newsletter?: boolean; // הסכמה לקבלת דיוור
 }
 
@@ -270,6 +278,17 @@ export async function createOrder(input: CreateOrderInput) {
     ...(input.customer.companyName ? { company_name: input.customer.companyName } : {}),
     ...(input.giftCardCode ? { gift_card_code: input.giftCardCode, gift_card_amount: input.giftCardAmount } : {}),
     ...(actualStoreCreditAmount > 0 ? { store_credit_amount: actualStoreCreditAmount } : {}),
+    // ✅ שמירת פרטי הנחות שהוחלו (אוטומטיות וקופונים)
+    ...(input.appliedDiscounts && input.appliedDiscounts.length > 0 ? { 
+      applied_discounts: input.appliedDiscounts.map(d => ({
+        name: d.name,
+        description: d.description,
+        code: d.code,
+        type: d.type,
+        amount: d.amount,
+        source: d.source,
+      }))
+    } : {}),
   };
   
   let financialStatus = 'pending';
@@ -377,6 +396,127 @@ export async function createOrder(input: CreateOrderInput) {
 
   if (!order) {
     throw new Error('Failed to create order');
+  }
+
+  // ✅ שמירת כתובת הלקוח ל-customer_addresses (אם הלקוח מחובר)
+  // שמירת כתובת משלוח
+  if (customer.id && input.customer.address && input.customer.city) {
+    try {
+      const shippingAddress1 = `${input.customer.address} ${input.customer.houseNumber || ''}`.trim();
+      const shippingAddress2Parts = [
+        input.customer.apartment ? `דירה ${input.customer.apartment}` : '',
+        input.customer.floor ? `קומה ${input.customer.floor}` : '',
+      ].filter(Boolean);
+      const shippingAddress2 = shippingAddress2Parts.length > 0 ? shippingAddress2Parts.join(', ') : null;
+
+      // בדיקה אם הכתובת כבר קיימת
+      const existingShippingAddress = await queryOne<{ id: number }>(
+        `SELECT id FROM customer_addresses 
+         WHERE customer_id = $1 
+         AND address1 = $2 
+         AND city = $3 
+         AND COALESCE(zip, '') = COALESCE($4, '')`,
+        [
+          customer.id,
+          shippingAddress1,
+          input.customer.city,
+          input.customer.postalCode || null,
+        ]
+      );
+
+      // אם הכתובת לא קיימת, נוסיף אותה
+      if (!existingShippingAddress) {
+        // בדיקה אם זו הכתובת הראשונה של הלקוח (אם כן, נסמן אותה כברירת מחדל)
+        const addressCount = await queryOne<{ count: string }>(
+          'SELECT COUNT(*) as count FROM customer_addresses WHERE customer_id = $1',
+          [customer.id]
+        );
+        const isFirstAddress = parseInt(addressCount?.count || '0') === 0;
+
+        await queryOne(
+          `INSERT INTO customer_addresses (
+            customer_id, first_name, last_name, address1, address2,
+            city, zip, phone, country, country_code, country_name,
+            default_address, created_at, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now()
+          ) RETURNING id`,
+          [
+            customer.id,
+            input.customer.firstName,
+            input.customer.lastName,
+            shippingAddress1,
+            shippingAddress2,
+            input.customer.city,
+            input.customer.postalCode || null,
+            input.customer.phone || null,
+            input.customer.country || 'IL',
+            input.customer.country || 'IL',
+            input.customer.country === 'IL' ? 'ישראל' : input.customer.country || 'ישראל',
+            isFirstAddress, // ✅ הכתובת הראשונה היא ברירת מחדל
+          ]
+        );
+      }
+    } catch (error) {
+      // לא נכשל את יצירת ההזמנה אם שמירת הכתובת נכשלה
+      console.warn('Failed to save customer shipping address:', error);
+    }
+  }
+
+  // ✅ שמירת כתובת חיוב (אם שונה מכתובת משלוח)
+  if (customer.id && input.billingAddress && input.billingAddress.address && input.billingAddress.city) {
+    try {
+      const billingAddress1 = `${input.billingAddress.address} ${input.billingAddress.houseNumber || ''}`.trim();
+      const billingAddress2Parts = [
+        input.billingAddress.apartment ? `דירה ${input.billingAddress.apartment}` : '',
+        input.billingAddress.floor ? `קומה ${input.billingAddress.floor}` : '',
+      ].filter(Boolean);
+      const billingAddress2 = billingAddress2Parts.length > 0 ? billingAddress2Parts.join(', ') : null;
+
+      // בדיקה אם הכתובת כבר קיימת
+      const existingBillingAddress = await queryOne<{ id: number }>(
+        `SELECT id FROM customer_addresses 
+         WHERE customer_id = $1 
+         AND address1 = $2 
+         AND city = $3 
+         AND COALESCE(zip, '') = COALESCE($4, '')`,
+        [
+          customer.id,
+          billingAddress1,
+          input.billingAddress.city,
+          input.billingAddress.postalCode || null,
+        ]
+      );
+
+      // אם הכתובת לא קיימת, נוסיף אותה
+      if (!existingBillingAddress) {
+        await queryOne(
+          `INSERT INTO customer_addresses (
+            customer_id, first_name, last_name, address1, address2,
+            city, zip, phone, country, country_code, country_name,
+            default_address, created_at, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, now(), now()
+          ) RETURNING id`,
+          [
+            customer.id,
+            input.billingAddress.firstName,
+            input.billingAddress.lastName,
+            billingAddress1,
+            billingAddress2,
+            input.billingAddress.city,
+            input.billingAddress.postalCode || null,
+            input.billingAddress.phone || input.customer.phone || null,
+            input.billingAddress.country || 'IL',
+            input.billingAddress.country || 'IL',
+            input.billingAddress.country === 'IL' ? 'ישראל' : input.billingAddress.country || 'ישראל',
+          ]
+        );
+      }
+    } catch (error) {
+      // לא נכשל את יצירת ההזמנה אם שמירת הכתובת נכשלה
+      console.warn('Failed to save customer billing address:', error);
+    }
   }
 
   // Update store credit transaction with order_id if store credit was used

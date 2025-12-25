@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT oli.order_id) as orders_count,
         COALESCE(SUM(oli.quantity * oli.price), 0) as revenue
       FROM product_collections c
-      LEFT JOIN product_collection_products pcp ON pcp.collection_id = c.id
-      LEFT JOIN products p ON p.id = pcp.product_id
+      LEFT JOIN product_collection_map pcm ON pcm.collection_id = c.id
+      LEFT JOIN products p ON p.id = pcm.product_id
       LEFT JOIN order_line_items oli ON oli.product_id = p.id
       LEFT JOIN orders o ON o.id = oli.order_id 
         AND o.created_at >= $2 

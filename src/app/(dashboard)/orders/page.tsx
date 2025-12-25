@@ -678,25 +678,24 @@ export default function OrdersPage() {
               className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all w-full md:w-[180px] flex-shrink-0"
             >
               <option value="">כל הסטטוסים</option>
-              {/* Use custom statuses if available, otherwise show defaults */}
-              {customStatuses.length > 0 ? (
-                customStatuses.map((status) => (
-                  <option key={status.id} value={status.name}>
-                    {status.display_name}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="pending">ממתין</option>
-                  <option value="paid">שולם</option>
-                  <option value="approved">מאושר</option>
-                  <option value="processing">מעובד</option>
-                  <option value="shipped">נשלח</option>
-                  <option value="delivered">נמסר</option>
-                  <option value="canceled">בוטל</option>
-                  <option value="returned">הוחזר</option>
-                </>
-              )}
+              {/* ✅ מציג את הסטטוסים הסטנדרטיים */}
+              <option value="pending">ממתין</option>
+              <option value="paid">שולם</option>
+              <option value="approved">מאושר</option>
+              <option value="processing">מעובד</option>
+              <option value="shipped">נשלח</option>
+              <option value="delivered">נמסר</option>
+              <option value="canceled">בוטל</option>
+              <option value="returned">הוחזר</option>
+              <option value="fulfilled">הושלם</option>
+              <option value="partial">חלקי</option>
+              <option value="restocked">הוחזר למלאי</option>
+              {/* ✅ מציג את הסטטוסים המותאמים אישית */}
+              {customStatuses.map((status) => (
+                <option key={status.id} value={status.name}>
+                  {status.display_name}
+                </option>
+              ))}
             </select>
           </div>
         </div>

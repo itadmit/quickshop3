@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // מוצרים עם מלאי
     let statusCondition = '';
     if (status === 'low_stock') {
-      statusCondition = 'AND pv.inventory_quantity > 0 AND pv.inventory_quantity <= COALESCE(pv.low_stock_threshold, 5)';
+      statusCondition = 'AND pv.inventory_quantity > 0 AND pv.inventory_quantity <= COALESCE(p.low_stock_alert, 5)';
     } else if (status === 'out_of_stock') {
       statusCondition = 'AND pv.inventory_quantity <= 0';
     }
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
         pv.title as variant_title,
         pv.sku,
         COALESCE(pv.inventory_quantity, 0) as stock_quantity,
-        COALESCE(pv.low_stock_threshold, 5) as low_stock_threshold,
-        COALESCE(pv.price, p.price, 0) as price
+        COALESCE(p.low_stock_alert, 5) as low_stock_threshold,
+        COALESCE(pv.price, 0) as price
       FROM products p
       JOIN product_variants pv ON pv.product_id = p.id
       WHERE p.store_id = $1
@@ -86,11 +86,11 @@ export async function GET(request: NextRequest) {
     }>(`
       SELECT 
         COUNT(DISTINCT p.id) as total_products,
-        COUNT(DISTINCT CASE WHEN pv.inventory_quantity > COALESCE(pv.low_stock_threshold, 5) THEN p.id END) as in_stock,
-        COUNT(DISTINCT CASE WHEN pv.inventory_quantity > 0 AND pv.inventory_quantity <= COALESCE(pv.low_stock_threshold, 5) THEN p.id END) as low_stock,
+        COUNT(DISTINCT CASE WHEN pv.inventory_quantity > COALESCE(p.low_stock_alert, 5) THEN p.id END) as in_stock,
+        COUNT(DISTINCT CASE WHEN pv.inventory_quantity > 0 AND pv.inventory_quantity <= COALESCE(p.low_stock_alert, 5) THEN p.id END) as low_stock,
         COUNT(DISTINCT CASE WHEN pv.inventory_quantity <= 0 THEN p.id END) as out_of_stock,
         SUM(GREATEST(pv.inventory_quantity, 0)) as total_units,
-        SUM(GREATEST(pv.inventory_quantity, 0) * COALESCE(pv.price, p.price, 0)) as total_value
+        SUM(GREATEST(pv.inventory_quantity, 0) * COALESCE(pv.price, 0)) as total_value
       FROM products p
       JOIN product_variants pv ON pv.product_id = p.id
       WHERE p.store_id = $1

@@ -22,6 +22,8 @@ import {
   HiXCircle,
 } from "react-icons/hi"
 import Link from "next/link"
+import { OrderDetailsContent } from "@/components/orders/OrderDetailsContent"
+import { OrderWithDetails } from "@/types/order"
 
 interface OrderItem {
   id: number
@@ -86,6 +88,8 @@ interface Order {
   billingAddress?: ShippingAddress | null
   fulfillments?: Fulfillment[]
   notes?: string
+  noteAttributes?: any
+  discountCodes?: string[]
 }
 
 export default function OrderDetailsPage() {
@@ -130,6 +134,111 @@ export default function OrderDetailsPage() {
 
       const data = await response.json()
       setOrder(data)
+
+      // ✅ המרת הנתונים ל-OrderWithDetails לשימוש ב-OrderDetailsContent
+      const orderWithDetails: OrderWithDetails = {
+        id: data.id,
+        store_id: 0, // לא נדרש באזור אישי
+        customer_id: null,
+        email: null, // לא נדרש באזור אישי
+        phone: data.shippingAddress?.phone || null,
+        name: ((data.shippingAddress?.first_name || data.shippingAddress?.firstName || '') + ' ' + (data.shippingAddress?.last_name || data.shippingAddress?.lastName || '')).trim() || null,
+        order_number: data.orderNumber,
+        order_name: data.orderName || `#${data.orderNumber}`,
+        order_handle: null,
+        financial_status: data.status as any,
+        fulfillment_status: data.fulfillmentStatus || null,
+        total_price: data.total.toString(),
+        subtotal_price: data.subtotal?.toString() || null,
+        total_tax: data.tax?.toString() || '0',
+        total_discounts: data.discounts?.toString() || '0',
+        total_shipping_price: data.shipping?.toString() || '0',
+        currency: 'ILS',
+        current_total_discounts: null,
+        current_total_price: null,
+        current_subtotal_price: null,
+        current_total_tax: null,
+        buyer_accepts_marketing: false,
+        cancel_reason: null,
+        cancelled_at: null,
+        cart_token: null,
+        checkout_token: null,
+        checkout_id: null,
+        client_details: null,
+        closed_at: null,
+        confirmed: true,
+        contact_email: null,
+        discount_codes: data.discountCodes || null,
+        gateway: null,
+        landing_site: null,
+        landing_site_ref: null,
+        location_id: null,
+        note: null,
+        note_attributes: data.noteAttributes || null,
+        number: null,
+        processed_at: null,
+        referring_site: null,
+        source_name: null,
+        tags: null,
+        test: false,
+        token: null,
+        total_duties: null,
+        total_line_items_price: null,
+        total_outstanding: null,
+        total_price_usd: null,
+        total_weight: null,
+        user_id: null,
+        billing_address: data.billingAddress || null,
+        shipping_address: data.shippingAddress || null,
+        is_read: false,
+        created_at: new Date(data.createdAt),
+        updated_at: new Date(data.createdAt),
+        line_items: data.items?.map((item: any) => ({
+          id: item.id,
+          order_id: data.id,
+          product_id: null,
+          variant_id: null,
+          title: item.name,
+          variant_title: item.variant || null,
+          vendor: null,
+          product_exists: true,
+          quantity: item.quantity,
+          sku: null,
+          variant_inventory_management: null,
+          fulfillment_service: null,
+          fulfillment_status: null,
+          requires_shipping: true,
+          taxable: true,
+          gift_card: false,
+          name: item.name,
+          variant_inventory_quantity: null,
+          properties: null,
+          product_properties: null,
+          total_discount: item.discount?.toString() || '0',
+          price: item.price.toString(),
+          grams: null,
+          tax_lines: null,
+          duties: null,
+          discount_allocations: null,
+          image: item.image || null,
+          created_at: new Date(data.createdAt),
+          updated_at: new Date(data.createdAt),
+        })) || [],
+        fulfillments: data.fulfillments?.map((f: Fulfillment) => ({
+          id: f.id,
+          order_id: data.id,
+          status: f.status as any,
+          created_at: new Date(f.createdAt),
+          updated_at: new Date(f.createdAt),
+          tracking_company: f.trackingCompany || null,
+          tracking_number: f.trackingNumber || null,
+          tracking_url: f.trackingUrl || null,
+          line_items: [],
+        })) || [],
+        refunds: [],
+        customer: null,
+      };
+      setOrderForDetails(orderWithDetails);
 
       // Load tracking status if order has fulfillments with tracking
       const hasTracking = data.fulfillments?.some((f: Fulfillment) => f.trackingNumber)
@@ -443,102 +552,11 @@ export default function OrderDetailsPage() {
           </Card>
         )}
 
-        {/* Order Items */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HiShoppingBag className="w-5 h-5" />
-              פריטים בהזמנה
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y">
-              {order.items.map((item) => (
-                <div key={item.id} className="py-4 flex items-center gap-4">
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{item.name}</p>
-                    {/* ✅ לא להציג variant אם זה "Default Title" */}
-                    {item.variant && item.variant !== 'Default Title' && (
-                      <p className="text-sm text-gray-600">{item.variant}</p>
-                    )}
-                    <p className="text-sm text-gray-600">כמות: {item.quantity}</p>
-                  </div>
-                  <p className="font-semibold text-gray-900">
-                    ₪{(item.price * item.quantity).toFixed(2)}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Order Summary */}
-            <div className="border-t pt-4 mt-4 space-y-2">
-              {order.subtotal && (
-                <div className="flex justify-between text-gray-600">
-                  <span>סכום ביניים</span>
-                  <span>₪{order.subtotal.toFixed(2)}</span>
-                </div>
-              )}
-              {order.shipping !== undefined && order.shipping !== null && order.shipping > 0 && (
-                <div className="flex justify-between text-gray-600">
-                  <span>משלוח</span>
-                  <span>₪{order.shipping.toFixed(2)}</span>
-                </div>
-              )}
-              {order.discounts !== undefined && order.discounts !== null && order.discounts > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>הנחה</span>
-                  <span>-₪{order.discounts.toFixed(2)}</span>
-                </div>
-              )}
-              {order.tax !== undefined && order.tax !== null && order.tax > 0 && (
-                <div className="flex justify-between text-gray-600">
-                  <span>מע"מ</span>
-                  <span>₪{order.tax.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                <span>סה"כ</span>
-                <span>₪{order.total.toFixed(2)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Shipping Address */}
-        {order.shippingAddress && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <HiLocationMarker className="w-5 h-5" />
-                כתובת למשלוח
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="font-medium">
-                  {order.shippingAddress.first_name || order.shippingAddress.firstName} {order.shippingAddress.last_name || order.shippingAddress.lastName}
-                </p>
-                <p className="text-gray-600">{order.shippingAddress.address1 || order.shippingAddress.address}</p>
-                <p className="text-gray-600">
-                  {order.shippingAddress.city}
-                  {order.shippingAddress.zip && `, ${order.shippingAddress.zip}`}
-                </p>
-                {order.shippingAddress.phone && (
-                  <p className="text-gray-600 flex items-center gap-2">
-                    <HiPhone className="w-4 h-4" />
-                    {order.shippingAddress.phone}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        {/* ✅ שימוש בקומפוננטה משותפת OrderDetailsContent */}
+        {orderForDetails && (
+          <div className="mb-6">
+            <OrderDetailsContent order={orderForDetails} />
+          </div>
         )}
 
         {/* Order Notes */}

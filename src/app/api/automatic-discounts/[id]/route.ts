@@ -96,6 +96,7 @@ export async function PUT(
 
     // Helper function to add field to update
     const addField = (fieldName: string, value: any, transform?: (v: any) => any) => {
+      // ✅ בודק אם השדה קיים ב-body (גם אם הערך הוא false)
       if (fieldName in body) {
         updateFields.push(`${fieldName} = $${paramIndex}`);
         values.push(transform ? transform(value) : value);

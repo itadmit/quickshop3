@@ -745,31 +745,78 @@ export default function OrderDetailsPage() {
                     <span className="text-gray-900">₪{parseFloat(order.total_tax || '0').toLocaleString('he-IL')}</span>
                   </div>
                 )}
-                {parseFloat(order.total_discounts || '0') > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>
-                      {order.discount_codes && order.discount_codes.length > 0 
-                        ? `קופון: ${Array.isArray(order.discount_codes) 
-                            ? order.discount_codes.join(', ')
-                            : typeof order.discount_codes === 'string' 
-                              ? JSON.parse(order.discount_codes).join(', ')
-                              : ''}`
-                        : 'הנחה אוטומטית'}
-                    </span>
-                    <span>-₪{parseFloat(order.total_discounts || '0').toLocaleString('he-IL')}</span>
-                  </div>
-                )}
-                {/* הצגת קודי קופון גם אם אין הנחה כספית (למשל משלוח חינם) */}
-                {order.discount_codes && order.discount_codes.length > 0 && parseFloat(order.total_discounts || '0') === 0 && (
-                  <div className="flex justify-between text-sm text-blue-600">
-                    <span>קופון: {Array.isArray(order.discount_codes) 
-                      ? order.discount_codes.join(', ')
-                      : typeof order.discount_codes === 'string' 
-                        ? JSON.parse(order.discount_codes).join(', ')
-                        : ''}</span>
-                    <span>משלוח חינם</span>
-                  </div>
-                )}
+                {/* ✅ הצגת הנחות אוטומטיות וקופונים מפורטות */}
+                {(() => {
+                  const noteAttrs = (order as any).note_attributes || {};
+                  const appliedDiscounts = noteAttrs.applied_discounts || [];
+                  
+                  // אם יש פרטי הנחות ב-note_attributes, נציג אותן
+                  if (appliedDiscounts.length > 0) {
+                    return (
+                      <>
+                        {appliedDiscounts.map((discount: any, idx: number) => {
+                          if (discount.type === 'free_shipping') {
+                            return (
+                              <div key={idx} className="flex justify-between text-sm text-blue-600">
+                                <span>{discount.name || discount.description || 'משלוח חינם'}</span>
+                                <span>משלוח חינם</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={idx} className="flex justify-between text-sm text-green-600">
+                              <span>
+                                {discount.source === 'automatic' 
+                                  ? discount.name || discount.description || 'הנחה אוטומטית'
+                                  : discount.description || discount.name || 'הנחה'}
+                                {discount.code && discount.source === 'code' && (
+                                  <span className="mr-2 inline-flex items-center px-1.5 py-0.5 bg-green-100 text-green-700 border border-green-200 rounded text-xs font-medium">
+                                    {discount.code}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-medium">-₪{parseFloat(discount.amount || '0').toLocaleString('he-IL')}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  }
+                  
+                  // Fallback: הצגה רגילה אם אין פרטים מפורטים
+                  if (parseFloat(order.total_discounts || '0') > 0) {
+                    return (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>
+                          {order.discount_codes && order.discount_codes.length > 0 
+                            ? `קופון: ${Array.isArray(order.discount_codes) 
+                                ? order.discount_codes.join(', ')
+                                : typeof order.discount_codes === 'string' 
+                                  ? JSON.parse(order.discount_codes).join(', ')
+                                  : ''}`
+                            : 'הנחה אוטומטית'}
+                        </span>
+                        <span>-₪{parseFloat(order.total_discounts || '0').toLocaleString('he-IL')}</span>
+                      </div>
+                    );
+                  }
+                  
+                  // הצגת קודי קופון גם אם אין הנחה כספית (למשל משלוח חינם)
+                  if (order.discount_codes && order.discount_codes.length > 0 && parseFloat(order.total_discounts || '0') === 0) {
+                    return (
+                      <div className="flex justify-between text-sm text-blue-600">
+                        <span>קופון: {Array.isArray(order.discount_codes) 
+                          ? order.discount_codes.join(', ')
+                          : typeof order.discount_codes === 'string' 
+                            ? JSON.parse(order.discount_codes).join(', ')
+                            : ''}</span>
+                        <span>משלוח חינם</span>
+                      </div>
+                    );
+                  }
+                  
+                  return null;
+                })()}
                 {/* גיפט קארד */}
                 {(order as any).note_attributes?.gift_card_amount > 0 && (
                   <div className="flex justify-between text-sm text-purple-600">

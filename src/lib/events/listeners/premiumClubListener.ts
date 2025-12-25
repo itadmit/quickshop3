@@ -29,6 +29,7 @@ eventBus.on('order.created', async (event) => {
     }
 
     // קבלת הלקוח עם סטטיסטיקות
+    // ✅ סופר רק הזמנות ששולמו (financial_status = 'paid')
     const customer = await queryOne<{
       id: number;
       email: string | null;
@@ -44,10 +45,10 @@ eventBus.on('order.created', async (event) => {
         c.first_name,
         c.last_name,
         c.premium_club_tier,
-        COALESCE(SUM(o.total_price::numeric), 0) as total_spent,
-        COUNT(DISTINCT o.id) as orders_count
+        COALESCE(SUM(CASE WHEN o.financial_status = 'paid' THEN o.total_price::numeric ELSE 0 END), 0) as total_spent,
+        COUNT(DISTINCT CASE WHEN o.financial_status = 'paid' THEN o.id ELSE NULL END) as orders_count
       FROM customers c
-      LEFT JOIN orders o ON o.customer_id = c.id
+      LEFT JOIN orders o ON o.customer_id = c.id AND o.financial_status = 'paid'
       WHERE c.id = $1 AND c.store_id = $2
       GROUP BY c.id`,
       [customerId, storeId]

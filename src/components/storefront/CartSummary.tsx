@@ -14,6 +14,7 @@ interface CartSummaryProps {
   cartItems?: CartItem[]; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
   calculation?: CartCalculationResult | null; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
   discountCode?: string; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
+  validatingCode?: boolean; // ✅ Optional: אם מועבר מ-SideCart, משתמש בו
   applyDiscountCode?: (code: string) => Promise<{ valid: boolean; error?: string }>; // ✅ Optional: אם מועבר מ-SideCart
   removeDiscountCode?: () => Promise<void>; // ✅ Optional: אם מועבר מ-SideCart
   recalculate?: () => Promise<void>; // ✅ Optional: אם מועבר מ-SideCart
@@ -38,6 +39,7 @@ export function CartSummary({
   cartItems: propsCartItems, // ✅ אם מועבר מ-SideCart, משתמש בו
   calculation: propsCalculation, // ✅ אם מועבר מ-SideCart, משתמש בו
   discountCode: propsDiscountCode, // ✅ אם מועבר מ-SideCart, משתמש בו
+  validatingCode: propsValidatingCode, // ✅ אם מועבר מ-SideCart, משתמש בו
   applyDiscountCode: propsApplyDiscountCode, // ✅ אם מועבר מ-SideCart, משתמש בו
   removeDiscountCode: propsRemoveDiscountCode, // ✅ אם מועבר מ-SideCart, משתמש בו
   recalculate: propsRecalculate, // ✅ אם מועבר מ-SideCart, משתמש בו
@@ -59,7 +61,7 @@ export function CartSummary({
   // ✅ משתמש ב-props אם קיים, אחרת מה-hook
   const calculation = propsCalculation ?? calculatorHook.calculation;
   const discountCode = propsDiscountCode ?? calculatorHook.discountCode;
-  const validatingCode = calculatorHook.validatingCode;
+  const validatingCode = propsValidatingCode ?? calculatorHook.validatingCode; // ✅ משתמש ב-props אם קיים
   const calcLoading = isUsingProps ? false : calculatorHook.loading; // ✅ אם יש props, לא טוען
   const applyDiscountCode = propsApplyDiscountCode ?? calculatorHook.applyDiscountCode;
   const removeDiscountCode = propsRemoveDiscountCode ?? calculatorHook.removeDiscountCode;

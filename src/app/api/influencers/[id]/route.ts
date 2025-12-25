@@ -173,24 +173,38 @@ export async function PUT(
 
     // Update coupon assignments if provided
     if (body.coupon_ids !== undefined) {
-      // Remove all current assignments
+      // ✅ הסרת כל השיוכים הנוכחיים של המשפיען הזה
       await query(
         'UPDATE discount_codes SET influencer_id = NULL WHERE influencer_id = $1 AND store_id = $2',
         [influencerId, user.store_id]
       );
 
-      // Assign new coupons
-      if (body.coupon_ids.length > 0) {
-        const couponPlaceholders = body.coupon_ids.map((_, i) => `$${i + 2}`).join(',');
-        const storeIdParamIndex = body.coupon_ids.length + 2;
-        await query(
-          `UPDATE discount_codes 
-           SET influencer_id = $1 
-           WHERE id IN (${couponPlaceholders}) 
-           AND store_id = $${storeIdParamIndex}
-           AND influencer_id IS NULL`,
-          [influencerId, ...body.coupon_ids, user.store_id]
-        );
+      // ✅ שיוך קופונים חדשים (אם יש)
+      if (body.coupon_ids && Array.isArray(body.coupon_ids) && body.coupon_ids.length > 0) {
+        // ✅ הסרת שיוכים של קופונים אלה למשפיענים אחרים (אם יש)
+        // כדי לאפשר שיוך מחדש למשפיען הנוכחי
+        for (const couponId of body.coupon_ids) {
+          await query(
+            `UPDATE discount_codes 
+             SET influencer_id = NULL 
+             WHERE id = $1 
+             AND store_id = $2
+             AND influencer_id IS NOT NULL
+             AND influencer_id != $3`,
+            [couponId, user.store_id, influencerId]
+          );
+        }
+
+        // ✅ שיוך הקופונים למשפיען הנוכחי
+        for (const couponId of body.coupon_ids) {
+          await query(
+            `UPDATE discount_codes 
+             SET influencer_id = $1 
+             WHERE id = $2 
+             AND store_id = $3`,
+            [influencerId, couponId, user.store_id]
+          );
+        }
       }
     }
 

@@ -23,29 +23,78 @@ export async function GET(request: NextRequest) {
 
     const visitors = await getActiveVisitors(undefined, storeSlug);
 
-    // חישוב נתוני התנהגות (Funnel)
-    const behavior = {
-      active_carts: 0,
-      checking_out: 0,
-      purchased: 0,
-    };
+    // ✅ חישוב נתוני התנהגות (Funnel) ממקורות אמיתיים
+    // עגלות פעילות - מ-visitor_carts שעודכנו ב-10 דקות האחרונות
+    const activeCartsResult = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT visitor_session_id) as count
+       FROM visitor_carts
+       WHERE store_id = $1
+       AND updated_at > NOW() - INTERVAL '10 minutes'
+       AND items::text != '[]'::text`,
+      [user.store_id]
+    );
+    const active_carts = parseInt(activeCartsResult[0]?.count || '0');
 
-    visitors.forEach((v) => {
-      const currentPage = v.current_page || '';
-      
-      // עגלות פעילות - מחפש /cart (עם או בלי /shops/[storeSlug])
-      if (currentPage.includes('/cart') && !currentPage.includes('/checkout')) {
-        behavior.active_carts++;
-      } 
-      // בתהליך תשלום - מחפש /checkout אבל לא /success
-      else if (currentPage.includes('/checkout') && !currentPage.includes('/success')) {
-        behavior.checking_out++;
-      } 
-      // רכישות שהושלמו - מחפש /checkout/success
-      else if (currentPage.includes('/checkout/success')) {
-        behavior.purchased++;
-      }
-    });
+    // בתהליך תשלום - מ-visitor_sessions עם reached_checkout = true ב-10 דקות האחרונות
+    // או מ-analytics_events עם InitiateCheckout
+    const checkingOutSessions = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT visitor_id) as count
+       FROM visitor_sessions
+       WHERE store_id = $1
+       AND reached_checkout = true
+       AND session_started_at > NOW() - INTERVAL '10 minutes'
+       AND completed_purchase = false`,
+      [user.store_id]
+    );
+    
+    const checkingOutEvents = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT (metadata->>'visitor_id')::text) as count
+       FROM analytics_events
+       WHERE store_id = $1
+       AND event_type IN ('InitiateCheckout', 'BeginCheckout')
+       AND created_at > NOW() - INTERVAL '10 minutes'
+       AND metadata->>'visitor_id' IS NOT NULL`,
+      [user.store_id]
+    );
+    
+    // ניקח את המקסימום בין השניים (יכול להיות שיש sessions בלי events או להיפך)
+    const checking_out = Math.max(
+      parseInt(checkingOutSessions[0]?.count || '0'),
+      parseInt(checkingOutEvents[0]?.count || '0')
+    );
+
+    // רכישות שהושלמו - מ-visitor_sessions עם completed_purchase = true ב-10 דקות האחרונות
+    // או מ-analytics_events עם Purchase
+    const purchasedSessions = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT visitor_id) as count
+       FROM visitor_sessions
+       WHERE store_id = $1
+       AND completed_purchase = true
+       AND session_started_at > NOW() - INTERVAL '10 minutes'`,
+      [user.store_id]
+    );
+    
+    const purchasedEvents = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT (metadata->>'order_id')::text) as count
+       FROM analytics_events
+       WHERE store_id = $1
+       AND event_type IN ('Purchase', 'CompletePayment')
+       AND created_at > NOW() - INTERVAL '10 minutes'
+       AND metadata->>'order_id' IS NOT NULL`,
+      [user.store_id]
+    );
+    
+    // ניקח את המקסימום בין השניים
+    const purchased = Math.max(
+      parseInt(purchasedSessions[0]?.count || '0'),
+      parseInt(purchasedEvents[0]?.count || '0')
+    );
+
+    const behavior = {
+      active_carts,
+      checking_out,
+      purchased,
+    };
 
     return NextResponse.json({
       visitors: visitors.map((v) => ({

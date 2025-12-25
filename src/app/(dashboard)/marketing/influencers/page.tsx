@@ -621,22 +621,25 @@ export default function InfluencersPage() {
                         type="checkbox"
                         checked={formData.coupon_ids.includes(coupon.id)}
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              coupon_ids: [...formData.coupon_ids, coupon.id],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              coupon_ids: formData.coupon_ids.filter((id) => id !== coupon.id),
-                            });
-                          }
+                          // ✅ שימוש ב-functional update כדי למנוע בעיות closure
+                          setFormData((prev) => {
+                            if (e.target.checked) {
+                              return {
+                                ...prev,
+                                coupon_ids: [...prev.coupon_ids, coupon.id],
+                              };
+                            } else {
+                              return {
+                                ...prev,
+                                coupon_ids: prev.coupon_ids.filter((id) => id !== coupon.id),
+                              };
+                            }
+                          });
                         }}
                         className="rounded"
                       />
                       <span className="text-sm">
-                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : `₪${coupon.value}`})
+                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : coupon.value ? `₪${coupon.value}` : 'null'})
                       </span>
                     </label>
                   ))
@@ -747,22 +750,25 @@ export default function InfluencersPage() {
                         type="checkbox"
                         checked={formData.coupon_ids.includes(coupon.id)}
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              coupon_ids: [...formData.coupon_ids, coupon.id],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              coupon_ids: formData.coupon_ids.filter((id) => id !== coupon.id),
-                            });
-                          }
+                          // ✅ שימוש ב-functional update כדי למנוע בעיות closure
+                          setFormData((prev) => {
+                            if (e.target.checked) {
+                              return {
+                                ...prev,
+                                coupon_ids: [...prev.coupon_ids, coupon.id],
+                              };
+                            } else {
+                              return {
+                                ...prev,
+                                coupon_ids: prev.coupon_ids.filter((id) => id !== coupon.id),
+                              };
+                            }
+                          });
                         }}
                         className="rounded"
                       />
                       <span className="text-sm">
-                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : `₪${coupon.value}`})
+                        {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.value}%` : coupon.value ? `₪${coupon.value}` : 'null'})
                       </span>
                     </label>
                   ))

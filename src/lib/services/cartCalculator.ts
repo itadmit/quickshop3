@@ -576,8 +576,9 @@ export class CartCalculator {
           minimum_order_amount, maximum_order_amount,
           minimum_quantity, maximum_quantity,
           applies_to, priority,
-          COALESCE(can_combine_with_codes, true) as can_combine_with_codes,
-          COALESCE(can_combine_with_other_automatic, false) as can_combine_with_other_automatic,
+          // ✅ לא משתמשים ב-COALESCE כדי לשמור על הערך האמיתי (false נשאר false)
+          can_combine_with_codes,
+          can_combine_with_other_automatic,
           COALESCE(max_combined_discounts, 1) as max_combined_discounts,
           customer_segment, minimum_orders_count,
           minimum_lifetime_value,
@@ -706,6 +707,11 @@ export class CartCalculator {
     await this.loadAutomaticDiscounts();
 
     // 1. חישוב subtotal בסיסי
+    // ✅ Helper function לבדיקה אם פריט הוא מתנה
+    const isGiftItem = (item: CartItem): boolean => {
+      return item.properties?.some(prop => prop.name === 'מתנה') || false;
+    };
+
     const itemsWithTotals = this.items.map((item) => ({
       item,
       lineTotal: item.price * item.quantity,
@@ -715,7 +721,10 @@ export class CartCalculator {
     }));
 
     const subtotal = itemsWithTotals.reduce((sum, item) => sum + item.lineTotal, 0);
-    const totalQuantity = itemsWithTotals.reduce((sum, item) => sum + item.item.quantity, 0);
+    // ✅ חישוב totalQuantity ללא מתנות (מתנות לא נספרות להנחות אוטומטיות)
+    const totalQuantity = itemsWithTotals.reduce((sum, item) => {
+      return isGiftItem(item.item) ? sum : sum + item.item.quantity;
+    }, 0);
 
     // טעינת premium club discount אם יש customer tier
     let premiumClubDiscount = 0;
@@ -745,6 +754,8 @@ export class CartCalculator {
     // החלת הנחות אוטומטיות
     let remainingSubtotal = subtotal;
     let appliedAutomaticCount = 0;
+    // ✅ שמירת ההנחות האוטומטיות שהוחלו כדי לבדוק אותן מול קופונים
+    const appliedAutomaticDiscounts: AutomaticDiscount[] = [];
 
     for (const autoDiscount of applicableAutomaticDiscounts) {
       // בדיקת שילוב עם הנחות אוטומטיות אחרות
@@ -796,6 +807,7 @@ export class CartCalculator {
       // גם אם ההנחה 0 - עבור מתנות או משלוח חינם
       if (discountResult.amount > 0 || autoDiscount.gift_product_id || autoDiscount.discount_type === 'free_shipping') {
         allAppliedDiscounts.push(appliedDiscount);
+        appliedAutomaticDiscounts.push(autoDiscount); // ✅ שמירת ההנחה האוטומטית שהוחלה
         appliedAutomaticCount++;
       }
     }
@@ -893,12 +905,26 @@ export class CartCalculator {
         canApplyCode = false;
       }
 
-      // בדיקת שילוב עם הנחות אוטומטיות
-      if (canApplyCode && appliedAutomaticCount > 0 && !currentCode.can_combine_with_automatic) {
-        codeErrors.push(
-          `קופון ${currentCode.code} לא ניתן לשילוב עם הנחות אוטומטיות`
+      // ✅ בדיקת שילוב עם הנחות אוטומטיות - בדיקה דו-כיוונית
+      if (canApplyCode && appliedAutomaticCount > 0) {
+        // בדיקה 1: האם הקופון מאפשר שילוב עם הנחות אוטומטיות
+        if (!currentCode.can_combine_with_automatic) {
+          codeErrors.push(
+            `קופון ${currentCode.code} לא ניתן לשילוב עם הנחות אוטומטיות`
+          );
+          canApplyCode = false;
+        }
+        
+        // ✅ בדיקה 2: האם ההנחות האוטומטיות שהוחלו מאפשרות שילוב עם קופונים
+        const blockingAutomaticDiscount = appliedAutomaticDiscounts.find(
+          ad => !ad.can_combine_with_codes
         );
-        canApplyCode = false;
+        if (blockingAutomaticDiscount) {
+          codeErrors.push(
+            `הנחה אוטומטית "${blockingAutomaticDiscount.name}" לא מאפשרת שילוב עם קופונים`
+          );
+          canApplyCode = false;
+        }
       }
 
       if (canApplyCode) {
@@ -1145,12 +1171,20 @@ export class CartCalculator {
     items: Array<{ item: CartItem; lineTotal: number }>,
     discount: AutomaticDiscount | DiscountCode
   ): boolean {
+    // ✅ Helper function לבדיקה אם פריט הוא מתנה
+    const isGiftItem = (item: CartItem): boolean => {
+      return item.properties?.some(prop => prop.name === 'מתנה') || false;
+    };
+
+    // ✅ מסנן מתנות - מתנות לא נספרות להנחות
+    const nonGiftItems = items.filter(itemData => !isGiftItem(itemData.item));
+
     if (discount.applies_to === 'all') {
-      return true;
+      return nonGiftItems.length > 0;
     }
 
-    // בדיקה אם יש פריטים שמתאימים
-    return items.some(itemData => {
+    // בדיקה אם יש פריטים שמתאימים (ללא מתנות)
+    return nonGiftItems.some(itemData => {
       const item = itemData.item;
 
       if (discount.applies_to === 'specific_products' && discount.product_ids) {
@@ -1211,9 +1245,20 @@ export class CartCalculator {
     let totalDiscount = 0;
     const itemDiscounts: number[] = new Array(items.length).fill(0);
 
+    // ✅ Helper function לבדיקה אם פריט הוא מתנה
+    const isGiftItem = (item: CartItem): boolean => {
+      return item.properties?.some(prop => prop.name === 'מתנה') || false;
+    };
+
     // קביעת פריטים שההנחה חלה עליהם
+    // ✅ מסנן מתנות - מתנות לא נספרות להנחות אוטומטיות
     const applicableItems = items.filter((itemData, index) => {
       const item = itemData.item;
+      
+      // ✅ מתנות לא נספרות להנחות אוטומטיות
+      if (isGiftItem(item)) {
+        return false;
+      }
       
       if (discount.applies_to === 'all') {
         return true;
@@ -1328,6 +1373,7 @@ export class CartCalculator {
         // Volume - הנחה לפי כמות (tiers) (עובד גם אוטומטי וגם קופון)
         const volumeDiscount = discount as AutomaticDiscount | DiscountCode;
         if (volumeDiscount.volume_tiers && volumeDiscount.volume_tiers.length > 0) {
+          // ✅ חישוב totalQuantity ללא מתנות (מתנות כבר מסוננות ב-applicableItems)
           const totalQuantity = applicableItems.reduce((sum, item) => sum + item.item.quantity, 0);
           // מציאת ה-tier המתאים (הגבוה ביותר שהכמות מגיעה אליו)
           let applicableTier = null;
@@ -1360,7 +1406,7 @@ export class CartCalculator {
           const fixedQuantity = fixedPriceDiscount.fixed_price_quantity;
           const fixedPrice = fixedPriceDiscount.fixed_price_amount;
           
-          // חישוב כמה "חבילות" של מחיר קבוע יש
+          // ✅ חישוב כמה "חבילות" של מחיר קבוע יש (מתנות כבר מסוננות ב-applicableItems)
           const totalQuantity = applicableItems.reduce((sum, item) => sum + item.item.quantity, 0);
           const bundleCount = Math.floor(totalQuantity / fixedQuantity);
           

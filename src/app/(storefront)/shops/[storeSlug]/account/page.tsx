@@ -470,17 +470,35 @@ export default function StorefrontAccountPage() {
   const fetchReturns = async (customerId: number) => {
     try {
       const token = localStorage.getItem(`storefront_token_${storeSlug}`)
+      if (!token) {
+        console.log("No token found for returns")
+        setReturns([])
+        return
+      }
+      
       const response = await fetch(`/api/storefront/${storeSlug}/returns`, {
         headers: {
-          "x-customer-id": token || customerId.toString(),
+          "x-customer-id": token,
         },
       })
+      
+      // בדיקה אם הלקוח נמחק
+      if (handleAuthError(response)) {
+        setReturns([])
+        return
+      }
+      
       if (response.ok) {
         const data = await response.json()
         setReturns(data.returns || [])
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("Error fetching returns:", errorData)
+        setReturns([])
       }
     } catch (error) {
       console.error("Error fetching returns:", error)
+      setReturns([]) // ✅ איפוס לרשימה ריקה במקרה של שגיאה
     }
   }
 

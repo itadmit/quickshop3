@@ -34,10 +34,12 @@ export async function GET(
       created_at: Date;
       billing_address: any;
       shipping_address: any;
+      note_attributes: any;
+      discount_codes: any;
     }>(
       `SELECT id, order_number, order_name, financial_status, fulfillment_status,
               total_price, subtotal_price, total_tax, total_discounts, total_shipping_price,
-              created_at, billing_address, shipping_address
+              created_at, billing_address, shipping_address, note_attributes, discount_codes
        FROM orders
        WHERE id = $1 AND store_id = $2 AND customer_id = $3`,
       [orderId, auth.store.id, auth.customerId]
@@ -79,6 +81,20 @@ export async function GET(
       [orderId]
     );
 
+    // Parse discount codes
+    let discountCodes: string[] = [];
+    if (order.discount_codes) {
+      try {
+        if (Array.isArray(order.discount_codes)) {
+          discountCodes = order.discount_codes;
+        } else if (typeof order.discount_codes === 'string') {
+          discountCodes = JSON.parse(order.discount_codes);
+        }
+      } catch (e) {
+        console.warn('Error parsing discount_codes:', e);
+      }
+    }
+
     return NextResponse.json({
       id: order.id,
       orderNumber: order.order_number,
@@ -93,6 +109,8 @@ export async function GET(
       createdAt: order.created_at,
       billingAddress: order.billing_address,
       shippingAddress: order.shipping_address,
+      noteAttributes: order.note_attributes || {}, // ✅ מוסיף note_attributes
+      discountCodes: discountCodes, // ✅ מוסיף discount_codes
       items: items.map((item) => ({
         id: item.id,
         name: item.title,

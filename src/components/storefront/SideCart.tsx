@@ -61,6 +61,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
   const {
     calculation,
     discountCode,
+    validatingCode,
     loading: calcLoading,
     getSubtotal,
     getDiscount,
@@ -247,7 +248,9 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
   // פונקציה לבדיקת מלאי לפני עדכון כמות
   const handleQuantityChange = async (variantId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeFromCart(variantId);
+      await removeFromCart(variantId);
+      // ✅ רענון חישוב אחרי מחיקה
+      await recalculate();
       return;
     }
 
@@ -353,6 +356,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
 
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto p-3">
+              {/* ✅ בדיקה נכונה: אם אין פריטים בכלל */}
               {cartItems.length === 0 && !calcLoading ? (
                 <div className="text-center py-12">
                   <HiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -365,191 +369,198 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                     המשך לקניות
                   </Link>
                 </div>
-              ) : (cartItems.length === 0 && calcLoading) ? (
-                <div className="space-y-2">
-                  {/* סקלטון לטעינה - Compact */}
-                  <div className="flex items-center gap-3 p-2.5 border border-gray-200 rounded-lg animate-pulse">
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                </div>
-              ) : !calculation || (calculation.items.length === 0 && cartItems.length > 0) ? (
-                <div className="space-y-2">
-                  {cartItems.map((item) => (
-                    <div key={item.variant_id} className="flex items-center gap-3 p-2.5 border border-gray-200 rounded-lg animate-pulse">
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              ) : (
+                /* ✅ אם יש פריטים או טוען - מציג את הפריטים */
+                <>
+                  {/* ✅ מציג skeleton רק בזמן טעינה */}
+                  {calcLoading && !calculation ? (
+                    <div className="space-y-2">
+                      {/* סקלטון לטעינה - Compact */}
+                      <div className="flex items-center gap-3 p-2.5 border border-gray-200 rounded-lg animate-pulse">
+                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {calculation.items.map((calculatedItem, index) => {
-                    const item = calculatedItem.item;
-                    const hasDiscount = calculatedItem.lineDiscount > 0;
-                    
-                    // בדיקה אם זה מוצר מתנה (gift product)
-                    const isGiftProduct = item.properties?.some(prop => prop.name === 'מתנה');
-                    const giftDiscountName = item.properties?.find(prop => prop.name === 'מתנה')?.value;
-                    
-                    return (
-                      <div key={item.variant_id} className={`flex items-center gap-3 p-2.5 border rounded-lg ${isGiftProduct ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
-                        {/* Image - Smaller */}
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                          {item.image ? (
-                            <img src={item.image} alt={item.product_title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                              </svg>
+                  ) : calculation && calculation.items.length > 0 ? (
+                    /* ✅ מציג את הפריטים המחושבים */
+                    <div className="space-y-2">
+                      {calculation.items.map((calculatedItem, index) => {
+                        const item = calculatedItem.item;
+                        const hasDiscount = calculatedItem.lineDiscount > 0;
+                        
+                        // בדיקה אם זה מוצר מתנה (gift product)
+                        const isGiftProduct = item.properties?.some(prop => prop.name === 'מתנה');
+                        const giftDiscountName = item.properties?.find(prop => prop.name === 'מתנה')?.value;
+                        
+                        return (
+                          <div key={item.variant_id} className={`flex items-center gap-3 p-2.5 border rounded-lg ${isGiftProduct ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                            {/* Image - Smaller */}
+                            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                              {item.image ? (
+                                <img src={item.image} alt={item.product_title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
-                        {/* Info - Compact */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-1">
+                            {/* Info - Compact */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <h3 className="font-medium text-sm text-gray-900 truncate">{item.product_title}</h3>
-                                {isGiftProduct && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-green-600 text-white rounded-full flex-shrink-0">
-                                    {t('cart.gift')}
-                                  </span>
+                              <div className="flex items-start justify-between gap-1">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <h3 className="font-medium text-sm text-gray-900 truncate">{item.product_title}</h3>
+                                    {isGiftProduct && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-green-600 text-white rounded-full flex-shrink-0">
+                                        {t('cart.gift')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* חיווי למוצר מתנה */}
+                                  {isGiftProduct && giftDiscountName && (
+                                    <p className="text-[10px] text-green-700 font-medium mt-0.5">
+                                      {t('cart.gift_from_discount', { discount: giftDiscountName })}
+                                    </p>
+                                  )}
+                                  
+                                  {/* מטא-דאטה - Compact */}
+                                  <div className="mt-0.5">
+                                    {(() => {
+                                      const properties = propertiesMap.get(item.variant_id) || item.properties;
+                                      const filteredProperties = properties?.filter(prop => prop.name !== 'מתנה');
+                                      if (filteredProperties && filteredProperties.length > 0) {
+                                        return (
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {filteredProperties.map((prop, idx) => (
+                                              <span key={idx} className="text-[10px] text-gray-500">
+                                                {prop.name}: {prop.value}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        );
+                                      } else if (item.variant_title && item.variant_title !== 'Default Title') {
+                                        return (
+                                          <p className="text-[10px] text-gray-500">{item.variant_title}</p>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+                                </div>
+                                {/* כפתור מחיקה */}
+                                {!isGiftProduct && (
+                                  <button
+                                    onClick={async () => {
+                                      await removeFromCart(item.variant_id);
+                                      // ✅ רענון חישוב אחרי מחיקה
+                                      await recalculate();
+                                    }}
+                                    className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                                    aria-label={t('cart.remove_item')}
+                                    disabled={calcLoading}
+                                  >
+                                    <HiTrash className="w-3.5 h-3.5 text-gray-400 hover:text-red-600" />
+                                  </button>
                                 )}
                               </div>
-                              
-                              {/* חיווי למוצר מתנה */}
-                              {isGiftProduct && giftDiscountName && (
-                                <p className="text-[10px] text-green-700 font-medium mt-0.5">
-                                  {t('cart.gift_from_discount', { discount: giftDiscountName })}
-                                </p>
-                              )}
-                              
-                              {/* מטא-דאטה - Compact */}
-                              <div className="mt-0.5">
-                                {(() => {
-                                  const properties = propertiesMap.get(item.variant_id) || item.properties;
-                                  const filteredProperties = properties?.filter(prop => prop.name !== 'מתנה');
-                                  if (filteredProperties && filteredProperties.length > 0) {
-                                    return (
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {filteredProperties.map((prop, idx) => (
-                                          <span key={idx} className="text-[10px] text-gray-500">
-                                            {prop.name}: {prop.value}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    );
-                                  } else if (item.variant_title && item.variant_title !== 'Default Title') {
-                                    return (
-                                      <p className="text-[10px] text-gray-500">{item.variant_title}</p>
-                                    );
-                                  }
-                                  return null;
-                                })()}
+
+                              {/* כמות ומחיר - Compact */}
+                              <div className="flex items-center justify-between mt-2">
+                                {/* שינוי כמות - Compact */}
+                                {isGiftProduct ? (
+                                  <span className="text-xs font-medium text-gray-900 px-2">
+                                    {item.quantity}
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center border border-gray-300 rounded">
+                                    <button
+                                      onClick={async () => {
+                                        const newQuantity = item.quantity - 1;
+                                        await handleQuantityChange(item.variant_id, newQuantity);
+                                      }}
+                                      disabled={calcLoading || item.quantity <= 1}
+                                      className="px-2 py-0.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <HiMinus className="w-3 h-3" />
+                                    </button>
+                                    <span className="px-2 py-0.5 text-xs font-medium text-gray-900 min-w-[24px] text-center">
+                                      {item.quantity}
+                                    </span>
+                                    <button
+                                      onClick={async () => {
+                                        const newQuantity = item.quantity + 1;
+                                        await handleQuantityChange(item.variant_id, newQuantity);
+                                      }}
+                                      disabled={calcLoading}
+                                      className="px-2 py-0.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <HiPlus className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* מחיר - Compact */}
+                                <div className="flex flex-col items-end">
+                                  {hasDiscount ? (
+                                    <>
+                                      <p className="text-[10px] text-gray-400 line-through">
+                                        ₪{calculatedItem.lineTotal.toFixed(2)}
+                                      </p>
+                                      <p className="text-xs font-semibold text-gray-900">
+                                        ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                                      </p>
+                                      {calculatedItem.appliedDiscounts && calculatedItem.appliedDiscounts.length > 0 && (
+                                        <div className="flex flex-col items-end">
+                                          {calculatedItem.appliedDiscounts
+                                            .filter(discount => discount.source === 'automatic')
+                                            .map((discount, idx) => (
+                                              <span key={idx} className="inline-flex px-1.5 py-0.5 text-[9px] font-medium bg-purple-100 text-purple-700 rounded-full whitespace-nowrap">
+                                                {discount.name}
+                                              </span>
+                                            ))
+                                          }
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <p className="text-xs font-semibold text-gray-900">
+                                      ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            {/* כפתור מחיקה */}
-                            {!isGiftProduct && (
-                              <button
-                                onClick={() => removeFromCart(item.variant_id)}
-                                className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
-                                aria-label={t('cart.remove_item')}
-                              >
-                                <HiTrash className="w-3.5 h-3.5 text-gray-400 hover:text-red-600" />
-                              </button>
-                            )}
                           </div>
-
-                          {/* כמות ומחיר - Compact */}
-                          <div className="flex items-center justify-between mt-2">
-                            {/* שינוי כמות - Compact */}
-                            {isGiftProduct ? (
-                              <span className="text-xs font-medium text-gray-900 px-2">
-                                {item.quantity}
-                              </span>
-                            ) : (
-                              <div className="flex items-center border border-gray-300 rounded">
-                                <button
-                                  onClick={async () => {
-                                    const newQuantity = item.quantity - 1;
-                                    await handleQuantityChange(item.variant_id, newQuantity);
-                                  }}
-                                  disabled={loadingInventory.has(item.variant_id)}
-                                  className="p-1 hover:bg-gray-100 transition-colors disabled:opacity-50"
-                                  aria-label={t('cart.decrease_quantity')}
-                                >
-                                  <HiMinus className="w-3 h-3 text-gray-600" />
-                                </button>
-                                <span className="text-xs font-medium text-gray-900 min-w-[1.5rem] text-center">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={async () => {
-                                    const newQuantity = item.quantity + 1;
-                                    await handleQuantityChange(item.variant_id, newQuantity);
-                                }}
-                                disabled={
-                                  loadingInventory.has(item.variant_id) ||
-                                  (inventoryMap.get(item.variant_id) !== undefined && 
-                                   item.quantity >= (inventoryMap.get(item.variant_id) || 0))
-                                }
-                                className="p-1 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                aria-label={t('cart.increase_quantity')}
-                              >
-                                <HiPlus className="w-3 h-3 text-gray-600" />
-                              </button>
-                            </div>
-                            )}
-
-                            {/* מחיר - Compact */}
-                            <div className="flex flex-col items-end">
-                              {calculatedItem.lineDiscount > 0 ? (
-                                <>
-                                  <p className="text-[10px] text-gray-400 line-through">
-                                    ₪{calculatedItem.lineTotal.toFixed(2)}
-                                  </p>
-                                  <p className="text-xs font-semibold text-gray-900">
-                                    ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                                  </p>
-                                  {calculatedItem.appliedDiscounts && calculatedItem.appliedDiscounts.length > 0 && (
-                                    <div className="flex flex-col items-end">
-                                      {calculatedItem.appliedDiscounts
-                                        .filter(discount => discount.source === 'automatic')
-                                        .map((discount, idx) => (
-                                          <span key={idx} className="inline-flex px-1.5 py-0.5 text-[9px] font-medium bg-purple-100 text-purple-700 rounded-full whitespace-nowrap">
-                                            {discount.name}
-                                          </span>
-                                        ))
-                                      }
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <p className="text-xs font-semibold text-gray-900">
-                                  ₪{calculatedItem.lineTotalAfterDiscount.toFixed(2)}
-                                </p>
-                              )}
-                            </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* ✅ אם יש cartItems אבל אין calculation.items - מציג skeleton */
+                    <div className="space-y-2">
+                      {cartItems.map((item) => (
+                        <div key={item.variant_id} className="flex items-center gap-3 p-2.5 border border-gray-200 rounded-lg animate-pulse">
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -562,6 +573,8 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                   isNavigatingToCheckout={isNavigatingToCheckout}
                   cartItems={cartItems}
                   calculation={calculation}
+                  discountCode={discountCode}
+                  validatingCode={validatingCode}
                   // לא מעבירים onCheckout כדי שהכפתור לא יופיע בתוך הסיכום
                 />
                 

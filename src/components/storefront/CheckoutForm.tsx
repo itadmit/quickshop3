@@ -28,6 +28,7 @@ import {
   Lock,
   Coins,
   FileText,
+  LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CheckoutFooter } from './CheckoutFooter';
@@ -162,6 +163,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
       free_shipping_threshold: selectedShippingRate.free_shipping_threshold,
     } : undefined,
     autoCalculate: true,
+    customerId: customerData?.id,
+    customerTier: customerData?.premium_club_tier || null, // ✅ העברת tier של הלקוח
   });
 
   // ✅ autoCalculate: true ב-useCartCalculator כבר מטפל בחישוב אוטומטי
@@ -695,6 +698,14 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         giftCardAmount: giftCardAmount, // ✅ סכום גיפט קארד
         customFields: formData.customFields,
         discountCodes: discountCode ? [discountCode] : [], // ✅ מוסיף את קוד הקופון להזמנה
+        appliedDiscounts: getDiscounts().map(d => ({ // ✅ מוסיף פרטי כל ההנחות שהוחלו
+          name: d.name,
+          description: d.description,
+          code: d.code,
+          type: d.type,
+          amount: d.amount,
+          source: d.source,
+        })),
       });
 
       // מימוש גיפט קארד אם יש
@@ -1185,12 +1196,38 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                                 מחובר כ-{customerData.first_name || customerData.email}
                               </span>
                             </div>
-                            <Link
-                              href={`/shops/${storeSlug}/account`}
-                              className="text-sm font-medium text-green-600 hover:text-green-700 underline"
-                            >
-                              חשבון שלי
-                            </Link>
+                            <div className="flex items-center gap-3">
+                              <Link
+                                href={`/shops/${storeSlug}/account`}
+                                className="text-sm font-medium text-green-600 hover:text-green-700 underline"
+                              >
+                                חשבון שלי
+                              </Link>
+                              <button
+                                onClick={() => {
+                                  // ✅ Track Logout event
+                                  emitTrackingEvent({
+                                    event: 'Logout',
+                                    user_id: customerData?.id ? String(customerData.id) : undefined,
+                                  });
+                                  
+                                  // ✅ התנתקות מהחשבון
+                                  localStorage.removeItem(`storefront_token_${storeSlug}`);
+                                  localStorage.removeItem(`storefront_customer_${storeSlug}`);
+                                  // מחיקת cookie
+                                  document.cookie = `storefront_customer_${storeSlug}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                                  // עדכון ההדר מיד
+                                  window.dispatchEvent(new Event('customerDataChanged'));
+                                  // רענון הדף כדי לעדכן את המצב
+                                  window.location.reload();
+                                }}
+                                className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                                type="button"
+                              >
+                                <LogOut className="w-4 h-4" />
+                                <span>התנתק</span>
+                              </button>
+                            </div>
                           </div>
                           {/* ✅ הצגת קרדיט בחנות אם יש */}
                           {storeCredit && storeCredit.balance > 0 && (
@@ -2220,24 +2257,38 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     </div>
                   )}
                   
-                  {/* ✅ מציג קופון לא תקף עם אזהרה */}
+                  {/* ✅ מציג loader בזמן בדיקת קופון או חישוב, או קופון לא תקף */}
                   {discountCode && !calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && (
-                    <div className="mb-4 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className={`mb-4 px-3 py-2 rounded-lg ${validatingCode || calcLoading ? 'bg-gray-50 border border-gray-200' : 'bg-yellow-50 border border-yellow-200'}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span dir="ltr" className="text-sm font-medium text-yellow-800">{discountCode}</span>
-                          <span className="text-xs text-yellow-600">(לא תקף)</span>
+                          {validatingCode || calcLoading ? (
+                            // ✅ מציג loader בזמן בדיקה או חישוב
+                            <>
+                              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                              <span dir="ltr" className="text-sm font-medium text-gray-800">{discountCode}</span>
+                              <span className="text-xs text-gray-600">(בודק...)</span>
+                            </>
+                          ) : (
+                            // ✅ מציג הודעת אזהרה רק אחרי שהבדיקה הסתיימה והקופון באמת לא תקף
+                            <>
+                              <span dir="ltr" className="text-sm font-medium text-yellow-800">{discountCode}</span>
+                              <span className="text-xs text-yellow-600">(לא תקף)</span>
+                            </>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await removeDiscountCode();
-                          }}
-                          className="text-yellow-700 hover:text-red-600 hover:bg-yellow-200 rounded p-1 transition-colors mr-2"
-                          aria-label="הסר קופון"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        {!(validatingCode || calcLoading) && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await removeDiscountCode();
+                            }}
+                            className="text-yellow-700 hover:text-red-600 hover:bg-yellow-200 rounded p-1 transition-colors mr-2"
+                            aria-label="הסר קופון"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

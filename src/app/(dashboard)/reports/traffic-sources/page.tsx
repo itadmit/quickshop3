@@ -26,7 +26,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
+import { DateRangePicker, getDefaultDateRange, dateRangeToParams } from '@/components/ui/DateRangePicker';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface TrafficSource {
@@ -76,10 +76,7 @@ export default function TrafficSourcesPage() {
     total_revenue: 0,
     overall_conversion_rate: 0,
   });
-  const [dateRange, setDateRange] = useState({
-    start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0],
-  });
+  const [dateRange, setDateRange] = useState(getDefaultDateRange());
 
   useEffect(() => {
     loadData();
@@ -88,9 +85,10 @@ export default function TrafficSourcesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      const { start_date, end_date } = dateRangeToParams(dateRange);
       const params = new URLSearchParams();
-      params.append('start_date', dateRange.start_date);
-      params.append('end_date', dateRange.end_date);
+      params.append('start_date', start_date);
+      params.append('end_date', end_date);
 
       const response = await fetch(`/api/reports/traffic-sources?${params.toString()}`, {
         credentials: 'include',
@@ -115,9 +113,10 @@ export default function TrafficSourcesPage() {
 
   const handleExport = async () => {
     try {
+      const { start_date, end_date } = dateRangeToParams(dateRange);
       const params = new URLSearchParams();
-      params.append('start_date', dateRange.start_date);
-      params.append('end_date', dateRange.end_date);
+      params.append('start_date', start_date);
+      params.append('end_date', end_date);
       params.append('format', 'csv');
 
       const response = await fetch(`/api/reports/traffic-sources/export?${params.toString()}`, {
@@ -130,7 +129,7 @@ export default function TrafficSourcesPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `traffic-sources-${dateRange.start_date}-${dateRange.end_date}.csv`;
+      a.download = `traffic-sources-${start_date}-${end_date}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -185,31 +184,10 @@ export default function TrafficSourcesPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Select
-            value={`${dateRange.start_date}_${dateRange.end_date}`}
-            onValueChange={(value) => {
-              const [start, end] = value.split('_');
-              setDateRange({ start_date: start, end_date: end });
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                7 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                30 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                90 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                שנה אחרונה
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+          />
           <Button onClick={handleExport} variant="ghost">
             <HiDownload className="w-4 h-4 ml-1" />
             ייצא CSV
