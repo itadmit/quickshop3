@@ -43,10 +43,14 @@ interface Order {
   };
   delivery_method?: 'shipping' | 'pickup';
   payment_method?: 'credit_card' | 'bank_transfer' | 'cash';
+  gateway?: string; // שיטת תשלום (gateway) מהמסד נתונים
   note_attributes?: {
     shipping_method_name?: string;
     delivery_method?: string;
     payment_method?: string;
+    gift_card_code?: string;
+    gift_card_amount?: number;
+    store_credit_amount?: number;
     [key: string]: any;
   };
   line_items: Array<{
@@ -55,6 +59,7 @@ interface Order {
     variant_title: string;
     quantity: number;
     price: string;
+    total_discount?: string; // הנחה כוללת על הפריט
     image?: string;
     properties?: Array<{ name: string; value: string }>;
   }>;
@@ -443,10 +448,29 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                         <div>
                           <span className="text-gray-500">שיטת תשלום: </span>
                           <span className="font-medium">
-                            {order.payment_method === 'credit_card' ? 'כרטיס אשראי' :
-                             order.payment_method === 'bank_transfer' ? 'העברה בנקאית' :
-                             order.payment_method === 'cash' ? 'מזומן' :
-                             'כרטיס אשראי'}
+                            {(() => {
+                              // בדיקה אם יש גיפט קארד או קרדיט בחנות
+                              if (order.note_attributes?.gift_card_code) {
+                                return 'גיפט קארד';
+                              }
+                              if (order.note_attributes?.store_credit_amount && order.note_attributes.store_credit_amount > 0) {
+                                return 'קרדיט בחנות';
+                              }
+                              
+                              // בדיקה של payment_method מ-note_attributes, payment_method ישיר, או gateway
+                              const paymentMethod = order.note_attributes?.payment_method || order.payment_method || order.gateway;
+                              
+                              if (paymentMethod === 'credit_card') return 'כרטיס אשראי';
+                              if (paymentMethod === 'bank_transfer') return 'העברה בנקאית';
+                              if (paymentMethod === 'cash') return 'מזומן';
+                              if (paymentMethod === 'cash_on_delivery') return 'מזומן בעת המשלוח';
+                              if (paymentMethod === 'store_credit') return 'קרדיט בחנות';
+                              if (paymentMethod === 'paypal') return 'PayPal';
+                              if (paymentMethod === 'bit') return 'ביט';
+                              if (paymentMethod === 'gift_card') return 'גיפט קארד';
+                              
+                              return 'כרטיס אשראי'; // ברירת מחדל
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -607,8 +631,36 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
                                 </div>
                               )}
                             </div>
-                            <div className="font-medium text-base">
-                              ₪{parseFloat(item.price).toFixed(2)}
+                            <div className="text-left min-w-[120px] flex flex-col items-end gap-1">
+                              {/* ✅ הצגת מחיר מקורי ומחיר אחרי הנחה אם יש הנחה */}
+                              {item.total_discount && parseFloat(item.total_discount) > 0 ? (
+                                <>
+                                  {/* מחיר מקורי ליחידה (לפני הנחה) */}
+                                  <div className="text-xs text-gray-400 line-through">
+                                    ₪{((parseFloat(item.price) + parseFloat(item.total_discount) / item.quantity)).toFixed(2)} × {item.quantity}
+                                  </div>
+                                  {/* מחיר אחרי הנחה ליחידה */}
+                                  <div className="text-base font-medium text-gray-900">
+                                    ₪{parseFloat(item.price).toFixed(2)} × {item.quantity}
+                                  </div>
+                                  {/* סה"כ אחרי הנחה עם חיווי הנחה */}
+                                  <div className="text-sm text-green-600 font-medium">
+                                    ₪{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                                    <span className="text-xs text-gray-500 mr-1">
+                                      (הנחה: ₪{parseFloat(item.total_discount).toFixed(2)})
+                                    </span>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-base font-medium text-gray-900">
+                                    ₪{parseFloat(item.price).toFixed(2)} × {item.quantity}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    ₪{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         );

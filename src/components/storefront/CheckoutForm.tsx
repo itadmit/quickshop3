@@ -581,10 +581,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
       const total = getTotal();
       // ✅ וידוא שהקרדיט לא גדול מהיתרה או מהסכום הכולל
+      // ✅ מאפשר שימוש בקרדיט גם אם paymentMethod הוא credit_card (לשימוש חלקי)
       const maxStoreCreditAmount = storeCredit && storeCredit.balance > 0 
         ? Math.min(storeCredit.balance, total) 
         : 0;
-      const storeCreditAmount = formData.paymentMethod === 'store_credit' 
+      // ✅ מחשב קרדיט גם אם paymentMethod הוא credit_card
+      const storeCreditAmount = (formData.paymentMethod === 'store_credit' || formData.paymentMethod === 'credit_card') && formData.storeCreditAmount
         ? Math.min(formData.storeCreditAmount || 0, maxStoreCreditAmount)
         : 0;
       const giftCardAmount = appliedGiftCard ? appliedGiftCard.amountToUse : 0;
@@ -604,6 +606,17 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           return;
         }
         if (storeCreditAmount > storeCredit.balance) {
+          alert(`סכום הקרדיט גדול מהיתרה הזמינה (₪${storeCredit.balance.toFixed(2)}).`);
+          setProcessing(false);
+          return;
+        }
+      }
+      // ✅ אם יש קרדיט שמוזן אבל paymentMethod הוא credit_card, וודא שהקרדיט תקין
+      if (formData.paymentMethod === 'credit_card' && formData.storeCreditAmount && formData.storeCreditAmount > 0) {
+        if (!storeCredit || storeCredit.balance <= 0) {
+          // לא נכשל, פשוט לא נשתמש בקרדיט
+          console.warn('קרדיט לא זמין, ממשיך ללא קרדיט');
+        } else if (formData.storeCreditAmount > storeCredit.balance) {
           alert(`סכום הקרדיט גדול מהיתרה הזמינה (₪${storeCredit.balance.toFixed(2)}).`);
           setProcessing(false);
           return;
@@ -796,8 +809,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   }, [getTotal]);
 
   const shippingCost = useMemo(() => {
+    // ✅ אם calculation עדיין לא מעודכן, מחזיר את המחיר של selectedShippingRate
+    if (!calculation && selectedShippingRate) {
+      return selectedShippingRate.price;
+    }
     return getShipping();
-  }, [getShipping]);
+  }, [getShipping, calculation, selectedShippingRate]);
 
   // Redirect אם אין פריטים - רק ב-client אחרי mount
   // לא מפנים אם ההזמנה הושלמה (כדי לאפשר redirect לעמוד התודה)
@@ -1985,10 +2002,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   )}
                   
                   {/* Store Credit Amount Input */}
-                  {formData.paymentMethod === 'store_credit' && storeCredit && storeCredit.balance > 0 && (
+                  {/* ✅ מציג שדה קרדיט גם אם paymentMethod הוא credit_card (לשימוש חלקי בקרדיט + אשראי) */}
+                  {storeCredit && storeCredit.balance > 0 && (
                     <div className="mt-4 space-y-2">
                       <Label htmlFor="storeCreditAmount" className="text-sm font-medium text-gray-700">
-                        סכום קרדיט לשימוש (₪)
+                        {formData.paymentMethod === 'store_credit' 
+                          ? 'סכום קרדיט לשימוש (₪)' 
+                          : 'שימוש בקרדיט בחנות (אופציונלי) (₪)'}
                       </Label>
                       <Input
                         id="storeCreditAmount"
@@ -2020,6 +2040,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           }
                         }}
                         className="mt-1"
+                        placeholder={formData.paymentMethod === 'credit_card' ? '0' : ''}
                         placeholder={`0.00 (מקסימום: ₪${Math.min(storeCredit.balance, getTotal()).toFixed(2)})`}
                       />
                       <p className="text-xs text-gray-500">
@@ -2154,13 +2175,32 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {/* תיאור ההנחה + קוד בשורה אחת */}
-                          {calculation?.discounts?.filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => (
-                            <span key={idx} className="text-sm text-green-700 truncate">
-                              {discount.description || discount.name}
-                            </span>
-                          ))}
-                          <span className="text-xs text-green-600">-</span>
-                          <span dir="ltr" className="text-sm font-medium text-green-800">{discountCode}</span>
+                          {(() => {
+                            const discount = calculation?.discounts?.find(d => d.source === 'code' && d.code === discountCode);
+                            if (!discount) return null;
+                            
+                            const description = discount.description || discount.name || 'הנחה';
+                            // ✅ בדיקה אם הקוד כבר מופיע בתיאור (case-insensitive)
+                            const codeInDescription = discount.code && 
+                              description.toLowerCase().includes(discount.code.toLowerCase());
+                            
+                            // ✅ מציג רק את התיאור אם הוא מכיל את הקוד, אחרת מציג תיאור + קוד
+                            if (codeInDescription) {
+                              return (
+                                <span className="text-sm text-green-700 truncate">
+                                  {description}
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <>
+                                  <span className="text-sm text-green-700 truncate">{description}</span>
+                                  <span className="text-xs text-green-600">-</span>
+                                  <span dir="ltr" className="text-sm font-medium text-green-800">{discountCode}</span>
+                                </>
+                              );
+                            }
+                          })()}
                         </div>
                         {validatingCode ? (
                           <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-2" />
@@ -2320,9 +2360,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         ))}
                         
                         {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => {
-                          // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה)
+                          // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה) - case-insensitive
                           const description = discount.description || discount.name || 'הנחה';
-                          const codeInDescription = discount.code && description.includes(discount.code);
+                          const codeInDescription = discount.code && 
+                            description.toLowerCase().includes(discount.code.toLowerCase());
                           
                           return (
                             <div key={`code-${idx}`} className="flex justify-between text-xs text-green-700">
@@ -2366,12 +2407,15 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         </span>
                         <span>
                           {calcLoading || !calculation ? (
-                            // בזמן טעינה - מציג את מחיר התעריף שנבחר
+                            // ✅ בזמן טעינה או כש-calculation עדיין לא מעודכן - מציג את מחיר התעריף שנבחר
                             selectedShippingRate ? `₪${selectedShippingRate.price.toFixed(2)}` : <TextSkeleton width="w-12" height="h-4" />
-                          ) : shippingCost === 0 ? (
-                            'חינם'
                           ) : (
-                            `₪${shippingCost.toFixed(2)}`
+                            // ✅ רק אחרי ש-calculation מעודכן, בודק אם המשלוח חינם
+                            shippingCost === 0 ? (
+                              'חינם'
+                            ) : (
+                              `₪${shippingCost.toFixed(2)}`
+                            )
                           )}
                         </span>
                       </div>

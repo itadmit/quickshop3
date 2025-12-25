@@ -986,6 +986,9 @@ export class CartCalculator {
         hasFreeShippingFromTier = await hasFreeShippingBenefit(this.storeId, this.customerTier);
       }
 
+      // ✅ תמיד מעדכן את shipping לפי התעריף הנוכחי
+      shipping = this.shippingRate.price;
+      
       if (hasFreeShippingFromDiscounts || hasFreeShippingThreshold || hasFreeShippingFromTier) {
         // ✅ עדכון shippingDiscount לפי התעריף הנוכחי (תמיד)
         shippingDiscount = this.shippingRate.price;
@@ -993,7 +996,8 @@ export class CartCalculator {
           const freeShippingDiscount = allAppliedDiscounts.find(d => d.type === 'free_shipping');
           if (freeShippingDiscount) {
             // ✅ עדכון תיאור וגם amount לפי התעריף הנוכחי
-            freeShippingDiscount.description = `משלוח חינם - ${freeShippingDiscount.name || freeShippingDiscount.code || 'קופון'}`;
+            // ✅ מציג רק "משלוח חינם" - הקוד יוצג בנפרד ברכיבי ה-UI
+            freeShippingDiscount.description = 'משלוח חינם';
             freeShippingDiscount.amount = this.shippingRate.price; // ✅ עדכון הסכום לפי התעריף הנוכחי
           }
         } else if (hasFreeShippingFromTier) {
@@ -1008,8 +1012,6 @@ export class CartCalculator {
             priority: 1000,
           });
         }
-      } else {
-        shipping = this.shippingRate.price;
       }
     }
 

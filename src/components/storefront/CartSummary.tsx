@@ -142,54 +142,64 @@ export function CartSummary({
                 </button>
               )}
               <HiTag className="w-4 h-4 text-green-600" />
-              {getDiscounts().filter(d => d.source === 'code' && d.code === discountCode).map((discount, idx) => {
-                // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה)
-                const description = discount.description || discount.name || 'הנחה';
-                const codeInDescription = discount.code && description.includes(discount.code);
-                
-                return (
-                  <span key={idx} className="text-green-600">
-                    {description}
-                  </span>
-                );
-              })}
-              {/* ✅ מציג את הקוד רק אם הוא לא מופיע בתיאור */}
               {(() => {
                 const discount = getDiscounts().find(d => d.source === 'code' && d.code === discountCode);
-                const description = discount?.description || discount?.name || '';
-                const codeInDescription = discountCode && description.includes(discountCode);
+                if (!discount) return null;
                 
-                if (!codeInDescription && discountCode) {
+                const description = discount.description || discount.name || 'הנחה';
+                // ✅ בדיקה אם הקוד כבר מופיע בתיאור (case-insensitive)
+                const codeInDescription = discount.code && 
+                  description.toLowerCase().includes(discount.code.toLowerCase());
+                
+                // ✅ מציג רק את התיאור אם הוא מכיל את הקוד, אחרת מציג תיאור + קוד
+                if (codeInDescription) {
+                  return (
+                    <span className="text-green-600">
+                      {description}
+                    </span>
+                  );
+                } else {
                   return (
                     <>
+                      <span className="text-green-600">{description}</span>
                       <span className="text-green-500">-</span>
                       <span className="font-medium text-green-700" dir="ltr">{discountCode}</span>
                     </>
                   );
                 }
-                return null;
               })()}
             </div>
           </div>
         )}
         
-        {/* ✅ מציג קופון לא תקף עם אזהרה */}
+        {/* ✅ מציג loader בזמן בדיקת קופון או חישוב, או קופון לא תקף */}
         {discountCode && !getDiscounts().some(d => d.source === 'code' && d.code === discountCode) && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full text-sm" dir="rtl">
-              <button
-                onClick={async () => {
-                  await removeDiscountCode();
-                }}
-                className="text-yellow-600 hover:text-red-500 transition-colors"
-                type="button"
-              >
-                <HiX className="w-4 h-4" />
-              </button>
-              <HiTag className="w-4 h-4 text-yellow-600" />
-              <span className="text-yellow-700" dir="ltr">{discountCode}</span>
-              <span className="text-yellow-600 text-xs">(לא תקף)</span>
-            </div>
+            {validatingCode || calcLoading ? (
+              // ✅ מציג loader בזמן בדיקה או חישוב
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm" dir="rtl">
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                <HiTag className="w-4 h-4 text-gray-600" />
+                <span className="text-gray-700" dir="ltr">{discountCode}</span>
+                <span className="text-gray-600 text-xs">(בודק...)</span>
+              </div>
+            ) : (
+              // ✅ מציג הודעת אזהרה רק אחרי שהבדיקה הסתיימה והקופון באמת לא תקף
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full text-sm" dir="rtl">
+                <button
+                  onClick={async () => {
+                    await removeDiscountCode();
+                  }}
+                  className="text-yellow-600 hover:text-red-500 transition-colors"
+                  type="button"
+                >
+                  <HiX className="w-4 h-4" />
+                </button>
+                <HiTag className="w-4 h-4 text-yellow-600" />
+                <span className="text-yellow-700" dir="ltr">{discountCode}</span>
+                <span className="text-yellow-600 text-xs">(לא תקף)</span>
+              </div>
+            )}
           </div>
         )}
         

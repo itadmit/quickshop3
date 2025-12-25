@@ -190,6 +190,7 @@ export async function GET(
         ...item,
         image: imageUrl || (item as any).product_image || null,
         properties: displayProperties,
+        total_discount: item.total_discount ? item.total_discount.toString() : '0', // ✅ וידוא ש-total_discount הוא string
       };
     });
 
@@ -235,6 +236,7 @@ export async function GET(
       shipping_address: shippingAddress,
       delivery_method: noteAttributes?.delivery_method || 'shipping',
       payment_method: noteAttributes?.payment_method || order.gateway || 'credit_card',
+      gateway: order.gateway, // ✅ מחזיר את ה-gateway ישירות
       note_attributes: noteAttributes, // ✅ מחזיר את כל ה-note_attributes כולל shipping_method_name
       discount_codes: discountCodes, // ✅ מחזיר את קודי הקופון
       line_items: items,

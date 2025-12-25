@@ -130,7 +130,7 @@ export async function middleware(request: NextRequest) {
 
   // Public routes that don't require authentication
   // Storefront routes: /shops/[storeSlug] - פתוח לכולם
-  const publicRoutes = ['/', '/quickshop-payments'];
+  const publicRoutes = ['/', '/quickshop-payments', '/for-marketers', '/for-developers'];
   const isStorefrontRoute = pathname.startsWith('/shops/');
   const isPublicRoute = publicRoutes.includes(pathname) || 
                        pathname.startsWith('/quickshop-payments') ||

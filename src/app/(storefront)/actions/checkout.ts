@@ -133,46 +133,50 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // Handle store credit payment
+  // ✅ מטפל בקרדיט גם אם paymentMethod הוא credit_card (לשימוש חלקי בקרדיט + אשראי)
   let finalTotal = input.total;
-  if (input.paymentMethod === 'store_credit' && input.storeCreditAmount && input.storeCreditAmount > 0) {
+  let actualStoreCreditAmount = 0;
+  
+  // בדיקה אם יש קרדיט לשימוש (גם אם paymentMethod הוא credit_card)
+  if (input.storeCreditAmount && input.storeCreditAmount > 0) {
     // Get store credit
     const storeCredit = await queryOne<{ id: number; balance: string }>(
       `SELECT id, balance FROM store_credits WHERE store_id = $1 AND customer_id = $2`,
       [storeId, customer.id]
     );
 
-    if (!storeCredit) {
+    if (storeCredit) {
+      const creditBalance = parseFloat(storeCredit.balance);
+      const creditToUse = Math.min(input.storeCreditAmount, creditBalance, input.total);
+
+      if (creditToUse > 0) {
+        // Update store credit balance
+        const newBalance = creditBalance - creditToUse;
+        await queryOne(
+          `UPDATE store_credits SET balance = $1, updated_at = now() WHERE id = $2`,
+          [newBalance, storeCredit.id]
+        );
+
+        // Create transaction record (amount should be negative for 'used' transactions)
+        await queryOne(
+          `INSERT INTO store_credit_transactions (store_credit_id, order_id, amount, transaction_type, description, created_at)
+           VALUES ($1, NULL, $2, 'used', $3, now())
+           RETURNING id`,
+          [
+            storeCredit.id,
+            -Math.abs(creditToUse), // Make sure amount is negative for usage
+            `תשלום עבור הזמנה`,
+          ]
+        );
+
+        // Update final total
+        actualStoreCreditAmount = creditToUse;
+        finalTotal = Math.max(0, input.total - creditToUse);
+      }
+    } else if (input.paymentMethod === 'store_credit') {
+      // רק אם paymentMethod הוא store_credit בלבד, נזרוק שגיאה
       throw new Error('אין קרדיט בחנות זמין');
     }
-
-    const creditBalance = parseFloat(storeCredit.balance);
-    const creditToUse = Math.min(input.storeCreditAmount, creditBalance, input.total);
-
-    if (creditToUse <= 0) {
-      throw new Error('סכום קרדיט לא תקין');
-    }
-
-    // Update store credit balance
-    const newBalance = creditBalance - creditToUse;
-    await queryOne(
-      `UPDATE store_credits SET balance = $1, updated_at = now() WHERE id = $2`,
-      [newBalance, storeCredit.id]
-    );
-
-    // Create transaction record (amount should be negative for 'used' transactions)
-    await queryOne(
-      `INSERT INTO store_credit_transactions (store_credit_id, order_id, amount, transaction_type, description, created_at)
-       VALUES ($1, NULL, $2, 'used', $3, now())
-       RETURNING id`,
-      [
-        storeCredit.id,
-        -Math.abs(creditToUse), // Make sure amount is negative for usage
-        `תשלום עבור הזמנה`,
-      ]
-    );
-
-    // Update final total
-    finalTotal = Math.max(0, input.total - creditToUse);
   }
 
   // Get next order number - מתחיל מ-1000
@@ -239,20 +243,34 @@ export async function createOrder(input: CreateOrderInput) {
     };
   }
   
+  // ✅ הסכום הסופי כבר מחושב למעלה (finalTotal)
+  // finalTotal כבר כולל את כל ההנחות (גיפט קארד + קרדיט בחנות)
+  const finalTotalAfterCredits = finalTotal;
+  
+  // קבע את שיטת התשלום בפועל - אם גיפט קארד או קרדיט מכסים הכל, זה שיטת התשלום
+  let actualPaymentMethod = input.paymentMethod || 'credit_card';
+  if (finalTotalAfterCredits === 0) {
+    // אם הסכום הסופי הוא 0, בדוק מה מכסה את הכל
+    if (input.giftCardCode && input.giftCardAmount && input.giftCardAmount > 0) {
+      actualPaymentMethod = 'gift_card';
+    } else if (actualStoreCreditAmount > 0) {
+      actualPaymentMethod = 'store_credit';
+    }
+  } else if (actualStoreCreditAmount > 0 && input.paymentMethod === 'credit_card') {
+    // ✅ אם יש קרדיט חלקי + תשלום אשראי, שיטת התשלום היא credit_card
+    actualPaymentMethod = 'credit_card';
+  }
+  
   // Prepare note_attributes with delivery and payment methods
   const noteAttributes: Record<string, any> = {
     ...(input.customFields || {}),
     delivery_method: input.deliveryMethod || 'shipping',
-    payment_method: input.paymentMethod || 'credit_card',
+    payment_method: actualPaymentMethod, // ✅ שימוש ב-actualPaymentMethod במקום input.paymentMethod
     shipping_method_name: input.shippingMethodName || (input.deliveryMethod === 'pickup' ? 'איסוף עצמי' : 'משלוח'),
     ...(input.customer.companyName ? { company_name: input.customer.companyName } : {}),
     ...(input.giftCardCode ? { gift_card_code: input.giftCardCode, gift_card_amount: input.giftCardAmount } : {}),
-    ...(input.storeCreditAmount && input.storeCreditAmount > 0 ? { store_credit_amount: input.storeCreditAmount } : {}),
+    ...(actualStoreCreditAmount > 0 ? { store_credit_amount: actualStoreCreditAmount } : {}),
   };
-  
-  // ✅ הסכום הסופי כבר מחושב למעלה (finalTotal)
-  // finalTotal כבר כולל את כל ההנחות (גיפט קארד + קרדיט בחנות)
-  const finalTotalAfterCredits = finalTotal;
   
   let financialStatus = 'pending';
   if (finalTotalAfterCredits === 0) {
@@ -288,21 +306,30 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // Get default fulfillment status for the store
-  const defaultStatus = await queryOne<{ name: string }>(
-    `SELECT name FROM custom_order_statuses 
-     WHERE store_id = $1 AND is_default = true 
-     ORDER BY position ASC LIMIT 1`,
-    [storeId]
-  );
-  // If no default status, try to get the first one by position
-  const firstStatus = defaultStatus || await queryOne<{ name: string }>(
-    `SELECT name FROM custom_order_statuses 
-     WHERE store_id = $1 
-     ORDER BY position ASC LIMIT 1`,
-    [storeId]
-  );
-  // אם ההזמנה שולמה (financialStatus = paid), גם fulfillment יהיה paid
-  const fulfillmentStatus = financialStatus === 'paid' ? 'paid' : (firstStatus?.name || 'pending');
+  // ✅ אם יש תשלום נותר (finalTotalAfterCredits > 0), הסטטוס צריך להיות pending
+  // ✅ רק אם ההזמנה שולמה במלואה (finalTotalAfterCredits === 0), נשתמש בסטטוס ברירת מחדל
+  let fulfillmentStatus = 'pending';
+  
+  if (financialStatus === 'paid') {
+    // אם ההזמנה שולמה במלואה, נשתמש בסטטוס ברירת מחדל או paid
+    const defaultStatus = await queryOne<{ name: string }>(
+      `SELECT name FROM custom_order_statuses 
+       WHERE store_id = $1 AND is_default = true 
+       ORDER BY position ASC LIMIT 1`,
+      [storeId]
+    );
+    // If no default status, try to get the first one by position
+    const firstStatus = defaultStatus || await queryOne<{ name: string }>(
+      `SELECT name FROM custom_order_statuses 
+       WHERE store_id = $1 
+       ORDER BY position ASC LIMIT 1`,
+      [storeId]
+    );
+    fulfillmentStatus = firstStatus?.name || 'paid';
+  } else {
+    // אם יש תשלום נותר, הסטטוס הוא pending עד שהתשלום מאושר
+    fulfillmentStatus = 'pending';
+  }
 
   // חישוב ערכים לשמירה
   const subtotalPrice = input.subtotal || finalTotal;
@@ -338,7 +365,7 @@ export async function createOrder(input: CreateOrderInput) {
       input.customer.notes || null,              // $11 - note
       orderHandle,                                // $12 - order_handle
       JSON.stringify(noteAttributes),             // $13 - note_attributes
-      input.paymentMethod || 'credit_card',       // $14 - gateway
+      actualPaymentMethod,                        // $14 - gateway (שימוש ב-actualPaymentMethod)
       financialStatus,                            // $15 - financial_status
       discountCodesArray.length > 0 ? JSON.stringify(discountCodesArray) : '[]', // $16 - discount_codes (JSONB)
       fulfillmentStatus,                          // $17 - fulfillment_status

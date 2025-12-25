@@ -477,7 +477,8 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
   // ✅ בדיקה אוטומטית: אם קופון לא תקף אחרי חישוב, הסר אותו
   useEffect(() => {
-    if (!options.storeId || !discountCode || !calculation) return;
+    // ✅ לא מסירים קופון בזמן validation או loading
+    if (!options.storeId || !discountCode || !calculation || validatingCode || loading) return;
     
     // בדוק אם הקופון מופיע ב-discounts (אם לא, הוא לא תקף)
     const isValidCode = calculation.discounts?.some(d => d.source === 'code' && d.code === discountCode);
@@ -490,16 +491,14 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
     );
     
     // אם הקופון לא תקף, הסר אותו
+    // ✅ רק אם זה לא בזמן validation או loading (למנוע הסרה מוקדמת)
     if (!isValidCode && (hasCodeError || calculation.errors?.length > 0 || calculation.warnings?.length > 0)) {
-      // רק אם זה לא בזמן validation (למנוע לולאה אינסופית)
-      if (!validatingCode) {
-        console.log(`Removing invalid discount code: ${discountCode}`);
-        setDiscountCode('');
-        sessionStorage.setItem(`discount_code_${options.storeId}`, '');
-        notifyDiscountListeners();
-      }
+      console.log(`Removing invalid discount code: ${discountCode}`);
+      setDiscountCode('');
+      sessionStorage.setItem(`discount_code_${options.storeId}`, '');
+      notifyDiscountListeners();
     }
-  }, [calculation, discountCode, options.storeId, validatingCode, setDiscountCode]);
+  }, [calculation, discountCode, options.storeId, validatingCode, loading, setDiscountCode]);
 
   // אימות קופון
   const validateCode = useCallback(async (code: string): Promise<{ valid: boolean; error?: string }> => {
