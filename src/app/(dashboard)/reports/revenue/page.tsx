@@ -296,7 +296,7 @@ export default function RevenueReportPage() {
                   gross_revenue: d.gross_revenue,
                   net_revenue: d.net_revenue,
                   orders: d.orders,
-                }))}>
+                }))} margin={{ right: 20, left: 20 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
@@ -304,13 +304,26 @@ export default function RevenueReportPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number, name: string) => {
-                    if (name.includes('revenue')) return [`₪${value.toLocaleString('he-IL')}`, name === 'gross_revenue' ? 'ברוטו' : 'נטו'];
-                    return [value, 'הזמנות'];
-                  }} />
-                  <Legend />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    orientation="right"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                    formatter={(value: number, name: string) => {
+                      if (name.includes('revenue')) return [`₪${value.toLocaleString('he-IL')}`, name === 'gross_revenue' ? 'ברוטו' : 'נטו'];
+                      return [value, 'הזמנות'];
+                    }} 
+                  />
+                  <Legend wrapperStyle={{ direction: 'rtl' }} />
                   <Area
                     type="monotone"
                     dataKey="gross_revenue"
@@ -358,7 +371,10 @@ export default function RevenueReportPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הכנסות']} />
+                  <Tooltip 
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                    formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הכנסות']} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

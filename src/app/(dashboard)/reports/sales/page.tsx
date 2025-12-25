@@ -224,7 +224,7 @@ export default function SalesReportPage() {
                 date: new Date(d.date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' }),
                 revenue: d.revenue,
                 orders: d.orders,
-              }))}>
+              }))} margin={{ right: 20, left: 20 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
@@ -232,14 +232,32 @@ export default function SalesReportPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip formatter={(value: number, name: string) => {
-                  if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
-                  return [value, 'הזמנות'];
-                }} />
-                <Legend />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis 
+                  yAxisId="left" 
+                  orientation="right"
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                />
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="left"
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip 
+                  contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
+                    return [value, 'הזמנות'];
+                  }} 
+                />
+                <Legend wrapperStyle={{ direction: 'rtl' }} />
                 <Area
                   yAxisId="left"
                   type="monotone"

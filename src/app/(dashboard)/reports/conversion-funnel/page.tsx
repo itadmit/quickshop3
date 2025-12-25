@@ -290,12 +290,34 @@ export default function ConversionFunnelPage() {
                 add_to_cart: d.add_to_cart,
                 purchases: d.purchases,
                 conversion_rate: d.conversion_rate,
-              }))}>
+              }))} margin={{ right: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis 
+                  yAxisId="left" 
+                  orientation="right"
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="left"
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <Tooltip 
+                  contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'conversion_rate') return [`${value.toFixed(1)}%`, 'שיעור המרה'];
+                    return [value.toLocaleString('he-IL'), name];
+                  }}
+                />
+                <Legend wrapperStyle={{ direction: 'rtl' }} />
                 <Bar yAxisId="left" dataKey="visits" fill="#3b82f6" name="ביקורים" />
                 <Bar yAxisId="left" dataKey="add_to_cart" fill="#f59e0b" name="הוספה לעגלה" />
                 <Bar yAxisId="left" dataKey="purchases" fill="#22c55e" name="רכישות" />

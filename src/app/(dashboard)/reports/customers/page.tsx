@@ -275,7 +275,7 @@ export default function CustomersReportPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ direction: 'rtl', textAlign: 'right' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -290,12 +290,26 @@ export default function CustomersReportPage() {
               <div className="h-80 animate-pulse bg-gray-200 rounded"></div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueByType} layout="vertical">
+                <BarChart data={revenueByType} layout="vertical" margin={{ right: 20, left: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הכנסות']} />
-                  <Bar dataKey="value" fill="#22c55e" radius={[0, 4, 4, 0]} />
+                  <XAxis 
+                    type="number" 
+                    orientation="top"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={120} 
+                    tick={{ fontSize: 12 }}
+                    tickMargin={8}
+                  />
+                  <Tooltip 
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                    formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הכנסות']} 
+                  />
+                  <Bar dataKey="value" fill="#22c55e" radius={[4, 0, 0, 4]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -315,12 +329,21 @@ export default function CustomersReportPage() {
                 date: new Date(d.date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' }),
                 new_customers: d.new_customers,
                 returning_customers: d.returning_customers,
-              }))}>
+              }))} margin={{ right: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis 
+                  orientation="right"
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip contentStyle={{ direction: 'rtl', textAlign: 'right' }} />
+                <Legend wrapperStyle={{ direction: 'rtl' }} />
                 <Line type="monotone" dataKey="new_customers" stroke="#22c55e" strokeWidth={2} name="חדשים" />
                 <Line type="monotone" dataKey="returning_customers" stroke="#3b82f6" strokeWidth={2} name="חוזרים" />
               </LineChart>

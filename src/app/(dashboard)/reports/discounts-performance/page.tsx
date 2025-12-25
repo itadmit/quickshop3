@@ -191,7 +191,10 @@ export default function DiscountsPerformancePage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הנחות']} />
+                  <Tooltip 
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                    formatter={(value: number) => [`₪${value.toLocaleString('he-IL')}`, 'הנחות']} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -212,13 +215,34 @@ export default function DiscountsPerformancePage() {
                   date: new Date(d.date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' }),
                   discount_amount: d.discount_amount,
                   orders_with_discount: d.orders_with_discount,
-                }))}>
+                }))} margin={{ right: 20, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    yAxisId="left" 
+                    orientation="right"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="left"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'discount_amount') return [`₪${value.toLocaleString('he-IL')}`, 'סכום הנחות'];
+                      return [value.toLocaleString('he-IL'), 'הזמנות עם הנחה'];
+                    }}
+                  />
+                  <Legend wrapperStyle={{ direction: 'rtl' }} />
                   <Line yAxisId="left" type="monotone" dataKey="discount_amount" stroke="#ef4444" strokeWidth={2} name="סכום הנחות (₪)" />
                   <Line yAxisId="right" type="monotone" dataKey="orders_with_discount" stroke="#3b82f6" strokeWidth={2} name="הזמנות עם הנחה" />
                 </LineChart>

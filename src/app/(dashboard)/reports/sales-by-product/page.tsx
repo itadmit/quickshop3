@@ -242,19 +242,31 @@ export default function SalesByProductPage() {
               <div className="h-80 animate-pulse bg-gray-200 rounded"></div>
             ) : topProductsChart.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={topProductsChart} layout="vertical">
+                <BarChart data={topProductsChart} layout="vertical" margin={{ right: 20, left: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                  <XAxis 
+                    type="number" 
+                    orientation="top"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={150} 
+                    tick={{ fontSize: 12 }}
+                    tickMargin={8}
+                  />
                   <Tooltip
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
                     formatter={(value: number, name: string) => {
                       if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
                       if (name === 'quantity') return [value.toLocaleString('he-IL'), 'יחידות'];
                       return [value, name];
                     }}
                   />
-                  <Legend />
-                  <Bar dataKey="revenue" fill="#22c55e" name="הכנסות" radius={[0, 4, 4, 0]} />
+                  <Legend wrapperStyle={{ direction: 'rtl' }} />
+                  <Bar dataKey="revenue" fill="#22c55e" name="הכנסות" radius={[4, 0, 0, 4]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -275,13 +287,35 @@ export default function SalesByProductPage() {
                   date: new Date(d.date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' }),
                   revenue: d.revenue,
                   quantity: d.quantity,
-                }))}>
+                }))} margin={{ right: 20, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    yAxisId="left" 
+                    orientation="right"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="left"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
+                      if (name === 'quantity') return [value.toLocaleString('he-IL'), 'יחידות'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend wrapperStyle={{ direction: 'rtl' }} />
                   <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="הכנסות (₪)" />
                   <Line yAxisId="right" type="monotone" dataKey="quantity" stroke="#3b82f6" strokeWidth={2} name="יחידות" />
                 </LineChart>

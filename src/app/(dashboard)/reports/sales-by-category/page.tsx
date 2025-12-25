@@ -118,7 +118,10 @@ export default function SalesByCategoryPage() {
                       <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
                         {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                       </Pie>
-                      <Tooltip formatter={(v: number) => `₪${v.toLocaleString()}`} />
+                      <Tooltip 
+                        contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                        formatter={(v: number) => `₪${v.toLocaleString('he-IL')}`} 
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -129,12 +132,26 @@ export default function SalesByCategoryPage() {
                 <h3 className="text-lg font-semibold mb-4">הכנסות לפי קטגוריה</h3>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.slice(0, 10)} layout="vertical">
+                    <BarChart data={data.slice(0, 10)} layout="vertical" margin={{ right: 20, left: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tickFormatter={(v) => `₪${v}`} />
-                      <YAxis dataKey="category_name" type="category" width={120} />
-                      <Tooltip formatter={(v: number) => `₪${v.toLocaleString()}`} />
-                      <Bar dataKey="revenue" fill="#10b981" radius={[0, 4, 4, 0]} />
+                      <XAxis 
+                        type="number" 
+                        orientation="top"
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v) => `₪${v.toLocaleString('he-IL')}`} 
+                      />
+                      <YAxis 
+                        dataKey="category_name" 
+                        type="category" 
+                        width={120} 
+                        tick={{ fontSize: 12 }}
+                        tickMargin={8}
+                      />
+                      <Tooltip 
+                        contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                        formatter={(v: number) => `₪${v.toLocaleString('he-IL')}`} 
+                      />
+                      <Bar dataKey="revenue" fill="#10b981" radius={[4, 0, 0, 4]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

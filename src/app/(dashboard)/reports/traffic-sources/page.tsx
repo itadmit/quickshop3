@@ -273,6 +273,7 @@ export default function TrafficSourcesPage() {
                     ))}
                   </Pie>
                   <Tooltip
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
                     formatter={(value: number) => [value.toLocaleString('he-IL'), 'ביקורים']}
                   />
                 </PieChart>
@@ -293,17 +294,29 @@ export default function TrafficSourcesPage() {
               <div className="h-80 animate-pulse bg-gray-200 rounded"></div>
             ) : barData.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={barData} layout="vertical">
+                <BarChart data={barData} layout="vertical" margin={{ right: 20, left: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
+                  <XAxis 
+                    type="number" 
+                    orientation="top"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₪${value.toLocaleString('he-IL')}`}
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={120} 
+                    tick={{ fontSize: 12 }}
+                    tickMargin={8}
+                  />
                   <Tooltip
+                    contentStyle={{ direction: 'rtl', textAlign: 'right' }}
                     formatter={(value: number, name: string) => {
                       if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
                       return [value.toLocaleString('he-IL'), name];
                     }}
                   />
-                  <Bar dataKey="revenue" fill="#22c55e" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="revenue" fill="#22c55e" radius={[4, 0, 0, 4]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
