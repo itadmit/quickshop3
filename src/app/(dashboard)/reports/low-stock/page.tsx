@@ -125,7 +125,7 @@ export default function LowStockPage() {
                         <td className="py-3 px-4"><span className={`px-2 py-1 rounded text-sm font-medium ${status.color}`}>{status.label}</span></td>
                         <td className="py-3 px-4">{p.days_of_stock > 0 ? `~${p.days_of_stock} ימים` : '-'}</td>
                         <td className="py-3 px-4">
-                          <Link href={`/products/${p.product_id}`} className="text-blue-600 hover:underline text-sm">ערוך מוצר</Link>
+                          <Link href={`/products/edit/${p.product_id}`} className="text-blue-600 hover:underline text-sm">ערוך מוצר</Link>
                         </td>
                       </tr>
                     );

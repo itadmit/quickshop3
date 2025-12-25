@@ -118,7 +118,7 @@ export default function SoldOutPage() {
                       </td>
                       <td className="py-3 px-4 text-red-600">₪{p.lost_revenue_estimate.toLocaleString()}</td>
                       <td className="py-3 px-4">
-                        <Link href={`/products/${p.product_id}`} className="text-blue-600 hover:underline text-sm">הוסף מלאי</Link>
+                        <Link href={`/products/edit/${p.product_id}`} className="text-blue-600 hover:underline text-sm">הוסף מלאי</Link>
                       </td>
                     </tr>
                   ))}

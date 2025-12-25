@@ -126,12 +126,26 @@ export default function ProductPerformancePage() {
               <h3 className="text-lg font-semibold mb-4">מוצרים מובילים</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={products.slice(0, 10)} layout="vertical">
+                  <BarChart data={products.slice(0, 10)} layout="vertical" margin={{ right: 20, left: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(v) => `₪${v}`} />
-                    <YAxis dataKey="product_title" type="category" width={150} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => `₪${v.toLocaleString()}`} />
-                    <Bar dataKey="current_revenue" fill="#10b981" name="הכנסות" radius={[0, 4, 4, 0]} />
+                    <XAxis 
+                      type="number" 
+                      orientation="top"
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(v) => `₪${v.toLocaleString('he-IL')}`} 
+                    />
+                    <YAxis 
+                      dataKey="product_title" 
+                      type="category" 
+                      width={150} 
+                      tick={{ fontSize: 11 }}
+                      tickMargin={8}
+                    />
+                    <Tooltip 
+                      contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                      formatter={(v: number) => `₪${v.toLocaleString('he-IL')}`} 
+                    />
+                    <Bar dataKey="current_revenue" fill="#10b981" name="הכנסות" radius={[4, 0, 0, 4]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -167,7 +181,7 @@ export default function ProductPerformancePage() {
                         <td className="py-3 px-4">{p.current_quantity.toLocaleString()}</td>
                         <td className="py-3 px-4">{p.orders_count}</td>
                         <td className="py-3 px-4">
-                          <Link href={`/products/${p.product_id}`} className="text-blue-600 hover:underline text-sm">פרטים</Link>
+                          <Link href={`/products/edit/${p.product_id}`} className="text-blue-600 hover:underline text-sm">פרטים</Link>
                         </td>
                       </tr>
                     ))}
