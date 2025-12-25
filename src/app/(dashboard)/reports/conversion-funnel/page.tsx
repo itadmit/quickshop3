@@ -26,7 +26,7 @@ import {
   LabelList,
   Cell,
 } from 'recharts';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
+import { DateRangePicker, getDefaultDateRange, dateRangeToParams } from '@/components/ui/DateRangePicker';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface FunnelData {
@@ -72,10 +72,7 @@ export default function ConversionFunnelPage() {
     checkout_abandonment_rate: 0,
   });
   const [dailyData, setDailyData] = useState<DailyFunnel[]>([]);
-  const [dateRange, setDateRange] = useState({
-    start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0],
-  });
+  const [dateRange, setDateRange] = useState(getDefaultDateRange());
 
   useEffect(() => {
     loadData();
@@ -84,9 +81,10 @@ export default function ConversionFunnelPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      const { start_date, end_date } = dateRangeToParams(dateRange);
       const params = new URLSearchParams();
-      params.append('start_date', dateRange.start_date);
-      params.append('end_date', dateRange.end_date);
+      params.append('start_date', start_date);
+      params.append('end_date', end_date);
 
       const response = await fetch(`/api/reports/conversion-funnel?${params.toString()}`, {
         credentials: 'include',
@@ -165,28 +163,10 @@ export default function ConversionFunnelPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Select
-            value={`${dateRange.start_date}_${dateRange.end_date}`}
-            onValueChange={(value) => {
-              const [start, end] = value.split('_');
-              setDateRange({ start_date: start, end_date: end });
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                7 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                30 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                90 ימים אחרונים
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+          />
         </div>
       </div>
 
