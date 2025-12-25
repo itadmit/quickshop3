@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       LIMIT 100
     `, [user.store_id, start_date, end_date]);
 
-    // החזרים לפי מוצר
+    // החזרים לפי מוצר - דרך transactions
     const refundsData = await query<{
       product_id: number;
       refunds: string;
@@ -63,10 +63,16 @@ export async function GET(request: NextRequest) {
       FROM order_line_items oli
       JOIN orders o ON o.id = oli.order_id
       LEFT JOIN (
-        SELECT order_id, SUM(amount) as refund_amount
-        FROM order_refunds
-        WHERE created_at >= $2 AND created_at <= $3::date + interval '1 day'
-        GROUP BY order_id
+        SELECT 
+          t.order_id,
+          SUM(t.amount) as refund_amount
+        FROM transactions t
+        WHERE t.store_id = $1
+          AND t.kind = 'refund'
+          AND t.status = 'success'
+          AND t.created_at >= $2 
+          AND t.created_at <= $3::date + interval '1 day'
+        GROUP BY t.order_id
       ) refunds ON refunds.order_id = o.id
       WHERE o.store_id = $1
         AND o.created_at >= $2

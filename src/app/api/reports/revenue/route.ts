@@ -38,13 +38,15 @@ export async function GET(request: NextRequest) {
         AND financial_status IN ('paid', 'partially_paid', 'authorized')
     `, [user.store_id, start_date, end_date]);
 
-    // החזרים
+    // החזרים - דרך transactions
     const refundsResult = await queryOne<{ total_refunds: string }>(`
-      SELECT COALESCE(SUM(amount), 0) as total_refunds
-      FROM order_refunds
-      WHERE store_id = $1
-        AND created_at >= $2
-        AND created_at <= $3::date + interval '1 day'
+      SELECT COALESCE(SUM(t.amount), 0) as total_refunds
+      FROM transactions t
+      WHERE t.store_id = $1
+        AND t.kind = 'refund'
+        AND t.status = 'success'
+        AND t.created_at >= $2
+        AND t.created_at <= $3::date + interval '1 day'
     `, [user.store_id, start_date, end_date]);
 
     // תקופה קודמת לחישוב צמיחה
