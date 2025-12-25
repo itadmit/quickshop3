@@ -45,7 +45,13 @@ export async function GET(request: NextRequest) {
         COALESCE(r.note, 'לא צוין') as note,
         COALESCE(
           (SELECT SUM((item->>'subtotal')::numeric) 
-           FROM jsonb_array_elements(r.refund_line_items) as item), 
+           FROM jsonb_array_elements(
+             CASE 
+               WHEN r.refund_line_items IS NULL THEN '[]'::jsonb
+               WHEN jsonb_typeof(r.refund_line_items) = 'array' THEN r.refund_line_items
+               ELSE '[]'::jsonb
+             END
+           ) as item), 
           0
         ) as refund_amount,
         r.created_at
@@ -88,7 +94,13 @@ export async function GET(request: NextRequest) {
         COUNT(*) as count,
         SUM(COALESCE(
           (SELECT SUM((item->>'subtotal')::numeric) 
-           FROM jsonb_array_elements(r.refund_line_items) as item), 
+           FROM jsonb_array_elements(
+             CASE 
+               WHEN r.refund_line_items IS NULL THEN '[]'::jsonb
+               WHEN jsonb_typeof(r.refund_line_items) = 'array' THEN r.refund_line_items
+               ELSE '[]'::jsonb
+             END
+           ) as item), 
           0
         )) as amount
       FROM order_refunds r

@@ -20,10 +20,12 @@ export async function GET(request: NextRequest) {
       revenue: string;
     }>(`
       SELECT 
-        COALESCE(
-          shipping_lines->0->>'title',
-          CASE WHEN total_shipping_price = 0 THEN 'משלוח חינם' ELSE 'משלוח רגיל' END
-        ) as shipping_method,
+        CASE 
+          WHEN total_shipping_price = 0 THEN 'משלוח חינם'
+          WHEN total_shipping_price > 0 AND total_shipping_price <= 20 THEN 'משלוח רגיל'
+          WHEN total_shipping_price > 20 AND total_shipping_price <= 50 THEN 'משלוח מהיר'
+          ELSE 'משלוח אקספרס'
+        END as shipping_method,
         COUNT(*) as orders,
         SUM(total_shipping_price) as revenue
       FROM orders

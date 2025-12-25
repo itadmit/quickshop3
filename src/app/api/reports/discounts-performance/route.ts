@@ -36,14 +36,29 @@ export async function GET(request: NextRequest) {
         SUM(o.total_price) as revenue_generated,
         AVG(o.total_price) as avg_order_value
       FROM orders o
-      CROSS JOIN LATERAL jsonb_array_elements(o.discount_codes) as dc_elem
-      JOIN discount_codes dc ON dc.code = dc_elem->>'code'
+      CROSS JOIN LATERAL jsonb_array_elements(
+        CASE 
+          WHEN o.discount_codes IS NULL THEN '[]'::jsonb
+          WHEN jsonb_typeof(o.discount_codes) = 'array' THEN o.discount_codes
+          ELSE '[]'::jsonb
+        END
+      ) as dc_elem
+      JOIN discount_codes dc ON dc.code = COALESCE(
+        dc_elem->>'code',
+        CASE 
+          WHEN jsonb_typeof(dc_elem) = 'string' THEN dc_elem::text
+          WHEN jsonb_typeof(dc_elem) = 'number' THEN dc_elem::text
+          ELSE NULL
+        END
+      )
       WHERE o.store_id = $1
         AND o.created_at >= $2
         AND o.created_at <= $3::date + interval '1 day'
         AND o.financial_status IN ('paid', 'partially_paid', 'authorized')
         AND o.discount_codes IS NOT NULL
+        AND jsonb_typeof(o.discount_codes) = 'array'
         AND jsonb_array_length(o.discount_codes) > 0
+        AND dc.store_id = $1
       GROUP BY dc.id, dc.code, dc.discount_type
       ORDER BY total_discount_amount DESC
       LIMIT 50
