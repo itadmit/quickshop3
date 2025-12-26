@@ -36,30 +36,30 @@ export function SettingsAndStylePanel({
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Panel Tabs */}
-      <div className="flex border-b border-gray-100 bg-gray-50/50">
+      <div className="flex border-b border-gray-100 bg-gray-50/50 overflow-x-auto">
         <button
           onClick={() => setActivePanel('settings')}
           disabled={!selectedSection}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all ${
+          className={`flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-3.5 text-sm font-medium transition-all whitespace-nowrap ${
             activePanel === 'settings'
               ? 'text-gray-900 bg-white border-t-2 border-t-gray-900 border-x border-gray-100'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/80'
           } ${!selectedSection ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <HiAdjustments className="w-4 h-4" />
-          הגדרות
+          <HiAdjustments className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">הגדרות</span>
         </button>
         <button
           onClick={() => setActivePanel('style')}
           disabled={!selectedSection}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all ${
+          className={`flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-3.5 text-sm font-medium transition-all whitespace-nowrap ${
             activePanel === 'style'
               ? 'text-gray-900 bg-white border-t-2 border-t-gray-900 border-x border-gray-100'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/80'
           } ${!selectedSection ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <HiColorSwatch className="w-4 h-4" />
-          עיצוב
+          <HiColorSwatch className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">עיצוב</span>
         </button>
       </div>
 

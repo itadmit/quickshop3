@@ -58,13 +58,14 @@ interface ElementsSidebarProps {
   pageType?: string;
 }
 
-type CategoryType = 'media' | 'store' | 'content' | 'marketing' | 'page-specific';
+type CategoryType = 'media' | 'store' | 'content' | 'marketing' | 'elements' | 'page-specific';
 
 const BASE_CATEGORIES: { id: CategoryType; name: string; icon: React.ComponentType<any> }[] = [
   { id: 'media', name: 'מדיה ותמונה', icon: HiPhotograph },
   { id: 'store', name: 'חנות ומוצרים', icon: HiCube },
   { id: 'content', name: 'תוכן ומידע', icon: HiDocumentText },
   { id: 'marketing', name: 'שיווק וקשר', icon: HiMail },
+  { id: 'elements', name: 'יחידים', icon: HiCube },
 ];
 
 // Icon mapping for page-specific sections
@@ -219,6 +220,63 @@ const AVAILABLE_SECTIONS: Array<{
     description: 'טופס יצירת קשר',
     icon: HiClipboardList,
     category: 'marketing'
+  },
+  // Elements (יחידים)
+  {
+    type: 'element_heading',
+    name: 'כותרת',
+    description: 'כותרת פשוטה',
+    icon: HiDocumentText,
+    category: 'elements'
+  },
+  {
+    type: 'element_content',
+    name: 'תוכן',
+    description: 'תוכן עשיר',
+    icon: HiDocumentText,
+    category: 'elements'
+  },
+  {
+    type: 'element_button',
+    name: 'כפתור',
+    description: 'כפתור בודד',
+    icon: HiPlay,
+    category: 'elements'
+  },
+  {
+    type: 'element_image',
+    name: 'תמונה',
+    description: 'תמונה בודדת',
+    icon: HiPhotograph,
+    category: 'elements'
+  },
+  {
+    type: 'element_video',
+    name: 'וידאו',
+    description: 'וידאו בודד',
+    icon: HiVideoCamera,
+    category: 'elements'
+  },
+  {
+    type: 'element_divider',
+    name: 'מפריד',
+    description: 'קו מפריד',
+    icon: HiViewList,
+    category: 'elements'
+  },
+  {
+    type: 'element_spacer',
+    name: 'רווח',
+    description: 'רווח אנכי',
+    icon: HiViewGrid,
+    category: 'elements'
+  },
+  {
+    type: 'element_marquee',
+    name: 'טקסט נע',
+    description: 'טקסט נע',
+    icon: HiPlay,
+    category: 'elements'
   }
 ];
 
@@ -263,6 +321,8 @@ function AddSectionMenu({ pageType, activeCategory, setActiveCategory, onAddSect
     let sections = [];
     if (activeCategory === 'page-specific') {
       sections = pageSpecificSections;
+    } else if (activeCategory === 'all') {
+      sections = [...pageSpecificSections, ...AVAILABLE_SECTIONS];
     } else {
       sections = AVAILABLE_SECTIONS.filter(s => s.category === activeCategory);
     }
@@ -283,10 +343,10 @@ function AddSectionMenu({ pageType, activeCategory, setActiveCategory, onAddSect
   }, [activeCategory, pageSpecificSections, searchQuery]);
 
   return (
-    <div className="absolute bottom-full right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[500px] w-[380px] origin-bottom-right">
+    <div className="absolute bottom-full right-0 mb-3 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden h-[600px] w-[420px] origin-bottom-right">
       
       {/* Search Bar */}
-      <div className="p-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+      <div className="p-2.5 border-b border-gray-100 bg-white sticky top-0 z-10">
         <div className="relative">
           <HiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input 
@@ -314,29 +374,29 @@ function AddSectionMenu({ pageType, activeCategory, setActiveCategory, onAddSect
           <button
             key={category.id}
             onClick={() => setActiveCategory(category.id)}
-            className={`flex flex-col items-center justify-center py-3 px-4 min-w-[80px] text-xs font-medium border-b-2 transition-all ${
+            className={`flex flex-col items-center justify-center py-2 px-3 min-w-[75px] text-xs font-medium border-b-2 transition-all ${
               activeCategory === category.id
                 ? 'border-black text-black bg-white shadow-sm'
                 : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
             }`}
           >
-            {React.createElement(category.icon, { className: `w-5 h-5 mb-1.5 ${activeCategory === category.id ? 'text-black' : 'text-gray-400'}` })}
-            <span className="truncate max-w-full">{category.name.split(' ')[0]}</span>
+            {React.createElement(category.icon, { className: `w-4 h-4 mb-1 ${activeCategory === category.id ? 'text-black' : 'text-gray-400'}` })}
+            <span className="truncate max-w-full text-[11px]">{category.name.split(' ')[0]}</span>
           </button>
         ))}
       </div>
 
       {/* Sections List */}
-      <div className="flex-1 overflow-y-auto p-3 bg-gray-50/30 custom-scrollbar">
-        <div className="space-y-2">
+      <div className="flex-1 overflow-y-auto p-2.5 bg-gray-50/30 custom-scrollbar">
+        <div className="space-y-1.5">
           {sectionsToDisplay.map((section) => (
             <button
               key={section.type}
               onClick={() => onAddSection(section.type)}
-              className="w-full flex items-start gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-gray-300 hover:shadow-md transition-all text-right group relative overflow-hidden"
+              className="w-full flex items-start gap-2.5 p-2.5 rounded-lg bg-white border border-gray-100 hover:border-gray-300 hover:shadow-md transition-all text-right group relative overflow-hidden"
             >
-              <div className="p-2.5 rounded-lg bg-gray-50 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm shrink-0">
-                {React.createElement(section.icon, { className: "w-6 h-6" })}
+              <div className="p-2 rounded-lg bg-gray-50 text-gray-500 group-hover:bg-black group-hover:text-white transition-colors shadow-sm shrink-0">
+                {React.createElement(section.icon, { className: "w-5 h-5" })}
               </div>
               <div className="flex-1 min-w-0 flex items-center justify-between">
                 <div>

@@ -56,7 +56,16 @@ export type SectionType =
   // Checkout page sections
   | 'checkout_form'
   | 'checkout_header'
-  | 'checkout_footer';
+  | 'checkout_footer'
+  // Elements (יחידים)
+  | 'element_heading'
+  | 'element_content'
+  | 'element_button'
+  | 'element_image'
+  | 'element_video'
+  | 'element_divider'
+  | 'element_spacer'
+  | 'element_marquee';
 
 // סוגי בלוקים בתוך סקשן
 export type BlockType = 'text' | 'image' | 'button' | 'product' | 'collection' | 'video';

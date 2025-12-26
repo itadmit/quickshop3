@@ -730,6 +730,90 @@ export function CustomizerLayout() {
             submit_text: 'שלח הודעה'
         };
         break;
+
+      // Elements (יחידים)
+      case 'element_heading':
+        defaultBlocks = [{
+          id: `heading-${Date.now()}`,
+          type: 'heading',
+          content: {
+            heading: 'כותרת',
+            heading_size: 'large',
+            text_align: 'right',
+            font_weight: 'bold'
+          },
+          style: {},
+          settings: {}
+        }];
+        break;
+
+      case 'element_content':
+        defaultSettings = {
+          content: '<p>תוכן</p>',
+          text_size: 'medium',
+          text_align: 'right',
+          ...defaultSettings
+        };
+        break;
+
+      case 'element_button':
+        defaultSettings = {
+          button_text: 'כפתור',
+          button_url: '#',
+          button_size: 'medium',
+          button_align: 'right',
+          ...defaultSettings
+        };
+        break;
+
+      case 'element_image':
+        defaultSettings = {
+          image_url: '',
+          image_width: 'full',
+          image_align: 'center',
+          ...defaultSettings
+        };
+        break;
+
+      case 'element_video':
+        defaultSettings = {
+          video_url: '',
+          video_width: 'full',
+          video_align: 'center',
+          video_controls: true,
+          video_autoplay: false,
+          video_muted: false,
+          video_loop: false,
+          ...defaultSettings
+        };
+        break;
+
+      case 'element_divider':
+        defaultSettings = {
+          divider_style: 'solid',
+          divider_width: 'full',
+          divider_align: 'center',
+          spacing: 'medium',
+          ...defaultSettings
+        };
+        break;
+
+      case 'element_spacer':
+        defaultSettings = {
+          height: 'medium',
+          ...defaultSettings
+        };
+        break;
+
+      case 'element_marquee':
+        defaultSettings = {
+          text: 'טקסט נע',
+          direction: 'right',
+          speed: 'normal',
+          text_size: 'medium',
+          ...defaultSettings
+        };
+        break;
     }
 
     const newSection: SectionSettings = {

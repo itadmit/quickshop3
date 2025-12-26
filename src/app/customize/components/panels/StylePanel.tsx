@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { SettingGroup } from '../ui/SettingGroup';
 import { RangeSlider } from '../ui/RangeSlider';
 import { ColorPicker } from '../ui/ColorPicker';
 import { SettingSelect } from '../ui/SettingSelect';
+import { SettingInput } from '../ui/SettingInput';
+import { TypographyPopover } from './TypographyPopover';
 
 interface StylePanelProps {
   section: SectionSettings;
@@ -13,6 +15,12 @@ interface StylePanelProps {
 }
 
 export function StylePanel({ section, onUpdate }: StylePanelProps) {
+  const [typographyAnchor, setTypographyAnchor] = useState<HTMLElement | null>(null);
+  const [selectedTypographyType, setSelectedTypographyType] = useState<'heading' | 'content' | 'button' | null>(null);
+  const headingButtonRef = useRef<HTMLButtonElement>(null);
+  const contentButtonRef = useRef<HTMLButtonElement>(null);
+  const buttonButtonRef = useRef<HTMLButtonElement>(null);
+
   const handleStyleChange = (path: string, value: any) => {
     const keys = path.split('.');
     
@@ -39,6 +47,48 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
     }
 
     return current;
+  };
+
+  const openTypographyPopover = (type: 'heading' | 'content' | 'button', buttonRef: React.RefObject<HTMLButtonElement>) => {
+    if (buttonRef.current) {
+      setTypographyAnchor(buttonRef.current);
+      setSelectedTypographyType(type);
+    }
+  };
+
+  const getTypographyForType = (type: 'heading' | 'content' | 'button') => {
+    const basePath = type === 'heading' ? 'typography.heading' : 
+                     type === 'content' ? 'typography.content' : 
+                     'typography.button';
+    
+    return {
+      color: getStyleValue(`${basePath}.color`, type === 'heading' ? '#000000' : type === 'content' ? '#000000' : '#FFFFFF'),
+      font_family: getStyleValue(`${basePath}.font_family`, getStyleValue('typography.font_family', '"Noto Sans Hebrew", sans-serif')),
+      font_size: getStyleValue(`${basePath}.font_size`, ''),
+      font_size_unit: getStyleValue(`${basePath}.font_size_unit`, 'px'),
+      font_weight: getStyleValue(`${basePath}.font_weight`, type === 'heading' ? '700' : '400'),
+      line_height: getStyleValue(`${basePath}.line_height`, ''),
+      line_height_unit: getStyleValue(`${basePath}.line_height_unit`, ''),
+      letter_spacing: getStyleValue(`${basePath}.letter_spacing`, ''),
+      letter_spacing_unit: getStyleValue(`${basePath}.letter_spacing_unit`, ''),
+      text_transform: getStyleValue(`${basePath}.text_transform`, 'none'),
+    };
+  };
+
+  const updateTypographyForType = (type: 'heading' | 'content' | 'button', typography: any) => {
+    const basePath = type === 'heading' ? 'typography.heading' : 
+                     type === 'content' ? 'typography.content' : 
+                     'typography.button';
+    
+    const style = JSON.parse(JSON.stringify(section.style || {}));
+    if (!style.typography) style.typography = {};
+    if (!style.typography[type]) style.typography[type] = {};
+    
+    Object.keys(typography).forEach(key => {
+      style.typography[type][key] = typography[key];
+    });
+    
+    onUpdate({ style });
   };
 
   // Special styling for Header
@@ -188,6 +238,13 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
     );
   }
 
+  // Check if section has text content
+  const hasTextContent = [
+    'element_heading', 'element_content', 'rich_text', 'image_with_text', 
+    'hero_banner', 'multicolumn', 'faq', 'slideshow', 'testimonials',
+    'featured_products', 'featured_collections'
+  ].includes(section.type);
+
   // Default styling for other sections
   return (
     <div className="pb-8">
@@ -253,29 +310,57 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
         </div>
       </SettingGroup>
 
-      {/* Typography Group */}
-      <SettingGroup title="טיפוגרפיה">
-        <div className="space-y-4">
-          <ColorPicker
-            label="צבע טקסט"
-            value={getStyleValue('typography.color', '#000000')}
-            onChange={(val) => handleStyleChange('typography.color', val)}
-          />
-          <SettingSelect
-            label="פונט"
-            value={getStyleValue('typography.font_family', '"Noto Sans Hebrew", sans-serif')}
-            onChange={(e) => handleStyleChange('typography.font_family', e.target.value)}
-            options={[
-              { label: 'Noto Sans Hebrew (מומלץ)', value: '"Noto Sans Hebrew", sans-serif' },
-              { label: 'Assistant (עברית)', value: '"Assistant", sans-serif' },
-              { label: 'Rubik (עברית)', value: '"Rubik", sans-serif' },
-              { label: 'Heebo (עברית)', value: '"Heebo", sans-serif' },
-              { label: 'Arial', value: 'Arial, sans-serif' },
-              { label: 'System UI', value: 'system-ui' },
-            ]}
-          />
-        </div>
-      </SettingGroup>
+      {/* Typography Group - Only show for sections with text */}
+      {hasTextContent && (
+        <SettingGroup title="טיפוגרפיה">
+          <div className="space-y-3">
+            {/* Heading Typography */}
+            {['hero_banner', 'image_with_text', 'rich_text', 'multicolumn', 'faq', 'slideshow', 'featured_products', 'featured_collections', 'element_heading'].includes(section.type) && (
+              <div className="flex items-center justify-between p-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                <span className="text-sm font-medium text-gray-700">טיפוגרפיה כותרת</span>
+                <button
+                  ref={headingButtonRef}
+                  onClick={() => openTypographyPopover('heading', headingButtonRef)}
+                  className={`p-1.5 rounded transition-colors ${selectedTypographyType === 'heading' && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                  title="ערוך טיפוגרפיה כותרת"
+                >
+                  <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                </button>
+              </div>
+            )}
+
+            {/* Content Typography */}
+            {['rich_text', 'image_with_text', 'multicolumn', 'faq', 'element_content'].includes(section.type) && (
+              <div className="flex items-center justify-between p-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                <span className="text-sm font-medium text-gray-700">טיפוגרפיה תוכן</span>
+                <button
+                  ref={contentButtonRef}
+                  onClick={() => openTypographyPopover('content', contentButtonRef)}
+                  className={`p-1.5 rounded transition-colors ${selectedTypographyType === 'content' && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                  title="ערוך טיפוגרפיה תוכן"
+                >
+                  <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                </button>
+              </div>
+            )}
+
+            {/* Button Typography */}
+            {['hero_banner', 'image_with_text', 'rich_text', 'multicolumn', 'slideshow', 'element_button'].includes(section.type) && (
+              <div className="flex items-center justify-between p-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                <span className="text-sm font-medium text-gray-700">טיפוגרפיה כפתור</span>
+                <button
+                  ref={buttonButtonRef}
+                  onClick={() => openTypographyPopover('button', buttonButtonRef)}
+                  className={`p-1.5 rounded transition-colors ${selectedTypographyType === 'button' && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                  title="ערוך טיפוגרפיה כפתור"
+                >
+                  <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </SettingGroup>
+      )}
 
       {/* Button Group */}
       <SettingGroup title="כפתור">
@@ -338,6 +423,22 @@ export function StylePanel({ section, onUpdate }: StylePanelProps) {
             />
         </div>
       </SettingGroup>
+
+      {/* Typography Popover */}
+      {selectedTypographyType && typographyAnchor && (
+        <TypographyPopover
+          open={Boolean(typographyAnchor)}
+          anchorEl={typographyAnchor}
+          onClose={() => {
+            setTypographyAnchor(null);
+            setSelectedTypographyType(null);
+          }}
+          typography={getTypographyForType(selectedTypographyType)}
+          onUpdate={(typography) => {
+            updateTypographyForType(selectedTypographyType, typography);
+          }}
+        />
+      )}
     </div>
   );
 }

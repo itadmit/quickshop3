@@ -27,6 +27,16 @@ import { AnnouncementBar } from './AnnouncementBar';
 import { Collage } from './Collage';
 import { CustomHtml } from './CustomHtml';
 
+// Import element components
+import { Heading } from './Elements/Heading';
+import { Content } from './Elements/Content';
+import { Button } from './Elements/Button';
+import { Image } from './Elements/Image';
+import { Video } from './Elements/Video';
+import { Divider } from './Elements/Divider';
+import { Spacer } from './Elements/Spacer';
+import { Marquee } from './Elements/Marquee';
+
 // Import product page section components
 import {
   ProductGallerySection,
@@ -289,6 +299,61 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
       return (
         <SectionWrapper>
           <CustomHtml section={responsiveSection} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    // ========== Elements (יחידים) ==========
+    case 'element_heading':
+      return (
+        <SectionWrapper>
+          <Heading section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'element_content':
+      return (
+        <SectionWrapper>
+          <Content section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'element_button':
+      return (
+        <SectionWrapper>
+          <Button section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'element_image':
+      return (
+        <SectionWrapper>
+          <Image section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'element_video':
+      return (
+        <SectionWrapper>
+          <Video section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'element_divider':
+      return (
+        <SectionWrapper>
+          <Divider section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+        </SectionWrapper>
+      );
+
+    case 'element_spacer':
+      return (
+        <Spacer section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+      );
+
+    case 'element_marquee':
+      return (
+        <SectionWrapper>
+          <Marquee section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
         </SectionWrapper>
       );
 

@@ -12,6 +12,7 @@ interface SlideshowProps {
 export function Slideshow({ section, onUpdate }: SlideshowProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const settings = section.settings || {};
+  const style = section.style || {};
   const slides = section.blocks?.filter(b => b.type === 'image') || [];
   
   // Auto play logic

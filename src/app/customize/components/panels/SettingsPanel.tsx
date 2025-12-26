@@ -11,8 +11,9 @@ import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { TypographyPopover } from './TypographyPopover';
 import { useDebounce } from '@/hooks/useDebounce';
-import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4, HiUpload, HiSearch, HiX } from 'react-icons/hi';
+import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4, HiUpload, HiSearch, HiX, HiPencil, HiDocumentText } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
 import {
@@ -168,6 +169,8 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   const [navigationMenus, setNavigationMenus] = useState<NavigationMenu[]>([]);
   const [loadingMenus, setLoadingMenus] = useState(false);
   const [collections, setCollections] = useState<Array<{ id: number; title: string; handle: string; parent_id?: number | null }>>([]);
+  const [typographyAnchor, setTypographyAnchor] = useState<HTMLElement | null>(null);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [collectionSearchTerm, setCollectionSearchTerm] = useState('');
   const debouncedCollectionSearch = useDebounce(collectionSearchTerm, 300);
@@ -524,6 +527,14 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
               (window as any).__slideshowAddImage(file);
           });
           (window as any).__slideshowAddImage = null;
+      } else if (section.type === 'element_image') {
+          // Handle image element - support desktop/mobile
+          const imageKey = imageDeviceTarget === 'mobile' ? 'image_url_mobile' : 'image_url';
+          handleSettingChange(imageKey, files[0]);
+      } else if (section.type === 'element_video') {
+          // Handle video element - support desktop/mobile
+          const videoKey = imageDeviceTarget === 'mobile' ? 'video_url_mobile' : 'video_url';
+          handleSettingChange(videoKey, files[0]);
       } else {
         // Update section background - support desktop/mobile images
         // ✅ עבור hero_banner, זיהוי אוטומטי של תמונה/סרטון לפי סיומת הקובץ
@@ -2107,7 +2118,20 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                     
                                     {/* Heading */}
                                     <div className="mb-3">
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">כותרת (אופציונלי)</label>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <label className="block text-xs font-medium text-gray-600 flex-1">כותרת (אופציונלי)</label>
+                                            <button 
+                                                onClick={(e) => {
+                                                    setTypographyAnchor(e.currentTarget);
+                                                    setSelectedBlockId(block.id);
+                                                    setSelectedSectionType('rich_text');
+                                                }}
+                                                className={`p-1 rounded transition-colors ${selectedBlockId === block.id && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                                                title="ערוך טיפוגרפיה"
+                                            >
+                                                <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                                            </button>
+                                        </div>
                                         <input
                                             type="text"
                                             value={block.content?.heading || ''}
@@ -2494,12 +2518,25 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                     </div>
 
                                     <div className="space-y-2">
-                                        <input 
-                                            className="w-full text-xs p-2 border rounded" 
-                                            placeholder="כותרת"
-                                            value={slide.content?.heading || ''}
-                                            onChange={(e) => updateSlide(slide.id, { heading: e.target.value })}
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                className="flex-1 text-xs p-2 border rounded" 
+                                                placeholder="כותרת"
+                                                value={slide.content?.heading || ''}
+                                                onChange={(e) => updateSlide(slide.id, { heading: e.target.value })}
+                                            />
+                                            <button 
+                                                onClick={(e) => {
+                                                    setTypographyAnchor(e.currentTarget);
+                                                    setSelectedBlockId(slide.id);
+                                                    setSelectedSectionType('slideshow');
+                                                }}
+                                                className={`p-1 rounded transition-colors ${selectedBlockId === slide.id && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                                                title="ערוך טיפוגרפיה"
+                                            >
+                                                <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                                            </button>
+                                        </div>
                                         <input 
                                             className="w-full text-xs p-2 border rounded" 
                                             placeholder="תת כותרת"
@@ -3009,12 +3046,25 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                     </div>
 
                                     <div className="space-y-2">
-                                        <input 
-                                            className="w-full text-xs p-2 border rounded" 
-                                            placeholder="כותרת (אופציונלי)"
-                                            value={logo.content?.title || ''}
-                                            onChange={(e) => updateLogo(logo.id, { title: e.target.value })}
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                className="flex-1 text-xs p-2 border rounded" 
+                                                placeholder="כותרת (אופציונלי)"
+                                                value={logo.content?.title || ''}
+                                                onChange={(e) => updateLogo(logo.id, { title: e.target.value })}
+                                            />
+                                            <button 
+                                                onClick={(e) => {
+                                                    setTypographyAnchor(e.currentTarget);
+                                                    setSelectedBlockId(logo.id);
+                                                    setSelectedSectionType('logo_list');
+                                                }}
+                                                className={`p-1 rounded transition-colors ${selectedBlockId === logo.id && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                                                title="ערוך טיפוגרפיה"
+                                            >
+                                                <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                                            </button>
+                                        </div>
                                         <textarea 
                                             className="w-full text-xs p-2 border rounded" 
                                             placeholder="תוכן (אופציונלי)"
@@ -5072,7 +5122,20 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     
                     {/* Heading */}
                     <div className="mb-2">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">כותרת</label>
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="block text-xs font-medium text-gray-600 flex-1">כותרת</label>
+                        <button 
+                          onClick={(e) => {
+                            setTypographyAnchor(e.currentTarget);
+                            setSelectedBlockId(block.id);
+                            setSelectedSectionType('multicolumn');
+                          }}
+                          className={`p-1 rounded transition-colors ${selectedBlockId === block.id && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                          title="ערוך טיפוגרפיה"
+                        >
+                          <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                        </button>
+                      </div>
                       <input
                         type="text"
                         value={block.content?.heading || ''}
@@ -5422,6 +5485,531 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           </div>
         );
 
+      // ========== Elements (יחידים) - Repeaters ==========
+      case 'element_heading':
+        const headingBlocks = section.blocks?.filter(b => b.type === 'heading') || [];
+        
+        const addHeading = () => {
+          const newBlock = {
+            id: `heading-${Date.now()}`,
+            type: 'heading' as const,
+            content: {
+              heading: 'כותרת חדשה',
+              heading_tag: 'h2',
+              text_align: 'right'
+            },
+            style: {},
+            settings: {}
+          };
+          onUpdate({
+            blocks: [...(section.blocks || []), newBlock]
+          });
+        };
+        
+        const removeHeading = (blockId: string) => {
+          const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
+          onUpdate({ blocks: newBlocks });
+        };
+
+        const updateHeading = (blockId: string, updates: any) => {
+          const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+          const index = newBlocks.findIndex((b: any) => b.id === blockId);
+          if (index >= 0) {
+            newBlocks[index].content = { ...newBlocks[index].content, ...updates };
+            onUpdate({ blocks: newBlocks });
+          }
+        };
+
+        const updateHeadingBlockStyle = (blockId: string, styleUpdates: any) => {
+          const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+          const index = newBlocks.findIndex((b: any) => b.id === blockId);
+          if (index >= 0) {
+            if (!newBlocks[index].style) newBlocks[index].style = {};
+            newBlocks[index].style = {
+              ...newBlocks[index].style,
+              ...styleUpdates
+            };
+            onUpdate({ blocks: newBlocks });
+          }
+        };
+
+        const openTypographyPopover = (event: React.MouseEvent<HTMLElement>, blockId: string) => {
+          setTypographyAnchor(event.currentTarget);
+          setSelectedBlockId(blockId);
+          setSelectedSectionType('element_heading');
+        };
+
+        const getBlockTypography = (blockId: string) => {
+          const block = section.blocks?.find(b => b.id === blockId);
+          return block?.style?.typography || {};
+        };
+
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="כותרות">
+              <div className="space-y-4">
+                <button
+                  onClick={addHeading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-sm font-medium"
+                >
+                  <HiPlus className="w-5 h-5" />
+                  הוסף כותרת
+                </button>
+
+                <div className="space-y-3">
+                  {headingBlocks.map((block, index) => (
+                    <div key={block.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-medium text-sm">כותרת {index + 1}</div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={(e) => openTypographyPopover(e, block.id)} 
+                            className={`p-1 rounded transition-colors ${selectedBlockId === block.id && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
+                            title="ערוך טיפוגרפיה"
+                          >
+                            <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
+                          </button>
+                          <button onClick={() => removeHeading(block.id)} className="text-red-500 p-1 hover:bg-red-50 rounded">
+                            <HiTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <input 
+                          className="w-full text-sm p-2 border rounded" 
+                          placeholder="כותרת"
+                          value={block.content?.heading || ''}
+                          onChange={(e) => updateHeading(block.id, { heading: e.target.value })}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <select 
+                            className="text-xs p-2 border rounded"
+                            value={block.content?.heading_tag || 'h2'}
+                            onChange={(e) => updateHeading(block.id, { heading_tag: e.target.value })}
+                          >
+                            <option value="h1">H1 (למטרות SEO)</option>
+                            <option value="h2">H2</option>
+                            <option value="h3">H3</option>
+                            <option value="h4">H4</option>
+                            <option value="h5">H5</option>
+                            <option value="h6">H6</option>
+                          </select>
+                          <select 
+                            className="text-xs p-2 border rounded"
+                            value={block.content?.text_align || 'right'}
+                            onChange={(e) => updateHeading(block.id, { text_align: e.target.value })}
+                          >
+                            <option value="right">ימין</option>
+                            <option value="center">מרכז</option>
+                            <option value="left">שמאל</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_content':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תוכן">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">תוכן</label>
+                  <RichTextEditor
+                    value={getValue('content', '')}
+                    onChange={(html) => handleSettingChange('content', html)}
+                    placeholder="הזן תוכן..."
+                    className="min-h-[200px]"
+                  />
+                </div>
+              </div>
+            </SettingGroup>
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderSelect('גודל טקסט', 'text_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+                {renderSelect('יישור', 'text_align', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_button':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תוכן">
+              <div className="space-y-4">
+                {renderInput('טקסט כפתור', 'button_text', 'כפתור')}
+                {renderInput('קישור', 'button_url', '#', 'text', undefined, 'ltr')}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderSelect('גודל כפתור', 'button_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                ])}
+                {renderSelect('סגנון כפתור', 'button_style_type', [
+                  { label: 'מלא', value: 'solid' },
+                  { label: 'מסגרת', value: 'outline' },
+                  { label: 'קישור', value: 'link' },
+                ])}
+                {renderSelect('יישור', 'text_align', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_image':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תמונה">
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">תמונה למחשב</label>
+                    {getValue('image_url') ? (
+                      <div className="relative group">
+                        <img 
+                          src={getValue('image_url')} 
+                          alt="תמונה" 
+                          className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          onClick={() => {
+                            setMediaType('image');
+                            setTargetBlockId(null);
+                            setImageDeviceTarget('desktop');
+                            setIsMediaPickerOpen(true);
+                          }}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white"
+                        >
+                          <HiPhotograph className="w-6 h-6 mr-2" />
+                          החלף תמונה
+                        </button>
+                        <button
+                          onClick={() => handleSettingChange('image_url', '')}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMediaType('image');
+                          setTargetBlockId(null);
+                          setImageDeviceTarget('desktop');
+                          setIsMediaPickerOpen(true);
+                        }}
+                        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <HiPhotograph className="w-8 h-8 mb-2" />
+                        <span>הוסף תמונה למחשב</span>
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">תמונה למובייל (אופציונלי)</label>
+                    {getValue('image_url_mobile') ? (
+                      <div className="relative group">
+                        <img 
+                          src={getValue('image_url_mobile')} 
+                          alt="תמונה מובייל" 
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          onClick={() => {
+                            setMediaType('image');
+                            setTargetBlockId(null);
+                            setImageDeviceTarget('mobile');
+                            setIsMediaPickerOpen(true);
+                          }}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white"
+                        >
+                          <HiPhotograph className="w-6 h-6 mr-2" />
+                          החלף תמונה
+                        </button>
+                        <button
+                          onClick={() => handleSettingChange('image_url_mobile', '')}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMediaType('image');
+                          setTargetBlockId(null);
+                          setImageDeviceTarget('mobile');
+                          setIsMediaPickerOpen(true);
+                        }}
+                        className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <HiDeviceMobile className="w-6 h-6 mb-1" />
+                        <span className="text-xs">הוסף תמונה למובייל</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {renderInput('טקסט חלופי (Alt)', 'alt_text', '')}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('רוחב תמונה', 'image_width', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'מלא', value: 'full' },
+                ])}
+                {renderSelect('יחס גובה-רוחב', 'image_ratio', [
+                  { label: 'מותאם', value: 'adapt' },
+                  { label: 'ריבוע', value: 'square' },
+                  { label: 'פורטרט', value: 'portrait' },
+                  { label: 'לנדסקפ', value: 'landscape' },
+                ])}
+                {renderSelect('התאמת תמונה', 'image_fit', [
+                  { label: 'כיסוי (Cover)', value: 'cover' },
+                  { label: 'הכל (Contain)', value: 'contain' },
+                  { label: 'מילוי (Fill)', value: 'fill' },
+                ])}
+                {renderSelect('מיקום תמונה', 'image_position', [
+                  { label: 'מרכז', value: 'center' },
+                  { label: 'למעלה', value: 'top' },
+                  { label: 'למטה', value: 'bottom' },
+                  { label: 'שמאל', value: 'left' },
+                  { label: 'ימין', value: 'right' },
+                ])}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="קישור">
+              <div className="space-y-4">
+                {renderInput('קישור (אופציונלי)', 'link_url', '', 'text', undefined, 'ltr')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_video':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="וידאו">
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">וידאו למחשב</label>
+                    {getValue('video_url') ? (
+                      <div className="relative group">
+                        <video 
+                          src={getValue('video_url')} 
+                          className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                          controls
+                        />
+                        <button
+                          onClick={() => {
+                            setMediaType('video');
+                            setTargetBlockId(null);
+                            setImageDeviceTarget('desktop');
+                            setIsMediaPickerOpen(true);
+                          }}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white"
+                        >
+                          <HiVideoCamera className="w-6 h-6 mr-2" />
+                          החלף וידאו
+                        </button>
+                        <button
+                          onClick={() => handleSettingChange('video_url', '')}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMediaType('video');
+                          setTargetBlockId(null);
+                          setImageDeviceTarget('desktop');
+                          setIsMediaPickerOpen(true);
+                        }}
+                        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <HiVideoCamera className="w-8 h-8 mb-2" />
+                        <span>הוסף וידאו למחשב</span>
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">וידאו למובייל (אופציונלי)</label>
+                    {getValue('video_url_mobile') ? (
+                      <div className="relative group">
+                        <video 
+                          src={getValue('video_url_mobile')} 
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                          controls
+                        />
+                        <button
+                          onClick={() => {
+                            setMediaType('video');
+                            setTargetBlockId(null);
+                            setImageDeviceTarget('mobile');
+                            setIsMediaPickerOpen(true);
+                          }}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white"
+                        >
+                          <HiVideoCamera className="w-6 h-6 mr-2" />
+                          החלף וידאו
+                        </button>
+                        <button
+                          onClick={() => handleSettingChange('video_url_mobile', '')}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMediaType('video');
+                          setTargetBlockId(null);
+                          setImageDeviceTarget('mobile');
+                          setIsMediaPickerOpen(true);
+                        }}
+                        className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <HiDeviceMobile className="w-6 h-6 mb-1" />
+                        <span className="text-xs">הוסף וידאו למובייל</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </SettingGroup>
+            <SettingGroup title="הגדרות נגן">
+              <div className="space-y-4">
+                {renderSelect('הצג בקרות', 'controls', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], true)}
+                {renderSelect('הפעלה אוטומטית', 'autoplay', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], false)}
+                {renderSelect('השתק', 'muted', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], false)}
+                {renderSelect('לולאה', 'loop', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], false)}
+                {renderSelect('נגן אוטומטי במובייל', 'plays_inline', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ], false)}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="פריסה">
+              <div className="space-y-4">
+                {renderSelect('התאמת וידאו', 'video_fit', [
+                  { label: 'כיסוי (Cover)', value: 'cover' },
+                  { label: 'הכל (Contain)', value: 'contain' },
+                  { label: 'מילוי (Fill)', value: 'fill' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_divider':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderSelect('סגנון', 'divider_style', [
+                  { label: 'רציף', value: 'solid' },
+                  { label: 'מקווקו', value: 'dashed' },
+                  { label: 'מנוקד', value: 'dotted' },
+                  { label: 'כפול', value: 'double' },
+                ])}
+                {renderSelect('רוחב', 'divider_width', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'מלא', value: 'full' },
+                ])}
+                {renderInput('עובי (px)', 'divider_thickness', '1', 'number')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_spacer':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="גובה">
+              <div className="space-y-4">
+                {renderInput('גובה (px)', 'height', '20', 'text', 'לדוגמה: 20px, 50px, 100px', 'ltr')}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
+      case 'element_marquee':
+        return (
+          <div className="space-y-1">
+            <SettingGroup title="תוכן">
+              <div className="space-y-4">
+                {renderInput('טקסט', 'text', 'טקסט נע')}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="אנימציה">
+              <div className="space-y-4">
+                {renderSelect('כיוון', 'direction', [
+                  { label: 'ימין', value: 'right' },
+                  { label: 'שמאל', value: 'left' },
+                ])}
+                {renderSelect('מהירות', 'speed', [
+                  { label: 'איטי', value: 'slow' },
+                  { label: 'רגיל', value: 'normal' },
+                  { label: 'מהיר', value: 'fast' },
+                ])}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="עיצוב">
+              <div className="space-y-4">
+                {renderSelect('גודל טקסט', 'text_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+              </div>
+            </SettingGroup>
+          </div>
+        );
+
       default:
         return (
           <div className="p-6 text-center text-gray-500">
@@ -5442,18 +6030,6 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
             {renderInput('מחלקת CSS (Class)', 'custom_css_class', 'my-custom-class', 'text', undefined, 'ltr')}
          </div>
       </SettingGroup>
-
-      {/* Reset Button */}
-      <div className="px-1 mt-8 border-t border-gray-100 pt-6">
-          <button 
-            onClick={handleReset}
-            className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors text-sm font-medium"
-          >
-            <HiRefresh className="w-4 h-4" />
-            אפס הגדרות סקשן
-          </button>
-      </div>
-
       <MediaPicker
         open={isMediaPickerOpen}
         onOpenChange={setIsMediaPickerOpen}
@@ -5461,12 +6037,49 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         shopId={storeId ? String(storeId) : undefined}
         title={
           mediaType === 'auto' ? 'בחר מדיה' :
-          mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') : 
+          mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') :
           'בחר וידאו'
         }
         multiple={section.type === 'gallery'}
-        accept={section.type === 'image_with_text' || section.type === 'hero_banner' || section.type === 'multicolumn' ? 'all' : mediaType === 'auto' ? 'all' : mediaType}
+        accept={section.type === 'image_with_text' || section.type === 'hero_banner' || section.type === 'multicolumn' || section.type === 'element_image' || section.type === 'element_video' ? 'all' : mediaType === 'auto' ? 'all' : mediaType}
       />
+
+      {/* Typography Popover for blocks - works for all repeater sections */}
+      {selectedBlockId && typographyAnchor && (() => {
+        const updateBlockStyle = (blockId: string, styleUpdates: any) => {
+          const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+          const index = newBlocks.findIndex((b: any) => b.id === blockId);
+          if (index >= 0) {
+            if (!newBlocks[index].style) newBlocks[index].style = {};
+            newBlocks[index].style = {
+              ...newBlocks[index].style,
+              ...styleUpdates
+            };
+            onUpdate({ blocks: newBlocks });
+          }
+        };
+
+        const getBlockTypography = () => {
+          const block = section.blocks?.find(b => b.id === selectedBlockId);
+          return block?.style?.typography || {};
+        };
+
+        return (
+          <TypographyPopover
+            open={Boolean(typographyAnchor)}
+            anchorEl={typographyAnchor}
+            onClose={() => {
+              setTypographyAnchor(null);
+              setSelectedBlockId(null);
+              setSelectedSectionType(null);
+            }}
+            typography={getBlockTypography()}
+            onUpdate={(typography) => {
+              updateBlockStyle(selectedBlockId, { typography });
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

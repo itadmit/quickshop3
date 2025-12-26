@@ -30,6 +30,14 @@ export const SECTION_NAMES: Record<string, string> = {
   'collection_header': 'כותרת קטגוריה',
   'collection_filters': 'מסננים',
   'collection_products': 'רשימת מוצרים',
+  'element_heading': 'כותרת',
+  'element_content': 'תוכן',
+  'element_button': 'כפתור',
+  'element_image': 'תמונה',
+  'element_video': 'וידאו',
+  'element_divider': 'מפריד',
+  'element_spacer': 'רווח',
+  'element_marquee': 'טקסט נע',
 };
 
 /**
