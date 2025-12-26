@@ -10,3 +10,4 @@ cd "$(dirname "$0")"
 # מריץ את הפרויקט
 npm run dev
 
+

@@ -356,8 +356,8 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
 
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto p-3">
-              {/* ✅ בדיקה נכונה: אם אין פריטים בכלל */}
-              {cartItems.length === 0 && !calcLoading ? (
+              {/* ✅ בדיקה נכונה: אם אין פריטים בכלל (ולא בזמן טעינה/validation) */}
+              {cartItems.length === 0 && !calcLoading && !validatingCode ? (
                 <div className="text-center py-12">
                   <HiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4">העגלה שלך ריקה</p>
@@ -396,7 +396,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                         const giftDiscountName = item.properties?.find(prop => prop.name === 'מתנה')?.value;
                         
                         return (
-                          <div key={item.variant_id} className={`flex items-center gap-3 p-2.5 border rounded-lg ${isGiftProduct ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                          <div key={`${item.variant_id}-${isGiftProduct ? 'gift' : 'regular'}-${index}`} className={`flex items-center gap-3 p-2.5 border rounded-lg ${isGiftProduct ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
                             {/* Image - Smaller */}
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                               {item.image ? (
@@ -575,6 +575,9 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                   calculation={calculation}
                   discountCode={discountCode}
                   validatingCode={validatingCode}
+                  applyDiscountCode={applyDiscountCode}
+                  removeDiscountCode={removeDiscountCode}
+                  recalculate={recalculate}
                   // לא מעבירים onCheckout כדי שהכפתור לא יופיע בתוך הסיכום
                 />
                 

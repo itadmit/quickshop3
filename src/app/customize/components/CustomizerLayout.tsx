@@ -420,7 +420,6 @@ export function CustomizerLayout() {
       });
 
       // Debug: Log sections to see what we have
-      console.log('Loaded sections:', sections.map(s => ({ id: s.id, type: s.type, visible: s.visible, hasSettings: !!s.settings })));
 
       setPageSections(sections);
       setCurrentPageType(pageType);
@@ -479,13 +478,34 @@ export function CustomizerLayout() {
   }, []);
 
   const handleSectionUpdate = useCallback((sectionId: string, updates: Partial<SectionSettings>) => {
-    setPageSections(prev =>
-      prev.map(section =>
-        section.id === sectionId
-          ? { ...section, ...updates }
-          : section
-      )
-    );
+    setPageSections(prev => {
+      const newSections = prev.map(section => {
+        if (section.id !== sectionId) {
+          return section; // Return same reference if not the updated section
+        }
+        
+        // Check if updates actually change anything
+        const hasChanges = Object.keys(updates).some(key => {
+          if (key === 'settings' || key === 'style' || key === 'blocks') {
+            // Deep compare for nested objects
+            return JSON.stringify(section[key as keyof SectionSettings]) !== JSON.stringify(updates[key as keyof typeof updates]);
+          }
+          return section[key as keyof SectionSettings] !== updates[key as keyof typeof updates];
+        });
+        
+        // If no changes, return same reference
+        if (!hasChanges) {
+          return section;
+        }
+        
+        // Otherwise, create new object
+        return { ...section, ...updates };
+      });
+      
+      // Check if array actually changed
+      const arrayChanged = newSections.some((section, index) => section !== prev[index]);
+      return arrayChanged ? newSections : prev;
+    });
   }, []);
 
   const handleSectionAdd = useCallback((sectionType: string, position?: number) => {

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN discount_codes dc ON o.discount_codes @> jsonb_build_array(dc.code)
       LEFT JOIN products p ON oli.product_id = p.id
       WHERE dc.influencer_id = $1
-        AND o.financial_status IN ('paid', 'partially_paid')
+        AND o.financial_status = 'paid'
       GROUP BY oli.product_id, p.title, oli.title
       ORDER BY quantity_sold DESC
       LIMIT $2`,

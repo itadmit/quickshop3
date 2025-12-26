@@ -419,13 +419,13 @@ export default function OrderStatusesPage() {
                 disabled={saving}
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <div>
+            <div>
                 <Label htmlFor="replaces_paid" className="cursor-pointer font-medium">
                   החלף את סטטוס &quot;שולם&quot;
                 </Label>
-                <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                   אם מסומן, סטטוס זה יופיע כאפשרות בסטטוס תשלום במקום &quot;שולם&quot;
-                </p>
+              </p>
               </div>
             </div>
 

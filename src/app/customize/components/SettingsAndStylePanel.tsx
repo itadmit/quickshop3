@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { SettingsPanel } from './panels/SettingsPanel';
 import { StylePanel } from './panels/StylePanel';
@@ -23,6 +23,13 @@ export function SettingsAndStylePanel({
   device
 }: SettingsAndStylePanelProps) {
   const [activePanel, setActivePanel] = useState<PanelType>('settings');
+
+  // Switch to 'settings' tab when a new section is selected
+  useEffect(() => {
+    if (selectedSectionId) {
+      setActivePanel('settings');
+    }
+  }, [selectedSectionId]);
 
   const selectedSection = sections.find(s => s.id === selectedSectionId);
 

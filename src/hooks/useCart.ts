@@ -380,11 +380,18 @@ export function useCart() {
   }, [storeId, saveCartToServer]);
 
   // REMOVE GIFT FROM CART (system action - for discount management)
+  // ✅ מסיר רק פריטים שהם מתנות (יש להם property של "מתנה"), לא פריטים רגילים עם אותו variant_id
   const removeGiftFromCart = useCallback((variantId: number) => {
     if (!storeId) return;
     
     const currentItems = globalCartItems[storeId] || [];
-    const newItems = currentItems.filter((i) => i.variant_id !== variantId);
+    // ✅ מסיר רק פריטים שהם גם variant_id מתאים וגם מסומנים כמתנה
+    const newItems = currentItems.filter((i) => {
+      if (i.variant_id !== variantId) return true; // לא אותו variant - משאיר
+      // אותו variant - בודק אם זו מתנה
+      const isGift = i.properties?.some(p => p.name === 'מתנה');
+      return !isGift; // משאיר רק אם זה לא מתנה
+    });
     
     globalCartItems[storeId] = newItems;
     setCartToStorage(newItems, storeId);

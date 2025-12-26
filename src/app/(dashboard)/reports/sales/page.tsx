@@ -253,8 +253,8 @@ export default function SalesReportPage() {
                 <Tooltip 
                   contentStyle={{ direction: 'rtl', textAlign: 'right' }}
                   formatter={(value: number, name: string) => {
-                    if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
-                    return [value, 'הזמנות'];
+                  if (name === 'revenue') return [`₪${value.toLocaleString('he-IL')}`, 'הכנסות'];
+                  return [value, 'הזמנות'];
                   }} 
                 />
                 <Legend wrapperStyle={{ direction: 'rtl' }} />

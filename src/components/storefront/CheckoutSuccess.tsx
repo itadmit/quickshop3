@@ -181,18 +181,18 @@ export function CheckoutSuccess({ orderId, orderHandle, storeSlug, storeName, st
       
       // שליחת אירוע Purchase לכל הזמנה שהגיעה לדף תודה (לא רק כרטיס אשראי)
       // זה מודד את כל מי שהגיע לדף success - בין אם שילם או בהמתנה לתשלום
-      emitTrackingEvent({
-        event: 'Purchase',
-        content_ids: order.line_items.map(item => String(item.id)),
-        contents: order.line_items.map(item => ({
-          id: String(item.id),
-          quantity: item.quantity,
-          item_price: parseFloat(item.price),
-        })),
-        currency: 'ILS',
-        value: parseFloat(order.total_price),
-        order_id: String(order.id),
-      });
+        emitTrackingEvent({
+          event: 'Purchase',
+          content_ids: order.line_items.map(item => String(item.id)),
+          contents: order.line_items.map(item => ({
+            id: String(item.id),
+            quantity: item.quantity,
+            item_price: parseFloat(item.price),
+          })),
+          currency: 'ILS',
+          value: parseFloat(order.total_price),
+          order_id: String(order.id),
+        });
       console.log('[CheckoutSuccess] Purchase event emitted - order reached thank you page');
       
       // מחיקת העגלה

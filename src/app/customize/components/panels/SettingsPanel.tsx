@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { SettingGroup } from '../ui/SettingGroup';
 import { SettingInput } from '../ui/SettingInput';
@@ -8,7 +8,11 @@ import { SettingSelect } from '../ui/SettingSelect';
 import { ModernColorPicker } from '../SettingsUI';
 import { MediaPicker } from '@/components/MediaPicker';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
-import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4 } from 'react-icons/hi';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { useDebounce } from '@/hooks/useDebounce';
+import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4, HiUpload, HiSearch, HiX } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
 import {
@@ -158,11 +162,17 @@ function CheckoutFieldsOrder({
 export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps) {
   const storeId = useStoreId();
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
-  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [mediaType, setMediaType] = useState<'image' | 'video' | 'auto'>('image'); // 'auto' = זיהוי אוטומטי
   const [targetBlockId, setTargetBlockId] = useState<string | null>(null);
   const [imageDeviceTarget, setImageDeviceTarget] = useState<'desktop' | 'mobile'>('desktop'); // For desktop/mobile image selection
   const [navigationMenus, setNavigationMenus] = useState<NavigationMenu[]>([]);
   const [loadingMenus, setLoadingMenus] = useState(false);
+  const [collections, setCollections] = useState<Array<{ id: number; title: string; handle: string }>>([]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+  const [collectionSearchTerm, setCollectionSearchTerm] = useState('');
+  const debouncedCollectionSearch = useDebounce(collectionSearchTerm, 300);
+  const [productCollectionSearchTerm, setProductCollectionSearchTerm] = useState('');
+  const debouncedProductCollectionSearch = useDebounce(productCollectionSearchTerm, 300);
 
   // Load navigation menus when header or footer section is selected
   useEffect(() => {
@@ -170,6 +180,58 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       loadNavigationMenus();
     }
   }, [section.type, storeId]);
+
+  // Load collections when featured_collections section is selected
+  const prevSearchRef = useRef<string>('');
+  const prevSectionTypeRef = useRef<string>('');
+  const hasLoadedRef = useRef<boolean>(false);
+  
+  useEffect(() => {
+    if (section.type === 'featured_collections' && storeId) {
+      // Load collections when section type changes or search term changes
+      const sectionChanged = prevSectionTypeRef.current !== section.type;
+      const searchChanged = prevSearchRef.current !== debouncedCollectionSearch;
+      
+      // Always load on first mount or when section changes
+      if (sectionChanged || searchChanged || !hasLoadedRef.current) {
+        prevSectionTypeRef.current = section.type;
+        prevSearchRef.current = debouncedCollectionSearch;
+        hasLoadedRef.current = true;
+        loadCollections();
+      }
+    } else {
+      // Reset refs when switching away from featured_collections
+      prevSectionTypeRef.current = '';
+      prevSearchRef.current = '';
+      hasLoadedRef.current = false;
+    }
+  }, [section.type, storeId, debouncedCollectionSearch]);
+  
+  // Load collections when featured_products section is selected
+  const prevProductSearchRef = useRef<string>('');
+  const prevProductSectionTypeRef = useRef<string>('');
+  const hasLoadedProductsRef = useRef<boolean>(false);
+  
+  useEffect(() => {
+    if (section.type === 'featured_products' && storeId) {
+      // Load collections when section type changes or search term changes
+      const sectionChanged = prevProductSectionTypeRef.current !== section.type;
+      const searchChanged = prevProductSearchRef.current !== debouncedProductCollectionSearch;
+      
+      // Always load on first mount or when section changes
+      if (sectionChanged || searchChanged || !hasLoadedProductsRef.current) {
+        prevProductSectionTypeRef.current = section.type;
+        prevProductSearchRef.current = debouncedProductCollectionSearch;
+        hasLoadedProductsRef.current = true;
+        loadCollections();
+      }
+    } else {
+      // Reset refs when switching away from featured_products
+      prevProductSectionTypeRef.current = '';
+      prevProductSearchRef.current = '';
+      hasLoadedProductsRef.current = false;
+    }
+  }, [section.type, storeId, debouncedProductCollectionSearch]);
 
   const loadNavigationMenus = async () => {
     if (loadingMenus) return;
@@ -185,6 +247,43 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       console.error('Error loading navigation menus:', error);
     } finally {
       setLoadingMenus(false);
+    }
+  };
+
+  const loadCollections = async () => {
+    if (loadingCollections || !storeId) {
+      console.log('[SettingsPanel] Skipping loadCollections:', { loadingCollections, storeId });
+      return;
+    }
+    setLoadingCollections(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedCollectionSearch) {
+        params.append('search', debouncedCollectionSearch);
+      }
+      // Add limit to get more collections
+      params.append('limit', '100');
+      
+      console.log('[SettingsPanel] Loading collections with params:', params.toString());
+      const response = await fetch(`/api/collections?${params.toString()}`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const loadedCollections = data.collections || [];
+        console.log('[SettingsPanel] Loaded collections:', loadedCollections.length, loadedCollections);
+        setCollections(loadedCollections);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[SettingsPanel] Failed to load collections:', response.status, response.statusText, errorData);
+        setCollections([]);
+      }
+    } catch (error) {
+      console.error('[SettingsPanel] Error loading collections:', error);
+      setCollections([]);
+    } finally {
+      setLoadingCollections(false);
     }
   };
 
@@ -246,7 +345,8 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
     const keys = key.split('.');
     
     if (device === 'desktop') {
-      const newSettings = { ...section.settings };
+      // Deep clone to avoid mutation issues
+      const newSettings = JSON.parse(JSON.stringify(section.settings || {}));
       let current: any = newSettings;
       
       // Navigate to the nested object
@@ -264,10 +364,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         settings: newSettings
       });
     } else {
-      // Update responsive settings
-      const currentResponsive = (section as any).responsive || {};
+      // Update responsive settings - deep clone to avoid mutation issues
+      const currentResponsive = JSON.parse(JSON.stringify((section as any).responsive || {}));
       const deviceResponsive = currentResponsive[device] || {};
-      const deviceSettings = { ...(deviceResponsive.settings || {}) };
+      const deviceSettings = deviceResponsive.settings || {};
       
       let current: any = deviceSettings;
       
@@ -296,7 +396,8 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
   const handleStyleChange = (path: string, value: any) => {
       const keys = path.split('.');
-      const style = { ...(section.style || {}) };
+      // Deep clone the style object to avoid mutation issues
+      const style = JSON.parse(JSON.stringify(section.style || {}));
       let current: any = style;
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) current[keys[i]] = {};
@@ -330,11 +431,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           setTargetBlockId(null);
       } else if (targetBlockId) {
           // Update specific block - support desktop/mobile images and video
-          const newBlocks = [...(section.blocks || [])];
-          const blockIndex = newBlocks.findIndex(b => b.id === targetBlockId);
+          // Deep clone to avoid mutation issues
+          const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+          const blockIndex = newBlocks.findIndex((b: any) => b.id === targetBlockId);
           if (blockIndex >= 0) {
-              const block = newBlocks[blockIndex];
-              
               // For image_with_text, detect file type from extension if accept='all'
               let detectedMediaType = mediaType;
               if (section.type === 'image_with_text' && mediaType === 'image') {
@@ -347,24 +447,18 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
               
               if (detectedMediaType === 'video') {
                   // For video, set video_url and clear image_url
-                  newBlocks[blockIndex] = {
-                      ...block,
-                      content: {
-                          ...block.content,
-                          video_url: files[0],
-                          image_url: ''
-                      }
+                  newBlocks[blockIndex].content = {
+                      ...newBlocks[blockIndex].content,
+                      video_url: files[0],
+                      image_url: ''
                   };
               } else {
                   // For image, set image_url and clear video_url
                   const imageKey = imageDeviceTarget === 'mobile' ? 'image_url_mobile' : 'image_url';
-                  newBlocks[blockIndex] = {
-                      ...block,
-                      content: {
-                          ...block.content,
-                          [imageKey]: files[0],
-                          video_url: ''
-                      }
+                  newBlocks[blockIndex].content = {
+                      ...newBlocks[blockIndex].content,
+                      [imageKey]: files[0],
+                      video_url: ''
                   };
               }
               onUpdate({ blocks: newBlocks });
@@ -384,14 +478,28 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           (window as any).__slideshowAddImage = null;
       } else {
         // Update section background - support desktop/mobile images
-        if (mediaType === 'image') {
+        // ✅ עבור hero_banner, זיהוי אוטומטי של תמונה/סרטון לפי סיומת הקובץ
+        const isVideoFile = files[0] && /\.(mp4|webm|ogg|mov|avi)$/i.test(files[0]);
+        const isImage = mediaType === 'image' || (mediaType === 'auto' && !isVideoFile);
+        
+        if (isImage) {
             const imageKey = imageDeviceTarget === 'mobile' ? 'background_image_mobile' : 'background_image';
             handleStyleChange(`background.${imageKey}`, files[0]);
-            handleStyleChange('background.background_video', '');
+            // נקה וידאו רק אם זה לא mobile (כי mobile ו-desktop נפרדים)
+            if (imageDeviceTarget === 'mobile') {
+                handleStyleChange('background.background_video_mobile', '');
+            } else {
+                handleStyleChange('background.background_video', '');
+            }
         } else {
-            handleStyleChange('background.background_video', files[0]);
-            handleStyleChange('background.background_image', '');
-            handleStyleChange('background.background_image_mobile', '');
+            const videoKey = imageDeviceTarget === 'mobile' ? 'background_video_mobile' : 'background_video';
+            handleStyleChange(`background.${videoKey}`, files[0]);
+            // נקה תמונות רק אם זה לא mobile
+            if (imageDeviceTarget === 'mobile') {
+                handleStyleChange('background.background_image_mobile', '');
+            } else {
+                handleStyleChange('background.background_image', '');
+            }
         }
       }
     }
@@ -544,7 +652,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         setTargetBlockId('header-logo');
                         setIsMediaPickerOpen(true);
                       }}
-                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all flex flex-col items-center gap-2"
+                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all flex flex-col items-center gap-2"
                     >
                       <HiPhotograph className="w-8 h-8 text-gray-400" />
                       <span className="text-sm text-gray-600">העלה לוגו</span>
@@ -727,41 +835,75 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'hero_banner':
-        // Mobile Preview Component
-        const MobilePreview = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
-          <div className="space-y-2">
-            <div className="text-xs text-gray-500 text-center">תצוגה מקדימה</div>
-            <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden" style={{ height: '180px', maxWidth: '110px', margin: '0 auto' }}>
-              {children}
-              {onDelete && (
-                <button
-                  onClick={onDelete}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  title="הסר"
-                >
-                  <HiTrash className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+        // Mobile Preview Component - מודרני וקומפקטי
+        const MobilePreview = ({ 
+          children, 
+          onDelete, 
+          onClick 
+        }: { 
+          children: React.ReactNode; 
+          onDelete?: () => void;
+          onClick?: () => void;
+        }) => (
+          <div 
+            className="relative group border-2 border-dashed border-gray-300 rounded-xl overflow-hidden cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all bg-white"
+            style={{ height: '120px', maxWidth: '90px', margin: '0 auto' }}
+            onClick={onClick}
+          >
+            {children || (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-400">
+                <HiPhotograph className="w-6 h-6" />
+                <span className="text-xs text-center px-2">לחץ לעלות מדיה</span>
+              </div>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                title="הסר"
+              >
+                <HiTrash className="w-3 h-3" />
+              </button>
+            )}
           </div>
         );
 
-        // Desktop Preview Component  
-        const DesktopPreview = ({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) => (
-          <div className="space-y-2">
-            <div className="text-xs text-gray-500 text-center">תצוגה מקדימה</div>
-            <div className="relative group border-2 border-gray-300 rounded-lg overflow-hidden" style={{ height: '180px' }}>
-              {children}
-              {onDelete && (
-                <button
-                  onClick={onDelete}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  title="הסר"
-                >
-                  <HiTrash className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+        // Desktop Preview Component - מודרני וקומפקטי
+        const DesktopPreview = ({ 
+          children, 
+          onDelete,
+          onClick 
+        }: { 
+          children: React.ReactNode; 
+          onDelete?: () => void;
+          onClick?: () => void;
+        }) => (
+          <div 
+            className="relative group border-2 border-dashed border-gray-300 rounded-xl overflow-hidden cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all bg-white"
+            style={{ height: '120px' }}
+            onClick={onClick}
+          >
+            {children || (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-400">
+                <HiPhotograph className="w-8 h-8" />
+                <span className="text-sm text-center px-2">לחץ לעלות מדיה</span>
+              </div>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                title="הסר"
+              >
+                <HiTrash className="w-3 h-3" />
+              </button>
+            )}
           </div>
         );
 
@@ -769,109 +911,139 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           <div className="space-y-1">
             {/* Mobile + Tablet Section */}
             <SettingGroup title={<span className="flex items-center gap-2"><HiDeviceMobile className="w-4 h-4" /> מובייל + טאבלט</span>}>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
+                <div className="space-y-3">
+                    {/* Preview Mobile Image */}
+                    {section.style?.background?.background_image_mobile ? (
+                        <MobilePreview 
+                            onDelete={() => {
+                                handleStyleChange('background.background_image_mobile', '');
+                                handleStyleChange('background.background_video_mobile', '');
+                            }}
                             onClick={() => {
                                 setMediaType('image');
                                 setImageDeviceTarget('mobile');
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
                         >
-                            <HiPhotograph className="w-5 h-5 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-700">תמונה</span>
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMediaType('video');
-                                setImageDeviceTarget('mobile');
-                                setTargetBlockId(null);
-                                setIsMediaPickerOpen(true);
-                            }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
-                        >
-                            <HiVideoCamera className="w-5 h-5 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-700">סרטון</span>
-                        </button>
-                    </div>
-
-                    {/* Preview Mobile Image */}
-                    {section.style?.background?.background_image_mobile && (
-                        <MobilePreview onDelete={() => handleStyleChange('background.background_image_mobile', '')}>
                             <img 
                                 src={section.style.background.background_image_mobile} 
                                 alt="Mobile Background" 
                                 className="w-full h-full object-cover"
                             />
                         </MobilePreview>
-                    )}
-
-                    {/* Preview Mobile Video */}
-                    {section.style?.background?.background_video_mobile && (
-                        <MobilePreview onDelete={() => handleStyleChange('background.background_video_mobile', '')}>
+                    ) : section.style?.background?.background_video_mobile ? (
+                        <MobilePreview 
+                            onDelete={() => {
+                                handleStyleChange('background.background_image_mobile', '');
+                                handleStyleChange('background.background_video_mobile', '');
+                            }}
+                            onClick={() => {
+                                setMediaType('video');
+                                setImageDeviceTarget('mobile');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                        >
                             <video 
                                 src={section.style.background.background_video_mobile} 
                                 className="w-full h-full object-cover"
                                 autoPlay muted loop
                             />
                         </MobilePreview>
+                    ) : (
+                        <MobilePreview
+                            onClick={() => {
+                                setMediaType('auto');
+                                setImageDeviceTarget('mobile');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                        />
                     )}
+
+                    {/* כפתור העלאה */}
+                    <button
+                        onClick={() => {
+                            setMediaType('auto');
+                            setImageDeviceTarget('mobile');
+                            setTargetBlockId(null);
+                            setIsMediaPickerOpen(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-all text-sm font-medium"
+                    >
+                        <HiUpload className="w-4 h-4" />
+                        <span>העלה מדיה</span>
+                    </button>
                 </div>
             </SettingGroup>
 
             {/* Desktop Section */}
             <SettingGroup title={<span className="flex items-center gap-2"><HiDesktopComputer className="w-4 h-4" /> מחשב</span>}>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
+                <div className="space-y-3">
+                    {/* Preview Desktop Image */}
+                    {section.style?.background?.background_image ? (
+                        <DesktopPreview 
+                            onDelete={() => {
+                                handleStyleChange('background.background_image', '');
+                                handleStyleChange('background.background_video', '');
+                            }}
                             onClick={() => {
                                 setMediaType('image');
                                 setImageDeviceTarget('desktop');
                                 setTargetBlockId(null);
                                 setIsMediaPickerOpen(true);
                             }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
                         >
-                            <HiPhotograph className="w-5 h-5 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-700">תמונה</span>
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMediaType('video');
-                                setImageDeviceTarget('desktop');
-                                setTargetBlockId(null);
-                                setIsMediaPickerOpen(true);
-                            }}
-                            className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all gap-1.5"
-                        >
-                            <HiVideoCamera className="w-5 h-5 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-700">סרטון</span>
-                        </button>
-                    </div>
-
-                    {/* Preview Desktop Image */}
-                    {section.style?.background?.background_image && (
-                        <DesktopPreview onDelete={() => handleStyleChange('background.background_image', '')}>
                             <img 
                                 src={section.style.background.background_image} 
                                 alt="Desktop Background" 
                                 className="w-full h-full object-cover"
                             />
                         </DesktopPreview>
-                    )}
-
-                    {/* Preview Desktop Video */}
-                    {section.style?.background?.background_video && (
-                        <DesktopPreview onDelete={() => handleStyleChange('background.background_video', '')}>
+                    ) : section.style?.background?.background_video ? (
+                        <DesktopPreview 
+                            onDelete={() => {
+                                handleStyleChange('background.background_image', '');
+                                handleStyleChange('background.background_video', '');
+                            }}
+                            onClick={() => {
+                                setMediaType('video');
+                                setImageDeviceTarget('desktop');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                        >
                             <video 
                                 src={section.style.background.background_video} 
                                 className="w-full h-full object-cover"
                                 autoPlay muted loop
                             />
                         </DesktopPreview>
+                    ) : (
+                        <DesktopPreview
+                            onClick={() => {
+                                setMediaType('auto');
+                                setImageDeviceTarget('desktop');
+                                setTargetBlockId(null);
+                                setIsMediaPickerOpen(true);
+                            }}
+                        />
                     )}
+
+                    {/* כפתור העלאה */}
+                    <button
+                        onClick={() => {
+                            setMediaType('auto');
+                            setImageDeviceTarget('desktop');
+                            setTargetBlockId(null);
+                            setIsMediaPickerOpen(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-all text-sm font-medium"
+                    >
+                        <HiUpload className="w-4 h-4" />
+                        <span>העלה מדיה</span>
+                    </button>
 
                     {/* Image Settings */}
                     {section.style?.background?.background_image && (
@@ -953,9 +1125,9 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     { label: 'שמאל', value: 'left' },
                 ])}
                 {renderSelect('יישור טקסט', 'text_align', [
-                    { label: 'ימין', value: 'left' },
+                    { label: 'ימין', value: 'right' },
                     { label: 'מרכז', value: 'center' },
-                    { label: 'שמאל', value: 'right' },
+                    { label: 'שמאל', value: 'left' },
                 ])}
               </div>
             </SettingGroup>
@@ -963,20 +1135,113 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'featured_products':
+        const productSelectionMode = getValue('product_selection_mode', 'all') as 'all' | 'collection';
+        const productSelectedCollectionIds = getValue('selected_collection_ids', []) as number[];
+        
+        const toggleProductCollection = (collectionId: number) => {
+          const currentIds = productSelectedCollectionIds || [];
+          const newIds = currentIds.includes(collectionId)
+            ? currentIds.filter(id => id !== collectionId)
+            : [...currentIds, collectionId];
+          handleSettingChange('selected_collection_ids', newIds);
+        };
+        
         return (
           <div className="space-y-1">
-             <SettingGroup title="כללי">
+            <SettingGroup title="מקור מוצרים">
+              <div className="space-y-4">
+                {renderSelect('מקור מוצרים', 'product_selection_mode', [
+                  { label: 'כל המוצרים', value: 'all' },
+                  { label: 'קטגוריה', value: 'collection' },
+                ])}
+                
+                {productSelectionMode === 'all' && (
+                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    כל המוצרים יוצגו בסקשיין.
+                  </p>
+                )}
+                
+                {productSelectionMode === 'collection' && (
+                  <>
+                    <div className="relative">
+                      <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Input
+                        type="text"
+                        placeholder="חיפוש קטגוריות..."
+                        value={productCollectionSearchTerm}
+                        onChange={(e) => setProductCollectionSearchTerm(e.target.value)}
+                        className="pr-10"
+                      />
+                    </div>
+                    
+                    {productSelectedCollectionIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {collections
+                          .filter(c => productSelectedCollectionIds.includes(c.id))
+                          .map(collection => (
+                            <span
+                              key={collection.id}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                            >
+                              {collection.title}
+                              <button
+                                type="button"
+                                onClick={() => toggleProductCollection(collection.id)}
+                                className="hover:text-blue-900"
+                              >
+                                <HiX className="w-4 h-4" />
+                              </button>
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                    
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
+                      {loadingCollections ? (
+                        <div className="text-center py-4 text-gray-500">טוען קטגוריות...</div>
+                      ) : collections.length === 0 ? (
+                        <div className="text-center py-4 text-gray-500">לא נמצאו קטגוריות</div>
+                      ) : (
+                        collections
+                          .filter(c => 
+                            c.title.toLowerCase().includes(debouncedProductCollectionSearch.toLowerCase())
+                          )
+                          .map(collection => (
+                            <div
+                              key={collection.id}
+                              className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-50 ${
+                                productSelectedCollectionIds.includes(collection.id) ? 'bg-blue-50 border border-blue-200' : ''
+                              }`}
+                              onClick={() => toggleProductCollection(collection.id)}
+                            >
+                              <Checkbox
+                                checked={productSelectedCollectionIds.includes(collection.id)}
+                                onCheckedChange={() => toggleProductCollection(collection.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <span className="text-sm text-gray-700 cursor-pointer flex-1">{collection.title}</span>
+                            </div>
+                          ))
+                      )}
+                      {collections.filter(c => 
+                        c.title.toLowerCase().includes(debouncedProductCollectionSearch.toLowerCase())
+                      ).length === 0 && !loadingCollections && (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          לא נמצאו קטגוריות
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </SettingGroup>
+            <SettingGroup title="כללי">
                 <div className="space-y-4">
                   {renderInput('כותרת הסקשן', 'title', 'מוצרים מומלצים')}
                   {renderSelect('יישור כותרת', 'title_align', [
                       { label: 'ימין', value: 'right' },
                       { label: 'מרכז', value: 'center' },
                       { label: 'שמאל', value: 'left' },
-                  ])}
-                  {renderSelect('מקור מוצרים', 'collection', [
-                      { label: 'כל המוצרים', value: 'all' },
-                      { label: 'קולקציית קיץ', value: 'summer' },
-                      { label: 'מוצרים חדשים', value: 'new' },
                   ])}
                 </div>
             </SettingGroup>
@@ -1045,8 +1310,93 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'featured_collections':
+        const selectedCollectionIds = getValue('selected_collection_ids', []) as number[];
+        const collectionSelectionMode = getValue('collection_selection_mode', 'all') as 'all' | 'manual';
+        
+        const toggleCollection = (collectionId: number) => {
+          const currentIds = selectedCollectionIds || [];
+          const newIds = currentIds.includes(collectionId)
+            ? currentIds.filter(id => id !== collectionId)
+            : [...currentIds, collectionId];
+          handleSettingChange('selected_collection_ids', newIds);
+        };
+        
         return (
             <div className="space-y-1">
+                <SettingGroup title="בחירת קטגוריות">
+                    <div className="space-y-4">
+                        {renderSelect('איזה קטגוריות להציג', 'collection_selection_mode', [
+                            { label: 'הצג את כולן', value: 'all' },
+                            { label: 'בחר ידנית', value: 'manual' },
+                        ])}
+                        
+                        {collectionSelectionMode === 'all' && (
+                            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                כל הקטגוריות יוצגו בסקשיין לפי הסדר שלהן במערכת.
+                            </p>
+                        )}
+                        
+                        {collectionSelectionMode === 'manual' && (
+                            <>
+                                <div className="relative">
+                                    <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                    <Input
+                                        type="text"
+                                        placeholder="חיפוש קטגוריות..."
+                                        value={collectionSearchTerm}
+                                        onChange={(e) => setCollectionSearchTerm(e.target.value)}
+                                        className="pr-10"
+                                    />
+                                </div>
+                                
+                                {selectedCollectionIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {collections
+                                            .filter(c => selectedCollectionIds.includes(c.id))
+                                            .map(collection => (
+                                                <span
+                                                    key={collection.id}
+                                                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                                                >
+                                                    {collection.title}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleCollection(collection.id)}
+                                                        className="hover:text-blue-900"
+                                                    >
+                                                        <HiX className="w-4 h-4" />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                    </div>
+                                )}
+                                
+                                <div className="max-h-60 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3">
+                                    {loadingCollections ? (
+                                        <div className="text-center py-4 text-gray-500">טוען קטגוריות...</div>
+                                    ) : collections.length === 0 ? (
+                                        <div className="text-center py-4 text-gray-500">לא נמצאו קטגוריות</div>
+                                    ) : (
+                                        collections.map(collection => (
+                                            <div
+                                                key={collection.id}
+                                                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                                onClick={() => toggleCollection(collection.id)}
+                                            >
+                                                <Checkbox
+                                                    checked={selectedCollectionIds.includes(collection.id)}
+                                                    onCheckedChange={() => toggleCollection(collection.id)}
+                                                />
+                                                <Label className="cursor-pointer flex-1">{collection.title}</Label>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </SettingGroup>
+                
                 <SettingGroup title="כללי">
                     <div className="space-y-4">
                         {renderInput('כותרת הסקשן', 'title', 'קטגוריות פופולריות')}
@@ -1107,32 +1457,28 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         const textBlock = section.blocks?.find(b => b.type === 'text');
 
         const updateBlockContent = (blockType: string, contentKey: string, value: any) => {
-             const newBlocks = [...(section.blocks || [])];
-             const blockIndex = newBlocks.findIndex(b => b.type === blockType);
+             // Deep clone to avoid mutation issues
+             const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+             const blockIndex = newBlocks.findIndex((b: any) => b.type === blockType);
              
              if (blockIndex >= 0) {
-                 newBlocks[blockIndex] = {
-                     ...newBlocks[blockIndex],
-                     content: {
-                         ...newBlocks[blockIndex].content,
-                         [contentKey]: value
-                     }
+                 newBlocks[blockIndex].content = {
+                     ...newBlocks[blockIndex].content,
+                     [contentKey]: value
                  };
                  onUpdate({ blocks: newBlocks });
              }
         };
         
         const updateBlockStyle = (blockType: string, styleKey: string, value: any) => {
-             const newBlocks = [...(section.blocks || [])];
-             const blockIndex = newBlocks.findIndex(b => b.type === blockType);
+             // Deep clone to avoid mutation issues
+             const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+             const blockIndex = newBlocks.findIndex((b: any) => b.type === blockType);
              
              if (blockIndex >= 0) {
-                 newBlocks[blockIndex] = {
-                     ...newBlocks[blockIndex],
-                     style: {
-                         ...newBlocks[blockIndex].style,
-                         [styleKey]: value
-                     }
+                 newBlocks[blockIndex].style = {
+                     ...newBlocks[blockIndex].style,
+                     [styleKey]: value
                  };
                  onUpdate({ blocks: newBlocks });
              }
@@ -1493,7 +1839,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                 // Store callback to add images
                                 (window as any).__galleryAddImage = addGalleryImage;
                             }}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPhotograph className="w-5 h-5" />
                             הוסף תמונות
@@ -1570,10 +1916,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           };
 
           const updateSlide = (blockId: string, updates: any) => {
-             const newBlocks = [...(section.blocks || [])];
-             const index = newBlocks.findIndex(b => b.id === blockId);
+             // Deep clone to avoid mutation issues
+             const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+             const index = newBlocks.findIndex((b: any) => b.id === blockId);
              if (index >= 0) {
-                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 newBlocks[index].content = { ...newBlocks[index].content, ...updates };
                  onUpdate({ blocks: newBlocks });
              }
           };
@@ -1649,7 +1996,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={() => addSlide()}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף שקופית
@@ -1695,7 +2042,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                                         setImageDeviceTarget('mobile');
                                                         setIsMediaPickerOpen(true);
                                                     }}
-                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 transition-all flex items-center justify-center"
+                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 transition-all flex items-center justify-center"
                                                     style={{ height: '120px' }}
                                                 >
                                                     <HiPhotograph className="w-6 h-6 text-gray-400" />
@@ -1721,7 +2068,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                             ) : (
                                                 <button
                                                     onClick={() => openSlideImagePicker(slide.id)}
-                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 transition-all flex items-center justify-center"
+                                                    className="w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 transition-all flex items-center justify-center"
                                                     style={{ height: '120px' }}
                                                 >
                                                     <HiPhotograph className="w-6 h-6 text-gray-400" />
@@ -1792,10 +2139,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           };
 
           const updateTestimonial = (blockId: string, updates: any) => {
-             const newBlocks = [...(section.blocks || [])];
-             const index = newBlocks.findIndex(b => b.id === blockId);
+             // Deep clone to avoid mutation issues
+             const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+             const index = newBlocks.findIndex((b: any) => b.id === blockId);
              if (index >= 0) {
-                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 newBlocks[index].content = { ...newBlocks[index].content, ...updates };
                  onUpdate({ blocks: newBlocks });
              }
           };
@@ -1823,7 +2171,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={addTestimonial}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף המלצה
@@ -1894,10 +2242,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           };
 
           const updateFaq = (blockId: string, updates: any) => {
-             const newBlocks = [...(section.blocks || [])];
-             const index = newBlocks.findIndex(b => b.id === blockId);
+             // Deep clone to avoid mutation issues
+             const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+             const index = newBlocks.findIndex((b: any) => b.id === blockId);
              if (index >= 0) {
-                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 newBlocks[index].content = { ...newBlocks[index].content, ...updates };
                  onUpdate({ blocks: newBlocks });
              }
           };
@@ -1919,7 +2268,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={addFaq}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף שאלה
@@ -2084,10 +2433,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           };
 
           const updateLogo = (blockId: string, updates: any) => {
-             const newBlocks = [...(section.blocks || [])];
-             const index = newBlocks.findIndex(b => b.id === blockId);
+             // Deep clone to avoid mutation issues
+             const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+             const index = newBlocks.findIndex((b: any) => b.id === blockId);
              if (index >= 0) {
-                 newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+                 newBlocks[index].content = { ...newBlocks[index].content, ...updates };
                  onUpdate({ blocks: newBlocks });
              }
           };
@@ -2157,7 +2507,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     <div className="space-y-4">
                         <button
                             onClick={() => addLogo()}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-sm font-medium"
                         >
                             <HiPlus className="w-5 h-5" />
                             הוסף לוגו
@@ -3913,10 +4263,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         };
 
         const updateCollageImage = (blockId: string, updates: any) => {
-          const newBlocks = [...(section.blocks || [])];
-          const index = newBlocks.findIndex(b => b.id === blockId);
+          // Deep clone to avoid mutation issues
+          const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+          const index = newBlocks.findIndex((b: any) => b.id === blockId);
           if (index >= 0) {
-            newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+            newBlocks[index].content = { ...newBlocks[index].content, ...updates };
             onUpdate({ blocks: newBlocks });
           }
         };
@@ -4068,10 +4419,11 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         };
 
         const updateMcColumn = (blockId: string, updates: any) => {
-          const newBlocks = [...(section.blocks || [])];
-          const index = newBlocks.findIndex(b => b.id === blockId);
+          // Deep clone to avoid mutation issues
+          const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+          const index = newBlocks.findIndex((b: any) => b.id === blockId);
           if (index >= 0) {
-            newBlocks[index] = { ...newBlocks[index], content: { ...newBlocks[index].content, ...updates } };
+            newBlocks[index].content = { ...newBlocks[index].content, ...updates };
             onUpdate({ blocks: newBlocks });
           }
         };
@@ -4514,9 +4866,13 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         onOpenChange={setIsMediaPickerOpen}
         onSelect={handleMediaSelect}
         shopId={storeId ? String(storeId) : undefined}
-        title={mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') : 'בחר וידאו'}
+        title={
+          mediaType === 'auto' ? 'בחר מדיה' :
+          mediaType === 'image' ? (section.type === 'gallery' ? 'בחר תמונות' : 'בחר תמונה') : 
+          'בחר וידאו'
+        }
         multiple={section.type === 'gallery'}
-        accept={section.type === 'image_with_text' ? 'all' : mediaType}
+        accept={section.type === 'image_with_text' || section.type === 'hero_banner' ? 'all' : mediaType === 'auto' ? 'all' : mediaType}
       />
     </div>
   );

@@ -9,6 +9,8 @@ export const SECTION_NAMES: Record<string, string> = {
   'featured_collections': 'קטגוריות פופולריות',
   'featured_products': 'מוצרים מומלצים',
   'image_with_text': 'מדיה עם טקסט',
+  'multicolumn': 'עמודות מרובות',
+  'collage': 'קולאז׳',
   'rich_text': 'טקסט עשיר',
   'newsletter': 'ניוזלטר',
   'gallery': 'גלריה',

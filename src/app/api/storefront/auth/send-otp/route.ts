@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-
+    
     // Normalize email to lowercase for consistent comparison
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
     

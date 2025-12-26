@@ -4,14 +4,16 @@ import React from 'react';
 import { SectionSettings, BlockSettings } from '@/lib/customizer/types';
 import { HiPhotograph, HiPlus } from 'react-icons/hi';
 import Link from 'next/link';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface MulticolumnProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function Multicolumn({ section, onUpdate }: MulticolumnProps) {
+function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
   const settings = section.settings || {};
+  const style = section.style || {};
   const blocks = section.blocks || [];
   
   // Settings
@@ -24,6 +26,75 @@ export function Multicolumn({ section, onUpdate }: MulticolumnProps) {
   const imageRatio = settings.image_ratio || 'square';
   const imageBorderRadius = settings.image_border_radius || '8px';
   const imageBorder = settings.image_border || false;
+  
+  // Button Styles
+  const getButtonStyles = () => {
+    const buttonStyleObj = style.button || {};
+    const buttonStyle = buttonStyleObj.style || 'link';
+    const borderRadius = buttonStyleObj.border_radius || '8px';
+
+    let styleClasses = '';
+    let inlineStyles: React.CSSProperties = {
+      borderRadius: buttonStyle === 'underline' ? '0' : borderRadius,
+    };
+
+    switch (buttonStyle) {
+      case 'outline':
+        styleClasses = 'border-2 px-4 py-2';
+        inlineStyles = {
+          ...inlineStyles,
+          borderColor: buttonStyleObj.background_color || '#2563EB',
+          color: buttonStyleObj.text_color || '#2563EB',
+          backgroundColor: 'transparent',
+        };
+        break;
+      case 'white':
+        styleClasses = 'border border-white shadow-sm px-4 py-2';
+        inlineStyles = {
+          ...inlineStyles,
+          backgroundColor: '#FFFFFF',
+          color: '#000000',
+        };
+        break;
+      case 'black':
+        styleClasses = 'border border-black px-4 py-2';
+        inlineStyles = {
+          ...inlineStyles,
+          backgroundColor: '#000000',
+          color: '#FFFFFF',
+        };
+        break;
+      case 'underline':
+        styleClasses = 'border-b-2 px-0 py-2';
+        inlineStyles = {
+          ...inlineStyles,
+          borderRadius: '0',
+          borderColor: buttonStyleObj.background_color || '#2563EB',
+          color: buttonStyleObj.text_color || '#2563EB',
+          backgroundColor: 'transparent',
+        };
+        break;
+      case 'solid':
+        styleClasses = 'px-4 py-2';
+        inlineStyles = {
+          ...inlineStyles,
+          backgroundColor: buttonStyleObj.background_color || '#2563EB',
+          color: buttonStyleObj.text_color || '#FFFFFF',
+        };
+        break;
+      case 'link':
+      default:
+        styleClasses = 'hover:underline';
+        inlineStyles = {
+          ...inlineStyles,
+          color: buttonStyleObj.text_color || '#2563EB',
+          backgroundColor: 'transparent',
+        };
+        break;
+    }
+
+    return { className: `inline-flex items-center gap-1 mt-2 text-sm font-medium transition-all ${styleClasses}`, style: inlineStyles };
+  };
   
   // Gap mapping
   const gapClasses: Record<string, string> = {
@@ -136,9 +207,30 @@ export function Multicolumn({ section, onUpdate }: MulticolumnProps) {
                 {block.content?.button_text && block.content?.button_url && (
                   <Link 
                     href={block.content.button_url}
-                    className="inline-block mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                    {...getButtonStyles()}
+                    onMouseEnter={(e) => {
+                      const hoverBg = style.button?.hover_background_color;
+                      const hoverText = style.button?.hover_text_color;
+                      if (hoverBg) e.currentTarget.style.backgroundColor = hoverBg;
+                      if (hoverText) e.currentTarget.style.color = hoverText;
+                    }}
+                    onMouseLeave={(e) => {
+                      const buttonStyleObj = style.button || {};
+                      const buttonStyle = buttonStyleObj.style || 'link';
+                      const normalBg = buttonStyleObj.background_color || (buttonStyle === 'solid' ? '#2563EB' : 'transparent');
+                      const normalText = buttonStyleObj.text_color || '#2563EB';
+                      
+                      if (buttonStyle === 'solid' || buttonStyle === 'black' || buttonStyle === 'white') {
+                        e.currentTarget.style.backgroundColor = normalBg;
+                        e.currentTarget.style.color = normalText;
+                      } else {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = normalText;
+                      }
+                    }}
                   >
-                    {block.content.button_text} →
+                    <span>{block.content.button_text}</span>
+                    <span>←</span>
                   </Link>
                 )}
               </div>
@@ -149,3 +241,5 @@ export function Multicolumn({ section, onUpdate }: MulticolumnProps) {
     </div>
   );
 }
+
+export const Multicolumn = React.memo(MulticolumnComponent, sectionPropsAreEqual);

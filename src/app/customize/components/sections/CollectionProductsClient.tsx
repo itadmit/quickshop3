@@ -14,7 +14,7 @@ interface CollectionProductsClientProps {
   initialTotal?: number;
 }
 
-export function CollectionProductsClient({ 
+function CollectionProductsClientComponent({ 
   collectionHandle, 
   storeId,
   initialProducts = [],
@@ -127,4 +127,32 @@ export function CollectionProductsClient({
     </div>
   );
 }
+
+// Memoize CollectionProductsClient to prevent re-renders
+export const CollectionProductsClient = React.memo(CollectionProductsClientComponent, (prevProps, nextProps) => {
+  // Compare props
+  if (
+    prevProps.collectionHandle !== nextProps.collectionHandle ||
+    prevProps.storeId !== nextProps.storeId ||
+    prevProps.initialTotal !== nextProps.initialTotal
+  ) {
+    return false; // Will re-render
+  }
+  
+  // Compare initialProducts array length and IDs
+  const prevProducts = prevProps.initialProducts || [];
+  const nextProducts = nextProps.initialProducts || [];
+  if (prevProducts.length !== nextProducts.length) {
+    return false; // Will re-render
+  }
+  
+  // Compare product IDs
+  for (let i = 0; i < prevProducts.length; i++) {
+    if (prevProducts[i]?.id !== nextProducts[i]?.id) {
+      return false; // Will re-render
+    }
+  }
+  
+  return true; // Skip re-render
+});
 

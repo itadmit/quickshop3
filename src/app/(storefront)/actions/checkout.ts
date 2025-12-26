@@ -535,7 +535,7 @@ export async function createOrder(input: CreateOrderInput) {
          SET order_id = $1 
          WHERE id = (
            SELECT id FROM store_credit_transactions 
-           WHERE store_credit_id = $2 AND order_id IS NULL AND transaction_type = 'used'
+         WHERE store_credit_id = $2 AND order_id IS NULL AND transaction_type = 'used'
            ORDER BY created_at DESC LIMIT 1
          )`,
         [order.id, storeCredit.id]

@@ -534,8 +534,8 @@ export default function OrderDetailsPage() {
               <Select
                 value={order.fulfillment_status || ''}
                 onValueChange={(value) => updateStatus(undefined, value)}
-                disabled={updatingStatus}
-              >
+                  disabled={updatingStatus}
+                >
                 <SelectTrigger className="w-[140px] h-8">
                   <SelectValue placeholder="שנה סטטוס" />
                 </SelectTrigger>

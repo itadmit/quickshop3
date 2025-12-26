@@ -43,7 +43,7 @@ const PRODUCT_FULL_WIDTH_SECTIONS = [
   'recently_viewed'
 ];
 
-export function PreviewFrame({
+function PreviewFrameComponent({
   sections,
   selectedSectionId,
   device,
@@ -134,8 +134,13 @@ export function PreviewFrame({
     };
   }, [sections, pageType]);
 
+  // Memoize onUpdate callback to prevent re-renders
+  const handleSectionUpdate = useCallback((sectionId: string, updates: Partial<SectionSettings>) => {
+    onSectionUpdate(sectionId, updates);
+  }, [onSectionUpdate]);
+
   // Render a single section with controls
-  const renderSection = (section: SectionSettings) => (
+  const renderSection = useCallback((section: SectionSettings) => (
     <div
       key={section.id}
       ref={(el) => {
@@ -150,7 +155,7 @@ export function PreviewFrame({
       <SectionRenderer
         section={section}
         isSelected={selectedSectionId === section.id}
-        onUpdate={(updates) => onSectionUpdate(section.id, updates)}
+        onUpdate={(updates) => handleSectionUpdate(section.id, updates)}
         device={device}
         sampleProduct={sampleProduct}
         sampleCollection={sampleCollection}
@@ -203,7 +208,7 @@ export function PreviewFrame({
         </div>
       )}
     </div>
-  );
+  ), [selectedSectionId, hoveredSectionId, showOutlines, device, sampleProduct, sampleCollection, handleSectionClick, handleSectionUpdate, onSectionDelete, onSectionSelect]);
 
   // Check if we should use product page layout
   const isProductPage = pageType === 'product';
@@ -277,3 +282,27 @@ export function PreviewFrame({
     </div>
   );
 }
+
+// Memoize PreviewFrame to prevent re-renders when parent re-renders
+export const PreviewFrame = React.memo(PreviewFrameComponent, (prevProps, nextProps) => {
+  // Compare sections array - check if references changed
+  const sectionsEqual = (
+    prevProps.sections === nextProps.sections ||
+    (
+      prevProps.sections.length === nextProps.sections.length &&
+      prevProps.sections.every((section, index) => section === nextProps.sections[index])
+    )
+  );
+  
+  // Compare other props
+  const otherPropsEqual = (
+    prevProps.selectedSectionId === nextProps.selectedSectionId &&
+    prevProps.device === nextProps.device &&
+    prevProps.zoom === nextProps.zoom &&
+    prevProps.showGrid === nextProps.showGrid &&
+    prevProps.showOutlines === nextProps.showOutlines &&
+    prevProps.pageType === nextProps.pageType
+  );
+  
+  return sectionsEqual && otherPropsEqual;
+});

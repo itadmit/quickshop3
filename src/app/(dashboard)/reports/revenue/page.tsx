@@ -319,8 +319,8 @@ export default function RevenueReportPage() {
                   <Tooltip 
                     contentStyle={{ direction: 'rtl', textAlign: 'right' }}
                     formatter={(value: number, name: string) => {
-                      if (name.includes('revenue')) return [`₪${value.toLocaleString('he-IL')}`, name === 'gross_revenue' ? 'ברוטו' : 'נטו'];
-                      return [value, 'הזמנות'];
+                    if (name.includes('revenue')) return [`₪${value.toLocaleString('he-IL')}`, name === 'gross_revenue' ? 'ברוטו' : 'נטו'];
+                    return [value, 'הזמנות'];
                     }} 
                   />
                   <Legend wrapperStyle={{ direction: 'rtl' }} />

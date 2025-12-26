@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useRef } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiCube } from 'react-icons/hi';
 import { UnifiedHeader, DeviceType } from '@/components/storefront/UnifiedHeader';
 import { getResponsiveSettings, getResponsiveStyle } from '@/lib/customizer/utils'; // Import utils
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 // Import section components
 import { HeroBanner } from './HeroBanner';
@@ -60,11 +61,20 @@ interface SectionRendererProps {
   sampleCollection?: any; // Sample collection for collection page preview
 }
 
-export function SectionRenderer({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection }: SectionRendererProps) {
+function SectionRendererComponent({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection }: SectionRendererProps) {
   
-  // Get responsive style
+  // Get responsive style and settings
   const style = getResponsiveStyle(section, device);
   const settings = getResponsiveSettings(section, device);
+
+  // Create responsiveSection - React.memo in child components will handle optimization
+  // We create a new object here so that React.memo can properly detect changes via areSectionsEqual
+  const responsiveSection = useMemo(() => ({
+    ...section,
+    settings: settings,
+    style: style,
+    blocks: section.blocks // Include blocks to ensure updates are detected
+  }), [section, JSON.stringify(settings), JSON.stringify(style), JSON.stringify(section.blocks)]);
 
   // Base section wrapper with common styles
   const SectionWrapper = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
@@ -75,6 +85,8 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
         paddingLeft: style.spacing?.padding_left || '0',
         paddingRight: style.spacing?.padding_right || '0',
         backgroundColor: style.background?.background_color,
+        borderRadius: style.border?.border_radius || '0',
+        overflow: style.border?.border_radius ? 'hidden' : undefined, // ✅ מונע מהתוכן לצאת מהפינות המעוגלות
     };
 
     // If there is an image and NO video, use it as CSS background
@@ -93,8 +105,12 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     // Video Background Element
     const VideoBackground = () => {
         if (!style.background?.background_video) return null;
+        const borderRadius = style.border?.border_radius || '0';
         return (
-            <div className="absolute inset-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+            <div 
+                className="absolute inset-0 w-full h-full overflow-hidden z-0 pointer-events-none"
+                style={{ borderRadius }}
+            >
                 <video
                     src={style.background.background_video}
                     autoPlay={style.background.video_autoplay !== false}
@@ -112,11 +128,12 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     const Overlay = () => {
         const overlayOpacity = style.background?.overlay_opacity;
         if (!overlayOpacity && overlayOpacity !== '0') return null; // Check for defined
+        const borderRadius = style.border?.border_radius || '0';
         
         return (
             <div 
                 className="absolute inset-0 z-0 pointer-events-none bg-black"
-                style={{ opacity: overlayOpacity }}
+                style={{ opacity: overlayOpacity, borderRadius }}
             />
         );
     };
@@ -136,15 +153,7 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
     );
   };
 
-  // Pass device/settings to components if they need it (currently they use section directly, we should wrap or pass updated props)
-  // To avoid refactoring all components to accept `settings` prop instead of `section`, 
-  // we can create a proxy section object that has the merged settings/style.
-  
-  const responsiveSection = {
-      ...section,
-      settings: settings,
-      style: style
-  };
+  // responsiveSection is now memoized above
 
   switch (section.type) {
     case 'header':
@@ -410,3 +419,6 @@ export function SectionRenderer({ section, isSelected, onUpdate, device = 'deskt
       );
   }
 }
+
+// Memoize SectionRenderer to prevent re-renders when parent re-renders
+export const SectionRenderer = React.memo(SectionRendererComponent, sectionPropsAreEqual);

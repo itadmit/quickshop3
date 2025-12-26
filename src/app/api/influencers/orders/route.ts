@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('end_date');
     const couponId = searchParams.get('coupon_id');
 
-    // Build WHERE clause
-    let whereClause = 'WHERE dc.influencer_id = $1';
+    // Build WHERE clause - only show paid orders
+    let whereClause = 'WHERE dc.influencer_id = $1 AND o.financial_status = \'paid\'';
     const params: any[] = [influencer.id];
     let paramIndex = 2;
 
@@ -51,8 +51,7 @@ export async function GET(req: NextRequest) {
     const totalResult = await queryOne<{ total: string }>(countSql, params);
     const total = parseInt(totalResult.total);
 
-    // Get orders (include all orders, even cancelled/voided, so influencer can see them)
-    // But filter out cancelled/voided from stats queries
+    // Get orders - only show paid orders
     const orders = await query<InfluencerOrder & { coupon_code: string; item_count: string; customer_name: string | null }>(
       `SELECT 
         o.id,

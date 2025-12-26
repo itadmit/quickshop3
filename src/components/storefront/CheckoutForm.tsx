@@ -537,9 +537,12 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     const result = await applyDiscountCode(codeInput.trim());
     
     if (result.valid) {
-      setCodeInput('');
+      setCodeInput(''); // ניקוי השדה
+      setCodeError(''); // ניקוי שגיאה
     } else {
+      // אם הקופון לא תקף, הצג שגיאה
       setCodeError(result.error || t('checkout.invalid_code'));
+      setCodeInput(''); // ✅ ניקוי גם כשנכשל
     }
   };
   
@@ -2145,7 +2148,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   
                   {/* Cart Items */}
                   <div className="space-y-4 mb-6">
-                    {calculation?.items?.map((calculatedItem) => {
+                    {calculation?.items?.map((calculatedItem, index) => {
                       const item = calculatedItem.item;
                       const hasDiscount = calculatedItem.lineDiscount > 0;
                       
@@ -2154,7 +2157,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                       const giftDiscountName = item.properties?.find((prop: { name: string; value: string }) => prop.name === 'מתנה')?.value;
                       
                       return (
-                        <div key={item.variant_id} className={`flex gap-3 p-2 rounded-lg ${isGiftProduct ? 'bg-green-50 border border-green-200' : ''}`}>
+                        <div key={`${item.variant_id}-${isGiftProduct ? 'gift' : 'regular'}-${index}`} className={`flex gap-3 p-2 rounded-lg ${isGiftProduct ? 'bg-green-50 border border-green-200' : ''}`}>
                           {item.image ? (
                             <div className="relative overflow-hidden rounded">
                               <img
@@ -2234,9 +2237,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     })}
                   </div>
 
-                  {/* Applied Coupons */}
-                  {/* ✅ מציג קופון רק אם הוא תקף (מופיע ב-discounts) */}
-                  {discountCode && calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && (
+                  {/* ✅ מציג קופון תקף (ירוק) */}
+                  {discountCode && calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && !validatingCode && (
                     <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -2268,56 +2270,27 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                             }
                           })()}
                         </div>
-                        {validatingCode ? (
-                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-2" />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await removeDiscountCode();
-                            }}
-                            className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-1 transition-colors mr-2"
-                            aria-label="הסר קופון"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await removeDiscountCode();
+                          }}
+                          className="text-green-700 hover:text-green-900 hover:bg-green-200 rounded p-1 transition-colors mr-2"
+                          aria-label="הסר קופון"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )}
                   
-                  {/* ✅ מציג loader בזמן בדיקת קופון או חישוב, או קופון לא תקף */}
-                  {discountCode && !calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && (
-                    <div className={`mb-4 px-3 py-2 rounded-lg ${validatingCode || calcLoading ? 'bg-gray-50 border border-gray-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {validatingCode || calcLoading ? (
-                            // ✅ מציג loader בזמן בדיקה או חישוב
-                            <>
-                              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                              <span dir="ltr" className="text-sm font-medium text-gray-800">{discountCode}</span>
-                              <span className="text-xs text-gray-600">(בודק...)</span>
-                            </>
-                          ) : (
-                            // ✅ מציג הודעת אזהרה רק אחרי שהבדיקה הסתיימה והקופון באמת לא תקף
-                            <>
-                              <span dir="ltr" className="text-sm font-medium text-yellow-800">{discountCode}</span>
-                              <span className="text-xs text-yellow-600">(לא תקף)</span>
-                            </>
-                          )}
-                        </div>
-                        {!(validatingCode || calcLoading) && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await removeDiscountCode();
-                            }}
-                            className="text-yellow-700 hover:text-red-600 hover:bg-yellow-200 rounded p-1 transition-colors mr-2"
-                            aria-label="הסר קופון"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                  {/* ✅ מציג loader בזמן בדיקת קופון */}
+                  {discountCode && (validatingCode || calcLoading) && !calculation?.discounts?.some(d => d.source === 'code' && d.code === discountCode) && (
+                    <div className="mb-4 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        <span dir="ltr" className="text-sm font-medium text-gray-800">{discountCode}</span>
+                        <span className="text-xs text-gray-600">(בודק...)</span>
                       </div>
                     </div>
                   )}
@@ -2367,17 +2340,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     <Button
                       type="button"
                       variant="secondary"
-                      className="px-6"
+                      className="px-6 min-w-[70px] flex items-center justify-center"
                       style={{ backgroundColor: '#e5e7eb' }}
                       onClick={handleApplyCode}
                       disabled={validatingCode || validatingGiftCard || !codeInput.trim()}
                     >
                       {(validatingCode || validatingGiftCard) ? (
-                        translationsLoading ? (
-                          <TextSkeleton width="w-12" height="h-4" />
-                        ) : (
-                          t('checkout.checking')
-                        )
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                       ) : translationsLoading ? (
                         <TextSkeleton width="w-12" height="h-4" />
                       ) : (

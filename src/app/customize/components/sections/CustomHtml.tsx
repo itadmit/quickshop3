@@ -15,32 +15,22 @@ export function CustomHtml({ section, onUpdate }: CustomHtmlProps) {
   // Settings
   const htmlContent = settings.html_content || '';
   const cssContent = settings.css_content || '';
-  const maxWidth = settings.max_width || 'full';
-  const padding = settings.padding || 'medium';
+  const containerWidth = settings.container_width || 'full';
   
   // Style settings
   const backgroundColor = style.background?.background_color || settings.background_color || 'transparent';
   
   // Max width classes
   const maxWidthClasses: Record<string, string> = {
-    'small': 'max-w-2xl',
-    'medium': 'max-w-4xl',
-    'large': 'max-w-6xl',
+    'narrow': 'max-w-2xl',
+    'container': 'max-w-6xl',
     'full': 'max-w-full',
-  };
-  
-  // Padding classes
-  const paddingClasses: Record<string, string> = {
-    'none': 'py-0',
-    'small': 'py-4',
-    'medium': 'py-8',
-    'large': 'py-12',
   };
 
   if (!htmlContent) {
     return (
       <div 
-        className={`${paddingClasses[padding]} ${maxWidthClasses[maxWidth]} mx-auto px-4`}
+        className={`py-8 ${maxWidthClasses[containerWidth]} mx-auto px-4`}
         style={{ backgroundColor }}
       >
         <div className="text-center text-gray-400 py-8 border-2 border-dashed border-gray-200 rounded-lg">
@@ -53,7 +43,7 @@ export function CustomHtml({ section, onUpdate }: CustomHtmlProps) {
 
   return (
     <div 
-      className={`${paddingClasses[padding]}`}
+      className="py-8"
       style={{ backgroundColor }}
     >
       {/* Custom CSS */}
@@ -63,7 +53,7 @@ export function CustomHtml({ section, onUpdate }: CustomHtmlProps) {
       
       {/* Custom HTML */}
       <div 
-        className={`${maxWidthClasses[maxWidth]} mx-auto px-4`}
+        className={`${maxWidthClasses[containerWidth]} mx-auto px-4`}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     </div>

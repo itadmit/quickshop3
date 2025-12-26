@@ -15,7 +15,9 @@ interface StylePanelProps {
 export function StylePanel({ section, onUpdate }: StylePanelProps) {
   const handleStyleChange = (path: string, value: any) => {
     const keys = path.split('.');
-    const style = { ...section.style };
+    
+    // Deep clone the style object to avoid mutation issues
+    const style = JSON.parse(JSON.stringify(section.style || {}));
 
     let current = style;
     for (let i = 0; i < keys.length - 1; i++) {

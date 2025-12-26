@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { HiTrendingUp, HiShoppingCart, HiUsers, HiCurrencyDollar, HiGlobeAlt, HiDownload, HiChartBar } from 'react-icons/hi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
+import { DateRangePicker, getDefaultDateRange, dateRangeToParams } from '@/components/ui/DateRangePicker';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface SalesData {
@@ -46,10 +46,7 @@ export default function AnalyticsPage() {
   const [conversionData, setConversionData] = useState<any>(null);
   const [customerAnalytics, setCustomerAnalytics] = useState<any>(null);
   const [productPerformance, setProductPerformance] = useState<any[]>([]);
-  const [dateRange, setDateRange] = useState({
-    start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0],
-  });
+  const [dateRange, setDateRange] = useState(getDefaultDateRange());
   const [activeTab, setActiveTab] = useState<'overview' | 'customers' | 'products' | 'conversion'>('overview');
 
   useEffect(() => {
@@ -66,9 +63,10 @@ export default function AnalyticsPage() {
   const loadAnalytics = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
+      const { start_date, end_date } = dateRangeToParams(dateRange);
       const params = new URLSearchParams();
-      params.append('start_date', dateRange.start_date);
-      params.append('end_date', dateRange.end_date);
+      params.append('start_date', start_date);
+      params.append('end_date', end_date);
 
       // Load all in parallel
       const [salesResponse, productsResponse, visitsResponse, conversionResponse, customersResponse, productsPerfResponse] = await Promise.all([
@@ -150,8 +148,7 @@ export default function AnalyticsPage() {
         body: JSON.stringify({
           report_type: reportType,
           format: 'csv',
-          start_date: dateRange.start_date,
-          end_date: dateRange.end_date,
+          ...dateRangeToParams(dateRange),
         }),
       });
 
@@ -161,7 +158,8 @@ export default function AnalyticsPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${reportType}-report-${dateRange.start_date}-${dateRange.end_date}.csv`;
+      const { start_date, end_date } = dateRangeToParams(dateRange);
+      a.download = `${reportType}-report-${start_date}-${end_date}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -205,28 +203,10 @@ export default function AnalyticsPage() {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <Select
-            value={`${dateRange.start_date}_${dateRange.end_date}`}
-            onValueChange={(value) => {
-              const [start, end] = value.split('_');
-              setDateRange({ start_date: start, end_date: end });
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                7 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                30 ימים אחרונים
-              </SelectItem>
-              <SelectItem value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>
-                90 ימים אחרונים
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -254,21 +234,6 @@ export default function AnalyticsPage() {
             <HiGlobeAlt className="w-5 h-5" />
             <span>אנליטיקה בזמן אמת</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={dateRange.start_date}
-              onChange={(e) => setDateRange({ ...dateRange, start_date: e.target.value })}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            />
-            <span className="text-gray-500">עד</span>
-            <input
-              type="date"
-              value={dateRange.end_date}
-              onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
         </div>
       </div>
 

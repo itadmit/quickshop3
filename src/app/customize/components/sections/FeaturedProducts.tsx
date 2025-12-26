@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiStar, HiShoppingBag } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useStoreId } from '@/hooks/useStoreId';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { areSectionsEqual } from './sectionMemoUtils';
 
 interface FeaturedProductsProps {
   section: SectionSettings;
@@ -25,7 +26,7 @@ interface Product {
   vendor?: string;
 }
 
-export function FeaturedProducts({ section, onUpdate, editorDevice, isPreview }: FeaturedProductsProps) {
+function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedProductsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
@@ -35,31 +36,146 @@ export function FeaturedProducts({ section, onUpdate, editorDevice, isPreview }:
   
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const loadedRef = useRef(false);
+  
+  
+  // Use a stable key based on section ID to persist refs across remounts
+  const sectionKey = `featured-products-${section.id}`;
+  const loadedRef = useRef<string>('');
+  const prevSettingsRef = useRef<{ productsCount: number; productSelectionMode: string; selectedIdsString: string }>({ 
+    productsCount: 0, 
+    productSelectionMode: '', 
+    selectedIdsString: '' 
+  });
+  
+  // Initialize refs and products from sessionStorage if available (to persist across remounts)
+  useEffect(() => {
+    const storedLoadedKey = sessionStorage.getItem(`${sectionKey}-loaded`);
+    const storedPrevSettings = sessionStorage.getItem(`${sectionKey}-prevSettings`);
+    const storedProducts = sessionStorage.getItem(`${sectionKey}-products`);
+    
+    if (storedLoadedKey) {
+      loadedRef.current = storedLoadedKey;
+    }
+    if (storedPrevSettings) {
+      try {
+        prevSettingsRef.current = JSON.parse(storedPrevSettings);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    if (storedProducts) {
+      try {
+        const parsedProducts = JSON.parse(storedProducts);
+        setProducts(parsedProducts);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, [sectionKey]);
+
+  // Memoize settings to prevent unnecessary re-renders
+  const productsCount = useMemo(() => {
+    return settings.products_count || 8;
+  }, [settings.products_count]);
+  
+  const productSelectionMode = useMemo(() => {
+    return settings.product_selection_mode || 'all';
+  }, [settings.product_selection_mode]);
+  
+  const selectedCollectionIds = useMemo(() => {
+    const ids = settings.selected_collection_ids || [];
+    return Array.isArray(ids) ? ids : [];
+  }, [settings.selected_collection_ids]);
+  
+  // Create stable string representation of IDs for comparison
+  const selectedIdsString = useMemo(() => {
+    if (!Array.isArray(selectedCollectionIds) || selectedCollectionIds.length === 0) {
+      return '';
+    }
+    return [...selectedCollectionIds].sort((a, b) => a - b).join(',');
+  }, [selectedCollectionIds]);
 
   // Load real products from API (only in storefront, not in customizer preview)
   useEffect(() => {
-    if (isPreview || loadedRef.current || !storeId) return;
+    // In preview mode, don't load real products - just show placeholders
+    if (isPreview || !storeId) return;
+    
+    // Create a stable key for this load attempt
+    const loadKey = `${storeId}-${productsCount}-${productSelectionMode}-${selectedIdsString || 'all'}`;
+    
+    // Check if we already loaded with these exact settings
+    if (loadedRef.current === loadKey) {
+      const currentSettings = { productsCount, productSelectionMode, selectedIdsString };
+      const prevSettings = prevSettingsRef.current;
+      
+      // Deep compare settings
+      if (
+        prevSettings.productsCount === currentSettings.productsCount &&
+        prevSettings.productSelectionMode === currentSettings.productSelectionMode &&
+        prevSettings.selectedIdsString === currentSettings.selectedIdsString
+      ) {
+        return;
+      }
+    }
     
     const loadProducts = async () => {
       setLoading(true);
       try {
-        const limit = settings.products_count || 8;
-        const response = await fetch(`/api/storefront/products?storeId=${storeId}&limit=${limit}`);
+        let url = `/api/storefront/products?storeId=${storeId}&limit=${productsCount}`;
+        
+        // If collection mode is selected, filter by collections
+        if (productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
+          // Get all collection handles
+          const collectionResponse = await fetch(`/api/collections?storeId=${storeId}&limit=100`);
+          if (collectionResponse.ok) {
+            const collectionsData = await collectionResponse.json();
+            const selectedCollections = collectionsData.collections?.filter((c: any) => 
+              selectedCollectionIds.includes(c.id)
+            ) || [];
+            
+            // If we have collections, use the first one's handle (or combine them)
+            // For now, we'll use the first collection
+            if (selectedCollections.length > 0 && selectedCollections[0]?.handle) {
+              url = `/api/storefront/products?storeId=${storeId}&collectionHandle=${selectedCollections[0].handle}&limit=${productsCount}`;
+            }
+          }
+        }
+        
+        const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
-          setProducts(data.products || []);
+          const loadedProducts = data.products || [];
+          setProducts(loadedProducts);
+          
+          // Save to sessionStorage
+          sessionStorage.setItem(`${sectionKey}-products`, JSON.stringify(loadedProducts));
+          sessionStorage.setItem(`${sectionKey}-loaded`, loadKey);
+          sessionStorage.setItem(`${sectionKey}-prevSettings`, JSON.stringify({ 
+            productsCount, 
+            productSelectionMode, 
+            selectedIdsString 
+          }));
+          
+          loadedRef.current = loadKey;
+          prevSettingsRef.current = { productsCount, productSelectionMode, selectedIdsString };
         }
       } catch (error) {
         console.error('Error loading featured products:', error);
       } finally {
         setLoading(false);
-        loadedRef.current = true;
       }
     };
     
     loadProducts();
-  }, [storeId, isPreview, settings.products_count]);
+  }, [storeId, isPreview, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds]);
+  
+  // In preview mode, clear products when settings change to show updated placeholder count
+  useEffect(() => {
+    if (isPreview) {
+      // Clear products so the component re-renders with new placeholder count
+      setProducts([]);
+    }
+  }, [isPreview, productsCount, productSelectionMode, selectedIdsString]);
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
@@ -117,26 +233,32 @@ export function FeaturedProducts({ section, onUpdate, editorDevice, isPreview }:
     <div className="w-full" style={{ fontFamily }}>
       <div className="container mx-auto px-4">
         {/* Section Header with Title and View All Link */}
-        <div className="flex items-center justify-between mb-8 md:mb-12">
-          {settings.title && (
-            <h2 
-              className={`text-2xl md:text-3xl font-bold text-gray-900`}
-              style={{ color: textColor }}
-            >
-              {settings.title}
-            </h2>
-          )}
-          {settings.show_view_all !== false && (
-            <a 
-              href={settings.view_all_url || '/categories/all'}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-            >
-              {settings.view_all_text || t('sections.featured_products.view_all') || 'לכל המוצרים'}
+        <div className={`mb-8 md:mb-12 ${titleAlignClass}`}>
+          <div className={`flex items-center gap-4 ${
+            settings.title_align === 'center' ? 'justify-center' : 
+            settings.title_align === 'left' ? 'justify-start flex-row-reverse' : 
+            'justify-between'
+          }`}>
+            {settings.title && (
+              <h2 
+                className={`text-2xl md:text-3xl font-bold text-gray-900`}
+                style={{ color: textColor }}
+              >
+                {settings.title}
+              </h2>
+            )}
+            {settings.show_view_all !== false && (
+              <a 
+                href={settings.view_all_url || '/categories/all'}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+              >
+                {settings.view_all_text || t('sections.featured_products.view_all') || 'לכל המוצרים'}
               <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </a>
           )}
+          </div>
         </div>
 
         {/* Loading state */}
@@ -231,3 +353,22 @@ export function FeaturedProducts({ section, onUpdate, editorDevice, isPreview }:
     </div>
   );
 }
+
+// Memoize FeaturedProducts to prevent re-renders when parent re-renders
+export const FeaturedProducts = React.memo(FeaturedProductsComponent, (prevProps, nextProps) => {
+  // Use areSectionsEqual for deep comparison of section
+  if (!areSectionsEqual(prevProps.section, nextProps.section)) {
+    return false; // Will re-render
+  }
+  
+  // Compare other props
+  if (
+    prevProps.editorDevice !== nextProps.editorDevice ||
+    prevProps.isPreview !== nextProps.isPreview
+  ) {
+    return false; // Will re-render
+  }
+  
+  // onUpdate is intentionally ignored - it's a callback function
+  return true; // Skip re-render
+});

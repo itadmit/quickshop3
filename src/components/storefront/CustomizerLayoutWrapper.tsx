@@ -72,11 +72,6 @@ export function CustomizerLayoutWrapper({
   // זיהוי pageType מה-pathname (מתעדכן בזמן client-side navigation)
   const { pageType, pageHandle } = getPageTypeFromPath(pathname, storeSlug);
   
-  // Debug log (רק בפיתוח)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[CustomizerLayoutWrapper] Pathname:', pathname, 'PageType:', pageType, 'PageHandle:', pageHandle);
-  }
-  
   // דפי צ'ק אאוט ותודה - לא מציגים הדר ופוטר
   const pathWithoutStore = pathname.replace(`/shops/${storeSlug}`, '');
   const isCheckoutPage = pathWithoutStore.startsWith('/checkout');

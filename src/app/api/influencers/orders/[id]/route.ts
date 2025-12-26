@@ -49,7 +49,7 @@ export async function GET(
       FROM orders o
       INNER JOIN discount_codes dc ON o.discount_codes @> jsonb_build_array(dc.code)
       LEFT JOIN customers c ON o.customer_id = c.id
-      WHERE o.id = $1 AND dc.influencer_id = $2`,
+      WHERE o.id = $1 AND dc.influencer_id = $2 AND o.financial_status = 'paid'`,
       [orderId, influencer.id]
     );
 

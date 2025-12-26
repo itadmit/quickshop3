@@ -85,13 +85,16 @@ export function CartSummary({
   const handleApplyCode = async () => {
     if (!codeInput.trim()) return;
 
-    setCodeError('');
+    setCodeError(''); // ניקוי שגיאה קודמת
     const result = await applyDiscountCode(codeInput.trim());
     
     if (result.valid) {
-      setCodeInput('');
+      setCodeInput(''); // ניקוי השדה
+      setCodeError(''); // ניקוי שגיאה
     } else {
+      // אם הקופון לא תקף, הצג שגיאה
       setCodeError(result.error || 'קופון לא תקין');
+      setCodeInput(''); // ✅ ניקוי גם כשנכשל, כדי לא להשאיר טקסט שגוי
     }
   };
 
@@ -125,24 +128,19 @@ export function CartSummary({
           קופון הנחה
         </label>
         
-        {/* Applied discount code - compact badge style */}
-        {/* ✅ מציג קופון רק אם הוא תקף (מופיע ב-getDiscounts) */}
-        {discountCode && getDiscounts().some(d => d.source === 'code' && d.code === discountCode) && (
+        {/* ✅ מציג קופון תקף (ירוק) */}
+        {discountCode && getDiscounts().some(d => d.source === 'code' && d.code === discountCode) && !validatingCode && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-200 rounded-full text-sm" dir="rtl">
-              {validatingCode ? (
-                <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <button
-                  onClick={async () => {
-                    await removeDiscountCode();
-                  }}
-                  className="text-green-500 hover:text-red-500 transition-colors"
-                  type="button"
-                >
-                  <HiX className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                onClick={async () => {
+                  await removeDiscountCode();
+                }}
+                className="text-green-500 hover:text-red-500 transition-colors"
+                type="button"
+              >
+                <HiX className="w-4 h-4" />
+              </button>
               <HiTag className="w-4 h-4 text-green-600" />
               {(() => {
                 const discount = getDiscounts().find(d => d.source === 'code' && d.code === discountCode);
@@ -174,34 +172,15 @@ export function CartSummary({
           </div>
         )}
         
-        {/* ✅ מציג loader בזמן בדיקת קופון או חישוב, או קופון לא תקף */}
-        {discountCode && !getDiscounts().some(d => d.source === 'code' && d.code === discountCode) && (
+        {/* ✅ מציג loader בזמן בדיקת קופון */}
+        {discountCode && (validatingCode || calcLoading) && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            {validatingCode || calcLoading ? (
-              // ✅ מציג loader בזמן בדיקה או חישוב
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm" dir="rtl">
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                <HiTag className="w-4 h-4 text-gray-600" />
-                <span className="text-gray-700" dir="ltr">{discountCode}</span>
-                <span className="text-gray-600 text-xs">(בודק...)</span>
-              </div>
-            ) : (
-              // ✅ מציג הודעת אזהרה רק אחרי שהבדיקה הסתיימה והקופון באמת לא תקף
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full text-sm" dir="rtl">
-                <button
-                  onClick={async () => {
-                    await removeDiscountCode();
-                  }}
-                  className="text-yellow-600 hover:text-red-500 transition-colors"
-                  type="button"
-                >
-                  <HiX className="w-4 h-4" />
-                </button>
-                <HiTag className="w-4 h-4 text-yellow-600" />
-                <span className="text-yellow-700" dir="ltr">{discountCode}</span>
-                <span className="text-yellow-600 text-xs">(לא תקף)</span>
-              </div>
-            )}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm" dir="rtl">
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              <HiTag className="w-4 h-4 text-gray-600" />
+              <span className="text-gray-700" dir="ltr">{discountCode}</span>
+              <span className="text-gray-600 text-xs">(בודק...)</span>
+            </div>
           </div>
         )}
         
@@ -217,13 +196,18 @@ export function CartSummary({
             onKeyPress={(e) => e.key === 'Enter' && handleApplyCode()}
             placeholder={discountCode ? "קוד קופון נוסף" : "הכנס קוד קופון"}
             className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            disabled={validatingCode}
           />
           <button
             onClick={handleApplyCode}
             disabled={validatingCode || !codeInput.trim()}
-            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-w-[60px] flex items-center justify-center"
           >
-            {validatingCode ? '...' : 'החל'}
+            {validatingCode ? (
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              'החל'
+            )}
           </button>
         </div>
         

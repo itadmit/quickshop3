@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useStoreId } from '@/hooks/useStoreId';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { HiPhotograph } from 'react-icons/hi';
+import { areSectionsEqual } from './sectionMemoUtils';
 
 interface FeaturedCollectionsProps {
   section: SectionSettings;
@@ -23,7 +24,7 @@ interface Collection {
   products_count?: number;
 }
 
-export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview }: FeaturedCollectionsProps) {
+function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedCollectionsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
@@ -33,30 +34,155 @@ export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview
   
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
-  const loadedRef = useRef(false);
-
-  // Load real collections from API (only in storefront, not in customizer preview)
+  
+  // Use a stable key based on section ID to persist refs across remounts
+  const sectionKey = `featured-collections-${section.id}`;
+  const loadedRef = useRef<string>('');
+  const prevSettingsRef = useRef<{ mode: string; ids: string }>({ mode: '', ids: '' });
+  const renderCountRef = useRef(0);
+  
+  // Initialize refs and collections from sessionStorage if available (to persist across remounts)
   useEffect(() => {
-    if (isPreview || loadedRef.current || !storeId) return;
+    const storedLoadedKey = sessionStorage.getItem(`${sectionKey}-loaded`);
+    const storedPrevSettings = sessionStorage.getItem(`${sectionKey}-prevSettings`);
+    const storedCollections = sessionStorage.getItem(`${sectionKey}-collections`);
+    
+    if (storedLoadedKey) {
+      loadedRef.current = storedLoadedKey;
+    }
+    if (storedPrevSettings) {
+      try {
+        prevSettingsRef.current = JSON.parse(storedPrevSettings);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    if (storedCollections) {
+      try {
+        const parsedCollections = JSON.parse(storedCollections);
+        setCollections(parsedCollections);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, [sectionKey]);
+
+  // Track renders (for debugging if needed)
+  renderCountRef.current += 1;
+
+  // Extract settings values - memoize to prevent unnecessary re-renders
+  const collectionSelectionMode = useMemo(() => {
+    return settings.collection_selection_mode || 'all';
+  }, [settings.collection_selection_mode]);
+  
+  // Create stable string representation of IDs
+  const selectedIdsString = useMemo(() => {
+    const ids = settings.selected_collection_ids || [];
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return '';
+    }
+    return [...ids].sort((a, b) => a - b).join(',');
+  }, [settings.selected_collection_ids]);
+
+  // Load real collections from API - only when settings actually change
+  useEffect(() => {
+    if (!storeId) {
+      return;
+    }
+    
+    // Create a unique key for this load
+    const loadKey = `${storeId}-${collectionSelectionMode}-${selectedIdsString}`;
+    
+    // Skip if already loaded with same settings (check this FIRST)
+    if (loadedRef.current === loadKey) {
+      return;
+    }
+    
+    // Check if settings actually changed
+    const currentSettings = { mode: collectionSelectionMode, ids: selectedIdsString };
+    if (
+      prevSettingsRef.current.mode === currentSettings.mode &&
+      prevSettingsRef.current.ids === currentSettings.ids &&
+      loadedRef.current !== ''
+    ) {
+      return; // Settings haven't changed, skip reload
+    }
+    
+    // Update refs BEFORE starting async operation
+    prevSettingsRef.current = currentSettings;
+    loadedRef.current = loadKey; // Set immediately to prevent duplicate calls
+    
+    // Persist to sessionStorage to survive remounts
+    sessionStorage.setItem(`${sectionKey}-loaded`, loadKey);
+    sessionStorage.setItem(`${sectionKey}-prevSettings`, JSON.stringify(currentSettings));
     
     const loadCollections = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=6`);
-        if (response.ok) {
-          const data = await response.json();
-          setCollections(data.collections || []);
+        let collectionsData: Collection[] = [];
+        
+        // Get current selected IDs from settings (inside effect to avoid stale closure)
+        const currentSelectedIds = settings.selected_collection_ids || [];
+        const idsArray = Array.isArray(currentSelectedIds) ? currentSelectedIds : [];
+        
+        if (collectionSelectionMode === 'manual' && idsArray.length > 0) {
+          // Load all collections and filter by selected IDs
+          const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100`);
+          if (response.ok) {
+            const data = await response.json();
+            const allCollections = data.collections || [];
+            // Filter to only selected collections and maintain order
+            collectionsData = idsArray
+              .map((id: number) => allCollections.find((c: Collection) => c.id === id))
+              .filter((c): c is Collection => c !== undefined);
+          }
+        } else {
+          // Load all collections (default behavior) - load more to show real data
+          const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100`);
+          if (response.ok) {
+            const data = await response.json();
+            collectionsData = data.collections || [];
+          }
         }
+        
+        // If no collections found, try loading from /api/collections as fallback
+        if (collectionsData.length === 0 && storeId) {
+          try {
+            const fallbackResponse = await fetch(`/api/collections?limit=100`, {
+              credentials: 'include',
+            });
+            if (fallbackResponse.ok) {
+              const fallbackData = await fallbackResponse.json();
+              const fallbackCollections = fallbackData.collections || [];
+              // Map to Collection format
+              collectionsData = fallbackCollections.map((c: any) => ({
+                id: c.id,
+                title: c.title,
+                handle: c.handle,
+                image_url: c.image_url,
+                products_count: 0,
+              }));
+            }
+          } catch (fallbackError) {
+            console.error('Error loading collections from fallback API:', fallbackError);
+          }
+        }
+        
+        setCollections(collectionsData);
+        // loadedRef.current already set before async call
+        // Persist collections to sessionStorage
+        sessionStorage.setItem(`${sectionKey}-collections`, JSON.stringify(collectionsData));
       } catch (error) {
-        console.error('Error loading featured collections:', error);
+        console.error('[FeaturedCollections] Error loading featured collections:', error);
+        loadedRef.current = loadKey; // Mark as attempted even on error
       } finally {
         setLoading(false);
-        loadedRef.current = true;
       }
     };
     
     loadCollections();
-  }, [storeId, isPreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, collectionSelectionMode, selectedIdsString]);
   
   const itemsPerRow = settings.items_per_row || 3;
   const sliderItemsDesktop = settings.slider_items_desktop || 4.5;
@@ -106,28 +232,34 @@ export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview
     <div className="w-full py-8 md:py-12" style={{ fontFamily }}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header with Title and View All Link */}
-        <div className="flex items-center justify-between mb-8 md:mb-12">
-          <h2 
-            className={`text-2xl md:text-3xl font-bold`}
-            style={{ color: textColor }}
-          >
-            {settings.title || t('sections.featured_collections.title') || 'קטגוריות פופולריות'}
-          </h2>
-          {settings.show_view_all !== false && (
-            <a 
-              href={settings.view_all_url || '/collections'}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+        <div className={`mb-8 md:mb-12 ${titleAlignClass}`}>
+          <div className={`flex items-center gap-4 ${
+            settings.title_align === 'center' ? 'justify-center' : 
+            settings.title_align === 'left' ? 'justify-start flex-row-reverse' : 
+            'justify-between'
+          }`}>
+            <h2 
+              className={`text-2xl md:text-3xl font-bold`}
+              style={{ color: textColor }}
             >
-              {settings.view_all_text || t('sections.featured_collections.view_all') || 'לכל הקטגוריות'}
-              <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          )}
+              {settings.title || t('sections.featured_collections.title') || 'קטגוריות פופולריות'}
+            </h2>
+            {settings.show_view_all !== false && (
+              <a 
+                href={settings.view_all_url || '/collections'}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+              >
+                {settings.view_all_text || t('sections.featured_collections.view_all') || 'לכל הקטגוריות'}
+                <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Loading state */}
-        {loading && !isPreview && (
+        {loading && (
           <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
             {Array.from({ length: getGridItemCount() }).map((_, i) => (
               <div key={i} className="animate-pulse">
@@ -139,10 +271,10 @@ export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview
           </div>
         )}
 
-        {/* Real collections (storefront) or placeholder (preview) */}
+        {/* Real collections or placeholder */}
         {!loading && (
           <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
-            {(isPreview || collections.length === 0 ? 
+            {(collections.length === 0 ? 
               Array.from({ length: getGridItemCount() }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
               collections.slice(0, getGridItemCount())
             ).map((item: any, index: number) => {
@@ -203,3 +335,17 @@ export function FeaturedCollections({ section, onUpdate, editorDevice, isPreview
     </div>
   );
 }
+
+// Memoize component to prevent re-renders when parent re-renders
+export const FeaturedCollections = React.memo(FeaturedCollectionsComponent, (prevProps, nextProps) => {
+  // Use the utility function for comparison
+  const sectionsEqual = areSectionsEqual(prevProps.section, nextProps.section);
+  
+  // Compare other props
+  const otherPropsEqual = (
+    prevProps.isPreview === nextProps.isPreview &&
+    prevProps.editorDevice === nextProps.editorDevice
+  );
+  
+  return sectionsEqual && otherPropsEqual;
+});

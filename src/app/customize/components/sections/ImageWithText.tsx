@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface ImageWithTextProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface ImageWithTextProps {
   editorDevice?: 'desktop' | 'tablet' | 'mobile';
 }
 
-export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithTextProps) {
+function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTextProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
@@ -199,3 +200,5 @@ export function ImageWithText({ section, onUpdate, editorDevice }: ImageWithText
     </div>
   );
 }
+
+export const ImageWithText = React.memo(ImageWithTextComponent, sectionPropsAreEqual);

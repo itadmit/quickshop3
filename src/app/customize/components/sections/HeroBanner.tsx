@@ -39,9 +39,12 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
   };
 
   const getHorizontalPositionClass = () => {
+    // ✅ ב-RTL: justify-start = ימין, justify-end = שמאל
+    // אם המשתמש בוחר 'ימין' (right), זה צריך להיות justify-start
+    // אם המשתמש בוחר 'שמאל' (left), זה צריך להיות justify-end
     switch (settings.content_position_horizontal) {
-      case 'left': return 'justify-start';
-      case 'right': return 'justify-end';
+      case 'right': return 'justify-start'; // ימין ב-RTL
+      case 'left': return 'justify-end'; // שמאל ב-RTL
       case 'center':
       default: return 'justify-center';
     }

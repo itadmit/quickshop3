@@ -72,8 +72,7 @@ export async function GET(req: NextRequest) {
         COUNT(DISTINCT CASE WHEN dc.is_active = true THEN dc.id END) as active_coupons
       FROM discount_codes dc
       LEFT JOIN orders o ON o.discount_codes @> jsonb_build_array(dc.code)
-        AND (o.fulfillment_status IS NULL OR o.fulfillment_status != 'canceled')
-        AND (o.financial_status IS NULL OR o.financial_status != 'voided')
+        AND o.financial_status = 'paid'
         ${dateFilter}
       WHERE dc.influencer_id = $${influencerParamIndex}`,
       statsParams
@@ -121,17 +120,14 @@ export async function GET(req: NextRequest) {
         dc.starts_at,
         dc.ends_at,
         COALESCE(SUM(CASE 
-          WHEN (o.fulfillment_status IS NULL OR o.fulfillment_status != 'canceled')
-            AND (o.financial_status IS NULL OR o.financial_status != 'voided')
+          WHEN o.financial_status = 'paid'
           THEN o.total_price ELSE 0 END), 0) as total_sales,
         COUNT(DISTINCT CASE 
-          WHEN (o.fulfillment_status IS NULL OR o.fulfillment_status != 'canceled')
-            AND (o.financial_status IS NULL OR o.financial_status != 'voided')
+          WHEN o.financial_status = 'paid'
           THEN o.id END) as orders_count
       FROM discount_codes dc
       LEFT JOIN orders o ON o.discount_codes @> jsonb_build_array(dc.code)
-        AND (o.fulfillment_status IS NULL OR o.fulfillment_status != 'canceled')
-        AND (o.financial_status IS NULL OR o.financial_status != 'voided')
+        AND o.financial_status = 'paid'
         ${couponDateFilter}
       WHERE dc.influencer_id = $${couponInfluencerParamIndex}
       GROUP BY dc.id, dc.code, dc.discount_type, dc.value, dc.usage_count, dc.usage_limit, dc.is_active, dc.starts_at, dc.ends_at
@@ -154,8 +150,7 @@ export async function GET(req: NextRequest) {
         COUNT(DISTINCT o.id) as orders
       FROM discount_codes dc
       LEFT JOIN orders o ON o.discount_codes @> jsonb_build_array(dc.code)
-        AND (o.fulfillment_status IS NULL OR o.fulfillment_status != 'canceled')
-        AND (o.financial_status IS NULL OR o.financial_status != 'voided')
+        AND o.financial_status = 'paid'
       WHERE dc.influencer_id = $1
         AND o.created_at >= CURRENT_DATE - INTERVAL '30 days'
       GROUP BY DATE(o.created_at)

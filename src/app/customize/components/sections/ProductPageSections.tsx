@@ -12,6 +12,7 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { useProductPage } from '@/contexts/ProductPageContext';
 import { DEMO_RELATED_PRODUCTS, DEMO_RECENTLY_VIEWED, DEMO_REVIEWS } from '@/lib/customizer/demoData';
 import { emitTrackingEvent } from '@/lib/tracking/events';
+import { areSectionsEqual } from './sectionMemoUtils';
 
 interface ProductSectionProps {
   section: SectionSettings;
@@ -488,11 +489,10 @@ export function ProductPriceSection({ section, product, onUpdate }: ProductSecti
       
       {/* מחיר לחברי מועדון */}
       {showClubPrice && premiumClub?.enabled && clubPrice !== null && clubPrice < price && (
-        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center gap-2 text-green-700">
-            <span className="text-lg">🎁</span>
-            <span className="font-medium">
-              לחברי מועדון: <span className="font-bold">{clubPrice.toFixed(2)} ₪</span>
+        <div className="mt-2 inline-block px-2 py-1.5 bg-green-50 border border-green-200 rounded text-sm">
+          <div className="flex items-center gap-1.5 text-green-700 flex-wrap">
+            <span className="text-sm">
+              לחברי מועדון: <span className="font-semibold">{clubPrice.toFixed(2)} ₪</span>
               {premiumClub.lowestTier?.discount && (
                 <span className="text-green-600 mr-1">
                   ({premiumClub.lowestTier.discount.type === 'PERCENTAGE' 
@@ -501,15 +501,18 @@ export function ProductPriceSection({ section, product, onUpdate }: ProductSecti
                 </span>
               )}
             </span>
+            {premiumClub.signupUrl && (
+              <span className="text-green-600">
+                <Link href={premiumClub.signupUrl} className="hover:text-green-800 underline">
+                  הצטרפות
+                </Link>
+                {' | '}
+                <Link href={premiumClub.signupUrl} className="hover:text-green-800 underline">
+                  התחברות
+                </Link>
+              </span>
+            )}
           </div>
-          {premiumClub.signupUrl && (
-            <Link 
-              href={premiumClub.signupUrl}
-              className="inline-flex items-center gap-1 mt-2 text-sm text-green-600 hover:text-green-800 font-medium underline decoration-green-400 underline-offset-2"
-            >
-              הצטרף למועדון הלקוחות וקבל הנחה מיוחדת →
-            </Link>
-          )}
         </div>
       )}
       
@@ -1069,7 +1072,7 @@ export function ProductCustomFieldsSection({ section, product, onUpdate }: Produ
 }
 
 // Product Reviews Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-export function ProductReviewsSection({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
+function ProductReviewsSectionComponent({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   // IMPORTANT: Only use demo data when isPreview is explicitly true (in customizer)
@@ -1171,8 +1174,29 @@ export function ProductReviewsSection({ section, product, onUpdate, isPreview = 
   );
 }
 
+// Memoize ProductReviewsSection to prevent re-renders
+export const ProductReviewsSection = React.memo(ProductReviewsSectionComponent, (prevProps, nextProps) => {
+  // Use areSectionsEqual for deep comparison of section
+  if (!areSectionsEqual(prevProps.section, nextProps.section)) {
+    return false; // Will re-render
+  }
+  
+  // Compare product (by ID)
+  if (prevProps.product?.id !== nextProps.product?.id) {
+    return false; // Will re-render
+  }
+  
+  // Compare isPreview
+  if (prevProps.isPreview !== nextProps.isPreview) {
+    return false; // Will re-render
+  }
+  
+  // onUpdate is intentionally ignored
+  return true; // Skip re-render
+});
+
 // Related Products Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-export function RelatedProductsSection({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
+function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
@@ -1276,7 +1300,7 @@ export function RelatedProductsSection({ section, product, onUpdate, isPreview =
 }
 
 // Recently Viewed Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-export function RecentlyViewedSection({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
+function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
@@ -1399,4 +1423,46 @@ export function RecentlyViewedSection({ section, product, onUpdate, isPreview = 
     </div>
   );
 }
+
+// Memoize RelatedProductsSection to prevent re-renders
+export const RelatedProductsSection = React.memo(RelatedProductsSectionComponent, (prevProps, nextProps) => {
+  // Use areSectionsEqual for deep comparison of section
+  if (!areSectionsEqual(prevProps.section, nextProps.section)) {
+    return false; // Will re-render
+  }
+  
+  // Compare product (by ID)
+  if (prevProps.product?.id !== nextProps.product?.id) {
+    return false; // Will re-render
+  }
+  
+  // Compare isPreview
+  if (prevProps.isPreview !== nextProps.isPreview) {
+    return false; // Will re-render
+  }
+  
+  // onUpdate is intentionally ignored
+  return true; // Skip re-render
+});
+
+// Memoize RecentlyViewedSection to prevent re-renders
+export const RecentlyViewedSection = React.memo(RecentlyViewedSectionComponent, (prevProps, nextProps) => {
+  // Use areSectionsEqual for deep comparison of section
+  if (!areSectionsEqual(prevProps.section, nextProps.section)) {
+    return false; // Will re-render
+  }
+  
+  // Compare product (by ID)
+  if (prevProps.product?.id !== nextProps.product?.id) {
+    return false; // Will re-render
+  }
+  
+  // Compare isPreview
+  if (prevProps.isPreview !== nextProps.isPreview) {
+    return false; // Will re-render
+  }
+  
+  // onUpdate is intentionally ignored
+  return true; // Skip re-render
+});
 
