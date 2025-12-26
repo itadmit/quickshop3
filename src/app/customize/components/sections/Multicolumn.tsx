@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SectionSettings, BlockSettings } from '@/lib/customizer/types';
-import { HiPhotograph, HiPlus } from 'react-icons/hi';
+import { HiPhotograph, HiPlus, HiVideoCamera } from 'react-icons/hi';
 import Link from 'next/link';
 import { sectionPropsAreEqual } from './sectionMemoUtils';
 
@@ -118,6 +118,42 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
     right: 'text-right',
   };
   
+  // Title font size
+  const getTitleSizeClass = () => {
+    const size = settings.title_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-xl',
+      medium: 'text-2xl',
+      large: 'text-2xl',
+      xlarge: 'text-3xl',
+    };
+    return sizeMap[size] || 'text-2xl';
+  };
+  
+  // Column heading font size
+  const getColumnHeadingSizeClass = () => {
+    const size = settings.column_heading_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'text-sm',
+      medium: 'text-lg',
+      large: 'text-xl',
+      xlarge: 'text-2xl',
+    };
+    return sizeMap[size] || 'text-lg';
+  };
+  
+  // Column text font size
+  const getColumnTextSizeClass = () => {
+    const size = settings.column_text_font_size || 'small';
+    const sizeMap: Record<string, string> = {
+      small: 'text-sm',
+      medium: 'text-base',
+      large: 'text-lg',
+      xlarge: 'text-xl',
+    };
+    return sizeMap[size] || 'text-sm';
+  };
+  
   // Grid columns mapping
   const gridColsClasses: Record<number, string> = {
     2: 'md:grid-cols-2',
@@ -139,7 +175,7 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
       <div className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
           {title && (
-            <h2 className={`text-2xl font-bold mb-8 ${textAlignClasses[titleAlign]}`}>
+            <h2 className={`${getTitleSizeClass()} font-bold mb-8 ${textAlignClasses[titleAlign]}`}>
               {title}
             </h2>
           )}
@@ -153,8 +189,8 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
                 >
                   <HiPhotograph className="w-12 h-12 text-gray-300" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">כותרת עמודה</h3>
-                <p className="text-sm text-gray-500">הוסף תוכן דרך סרגל העריכה</p>
+                <h3 className={`${getColumnHeadingSizeClass()} font-semibold text-gray-800 mb-2`}>כותרת עמודה</h3>
+                <p className={`${getColumnTextSizeClass()} text-gray-500`}>הוסף תוכן דרך סרגל העריכה</p>
               </div>
             ))}
           </div>
@@ -167,7 +203,7 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
     <div className="py-12 px-4">
       <div className="max-w-6xl mx-auto">
         {title && (
-          <h2 className={`text-2xl font-bold mb-8 ${textAlignClasses[titleAlign]}`}>
+          <h2 className={`${getTitleSizeClass()} font-bold mb-8 ${textAlignClasses[titleAlign]}`}>
             {title}
           </h2>
         )}
@@ -175,12 +211,23 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
         <div className={`grid ${mobileGridColsClasses[columnsMobile]} ${gridColsClasses[columnsDesktop]} ${gapClasses[columnGap]}`}>
           {blocks.map((block: BlockSettings) => (
             <div key={block.id} className={`${textAlignClasses[textAlign]}`}>
-              {/* Image */}
+              {/* Media (Image or Video) */}
               <div 
-                className={`${ratioClasses[imageRatio]} mb-4 overflow-hidden ${imageBorder ? 'border border-gray-200' : ''} ${!block.content?.image_url ? 'bg-gray-100 flex items-center justify-center' : ''}`}
+                className={`${ratioClasses[imageRatio]} mb-4 overflow-hidden ${imageBorder ? 'border border-gray-200' : ''} ${!block.content?.image_url && !block.content?.video_url ? 'bg-gray-100 flex items-center justify-center' : ''}`}
                 style={{ borderRadius: imageRatio === 'circle' ? '50%' : imageBorderRadius }}
               >
-                {block.content?.image_url ? (
+                {block.content?.video_url ? (
+                  <video 
+                    src={block.content.video_url} 
+                    className="w-full h-full object-cover"
+                    controls={block.content.video_controls !== false}
+                    autoPlay={block.content.video_autoplay !== false}
+                    muted={block.content.video_muted !== false}
+                    loop={block.content.video_loop === true}
+                    playsInline={block.content.video_playsinline !== false}
+                    style={{ borderRadius: imageRatio === 'circle' ? '50%' : imageBorderRadius }}
+                  />
+                ) : block.content?.image_url ? (
                   <img 
                     src={block.content.image_url} 
                     alt={block.content?.heading || ''} 
@@ -195,12 +242,12 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
               {/* Content */}
               <div className="space-y-2">
                 {block.content?.heading && (
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className={`${getColumnHeadingSizeClass()} font-semibold text-gray-800`}>
                     {block.content.heading}
                   </h3>
                 )}
                 {block.content?.text && (
-                  <p className="text-sm text-gray-600">
+                  <p className={`${getColumnTextSizeClass()} text-gray-600`}>
                     {block.content.text}
                   </p>
                 )}

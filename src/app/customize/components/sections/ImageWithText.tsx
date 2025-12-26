@@ -110,6 +110,30 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
 
   const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   const textColor = style.typography?.color || '#111827';
+  
+  // Heading font size
+  const getHeadingSizeClass = () => {
+    const size = settings.heading_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-2xl md:text-3xl',
+      medium: 'text-3xl md:text-4xl',
+      large: 'text-3xl md:text-4xl',
+      xlarge: 'text-4xl md:text-5xl',
+    };
+    return sizeMap[size] || 'text-3xl md:text-4xl';
+  };
+  
+  // Text font size
+  const getTextSizeClass = () => {
+    const size = settings.text_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'prose-sm',
+      medium: 'prose prose-lg',
+      large: 'prose prose-xl',
+      xlarge: 'prose prose-2xl',
+    };
+    return sizeMap[size] || 'prose prose-lg';
+  };
 
   return (
     <div className="w-full" style={{ fontFamily }}>
@@ -152,14 +176,14 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
             <div className="w-full flex-1">
                 <div className={`flex flex-col ${textBlock?.style?.text_align === 'center' ? 'items-center text-center' : textBlock?.style?.text_align === 'left' ? 'items-end text-left' : 'items-start text-right'}`}>
                     {textBlock?.content?.heading && (
-                        <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ color: textColor }}>
+                        <h2 className={`${getHeadingSizeClass()} font-bold mb-6`} style={{ color: textColor }}>
                             {textBlock.content.heading}
                         </h2>
                     )}
                     
                     {textBlock?.content?.text && (
                         <div 
-                            className="prose prose-lg text-gray-600 mb-8 max-w-none"
+                            className={`${getTextSizeClass()} text-gray-600 mb-8 max-w-none`}
                             dangerouslySetInnerHTML={{ __html: textBlock.content.text }}
                             style={{ color: textColor ? `${textColor}CC` : undefined }}
                         />

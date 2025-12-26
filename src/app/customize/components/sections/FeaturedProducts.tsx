@@ -87,13 +87,21 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     return Array.isArray(ids) ? ids : [];
   }, [settings.selected_collection_ids]);
   
+  const selectedProductIds = useMemo(() => {
+    const ids = settings.selected_product_ids || [];
+    return Array.isArray(ids) ? ids : [];
+  }, [settings.selected_product_ids]);
+  
   // Create stable string representation of IDs for comparison
   const selectedIdsString = useMemo(() => {
+    if (productSelectionMode === 'manual' && selectedProductIds.length > 0) {
+      return [...selectedProductIds].sort((a, b) => a - b).join(',');
+    }
     if (!Array.isArray(selectedCollectionIds) || selectedCollectionIds.length === 0) {
       return '';
     }
     return [...selectedCollectionIds].sort((a, b) => a - b).join(',');
-  }, [selectedCollectionIds]);
+  }, [selectedCollectionIds, selectedProductIds, productSelectionMode]);
 
   // Load real products from API (only in storefront, not in customizer preview)
   useEffect(() => {
@@ -121,30 +129,54 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     const loadProducts = async () => {
       setLoading(true);
       try {
-        let url = `/api/storefront/products?storeId=${storeId}&limit=${productsCount}`;
+        let loadedProducts: Product[] = [];
         
-        // If collection mode is selected, filter by collections
-        if (productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
-          // Get all collection handles
-          const collectionResponse = await fetch(`/api/collections?storeId=${storeId}&limit=100`);
-          if (collectionResponse.ok) {
-            const collectionsData = await collectionResponse.json();
-            const selectedCollections = collectionsData.collections?.filter((c: any) => 
-              selectedCollectionIds.includes(c.id)
-            ) || [];
-            
-            // If we have collections, use the first one's handle (or combine them)
-            // For now, we'll use the first collection
-            if (selectedCollections.length > 0 && selectedCollections[0]?.handle) {
-              url = `/api/storefront/products?storeId=${storeId}&collectionHandle=${selectedCollections[0].handle}&limit=${productsCount}`;
+        // If manual mode is selected, load specific products by IDs
+        if (productSelectionMode === 'manual' && selectedProductIds.length > 0) {
+          const idsParam = selectedProductIds.join(',');
+          const response = await fetch(`/api/products/by-ids?ids=${idsParam}`);
+          if (response.ok) {
+            const data = await response.json();
+            loadedProducts = (data.products || []).map((p: any) => ({
+              id: p.id,
+              title: p.title,
+              handle: p.handle,
+              image: p.image || null,
+              price: p.price || 0,
+              compare_at_price: null, // API doesn't return compare_at_price yet
+              vendor: p.vendor
+            }));
+          }
+        } else {
+          // Otherwise, use the existing logic
+          let url = `/api/storefront/products?storeId=${storeId}&limit=${productsCount}`;
+          
+          // If collection mode is selected, filter by collections
+          if (productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
+            // Get all collection handles
+            const collectionResponse = await fetch(`/api/collections?storeId=${storeId}&limit=100`);
+            if (collectionResponse.ok) {
+              const collectionsData = await collectionResponse.json();
+              const selectedCollections = collectionsData.collections?.filter((c: any) => 
+                selectedCollectionIds.includes(c.id)
+              ) || [];
+              
+              // If we have collections, use the first one's handle (or combine them)
+              // For now, we'll use the first collection
+              if (selectedCollections.length > 0 && selectedCollections[0]?.handle) {
+                url = `/api/storefront/products?storeId=${storeId}&collectionHandle=${selectedCollections[0].handle}&limit=${productsCount}`;
+              }
             }
+          }
+          
+          const response = await fetch(url);
+          if (response.ok) {
+            const data = await response.json();
+            loadedProducts = data.products || [];
           }
         }
         
-        const response = await fetch(url);
-        if (response.ok) {
-          const data = await response.json();
-          const loadedProducts = data.products || [];
+        if (loadedProducts.length > 0) {
           setProducts(loadedProducts);
           
           // Save to sessionStorage
@@ -167,7 +199,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     };
     
     loadProducts();
-  }, [storeId, isPreview, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds]);
+  }, [storeId, isPreview, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds, selectedProductIds]);
   
   // In preview mode, clear products when settings change to show updated placeholder count
   useEffect(() => {
@@ -175,7 +207,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
       // Clear products so the component re-renders with new placeholder count
       setProducts([]);
     }
-  }, [isPreview, productsCount, productSelectionMode, selectedIdsString]);
+  }, [isPreview, productsCount, productSelectionMode, selectedIdsString, selectedProductIds]);
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
@@ -228,6 +260,42 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   
   const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   const textColor = style.typography?.color || '#111827';
+  
+  // Title font size
+  const getTitleSizeClass = () => {
+    const size = settings.title_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-xl md:text-2xl',
+      medium: 'text-2xl md:text-3xl',
+      large: 'text-2xl md:text-3xl',
+      xlarge: 'text-3xl md:text-4xl',
+    };
+    return sizeMap[size] || 'text-2xl md:text-3xl';
+  };
+  
+  // Product title font size
+  const getProductTitleSizeClass = () => {
+    const size = settings.product_title_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'text-sm',
+      medium: 'text-base',
+      large: 'text-lg',
+      xlarge: 'text-xl',
+    };
+    return sizeMap[size] || 'text-base';
+  };
+  
+  // Price font size
+  const getPriceSizeClass = () => {
+    const size = settings.price_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'text-sm',
+      medium: 'text-base',
+      large: 'text-lg',
+      xlarge: 'text-xl',
+    };
+    return sizeMap[size] || 'text-base';
+  };
 
   return (
     <div className="w-full" style={{ fontFamily }}>
@@ -241,7 +309,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
           }`}>
             {settings.title && (
               <h2 
-                className={`text-2xl md:text-3xl font-bold text-gray-900`}
+                className={`${getTitleSizeClass()} font-bold text-gray-900`}
                 style={{ color: textColor }}
               >
                 {settings.title}
@@ -293,7 +361,15 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
                   key={product?.id || index} 
                   className="group flex flex-col"
                 >
-                  <div className="relative aspect-[3/4] bg-white border border-gray-100 rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-shadow">
+                  <div 
+                    className="relative aspect-[3/4] bg-white overflow-hidden mb-4 shadow-sm group-hover:shadow-md transition-shadow"
+                    style={{
+                      border: settings.card_border_width && settings.card_border_width > 0 
+                        ? `${settings.card_border_width}px solid ${settings.card_border_color || '#e5e7eb'}` 
+                        : 'none',
+                      borderRadius: settings.card_border_radius ? `${settings.card_border_radius}px` : '8px'
+                    }}
+                  >
                     {product?.image ? (
                       <img 
                         src={product.image} 
@@ -318,7 +394,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
                   
                   <div className={`space-y-1 flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
                     <h3 
-                      className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors line-clamp-2"
+                      className={`${getProductTitleSizeClass()} font-medium text-gray-900 group-hover:text-gray-700 transition-colors line-clamp-2`}
                       style={{ color: textColor }}
                     >
                       {product?.title || t('sections.featured_products.sample_product', { number: index + 1 }) || `מוצר לדוגמה ${index + 1}`}
@@ -333,11 +409,11 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
 
                     {settings.show_price !== false && (
                       <div className="flex items-center gap-2">
-                        <p className="text-gray-900 font-medium">
+                        <p className={`${getPriceSizeClass()} text-gray-900 font-medium`}>
                           ₪{product?.price?.toFixed(2) || '199.90'}
                         </p>
                         {(hasDiscount || isPlaceholder) && (
-                          <p className="text-gray-400 text-sm line-through">
+                          <p className={`${getPriceSizeClass()} text-gray-400 line-through`}>
                             ₪{product?.compare_at_price?.toFixed(2) || '249.90'}
                           </p>
                         )}

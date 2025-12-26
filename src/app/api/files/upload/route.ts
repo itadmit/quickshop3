@@ -44,26 +44,51 @@ async function convertToWebP(buffer: Buffer, mimeType: string): Promise<{ buffer
 }
 
 // פונקציה להעלאה ל-Cloudinary
-async function uploadToCloudinary(buffer: Buffer, filename: string, entityType: string, shopId: string): Promise<string> {
+async function uploadToCloudinary(
+  buffer: Buffer, 
+  filename: string, 
+  entityType: string, 
+  shopId: string, 
+  mimeType: string
+): Promise<string> {
   return new Promise((resolve, reject) => {
+    // זיהוי סוג הקובץ לפי mimeType
+    const isVideo = mimeType?.startsWith('video/');
+    const isImage = mimeType?.startsWith('image/');
+    const resourceType = isVideo ? 'video' : isImage ? 'image' : 'auto';
+    
+    // הגדרת options בסיסיות
+    const uploadOptions: any = {
+      folder: `quickshop3/${shopId}/${entityType}`,
+      public_id: filename.replace(/\.[^/.]+$/, ''), // Remove extension
+      resource_type: resourceType,
+    };
+    
+    // הוספת transformations רק לתמונות (לא לווידאו)
+    if (isImage) {
+      uploadOptions.transformation = [
+        {
+          quality: 'auto', // Auto quality optimization
+          fetch_format: 'auto', // Auto format (WebP, AVIF, etc.)
+        },
+      ];
+    }
+    
+    // עבור וידאו, אפשר להוסיף אופטימיזציות ספציפיות אם צריך
+    if (isVideo) {
+      // Cloudinary יעשה אופטימיזציה אוטומטית לווידאו
+      // אפשר להוסיף כאן transformations ספציפיות לווידאו אם צריך
+    }
+    
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: `quickshop3/${shopId}/${entityType}`,
-        public_id: filename.replace(/\.[^/.]+$/, ''), // Remove extension
-        resource_type: 'auto',
-        // Cloudinary will automatically optimize images
-        // We can add transformations here if needed
-        // For now, let Cloudinary handle optimization automatically
-        transformation: [
-          {
-            quality: 'auto', // Auto quality optimization
-            fetch_format: 'auto', // Auto format (WebP, AVIF, etc.)
-          },
-        ],
-      },
+      uploadOptions,
       (error, result) => {
-        if (error) reject(error);
-        else resolve(result!.secure_url);
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(error);
+        } else {
+          resolve(result!.secure_url);
+        }
       }
     );
 
@@ -119,11 +144,12 @@ export async function POST(req: NextRequest) {
     if (useCloudinary) {
       // העלאה ל-Cloudinary
       try {
-        fileUrl = await uploadToCloudinary(processedBuffer, filename, entityType, shopId);
-      } catch (cloudinaryError) {
+        fileUrl = await uploadToCloudinary(processedBuffer, filename, entityType, shopId, mimeType);
+      } catch (cloudinaryError: any) {
         console.error('Cloudinary upload failed:', cloudinaryError);
+        const errorMessage = cloudinaryError?.message || 'Failed to upload to Cloudinary';
         return NextResponse.json(
-          { error: 'Failed to upload to Cloudinary' },
+          { error: errorMessage, details: cloudinaryError },
           { status: 500 }
         );
       }

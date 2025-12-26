@@ -167,12 +167,16 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   const [imageDeviceTarget, setImageDeviceTarget] = useState<'desktop' | 'mobile'>('desktop'); // For desktop/mobile image selection
   const [navigationMenus, setNavigationMenus] = useState<NavigationMenu[]>([]);
   const [loadingMenus, setLoadingMenus] = useState(false);
-  const [collections, setCollections] = useState<Array<{ id: number; title: string; handle: string }>>([]);
+  const [collections, setCollections] = useState<Array<{ id: number; title: string; handle: string; parent_id?: number | null }>>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [collectionSearchTerm, setCollectionSearchTerm] = useState('');
   const debouncedCollectionSearch = useDebounce(collectionSearchTerm, 300);
   const [productCollectionSearchTerm, setProductCollectionSearchTerm] = useState('');
   const debouncedProductCollectionSearch = useDebounce(productCollectionSearchTerm, 300);
+  const [products, setProducts] = useState<Array<{ id: number; title: string; handle: string; image?: string }>>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const debouncedProductSearch = useDebounce(productSearchTerm, 300);
 
   // Load navigation menus when header or footer section is selected
   useEffect(() => {
@@ -211,27 +215,45 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   const prevProductSearchRef = useRef<string>('');
   const prevProductSectionTypeRef = useRef<string>('');
   const hasLoadedProductsRef = useRef<boolean>(false);
+  const prevProductManualSearchRef = useRef<string>('');
   
   useEffect(() => {
     if (section.type === 'featured_products' && storeId) {
-      // Load collections when section type changes or search term changes
-      const sectionChanged = prevProductSectionTypeRef.current !== section.type;
-      const searchChanged = prevProductSearchRef.current !== debouncedProductCollectionSearch;
+      const productSelectionMode = section.settings?.product_selection_mode || 'all';
       
-      // Always load on first mount or when section changes
-      if (sectionChanged || searchChanged || !hasLoadedProductsRef.current) {
-        prevProductSectionTypeRef.current = section.type;
-        prevProductSearchRef.current = debouncedProductCollectionSearch;
-        hasLoadedProductsRef.current = true;
-        loadCollections();
+      // Load collections when collection mode is selected
+      if (productSelectionMode === 'collection') {
+        const sectionChanged = prevProductSectionTypeRef.current !== section.type;
+        const searchChanged = prevProductSearchRef.current !== debouncedProductCollectionSearch;
+        
+        if (sectionChanged || searchChanged || !hasLoadedProductsRef.current) {
+          prevProductSectionTypeRef.current = section.type;
+          prevProductSearchRef.current = debouncedProductCollectionSearch;
+          hasLoadedProductsRef.current = true;
+          loadCollections();
+        }
+      }
+      
+      // Load products when manual mode is selected
+      if (productSelectionMode === 'manual') {
+        const sectionChanged = prevProductSectionTypeRef.current !== section.type;
+        const searchChanged = prevProductManualSearchRef.current !== debouncedProductSearch;
+        
+        if (sectionChanged || searchChanged || !hasLoadedProductsRef.current) {
+          prevProductSectionTypeRef.current = section.type;
+          prevProductManualSearchRef.current = debouncedProductSearch;
+          hasLoadedProductsRef.current = true;
+          loadProducts();
+        }
       }
     } else {
       // Reset refs when switching away from featured_products
       prevProductSectionTypeRef.current = '';
       prevProductSearchRef.current = '';
+      prevProductManualSearchRef.current = '';
       hasLoadedProductsRef.current = false;
     }
-  }, [section.type, storeId, debouncedProductCollectionSearch]);
+  }, [section.type, section.settings?.product_selection_mode, storeId, debouncedProductCollectionSearch, debouncedProductSearch]);
 
   const loadNavigationMenus = async () => {
     if (loadingMenus) return;
@@ -247,6 +269,30 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       console.error('Error loading navigation menus:', error);
     } finally {
       setLoadingMenus(false);
+    }
+  };
+
+  const loadProducts = async () => {
+    if (loadingProducts || !storeId) return;
+    setLoadingProducts(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('storeId', storeId.toString());
+      params.append('status', 'active');
+      if (debouncedProductSearch) {
+        params.append('search', debouncedProductSearch);
+      }
+      params.append('limit', '50');
+      
+      const response = await fetch(`/api/products?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -435,17 +481,19 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
           const blockIndex = newBlocks.findIndex((b: any) => b.id === targetBlockId);
           if (blockIndex >= 0) {
-              // For image_with_text, detect file type from extension if accept='all'
+              // For image_with_text and multicolumn, detect file type from extension if accept='all' or 'auto'
               let detectedMediaType = mediaType;
-              if (section.type === 'image_with_text' && mediaType === 'image') {
+              if ((section.type === 'image_with_text' || section.type === 'multicolumn') && (mediaType === 'image' || mediaType === 'auto')) {
                   // Check if the file is actually a video by extension
                   const isVideoFile = files[0].match(/\.(mp4|webm|ogg|mov|avi)$/i);
                   if (isVideoFile) {
                       detectedMediaType = 'video';
+                  } else if (mediaType === 'auto') {
+                      detectedMediaType = 'image';
                   }
               }
               
-              if (detectedMediaType === 'video') {
+              if (detectedMediaType === 'video' || mediaType === 'video') {
                   // For video, set video_url and clear image_url
                   newBlocks[blockIndex].content = {
                       ...newBlocks[blockIndex].content,
@@ -1098,6 +1146,23 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 {renderInput('תת כותרת', 'subheading', 'הכנס תת כותרת...')}
               </div>
             </SettingGroup>
+            
+            <SettingGroup title="גדלי פונט">
+              <div className="space-y-4">
+                {renderSelect('גודל כותרת ראשית', 'heading_font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+                {renderSelect('גודל תת כותרת', 'subheading_font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+              </div>
+            </SettingGroup>
 
             <SettingGroup title="כפתור">
               <div className="space-y-4">
@@ -1135,8 +1200,9 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         );
 
       case 'featured_products':
-        const productSelectionMode = getValue('product_selection_mode', 'all') as 'all' | 'collection';
+        const productSelectionMode = getValue('product_selection_mode', 'all') as 'all' | 'collection' | 'manual';
         const productSelectedCollectionIds = getValue('selected_collection_ids', []) as number[];
+        const productSelectedProductIds = getValue('selected_product_ids', []) as number[];
         
         const toggleProductCollection = (collectionId: number) => {
           const currentIds = productSelectedCollectionIds || [];
@@ -1146,6 +1212,14 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           handleSettingChange('selected_collection_ids', newIds);
         };
         
+        const toggleProduct = (productId: number) => {
+          const currentIds = productSelectedProductIds || [];
+          const newIds = currentIds.includes(productId)
+            ? currentIds.filter(id => id !== productId)
+            : [...currentIds, productId];
+          handleSettingChange('selected_product_ids', newIds);
+        };
+        
         return (
           <div className="space-y-1">
             <SettingGroup title="מקור מוצרים">
@@ -1153,6 +1227,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 {renderSelect('מקור מוצרים', 'product_selection_mode', [
                   { label: 'כל המוצרים', value: 'all' },
                   { label: 'קטגוריה', value: 'collection' },
+                  { label: 'בחירה ידנית', value: 'manual' },
                 ])}
                 
                 {productSelectionMode === 'all' && (
@@ -1233,6 +1308,84 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     </div>
                   </>
                 )}
+                
+                {productSelectionMode === 'manual' && (
+                  <>
+                    <div className="relative">
+                      <HiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Input
+                        type="text"
+                        placeholder="חיפוש מוצרים..."
+                        value={productSearchTerm}
+                        onChange={(e) => setProductSearchTerm(e.target.value)}
+                        className="pr-10"
+                      />
+                    </div>
+                    
+                    {productSelectedProductIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {products
+                          .filter(p => productSelectedProductIds.includes(p.id))
+                          .map(product => (
+                            <span
+                              key={product.id}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                            >
+                              {product.title}
+                              <button
+                                type="button"
+                                onClick={() => toggleProduct(product.id)}
+                                className="hover:text-green-900"
+                              >
+                                <HiX className="w-4 h-4" />
+                              </button>
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                    
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
+                      {loadingProducts ? (
+                        <div className="text-center py-4 text-gray-500">טוען מוצרים...</div>
+                      ) : products.length === 0 ? (
+                        <div className="text-center py-4 text-gray-500">לא נמצאו מוצרים</div>
+                      ) : (
+                        products
+                          .filter(p => 
+                            !debouncedProductSearch || 
+                            p.title.toLowerCase().includes(debouncedProductSearch.toLowerCase())
+                          )
+                          .map(product => (
+                            <div
+                              key={product.id}
+                              className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-50 ${
+                                productSelectedProductIds.includes(product.id) ? 'bg-green-50 border border-green-200' : ''
+                              }`}
+                              onClick={() => toggleProduct(product.id)}
+                            >
+                              <Checkbox
+                                checked={productSelectedProductIds.includes(product.id)}
+                                onCheckedChange={() => toggleProduct(product.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              {product.image && (
+                                <img src={product.image} alt={product.title} className="w-10 h-10 object-cover rounded" />
+                              )}
+                              <span className="text-sm text-gray-700 cursor-pointer flex-1">{product.title}</span>
+                            </div>
+                          ))
+                      )}
+                      {products.filter(p => 
+                        !debouncedProductSearch || 
+                        p.title.toLowerCase().includes(debouncedProductSearch.toLowerCase())
+                      ).length === 0 && !loadingProducts && (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          לא נמצאו מוצרים
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </SettingGroup>
             <SettingGroup title="כללי">
@@ -1296,6 +1449,35 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                     ])}
                 </div>
              </SettingGroup>
+             <SettingGroup title="גדלי פונט">
+                <div className="space-y-4">
+                   {renderSelect('גודל כותרת סקשן', 'title_font_size', [
+                      { label: 'קטן', value: 'small' },
+                      { label: 'בינוני', value: 'medium' },
+                      { label: 'גדול', value: 'large' },
+                      { label: 'גדול מאוד', value: 'xlarge' },
+                    ])}
+                   {renderSelect('גודל כותרת מוצר', 'product_title_font_size', [
+                      { label: 'קטן', value: 'small' },
+                      { label: 'בינוני', value: 'medium' },
+                      { label: 'גדול', value: 'large' },
+                      { label: 'גדול מאוד', value: 'xlarge' },
+                    ])}
+                   {renderSelect('גודל מחיר', 'price_font_size', [
+                      { label: 'קטן', value: 'small' },
+                      { label: 'בינוני', value: 'medium' },
+                      { label: 'גדול', value: 'large' },
+                      { label: 'גדול מאוד', value: 'xlarge' },
+                    ])}
+                </div>
+             </SettingGroup>
+             <SettingGroup title="עיצוב כרטיס מוצר">
+                <div className="space-y-4">
+                   {renderInput('עובי מסגרת (px, 0 להסרה)', 'card_border_width', '1', 'number')}
+                   {renderInput('צבע מסגרת', 'card_border_color', '#e5e7eb', 'text', undefined, 'ltr')}
+                   {renderInput('עיגול פינות (px)', 'card_border_radius', '8', 'number')}
+                </div>
+             </SettingGroup>
              <SettingGroup title="קישור 'ראה עוד'">
                 <div className="space-y-4">
                    {renderSelect('הצג קישור', 'show_view_all', [
@@ -1353,45 +1535,131 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                                     <div className="flex flex-wrap gap-2">
                                         {collections
                                             .filter(c => selectedCollectionIds.includes(c.id))
-                                            .map(collection => (
-                                                <span
-                                                    key={collection.id}
-                                                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                                                >
-                                                    {collection.title}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleCollection(collection.id)}
-                                                        className="hover:text-blue-900"
+                                            .map(collection => {
+                                                const isSubcategory = collection.parent_id !== null && collection.parent_id !== undefined;
+                                                const parentCategory = collections.find(c => c.id === collection.parent_id);
+                                                return (
+                                                    <span
+                                                        key={collection.id}
+                                                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+                                                            isSubcategory 
+                                                                ? 'bg-orange-100 text-orange-800 border border-orange-300' 
+                                                                : 'bg-blue-100 text-blue-800'
+                                                        }`}
+                                                        title={isSubcategory ? `תת-קטגוריה של: ${parentCategory?.title || 'לא ידוע'}` : 'קטגוריה ראשית'}
                                                     >
-                                                        <HiX className="w-4 h-4" />
-                                                    </button>
-                                                </span>
-                                            ))}
+                                                        {collection.title}
+                                                        {isSubcategory && (
+                                                            <span className="text-xs opacity-75">(תת)</span>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleCollection(collection.id)}
+                                                            className="hover:opacity-70"
+                                                        >
+                                                            <HiX className="w-4 h-4" />
+                                                        </button>
+                                                    </span>
+                                                );
+                                            })}
                                     </div>
                                 )}
                                 
-                                <div className="max-h-60 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3">
+                                <div className="max-h-60 overflow-y-auto space-y-4 border border-gray-200 rounded-lg p-3">
                                     {loadingCollections ? (
                                         <div className="text-center py-4 text-gray-500">טוען קטגוריות...</div>
                                     ) : collections.length === 0 ? (
                                         <div className="text-center py-4 text-gray-500">לא נמצאו קטגוריות</div>
-                                    ) : (
-                                        collections.map(collection => (
-                                            <div
-                                                key={collection.id}
-                                                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                                                onClick={() => toggleCollection(collection.id)}
-                                            >
-                                                <Checkbox
-                                                    checked={selectedCollectionIds.includes(collection.id)}
-                                                    onCheckedChange={() => toggleCollection(collection.id)}
-                                                />
-                                                <Label className="cursor-pointer flex-1">{collection.title}</Label>
-                                            </div>
-                                        ))
-                                    )}
+                                    ) : (() => {
+                                        // הפרדה בין קטגוריות ראשיות לתת-קטגוריות
+                                        const mainCategories = collections.filter(c => !c.parent_id || c.parent_id === null);
+                                        const subCategories = collections.filter(c => c.parent_id !== null && c.parent_id !== undefined);
+                                        
+                                        return (
+                                            <>
+                                                {/* קטגוריות ראשיות */}
+                                                {mainCategories.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-xs font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-200">
+                                                            קטגוריות ראשיות
+                                                        </div>
+                                                        {mainCategories
+                                                            .filter(c => 
+                                                                !debouncedCollectionSearch || 
+                                                                c.title.toLowerCase().includes(debouncedCollectionSearch.toLowerCase())
+                                                            )
+                                                            .map(collection => (
+                                                                <div
+                                                                    key={collection.id}
+                                                                    className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                                                    onClick={() => toggleCollection(collection.id)}
+                                                                >
+                                                                    <Checkbox
+                                                                        checked={selectedCollectionIds.includes(collection.id)}
+                                                                        onCheckedChange={() => toggleCollection(collection.id)}
+                                                                    />
+                                                                    <Label className="cursor-pointer flex-1">{collection.title}</Label>
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                )}
+                                                
+                                                {/* תת-קטגוריות */}
+                                                {subCategories.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-xs font-semibold text-orange-700 mb-2 pb-1 border-b border-orange-200">
+                                                            תת-קטגוריות (לא מומלץ לבחירה)
+                                                        </div>
+                                                        {subCategories
+                                                            .filter(c => 
+                                                                !debouncedCollectionSearch || 
+                                                                c.title.toLowerCase().includes(debouncedCollectionSearch.toLowerCase())
+                                                            )
+                                                            .map(collection => {
+                                                                const parentCategory = collections.find(c => c.id === collection.parent_id);
+                                                                return (
+                                                                    <div
+                                                                        key={collection.id}
+                                                                        className="flex items-center gap-2 p-2 hover:bg-orange-50 rounded cursor-pointer border border-orange-100"
+                                                                        onClick={() => toggleCollection(collection.id)}
+                                                                        title={`תת-קטגוריה של: ${parentCategory?.title || 'לא ידוע'}`}
+                                                                    >
+                                                                        <Checkbox
+                                                                            checked={selectedCollectionIds.includes(collection.id)}
+                                                                            onCheckedChange={() => toggleCollection(collection.id)}
+                                                                        />
+                                                                        <Label className="cursor-pointer flex-1 text-sm">
+                                                                            <span className="text-orange-600">{collection.title}</span>
+                                                                            {parentCategory && (
+                                                                        <span className="text-xs text-gray-500 mr-2">← {parentCategory.title}</span>
+                                                                            )}
+                                                                        </Label>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                )}
+                                                
+                                                {/* הודעה אם אין תוצאות בחיפוש */}
+                                                {debouncedCollectionSearch && 
+                                                 mainCategories.filter(c => c.title.toLowerCase().includes(debouncedCollectionSearch.toLowerCase())).length === 0 &&
+                                                 subCategories.filter(c => c.title.toLowerCase().includes(debouncedCollectionSearch.toLowerCase())).length === 0 && (
+                                                    <div className="text-center py-4 text-gray-500">לא נמצאו קטגוריות התואמות לחיפוש</div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
+                                
+                                {/* אזהרה אם נבחרו תת-קטגוריות */}
+                                {selectedCollectionIds.some(id => {
+                                    const collection = collections.find(c => c.id === id);
+                                    return collection && collection.parent_id !== null && collection.parent_id !== undefined;
+                                }) && (
+                                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-800">
+                                        <strong>שימו לב:</strong> נבחרו תת-קטגוריות. תת-קטגוריות לא יוצגו בדף - רק קטגוריות ראשיות מוצגות.
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -1404,6 +1672,22 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'ימין', value: 'right' },
                             { label: 'מרכז', value: 'center' },
                             { label: 'שמאל', value: 'left' },
+                        ])}
+                    </div>
+                </SettingGroup>
+                <SettingGroup title="גדלי פונט">
+                    <div className="space-y-4">
+                        {renderSelect('גודל כותרת סקשן', 'title_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                        {renderSelect('גודל כותרת קטגוריה', 'collection_title_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
                         ])}
                     </div>
                 </SettingGroup>
@@ -1436,6 +1720,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'מרכז', value: 'center' },
                             { label: 'שמאל', value: 'left' },
                         ])}
+                        {renderSelect('הצג מספר מוצרים', 'show_products_count', [
+                            { label: 'כן', value: true },
+                            { label: 'לא', value: false },
+                        ], true)}
                     </div>
                 </SettingGroup>
                 <SettingGroup title="קישור 'ראה עוד'">
@@ -1733,15 +2021,127 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         ])}
                     </div>
                 </SettingGroup>
+                
+                <SettingGroup title="גדלי פונט">
+                    <div className="space-y-4">
+                        {renderSelect('גודל כותרת', 'heading_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                        {renderSelect('גודל טקסט', 'text_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                    </div>
+                </SettingGroup>
             </div>
         );
       
       case 'rich_text':
+          const richTextBlocks = section.blocks?.filter(b => b.type === 'text') || [];
+          const mainTextBlock = richTextBlocks[0] || null;
+          
+          const updateRichTextBlock = (blockId: string, updates: any) => {
+              const newBlocks = JSON.parse(JSON.stringify(section.blocks || []));
+              const blockIndex = newBlocks.findIndex((b: any) => b.id === blockId);
+              if (blockIndex >= 0) {
+                  newBlocks[blockIndex].content = { ...newBlocks[blockIndex].content, ...updates };
+                  onUpdate({ blocks: newBlocks });
+              }
+          };
+          
+          const addRichTextBlock = () => {
+              const newBlock = {
+                  id: `rt-${Date.now()}`,
+                  type: 'text' as const,
+                  content: {
+                      heading: '',
+                      text: ''
+                  },
+                  style: {},
+                  settings: {}
+              };
+              onUpdate({
+                  blocks: [...(section.blocks || []), newBlock]
+              });
+          };
+          
+          const removeRichTextBlock = (blockId: string) => {
+              const newBlocks = (section.blocks || []).filter((b: any) => b.id !== blockId);
+              onUpdate({ blocks: newBlocks });
+          };
+          
           return (
             <div className="space-y-1">
-                <SettingGroup title="תוכן">
-                     <div className="space-y-4">
-                        <p className="text-sm text-gray-500">ערוך את הטקסט דרך רשימת הבלוקים בסרגל הצד</p>
+                <SettingGroup title="תוכן" defaultOpen={true}>
+                    <div className="space-y-4">
+                        {richTextBlocks.length === 0 ? (
+                            <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                                <p className="text-sm text-gray-500 mb-3">אין בלוקי טקסט</p>
+                                <button
+                                    onClick={addRichTextBlock}
+                                    className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
+                                >
+                                    הוסף בלוק טקסט
+                                </button>
+                            </div>
+                        ) : (
+                            richTextBlocks.map((block, index) => (
+                                <div key={block.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-sm font-medium text-gray-700">בלוק טקסט {index + 1}</span>
+                                        {richTextBlocks.length > 1 && (
+                                            <button
+                                                onClick={() => removeRichTextBlock(block.id)}
+                                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                                title="מחק בלוק"
+                                            >
+                                                <HiTrash className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Heading */}
+                                    <div className="mb-3">
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">כותרת (אופציונלי)</label>
+                                        <input
+                                            type="text"
+                                            value={block.content?.heading || ''}
+                                            onChange={(e) => updateRichTextBlock(block.id, { heading: e.target.value })}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                                            placeholder="כותרת..."
+                                        />
+                                    </div>
+                                    
+                                    {/* Rich Text Editor */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">תוכן</label>
+                                        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+                                            <RichTextEditor
+                                                value={block.content?.text || ''}
+                                                onChange={(html) => updateRichTextBlock(block.id, { text: html })}
+                                                placeholder="הזן טקסט עשיר כאן... ניתן להוסיף קישורים, רשימות, עיצוב וכו'"
+                                                className="min-h-[200px]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        
+                        {richTextBlocks.length > 0 && (
+                            <button
+                                onClick={addRichTextBlock}
+                                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2 text-sm"
+                            >
+                                <HiPlus className="w-4 h-4" />
+                                הוסף בלוק טקסט נוסף
+                            </button>
+                        )}
                     </div>
                 </SettingGroup>
                 <SettingGroup title="פריסה">
@@ -1755,6 +2155,22 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                              { label: 'צר', value: 'narrow' },
                              { label: 'רגיל', value: 'regular' },
                              { label: 'רחב', value: 'wide' },
+                        ])}
+                    </div>
+                </SettingGroup>
+                <SettingGroup title="גדלי פונט">
+                    <div className="space-y-4">
+                        {renderSelect('גודל כותרת', 'heading_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                        {renderSelect('גודל טקסט', 'text_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
                         ])}
                     </div>
                 </SettingGroup>
@@ -2110,6 +2526,23 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </div>
                     </div>
                 </SettingGroup>
+                
+                <SettingGroup title="גדלי פונט">
+                    <div className="space-y-4">
+                        {renderSelect('גודל כותרת שקופית', 'slide_heading_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                        {renderSelect('גודל תת כותרת שקופית', 'slide_subheading_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                    </div>
+                </SettingGroup>
             </div>
           );
 
@@ -2303,6 +2736,29 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                         </div>
                     </div>
                 </SettingGroup>
+                
+                <SettingGroup title="גדלי פונט">
+                    <div className="space-y-4">
+                        {renderSelect('גודל כותרת', 'title_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                        {renderSelect('גודל תת כותרת', 'subtitle_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                        {renderSelect('גודל שאלה', 'question_font_size', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                            { label: 'גדול מאוד', value: 'xlarge' },
+                        ])}
+                    </div>
+                </SettingGroup>
             </div>
           );
 
@@ -2489,6 +2945,12 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: '4', value: 4 },
                         ])}
                         {renderInput('גובה לוגו (px)', 'logo_height', '80', 'number')}
+                        {renderInput('רוחב לוגו (px, השאר אוטו)', 'logo_width', '', 'number', 'השאר ריק לאוטומטי')}
+                        {renderSelect('ריווח בין לוגואים', 'logo_gap', [
+                            { label: 'קטן', value: 'small' },
+                            { label: 'בינוני', value: 'medium' },
+                            { label: 'גדול', value: 'large' },
+                        ])}
                         {renderSelect('אפקט גווני אפור', 'grayscale_enabled', [
                             { label: 'מופעל (צבע בהובר)', value: true },
                             { label: 'כבוי', value: false },
@@ -4429,7 +4891,14 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         };
 
         const openMcColumnImagePicker = (columnId: string) => {
-          setMediaType('image');
+          setMediaType('auto');
+          setTargetBlockId(columnId);
+          setImageDeviceTarget('desktop');
+          setIsMediaPickerOpen(true);
+        };
+        
+        const openMcColumnVideoPicker = (columnId: string) => {
+          setMediaType('video');
           setTargetBlockId(columnId);
           setImageDeviceTarget('desktop');
           setIsMediaPickerOpen(true);
@@ -4463,39 +4932,140 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                       </button>
                     </div>
                     
-                    {/* Image */}
+                    {/* Media (Image or Video) */}
                     <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">תמונה</label>
-                      <div className="flex gap-2">
-                        {block.content?.image_url ? (
-                          <div className="relative w-16 h-16 rounded overflow-hidden bg-gray-100">
-                            <img 
-                              src={block.content.image_url} 
-                              alt="" 
-                              className="w-full h-full object-cover"
-                            />
+                      <label className="block text-xs font-medium text-gray-600 mb-1">מדיה</label>
+                      <div className="space-y-2">
+                        {/* Media Type Selector */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const isVideo = block.content?.video_url;
+                              if (isVideo) {
+                                updateMcColumn(block.id, { video_url: '', image_url: '' });
+                              }
+                              openMcColumnImagePicker(block.id);
+                            }}
+                            className={`flex-1 px-2 py-1.5 text-xs border rounded transition-colors ${
+                              block.content?.image_url && !block.content?.video_url
+                                ? 'bg-blue-50 border-blue-300 text-blue-700'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <HiPhotograph className="w-4 h-4 mx-auto mb-1" />
+                            תמונה
+                          </button>
+                          <button
+                            onClick={() => {
+                              const isImage = block.content?.image_url && !block.content?.video_url;
+                              if (isImage) {
+                                updateMcColumn(block.id, { image_url: '', video_url: '' });
+                              }
+                              openMcColumnVideoPicker(block.id);
+                            }}
+                            className={`flex-1 px-2 py-1.5 text-xs border rounded transition-colors ${
+                              block.content?.video_url
+                                ? 'bg-blue-50 border-blue-300 text-blue-700'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <HiVideoCamera className="w-4 h-4 mx-auto mb-1" />
+                            וידאו
+                          </button>
+                        </div>
+                        
+                        {/* Media Preview */}
+                        <div className="flex gap-2">
+                          {block.content?.video_url ? (
+                            <div className="relative w-20 h-20 rounded overflow-hidden bg-gray-100">
+                              <video 
+                                src={block.content.video_url} 
+                                className="w-full h-full object-cover"
+                                muted
+                                playsInline
+                              />
+                              <button
+                                onClick={() => updateMcColumn(block.id, { video_url: '' })}
+                                className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
+                              >
+                                <HiTrash className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : block.content?.image_url ? (
+                            <div className="relative w-20 h-20 rounded overflow-hidden bg-gray-100">
+                              <img 
+                                src={block.content.image_url} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                onClick={() => updateMcColumn(block.id, { image_url: '' })}
+                                className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
+                              >
+                                <HiTrash className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400">
+                              <HiPhotograph className="w-6 h-6" />
+                            </div>
+                          )}
+                          {(block.content?.image_url || block.content?.video_url) && (
                             <button
-                              onClick={() => updateMcColumn(block.id, { image_url: '' })}
-                              className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
+                              onClick={() => {
+                                if (block.content?.video_url) {
+                                  openMcColumnVideoPicker(block.id);
+                                } else {
+                                  openMcColumnImagePicker(block.id);
+                                }
+                              }}
+                              className="text-xs text-blue-600 hover:underline self-center"
                             >
-                              <HiTrash className="w-3 h-3" />
+                              החלף
                             </button>
+                          )}
+                        </div>
+                        
+                        {/* Video Settings */}
+                        {block.content?.video_url && (
+                          <div className="space-y-2 pt-2 border-t border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs text-gray-600">אוטופליי</label>
+                              <input
+                                type="checkbox"
+                                checked={block.content?.video_autoplay !== false}
+                                onChange={(e) => updateMcColumn(block.id, { video_autoplay: e.target.checked })}
+                                className="w-4 h-4"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs text-gray-600">השתק</label>
+                              <input
+                                type="checkbox"
+                                checked={block.content?.video_muted !== false}
+                                onChange={(e) => updateMcColumn(block.id, { video_muted: e.target.checked })}
+                                className="w-4 h-4"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs text-gray-600">לולאה</label>
+                              <input
+                                type="checkbox"
+                                checked={block.content?.video_loop === true}
+                                onChange={(e) => updateMcColumn(block.id, { video_loop: e.target.checked })}
+                                className="w-4 h-4"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs text-gray-600">בקרות</label>
+                              <input
+                                type="checkbox"
+                                checked={block.content?.video_controls !== false}
+                                onChange={(e) => updateMcColumn(block.id, { video_controls: e.target.checked })}
+                                className="w-4 h-4"
+                              />
+                            </div>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => openMcColumnImagePicker(block.id)}
-                            className="w-16 h-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-500"
-                          >
-                            <HiPhotograph className="w-6 h-6" />
-                          </button>
-                        )}
-                        {block.content?.image_url && (
-                          <button
-                            onClick={() => openMcColumnImagePicker(block.id)}
-                            className="text-xs text-blue-600 hover:underline self-center"
-                          >
-                            החלף
-                          </button>
                         )}
                       </div>
                     </div>
@@ -4598,6 +5168,29 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 {renderSelect('מסגרת תמונה', 'image_border', [
                   { label: 'ללא', value: false },
                   { label: 'עם מסגרת', value: true },
+                ])}
+              </div>
+            </SettingGroup>
+            
+            <SettingGroup title="גדלי פונט">
+              <div className="space-y-4">
+                {renderSelect('גודל כותרת סקשן', 'title_font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+                {renderSelect('גודל כותרת עמודה', 'column_heading_font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
+                ])}
+                {renderSelect('גודל טקסט עמודה', 'column_text_font_size', [
+                  { label: 'קטן', value: 'small' },
+                  { label: 'בינוני', value: 'medium' },
+                  { label: 'גדול', value: 'large' },
+                  { label: 'גדול מאוד', value: 'xlarge' },
                 ])}
               </div>
             </SettingGroup>
@@ -4872,7 +5465,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           'בחר וידאו'
         }
         multiple={section.type === 'gallery'}
-        accept={section.type === 'image_with_text' || section.type === 'hero_banner' ? 'all' : mediaType === 'auto' ? 'all' : mediaType}
+        accept={section.type === 'image_with_text' || section.type === 'hero_banner' || section.type === 'multicolumn' ? 'all' : mediaType === 'auto' ? 'all' : mediaType}
       />
     </div>
   );

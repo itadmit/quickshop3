@@ -94,8 +94,13 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
     const backgroundImage = (device === 'mobile' && style.background?.background_image_mobile) 
         ? style.background.background_image_mobile 
         : style.background?.background_image;
+    
+    // Check for video - also check mobile video if device is mobile
+    const backgroundVideo = (device === 'mobile' && style.background?.background_video_mobile) 
+        ? style.background.background_video_mobile 
+        : style.background?.background_video;
         
-    if (backgroundImage && !style.background?.background_video) {
+    if (backgroundImage && !backgroundVideo) {
         bgStyle.backgroundImage = `url(${backgroundImage})`;
         bgStyle.backgroundSize = style.background?.background_size || 'cover';
         bgStyle.backgroundPosition = style.background?.background_position || 'center';
@@ -104,7 +109,12 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
 
     // Video Background Element
     const VideoBackground = () => {
-        if (!style.background?.background_video) return null;
+        // Check for video - also check mobile video if device is mobile
+        const videoSrc = (device === 'mobile' && style.background?.background_video_mobile) 
+            ? style.background.background_video_mobile 
+            : style.background?.background_video;
+        
+        if (!videoSrc) return null;
         const borderRadius = style.border?.border_radius || '0';
         return (
             <div 
@@ -112,7 +122,7 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
                 style={{ borderRadius }}
             >
                 <video
-                    src={style.background.background_video}
+                    src={videoSrc}
                     autoPlay={style.background.video_autoplay !== false}
                     muted={style.background.video_muted !== false}
                     loop={style.background.video_loop !== false}

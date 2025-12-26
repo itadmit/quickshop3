@@ -22,6 +22,7 @@ interface Collection {
   handle: string;
   image_url: string | null;
   products_count?: number;
+  parent_id?: number | null;
 }
 
 function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedCollectionsProps) {
@@ -132,16 +133,19 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
             const data = await response.json();
             const allCollections = data.collections || [];
             // Filter to only selected collections and maintain order
+            // ✅ מסנן תת-קטגוריות - מציג רק קטגוריות ראשיות (ללא parent_id)
             collectionsData = idsArray
               .map((id: number) => allCollections.find((c: Collection) => c.id === id))
-              .filter((c): c is Collection => c !== undefined);
+              .filter((c): c is Collection => c !== undefined)
+              .filter((c: any) => !c.parent_id || c.parent_id === null); // רק קטגוריות ראשיות
           }
         } else {
           // Load all collections (default behavior) - load more to show real data
           const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100`);
           if (response.ok) {
             const data = await response.json();
-            collectionsData = data.collections || [];
+            // ✅ מסנן תת-קטגוריות - מציג רק קטגוריות ראשיות (ללא parent_id)
+            collectionsData = (data.collections || []).filter((c: any) => !c.parent_id || c.parent_id === null);
           }
         }
         
@@ -227,6 +231,30 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
 
   const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   const textColor = style.typography?.color || '#111827';
+  
+  // Title font size
+  const getTitleSizeClass = () => {
+    const size = settings.title_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-xl md:text-2xl',
+      medium: 'text-2xl md:text-3xl',
+      large: 'text-2xl md:text-3xl',
+      xlarge: 'text-3xl md:text-4xl',
+    };
+    return sizeMap[size] || 'text-2xl md:text-3xl';
+  };
+  
+  // Collection title font size
+  const getCollectionTitleSizeClass = () => {
+    const size = settings.collection_title_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'text-sm md:text-base',
+      medium: 'text-lg md:text-xl',
+      large: 'text-xl md:text-2xl',
+      xlarge: 'text-2xl md:text-3xl',
+    };
+    return sizeMap[size] || 'text-lg md:text-xl';
+  };
 
   return (
     <div className="w-full py-8 md:py-12" style={{ fontFamily }}>
@@ -239,7 +267,7 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
             'justify-between'
           }`}>
             <h2 
-              className={`text-2xl md:text-3xl font-bold`}
+              className={`${getTitleSizeClass()} font-bold`}
               style={{ color: textColor }}
             >
               {settings.title || t('sections.featured_collections.title') || 'קטגוריות פופולריות'}
@@ -305,12 +333,12 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
                   
                   <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
                     <h3 
-                      className="text-lg md:text-xl font-bold mb-1 group-hover:text-gray-700 transition-colors" 
+                      className={`${getCollectionTitleSizeClass()} font-bold mb-1 group-hover:text-gray-700 transition-colors`}
                       style={{ color: textColor }}
                     >
                       {collection?.title || t('sections.featured_collections.sample_collection', { number: index + 1 }) || `קטגוריה ${index + 1}`}
                     </h3>
-                    {settings.show_description !== false && collection?.products_count !== undefined && (
+                    {settings.show_products_count !== false && collection?.products_count !== undefined && (
                       <p className="text-gray-500 text-xs md:text-sm">
                         {collection.products_count} {t('product.items') || 'מוצרים'}
                       </p>

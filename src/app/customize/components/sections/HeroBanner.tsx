@@ -142,6 +142,30 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
 
   // Font family
   const fontFamily = section.style?.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  
+  // Heading font size
+  const getHeadingSizeClass = () => {
+    const size = settings.heading_font_size || 'xlarge';
+    const sizeMap: Record<string, string> = {
+      small: 'text-2xl md:text-3xl',
+      medium: 'text-3xl md:text-4xl',
+      large: 'text-4xl md:text-5xl',
+      xlarge: 'text-4xl md:text-6xl',
+    };
+    return sizeMap[size] || 'text-4xl md:text-6xl';
+  };
+  
+  // Subheading font size
+  const getSubheadingSizeClass = () => {
+    const size = settings.subheading_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-base md:text-lg',
+      medium: 'text-lg md:text-xl',
+      large: 'text-xl md:text-2xl',
+      xlarge: 'text-2xl md:text-3xl',
+    };
+    return sizeMap[size] || 'text-xl md:text-2xl';
+  };
 
   return (
     <div 
@@ -153,7 +177,7 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
         {/* Heading */}
         {settings.heading && (
           <h1 
-            className="text-4xl md:text-6xl font-bold mb-6 max-w-4xl"
+            className={`${getHeadingSizeClass()} font-bold mb-6 max-w-4xl`}
             style={{ color: textColor }}
           >
             {settings.heading}
@@ -163,7 +187,7 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
         {/* Subheading */}
         {settings.subheading && (
           <p 
-            className="text-xl md:text-2xl mb-8 max-w-2xl"
+            className={`${getSubheadingSizeClass()} mb-8 max-w-2xl`}
             style={{ color: subheadingColor }}
           >
             {settings.subheading}

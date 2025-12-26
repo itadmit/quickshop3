@@ -26,19 +26,57 @@ export function FAQ({ section, onUpdate }: FAQProps) {
   };
 
   const maxWidthClass = settings.width === 'narrow' ? 'max-w-3xl' : 'max-w-5xl';
+  
+  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  
+  // Title font size
+  const getTitleSizeClass = () => {
+    const size = settings.title_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-2xl',
+      medium: 'text-3xl',
+      large: 'text-3xl',
+      xlarge: 'text-4xl',
+    };
+    return sizeMap[size] || 'text-3xl';
+  };
+  
+  // Subtitle font size
+  const getSubtitleSizeClass = () => {
+    const size = settings.subtitle_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'text-base',
+      medium: 'text-lg',
+      large: 'text-xl',
+      xlarge: 'text-2xl',
+    };
+    return sizeMap[size] || 'text-lg';
+  };
+  
+  // Question font size
+  const getQuestionSizeClass = () => {
+    const size = settings.question_font_size || 'medium';
+    const sizeMap: Record<string, string> = {
+      small: 'text-base',
+      medium: 'text-lg',
+      large: 'text-xl',
+      xlarge: 'text-2xl',
+    };
+    return sizeMap[size] || 'text-lg';
+  };
 
   return (
-    <div className="py-16 px-4">
+    <div className="py-16 px-4" style={{ fontFamily }}>
       <div className={`${maxWidthClass} mx-auto`}>
         {/* Header */}
         <div className="text-center mb-12">
           {settings.title && (
-            <h2 className="text-3xl font-bold mb-4" style={{ color: textColor }}>
+            <h2 className={`${getTitleSizeClass()} font-bold mb-4`} style={{ color: textColor }}>
               {settings.title}
             </h2>
           )}
           {settings.subtitle && (
-            <p className="text-lg opacity-80" style={{ color: textColor }}>
+            <p className={`${getSubtitleSizeClass()} opacity-80`} style={{ color: textColor }}>
               {settings.subtitle}
             </p>
           )}
@@ -58,7 +96,7 @@ export function FAQ({ section, onUpdate }: FAQProps) {
                     onClick={() => toggleItem(block.id)}
                     className="w-full flex items-center justify-between p-6 text-right bg-white hover:bg-gray-50 transition-colors"
                   >
-                    <span className="font-medium text-lg" style={{ color: textColor || '#111827' }}>
+                    <span className={`font-medium ${getQuestionSizeClass()}`} style={{ color: textColor || '#111827' }}>
                       {block.content?.heading || 'שאלה לדוגמה?'}
                     </span>
                     <span className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>

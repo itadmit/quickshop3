@@ -50,6 +50,33 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
   
   // Image position (object-position)
   const imagePosition = settings.image_position || 'center';
+  
+  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = style.typography?.color || '#FFFFFF';
+  
+  // Slide heading font size
+  const getSlideHeadingSizeClass = () => {
+    const size = settings.slide_heading_font_size || 'xlarge';
+    const sizeMap: Record<string, string> = {
+      small: 'text-2xl md:text-3xl',
+      medium: 'text-3xl md:text-4xl',
+      large: 'text-4xl md:text-5xl',
+      xlarge: 'text-4xl md:text-6xl',
+    };
+    return sizeMap[size] || 'text-4xl md:text-6xl';
+  };
+  
+  // Slide subheading font size
+  const getSlideSubheadingSizeClass = () => {
+    const size = settings.slide_subheading_font_size || 'large';
+    const sizeMap: Record<string, string> = {
+      small: 'text-base md:text-lg',
+      medium: 'text-lg md:text-xl',
+      large: 'text-xl md:text-2xl',
+      xlarge: 'text-2xl md:text-3xl',
+    };
+    return sizeMap[size] || 'text-xl md:text-2xl';
+  };
 
   // Content position - vertical
   const getVerticalPositionClass = () => {
@@ -122,15 +149,15 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
             <div className="absolute inset-0 bg-black/30" />
 
             {/* Content */}
-            <div className={`absolute inset-0 flex ${getVerticalPositionClass()} ${getHorizontalPositionClass()} px-8`}>
+            <div className={`absolute inset-0 flex ${getVerticalPositionClass()} ${getHorizontalPositionClass()} px-8`} style={{ fontFamily }}>
               <div className={`max-w-4xl space-y-6 flex flex-col ${getTextAlignClass()}`}>
                 {slide.content?.heading && (
-                  <h2 className="text-4xl md:text-6xl font-bold text-white drop-shadow-md">
+                  <h2 className={`${getSlideHeadingSizeClass()} font-bold text-white drop-shadow-md`}>
                     {slide.content.heading}
                   </h2>
                 )}
                 {slide.content?.subheading && (
-                  <p className="text-xl md:text-2xl text-white/90 drop-shadow-sm">
+                  <p className={`${getSlideSubheadingSizeClass()} text-white/90 drop-shadow-sm`}>
                     {slide.content.subheading}
                   </p>
                 )}

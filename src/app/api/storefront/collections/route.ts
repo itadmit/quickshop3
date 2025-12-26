@@ -40,17 +40,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // List all collections
+    // List all collections - כולל תת-קטגוריות (עם parent_id)
+    // ✅ תיקון ספירת מוצרים - סופר רק מוצרים פעילים
     const sql = `
       SELECT 
         pc.id,
         pc.title,
         pc.handle,
         pc.image_url,
-        (SELECT COUNT(*) FROM product_collection_map pcm WHERE pcm.collection_id = pc.id) as products_count
+        pc.parent_id,
+        (SELECT COUNT(*) 
+         FROM product_collection_map pcm 
+         INNER JOIN products p ON p.id = pcm.product_id 
+         WHERE pcm.collection_id = pc.id 
+           AND p.store_id = $1 
+           AND p.status = 'active'
+        ) as products_count
       FROM product_collections pc
-      WHERE pc.store_id = $1 AND pc.published_at IS NOT NULL
-      ORDER BY pc.sort_order ASC, pc.title ASC
+      WHERE pc.store_id = $1 
+        AND pc.published_at IS NOT NULL
+      ORDER BY COALESCE(pc.parent_id, pc.id), pc.sort_order ASC, pc.title ASC
       LIMIT $2
     `;
 
@@ -62,6 +71,7 @@ export async function GET(request: NextRequest) {
       title: c.title,
       handle: c.handle,
       image_url: c.image_url,
+      parent_id: c.parent_id,
       products_count: parseInt(c.products_count) || 0,
     }));
 
