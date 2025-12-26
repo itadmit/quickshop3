@@ -21,11 +21,16 @@ export function Button({ section, onUpdate, editorDevice }: ButtonProps) {
   const buttonStyleType = settings.button_style_type || 'solid';
   const textAlign = settings.text_align || 'right';
 
+  // Typography settings - use specific typography for button
+  const buttonTypography = style.typography?.button || {};
+  
   const bgColor = style.button?.background_color || '#000000';
-  const textColor = style.button?.text_color || '#FFFFFF';
+  const textColor = buttonTypography.color || style.button?.text_color || '#FFFFFF';
   const hoverBgColor = style.button?.hover_background_color || '#333333';
   const hoverTextColor = style.button?.hover_text_color || '#FFFFFF';
   const borderRadius = style.button?.border_radius || '8px';
+  
+  const fontFamily = buttonTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
 
   const getButtonSizeClasses = () => {
     switch (buttonSize) {
@@ -89,7 +94,7 @@ export function Button({ section, onUpdate, editorDevice }: ButtonProps) {
   };
 
   return (
-    <div className={`w-full flex ${getTextAlignClass()}`}>
+    <div className={`w-full flex ${getTextAlignClass()}`} style={{ fontFamily }}>
       <Link
         href={buttonUrl}
         className={cn(
@@ -97,7 +102,15 @@ export function Button({ section, onUpdate, editorDevice }: ButtonProps) {
           getButtonSizeClasses(),
           classes
         )}
-        style={inlineStyle}
+        style={{
+          ...inlineStyle,
+          fontFamily: buttonTypography.font_family || fontFamily,
+          fontSize: buttonTypography.font_size || undefined,
+          fontWeight: buttonTypography.font_weight || undefined,
+          lineHeight: buttonTypography.line_height || undefined,
+          letterSpacing: buttonTypography.letter_spacing || undefined,
+          textTransform: buttonTypography.text_transform || undefined,
+        }}
       >
         {buttonText}
       </Link>

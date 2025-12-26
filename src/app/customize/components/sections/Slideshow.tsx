@@ -52,8 +52,11 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
   // Image position (object-position)
   const imagePosition = settings.image_position || 'center';
   
-  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
-  const textColor = style.typography?.color || '#FFFFFF';
+  // Typography settings - use specific typography for heading
+  const headingTypography = style.typography?.heading || {};
+  
+  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = headingTypography.color || style.typography?.color || '#FFFFFF';
   
   // Slide heading font size
   const getSlideHeadingSizeClass = () => {
@@ -153,12 +156,33 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
             <div className={`absolute inset-0 flex ${getVerticalPositionClass()} ${getHorizontalPositionClass()} px-8`} style={{ fontFamily }}>
               <div className={`max-w-4xl space-y-6 flex flex-col ${getTextAlignClass()}`}>
                 {slide.content?.heading && (
-                  <h2 className={`${getSlideHeadingSizeClass()} font-bold text-white drop-shadow-md`}>
+                  <h2 
+                    className={`${getSlideHeadingSizeClass()} text-white drop-shadow-md`}
+                    style={{
+                      color: slide.style?.typography?.color || headingTypography.color || textColor,
+                      fontFamily: slide.style?.typography?.font_family || headingTypography.font_family || fontFamily,
+                      fontSize: slide.style?.typography?.font_size || headingTypography.font_size || undefined,
+                      fontWeight: slide.style?.typography?.font_weight || headingTypography.font_weight || 'bold',
+                      lineHeight: slide.style?.typography?.line_height || headingTypography.line_height || undefined,
+                      letterSpacing: slide.style?.typography?.letter_spacing || headingTypography.letter_spacing || undefined,
+                      textTransform: slide.style?.typography?.text_transform || headingTypography.text_transform || undefined,
+                    }}
+                  >
                     {slide.content.heading}
                   </h2>
                 )}
                 {slide.content?.subheading && (
-                  <p className={`${getSlideSubheadingSizeClass()} text-white/90 drop-shadow-sm`}>
+                  <p 
+                    className={`${getSlideSubheadingSizeClass()} text-white/90 drop-shadow-sm`}
+                    style={{
+                      color: slide.style?.typography?.color || headingTypography.color || textColor,
+                      fontFamily: slide.style?.typography?.font_family || headingTypography.font_family || fontFamily,
+                      fontSize: slide.style?.typography?.font_size || headingTypography.font_size || undefined,
+                      fontWeight: slide.style?.typography?.font_weight || headingTypography.font_weight || undefined,
+                      lineHeight: slide.style?.typography?.line_height || headingTypography.line_height || undefined,
+                      letterSpacing: slide.style?.typography?.letter_spacing || headingTypography.letter_spacing || undefined,
+                    }}
+                  >
                     {slide.content.subheading}
                   </p>
                 )}

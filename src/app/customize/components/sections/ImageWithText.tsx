@@ -108,8 +108,13 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
     return { className: `${baseClasses} ${styleClasses}`, style: inlineStyles };
   };
 
-  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
-  const textColor = style.typography?.color || '#111827';
+  // Typography settings - use specific typography for heading, content, button
+  const headingTypography = style.typography?.heading || {};
+  const contentTypography = style.typography?.content || {};
+  const buttonTypography = style.typography?.button || {};
+  
+  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = headingTypography.color || style.typography?.color || '#111827';
   
   // Heading font size
   const getHeadingSizeClass = () => {
@@ -176,7 +181,18 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
             <div className="w-full flex-1">
                 <div className={`flex flex-col ${textBlock?.style?.text_align === 'center' ? 'items-center text-center' : textBlock?.style?.text_align === 'left' ? 'items-end text-left' : 'items-start text-right'}`}>
                     {textBlock?.content?.heading && (
-                        <h2 className={`${getHeadingSizeClass()} font-bold mb-6`} style={{ color: textColor }}>
+                        <h2 
+                            className={`${getHeadingSizeClass()} mb-6`} 
+                            style={{ 
+                                color: headingTypography.color || textColor,
+                                fontFamily: headingTypography.font_family || fontFamily,
+                                fontSize: headingTypography.font_size || undefined,
+                                fontWeight: headingTypography.font_weight || 'bold',
+                                lineHeight: headingTypography.line_height || undefined,
+                                letterSpacing: headingTypography.letter_spacing || undefined,
+                                textTransform: headingTypography.text_transform || undefined,
+                            }}
+                        >
                             {textBlock.content.heading}
                         </h2>
                     )}
@@ -185,7 +201,14 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
                         <div 
                             className={`${getTextSizeClass()} text-gray-600 mb-8 max-w-none`}
                             dangerouslySetInnerHTML={{ __html: textBlock.content.text }}
-                            style={{ color: textColor ? `${textColor}CC` : undefined }}
+                            style={{ 
+                                color: contentTypography.color || (textColor ? `${textColor}CC` : undefined),
+                                fontFamily: contentTypography.font_family || fontFamily,
+                                fontSize: contentTypography.font_size || undefined,
+                                fontWeight: contentTypography.font_weight || undefined,
+                                lineHeight: contentTypography.line_height || undefined,
+                                letterSpacing: contentTypography.letter_spacing || undefined,
+                            }}
                         />
                     )}
 
@@ -193,6 +216,15 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
                         <a 
                             href={textBlock.content.button_url || '#'}
                             {...getButtonStyles()}
+                            style={{
+                                ...getButtonStyles().style,
+                                fontFamily: buttonTypography.font_family || fontFamily,
+                                fontSize: buttonTypography.font_size || undefined,
+                                fontWeight: buttonTypography.font_weight || undefined,
+                                lineHeight: buttonTypography.line_height || undefined,
+                                letterSpacing: buttonTypography.letter_spacing || undefined,
+                                textTransform: buttonTypography.text_transform || undefined,
+                            }}
                             onMouseEnter={(e) => {
                                 const hoverBg = style.button?.hover_background_color;
                                 const hoverText = style.button?.hover_text_color;
@@ -202,7 +234,7 @@ function ImageWithTextComponent({ section, onUpdate, editorDevice }: ImageWithTe
                             onMouseLeave={(e) => {
                                 // Reset logic duplicated from HeroBanner
                                 const normalBg = style.button?.background_color || '#2563EB';
-                                const normalText = style.button?.text_color || '#FFFFFF';
+                                const normalText = buttonTypography.color || style.button?.text_color || '#FFFFFF';
                                 const bStyle = style.button?.style || 'solid';
                                 
                                 if (bStyle === 'solid') {

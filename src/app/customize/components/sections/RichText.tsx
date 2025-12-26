@@ -35,8 +35,12 @@ export function RichText({ section, onUpdate }: RichTextProps) {
      }
   };
 
-  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
-  const textColor = style.typography?.color || '#111827';
+  // Typography settings - use specific typography for heading, content
+  const headingTypography = style.typography?.heading || {};
+  const contentTypography = style.typography?.content || {};
+  
+  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = headingTypography.color || style.typography?.color || '#111827';
   
   // Heading font size
   const getHeadingSizeClass = () => {
@@ -69,30 +73,77 @@ export function RichText({ section, onUpdate }: RichTextProps) {
             {/* If no blocks, show generic placeholder */}
             {blocks.length === 0 && (
                 <>
-                    <h2 className={`${getHeadingSizeClass()} font-bold mb-6`} style={{ color: textColor }}>טקסט עשיר</h2>
-                    <p className={`${getTextSizeClass()} mb-6 max-w-none`} style={{ color: textColor ? `${textColor}CC` : '#4B5563' }}>
+                    <h2 
+                        className={`${getHeadingSizeClass()} mb-6`} 
+                        style={{ 
+                            color: headingTypography.color || textColor,
+                            fontFamily: headingTypography.font_family || fontFamily,
+                            fontSize: headingTypography.font_size || undefined,
+                            fontWeight: headingTypography.font_weight || 'bold',
+                            lineHeight: headingTypography.line_height || undefined,
+                            letterSpacing: headingTypography.letter_spacing || undefined,
+                            textTransform: headingTypography.text_transform || undefined,
+                        }}
+                    >
+                        טקסט עשיר
+                    </h2>
+                    <p 
+                        className={`${getTextSizeClass()} mb-6 max-w-none`} 
+                        style={{ 
+                            color: contentTypography.color || (textColor ? `${textColor}CC` : '#4B5563'),
+                            fontFamily: contentTypography.font_family || fontFamily,
+                            fontSize: contentTypography.font_size || undefined,
+                            fontWeight: contentTypography.font_weight || undefined,
+                            lineHeight: contentTypography.line_height || undefined,
+                            letterSpacing: contentTypography.letter_spacing || undefined,
+                        }}
+                    >
                         כאן ניתן להוסיף טקסט עשיר עם עיצוב, קישורים, רשימות וכו'. הוסף בלוק טקסט כדי להתחיל.
                     </p>
                 </>
             )}
 
             {/* Render Blocks */}
-            {blocks.map(block => (
-                <div key={block.id} className="mb-6 last:mb-0">
-                    {block.content?.heading && (
-                        <h2 className={`${getHeadingSizeClass()} font-bold mb-4`} style={{ color: textColor }}>
-                            {block.content.heading}
-                        </h2>
-                    )}
-                    {block.content?.text && (
-                        <div 
-                            className={`${getTextSizeClass()} max-w-none`}
-                            dangerouslySetInnerHTML={{ __html: block.content.text }}
-                            style={{ color: textColor ? `${textColor}CC` : undefined }}
-                        />
-                    )}
-                </div>
-            ))}
+            {blocks.map(block => {
+                // Get block-specific typography or fallback to section typography
+                const blockHeadingTypography = block.style?.typography || headingTypography;
+                const blockContentTypography = block.style?.typography || contentTypography;
+                
+                return (
+                    <div key={block.id} className="mb-6 last:mb-0">
+                        {block.content?.heading && (
+                            <h2 
+                                className={`${getHeadingSizeClass()} mb-4`} 
+                                style={{ 
+                                    color: blockHeadingTypography.color || headingTypography.color || textColor,
+                                    fontFamily: blockHeadingTypography.font_family || headingTypography.font_family || fontFamily,
+                                    fontSize: blockHeadingTypography.font_size || headingTypography.font_size || undefined,
+                                    fontWeight: blockHeadingTypography.font_weight || headingTypography.font_weight || 'bold',
+                                    lineHeight: blockHeadingTypography.line_height || headingTypography.line_height || undefined,
+                                    letterSpacing: blockHeadingTypography.letter_spacing || headingTypography.letter_spacing || undefined,
+                                    textTransform: blockHeadingTypography.text_transform || headingTypography.text_transform || undefined,
+                                }}
+                            >
+                                {block.content.heading}
+                            </h2>
+                        )}
+                        {block.content?.text && (
+                            <div 
+                                className={`${getTextSizeClass()} max-w-none`}
+                                dangerouslySetInnerHTML={{ __html: block.content.text }}
+                                style={{ 
+                                    color: blockContentTypography.color || contentTypography.color || (textColor ? `${textColor}CC` : undefined),
+                                    fontFamily: blockContentTypography.font_family || contentTypography.font_family || fontFamily,
+                                    fontSize: blockContentTypography.font_size || contentTypography.font_size || undefined,
+                                    fontWeight: blockContentTypography.font_weight || contentTypography.font_weight || undefined,
+                                    lineHeight: blockContentTypography.line_height || contentTypography.line_height || undefined,
+                                    letterSpacing: blockContentTypography.letter_spacing || contentTypography.letter_spacing || undefined,
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            })}
         </div>
       </div>
     </div>

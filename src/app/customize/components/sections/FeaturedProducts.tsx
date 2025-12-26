@@ -258,8 +258,11 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   const contentAlignClass = settings.content_align === 'left' ? 'text-left' : settings.content_align === 'center' ? 'text-center' : 'text-right';
   const flexAlignClass = settings.content_align === 'left' ? 'items-end' : settings.content_align === 'center' ? 'items-center' : 'items-start';
   
-  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
-  const textColor = style.typography?.color || '#111827';
+  // Typography settings - use specific typography for heading
+  const headingTypography = style.typography?.heading || {};
+  
+  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = headingTypography.color || style.typography?.color || '#111827';
   
   // Title font size
   const getTitleSizeClass = () => {
@@ -309,8 +312,16 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
           }`}>
             {settings.title && (
               <h2 
-                className={`${getTitleSizeClass()} font-bold text-gray-900`}
-                style={{ color: textColor }}
+                className={`${getTitleSizeClass()} text-gray-900`}
+                style={{ 
+                  color: headingTypography.color || textColor,
+                  fontFamily: headingTypography.font_family || fontFamily,
+                  fontSize: headingTypography.font_size || undefined,
+                  fontWeight: headingTypography.font_weight || 'bold',
+                  lineHeight: headingTypography.line_height || undefined,
+                  letterSpacing: headingTypography.letter_spacing || undefined,
+                  textTransform: headingTypography.text_transform || undefined,
+                }}
               >
                 {settings.title}
               </h2>

@@ -70,13 +70,18 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
     }
   };
 
-  // Base text color from style panel
-  const textColor = section.style?.typography?.color || '#111827';
+  // Typography settings - use specific typography for heading, content, button
+  const headingTypography = section.style?.typography?.heading || {};
+  const contentTypography = section.style?.typography?.content || {};
+  const buttonTypography = section.style?.typography?.button || {};
+  
+  // Base text color from style panel (fallback)
+  const textColor = headingTypography.color || section.style?.typography?.color || '#111827';
   
   // We can derive a lighter shade for subheading or just use opacity
-  const subheadingColor = section.style?.typography?.color 
+  const subheadingColor = contentTypography.color || (section.style?.typography?.color 
     ? `${section.style.typography.color}CC` // 80% opacity hex
-    : '#4B5563';
+    : '#4B5563');
 
   // Button styles
   const getButtonStyles = () => {
@@ -140,8 +145,8 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
     return { className: `${baseClasses} ${styleClasses}`, style: inlineStyles };
   };
 
-  // Font family
-  const fontFamily = section.style?.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  // Font family - use heading typography or fallback
+  const fontFamily = headingTypography.font_family || section.style?.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   
   // Heading font size
   const getHeadingSizeClass = () => {
@@ -177,8 +182,16 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
         {/* Heading */}
         {settings.heading && (
           <h1 
-            className={`${getHeadingSizeClass()} font-bold mb-6 max-w-4xl`}
-            style={{ color: textColor }}
+            className={`${getHeadingSizeClass()} mb-6 max-w-4xl`}
+            style={{ 
+              color: headingTypography.color || textColor,
+              fontFamily: headingTypography.font_family || fontFamily,
+              fontSize: headingTypography.font_size || undefined,
+              fontWeight: headingTypography.font_weight || 'bold',
+              lineHeight: headingTypography.line_height || undefined,
+              letterSpacing: headingTypography.letter_spacing || undefined,
+              textTransform: headingTypography.text_transform || undefined,
+            }}
           >
             {settings.heading}
           </h1>
@@ -188,7 +201,14 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
         {settings.subheading && (
           <p 
             className={`${getSubheadingSizeClass()} mb-8 max-w-2xl`}
-            style={{ color: subheadingColor }}
+            style={{ 
+              color: contentTypography.color || subheadingColor,
+              fontFamily: contentTypography.font_family || fontFamily,
+              fontSize: contentTypography.font_size || undefined,
+              fontWeight: contentTypography.font_weight || undefined,
+              lineHeight: contentTypography.line_height || undefined,
+              letterSpacing: contentTypography.letter_spacing || undefined,
+            }}
           >
             {settings.subheading}
           </p>
@@ -199,6 +219,15 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
           <a 
             href={settings.button_url || '#'}
             {...getButtonStyles()}
+            style={{
+              ...getButtonStyles().style,
+              fontFamily: buttonTypography.font_family || fontFamily,
+              fontSize: buttonTypography.font_size || undefined,
+              fontWeight: buttonTypography.font_weight || undefined,
+              lineHeight: buttonTypography.line_height || undefined,
+              letterSpacing: buttonTypography.letter_spacing || undefined,
+              textTransform: buttonTypography.text_transform || undefined,
+            }}
             onMouseEnter={(e) => {
               const hoverBg = section.style?.button?.hover_background_color;
               const hoverText = section.style?.button?.hover_text_color;
@@ -207,7 +236,7 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
             }}
             onMouseLeave={(e) => {
               const normalBg = section.style?.button?.background_color || '#2563EB';
-              const normalText = section.style?.button?.text_color || '#FFFFFF';
+              const normalText = buttonTypography.color || section.style?.button?.text_color || '#FFFFFF';
               const buttonStyle = section.style?.button?.style || 'solid';
               
               if (buttonStyle === 'solid') {

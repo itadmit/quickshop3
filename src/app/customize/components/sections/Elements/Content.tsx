@@ -13,8 +13,11 @@ export function Content({ section, onUpdate, editorDevice }: ContentProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
-  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
-  const textColor = style.typography?.color || '#111827';
+  // Typography settings - use specific typography for content
+  const contentTypography = style.typography?.content || {};
+  
+  const fontFamily = contentTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = contentTypography.color || style.typography?.color || '#111827';
   
   // Text size
   const getTextSizeClass = () => {
@@ -39,7 +42,14 @@ export function Content({ section, onUpdate, editorDevice }: ContentProps) {
       <div
         className={`prose max-w-none ${getTextSizeClass()} ${getAlignClass()}`}
         dangerouslySetInnerHTML={{ __html: settings.content || 'הזן תוכן עשיר כאן...' }}
-        style={{ color: textColor }}
+        style={{ 
+          color: contentTypography.color || textColor,
+          fontFamily: contentTypography.font_family || fontFamily,
+          fontSize: contentTypography.font_size || undefined,
+          fontWeight: contentTypography.font_weight || undefined,
+          lineHeight: contentTypography.line_height || undefined,
+          letterSpacing: contentTypography.letter_spacing || undefined,
+        }}
       />
     </div>
   );

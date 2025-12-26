@@ -16,6 +16,14 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
   const style = section.style || {};
   const blocks = section.blocks || [];
   
+  // Typography settings - use specific typography for heading, content, button
+  const headingTypography = style.typography?.heading || {};
+  const contentTypography = style.typography?.content || {};
+  const buttonTypography = style.typography?.button || {};
+  
+  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = headingTypography.color || style.typography?.color || '#111827';
+  
   // Settings
   const title = settings.title || '';
   const titleAlign = settings.title_align || 'center';
@@ -172,10 +180,21 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
   // If no blocks, show empty state
   if (blocks.length === 0) {
     return (
-      <div className="py-12 px-4">
+      <div className="py-12 px-4" style={{ fontFamily }}>
         <div className="max-w-6xl mx-auto">
           {title && (
-            <h2 className={`${getTitleSizeClass()} font-bold mb-8 ${textAlignClasses[titleAlign]}`}>
+            <h2 
+              className={`${getTitleSizeClass()} mb-8 ${textAlignClasses[titleAlign]}`}
+              style={{
+                color: headingTypography.color || textColor,
+                fontFamily: headingTypography.font_family || fontFamily,
+                fontSize: headingTypography.font_size || undefined,
+                fontWeight: headingTypography.font_weight || 'bold',
+                lineHeight: headingTypography.line_height || undefined,
+                letterSpacing: headingTypography.letter_spacing || undefined,
+                textTransform: headingTypography.text_transform || undefined,
+              }}
+            >
               {title}
             </h2>
           )}
@@ -189,8 +208,33 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
                 >
                   <HiPhotograph className="w-12 h-12 text-gray-300" />
                 </div>
-                <h3 className={`${getColumnHeadingSizeClass()} font-semibold text-gray-800 mb-2`}>כותרת עמודה</h3>
-                <p className={`${getColumnTextSizeClass()} text-gray-500`}>הוסף תוכן דרך סרגל העריכה</p>
+                <h3 
+                  className={`${getColumnHeadingSizeClass()} mb-2`}
+                  style={{
+                    color: headingTypography.color || textColor,
+                    fontFamily: headingTypography.font_family || fontFamily,
+                    fontSize: headingTypography.font_size || undefined,
+                    fontWeight: headingTypography.font_weight || '600',
+                    lineHeight: headingTypography.line_height || undefined,
+                    letterSpacing: headingTypography.letter_spacing || undefined,
+                    textTransform: headingTypography.text_transform || undefined,
+                  }}
+                >
+                  כותרת עמודה
+                </h3>
+                <p 
+                  className={`${getColumnTextSizeClass()}`}
+                  style={{
+                    color: contentTypography.color || '#4B5563',
+                    fontFamily: contentTypography.font_family || fontFamily,
+                    fontSize: contentTypography.font_size || undefined,
+                    fontWeight: contentTypography.font_weight || undefined,
+                    lineHeight: contentTypography.line_height || undefined,
+                    letterSpacing: contentTypography.letter_spacing || undefined,
+                  }}
+                >
+                  הוסף תוכן דרך סרגל העריכה
+                </p>
               </div>
             ))}
           </div>
@@ -200,10 +244,21 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
   }
 
   return (
-    <div className="py-12 px-4">
+    <div className="py-12 px-4" style={{ fontFamily }}>
       <div className="max-w-6xl mx-auto">
         {title && (
-          <h2 className={`${getTitleSizeClass()} font-bold mb-8 ${textAlignClasses[titleAlign]}`}>
+          <h2 
+            className={`${getTitleSizeClass()} mb-8 ${textAlignClasses[titleAlign]}`}
+            style={{
+              color: headingTypography.color || textColor,
+              fontFamily: headingTypography.font_family || fontFamily,
+              fontSize: headingTypography.font_size || undefined,
+              fontWeight: headingTypography.font_weight || 'bold',
+              lineHeight: headingTypography.line_height || undefined,
+              letterSpacing: headingTypography.letter_spacing || undefined,
+              textTransform: headingTypography.text_transform || undefined,
+            }}
+          >
             {title}
           </h2>
         )}
@@ -242,12 +297,33 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
               {/* Content */}
               <div className="space-y-2">
                 {block.content?.heading && (
-                  <h3 className={`${getColumnHeadingSizeClass()} font-semibold text-gray-800`}>
+                  <h3 
+                    className={`${getColumnHeadingSizeClass()}`}
+                    style={{
+                      color: block.style?.typography?.color || headingTypography.color || textColor,
+                      fontFamily: block.style?.typography?.font_family || headingTypography.font_family || fontFamily,
+                      fontSize: block.style?.typography?.font_size || headingTypography.font_size || undefined,
+                      fontWeight: block.style?.typography?.font_weight || headingTypography.font_weight || '600',
+                      lineHeight: block.style?.typography?.line_height || headingTypography.line_height || undefined,
+                      letterSpacing: block.style?.typography?.letter_spacing || headingTypography.letter_spacing || undefined,
+                      textTransform: block.style?.typography?.text_transform || headingTypography.text_transform || undefined,
+                    }}
+                  >
                     {block.content.heading}
                   </h3>
                 )}
                 {block.content?.text && (
-                  <p className={`${getColumnTextSizeClass()} text-gray-600`}>
+                  <p 
+                    className={`${getColumnTextSizeClass()}`}
+                    style={{
+                      color: block.style?.typography?.color || contentTypography.color || '#4B5563',
+                      fontFamily: block.style?.typography?.font_family || contentTypography.font_family || fontFamily,
+                      fontSize: block.style?.typography?.font_size || contentTypography.font_size || undefined,
+                      fontWeight: block.style?.typography?.font_weight || contentTypography.font_weight || undefined,
+                      lineHeight: block.style?.typography?.line_height || contentTypography.line_height || undefined,
+                      letterSpacing: block.style?.typography?.letter_spacing || contentTypography.letter_spacing || undefined,
+                    }}
+                  >
                     {block.content.text}
                   </p>
                 )}
@@ -255,6 +331,15 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
                   <Link 
                     href={block.content.button_url}
                     {...getButtonStyles()}
+                    style={{
+                      ...getButtonStyles().style,
+                      fontFamily: buttonTypography.font_family || fontFamily,
+                      fontSize: buttonTypography.font_size || undefined,
+                      fontWeight: buttonTypography.font_weight || undefined,
+                      lineHeight: buttonTypography.line_height || undefined,
+                      letterSpacing: buttonTypography.letter_spacing || undefined,
+                      textTransform: buttonTypography.text_transform || undefined,
+                    }}
                     onMouseEnter={(e) => {
                       const hoverBg = style.button?.hover_background_color;
                       const hoverText = style.button?.hover_text_color;
@@ -265,7 +350,7 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
                       const buttonStyleObj = style.button || {};
                       const buttonStyle = buttonStyleObj.style || 'link';
                       const normalBg = buttonStyleObj.background_color || (buttonStyle === 'solid' ? '#2563EB' : 'transparent');
-                      const normalText = buttonStyleObj.text_color || '#2563EB';
+                      const normalText = buttonTypography.color || buttonStyleObj.text_color || '#2563EB';
                       
                       if (buttonStyle === 'solid' || buttonStyle === 'black' || buttonStyle === 'white') {
                         e.currentTarget.style.backgroundColor = normalBg;

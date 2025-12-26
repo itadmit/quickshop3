@@ -14,8 +14,11 @@ export function FAQ({ section, onUpdate }: FAQProps) {
   const style = section.style || {};
   const blocks = section.blocks?.filter(b => b.type === 'text') || [];
   
+  // Typography settings - use specific typography for heading
+  const headingTypography = style.typography?.heading || {};
+  
   // Text color from style settings
-  const textColor = style.typography?.color;
+  const textColor = headingTypography.color || style.typography?.color;
   
   const [openItems, setOpenItems] = React.useState<string[]>([]);
 
@@ -27,7 +30,7 @@ export function FAQ({ section, onUpdate }: FAQProps) {
 
   const maxWidthClass = settings.width === 'narrow' ? 'max-w-3xl' : 'max-w-5xl';
   
-  const fontFamily = style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
   
   // Title font size
   const getTitleSizeClass = () => {
@@ -71,12 +74,33 @@ export function FAQ({ section, onUpdate }: FAQProps) {
         {/* Header */}
         <div className="text-center mb-12">
           {settings.title && (
-            <h2 className={`${getTitleSizeClass()} font-bold mb-4`} style={{ color: textColor }}>
+            <h2 
+              className={`${getTitleSizeClass()} mb-4`} 
+              style={{ 
+                color: headingTypography.color || textColor,
+                fontFamily: headingTypography.font_family || fontFamily,
+                fontSize: headingTypography.font_size || undefined,
+                fontWeight: headingTypography.font_weight || 'bold',
+                lineHeight: headingTypography.line_height || undefined,
+                letterSpacing: headingTypography.letter_spacing || undefined,
+                textTransform: headingTypography.text_transform || undefined,
+              }}
+            >
               {settings.title}
             </h2>
           )}
           {settings.subtitle && (
-            <p className={`${getSubtitleSizeClass()} opacity-80`} style={{ color: textColor }}>
+            <p 
+              className={`${getSubtitleSizeClass()} opacity-80`} 
+              style={{ 
+                color: headingTypography.color || textColor,
+                fontFamily: headingTypography.font_family || fontFamily,
+                fontSize: headingTypography.font_size || undefined,
+                fontWeight: headingTypography.font_weight || undefined,
+                lineHeight: headingTypography.line_height || undefined,
+                letterSpacing: headingTypography.letter_spacing || undefined,
+              }}
+            >
               {settings.subtitle}
             </p>
           )}
@@ -96,7 +120,18 @@ export function FAQ({ section, onUpdate }: FAQProps) {
                     onClick={() => toggleItem(block.id)}
                     className="w-full flex items-center justify-between p-6 text-right bg-white hover:bg-gray-50 transition-colors"
                   >
-                    <span className={`font-medium ${getQuestionSizeClass()}`} style={{ color: textColor || '#111827' }}>
+                    <span 
+                      className={`font-medium ${getQuestionSizeClass()}`} 
+                      style={{ 
+                        color: block.style?.typography?.color || headingTypography.color || textColor || '#111827',
+                        fontFamily: block.style?.typography?.font_family || headingTypography.font_family || fontFamily,
+                        fontSize: block.style?.typography?.font_size || headingTypography.font_size || undefined,
+                        fontWeight: block.style?.typography?.font_weight || headingTypography.font_weight || '500',
+                        lineHeight: block.style?.typography?.line_height || headingTypography.line_height || undefined,
+                        letterSpacing: block.style?.typography?.letter_spacing || headingTypography.letter_spacing || undefined,
+                        textTransform: block.style?.typography?.text_transform || headingTypography.text_transform || undefined,
+                      }}
+                    >
                       {block.content?.heading || 'שאלה לדוגמה?'}
                     </span>
                     <span className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>

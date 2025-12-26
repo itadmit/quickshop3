@@ -171,6 +171,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   const [collections, setCollections] = useState<Array<{ id: number; title: string; handle: string; parent_id?: number | null }>>([]);
   const [typographyAnchor, setTypographyAnchor] = useState<HTMLElement | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [selectedSectionType, setSelectedSectionType] = useState<string | null>(null);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [collectionSearchTerm, setCollectionSearchTerm] = useState('');
   const debouncedCollectionSearch = useDebounce(collectionSearchTerm, 300);
