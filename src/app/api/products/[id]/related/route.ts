@@ -1,28 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { getStoreIdBySlug } from '@/lib/utils/store';
 
 /**
- * GET /api/products/[id]/related
+ * GET /api/products/[id]/related?storeId=X or &storeSlug=X
  * Returns related products based on:
  * 1. Same collection
  * 2. Same vendor
  * 3. Similar product type
  * Falls back to random products from the same store if not enough matches
+ * Supports both authenticated (dashboard) and unauthenticated (storefront) access
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
     const productId = parseInt(id, 10);
-    const storeId = user.store_id;
+    
+    const { searchParams } = new URL(request.url);
+    const storeIdParam = searchParams.get('storeId');
+    const storeSlugParam = searchParams.get('storeSlug');
+    
+    // Try to get user (for dashboard access)
+    const user = await getUserFromRequest(request).catch(() => null);
+    let storeId: number | null = null;
+    
+    // Determine storeId: from user (authenticated), from storeId param, or from storeSlug param
+    if (user) {
+      storeId = user.store_id;
+    } else if (storeIdParam) {
+      storeId = parseInt(storeIdParam);
+    } else if (storeSlugParam) {
+      storeId = await getStoreIdBySlug(storeSlugParam);
+    }
+    
+    // For storefront access, storeId or storeSlug is required
+    if (!storeId) {
+      return NextResponse.json({ error: 'storeId or storeSlug is required' }, { status: 400 });
+    }
     
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });

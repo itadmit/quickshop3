@@ -1,21 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { getStoreIdBySlug } from '@/lib/utils/store';
 
 /**
- * GET /api/products/by-ids?ids=1,2,3
- * Returns products by their IDs (only from user's store)
+ * GET /api/products/by-ids?ids=1,2,3&storeId=X or &storeSlug=X
+ * Returns products by their IDs
+ * Supports both authenticated (dashboard) and unauthenticated (storefront) access
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get('ids');
-    const storeId = user.store_id;
+    const storeIdParam = searchParams.get('storeId');
+    const storeSlugParam = searchParams.get('storeSlug');
+    
+    // Try to get user (for dashboard access)
+    const user = await getUserFromRequest(request).catch(() => null);
+    let storeId: number | null = null;
+    
+    // Determine storeId: from user (authenticated), from storeId param, or from storeSlug param
+    if (user) {
+      storeId = user.store_id;
+    } else if (storeIdParam) {
+      storeId = parseInt(storeIdParam);
+    } else if (storeSlugParam) {
+      storeId = await getStoreIdBySlug(storeSlugParam);
+    }
+    
+    // For storefront access, storeId or storeSlug is required
+    if (!storeId) {
+      return NextResponse.json({ error: 'storeId or storeSlug is required' }, { status: 400 });
+    }
     
     if (!idsParam) {
       return NextResponse.json({ products: [] });

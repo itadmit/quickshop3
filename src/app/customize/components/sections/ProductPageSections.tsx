@@ -1229,7 +1229,11 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
       }
       
       try {
-        const response = await fetch(`/api/products/${product.id}/related?limit=${productsCount}`);
+        // Use storeSlug for storefront access (no auth required)
+        const url = storeSlug 
+          ? `/api/products/${product.id}/related?limit=${productsCount}&storeSlug=${storeSlug}`
+          : `/api/products/${product.id}/related?limit=${productsCount}`;
+        const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
           setRelatedProducts(data.products || []);
@@ -1337,7 +1341,11 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
           return;
         }
         
-        const response = await fetch(`/api/products/by-ids?ids=${filteredIds.join(',')}`);
+        // Use storeSlug for storefront access (no auth required)
+        const url = storeSlug 
+          ? `/api/products/by-ids?ids=${filteredIds.join(',')}&storeSlug=${storeSlug}`
+          : `/api/products/by-ids?ids=${filteredIds.join(',')}`;
+        const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
           setRecentProducts(data.products || []);

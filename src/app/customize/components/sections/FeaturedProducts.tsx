@@ -134,7 +134,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
         // If manual mode is selected, load specific products by IDs
         if (productSelectionMode === 'manual' && selectedProductIds.length > 0) {
           const idsParam = selectedProductIds.join(',');
-          const response = await fetch(`/api/products/by-ids?ids=${idsParam}`);
+          const response = await fetch(`/api/products/by-ids?ids=${idsParam}&storeId=${storeId}`);
           if (response.ok) {
             const data = await response.json();
             loadedProducts = (data.products || []).map((p: any) => ({
