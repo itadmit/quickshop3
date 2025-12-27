@@ -4,7 +4,6 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiStar, HiShoppingBag } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useStoreId } from '@/hooks/useStoreId';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { areSectionsEqual } from './sectionMemoUtils';
@@ -30,16 +29,99 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
-  const storeId = useStoreId();
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
   
+  // Get storeId from user session (for customizer) or from URL (for storefront)
+  const [storeId, setStoreId] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   
-  
   // Use a stable key based on section ID to persist refs across remounts
   const sectionKey = `featured-products-${section.id}`;
+  
+  // Clear products immediately on mount to prevent showing wrong store's products
+  // Also clear sessionStorage if in preview mode (customizer)
+  useEffect(() => {
+    setProducts([]);
+    if (isPreview) {
+      // In preview mode, clear any stored products to prevent showing wrong store's products
+      sessionStorage.removeItem(`${sectionKey}-loaded`);
+      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
+      sessionStorage.removeItem(`${sectionKey}-products`);
+      sessionStorage.removeItem(`${sectionKey}-storeId`);
+    }
+  }, [isPreview, sectionKey]);
+  
+  // Helper function to clear sessionStorage for wrong storeId
+  const clearSessionStorageForWrongStore = (currentStoreId: number) => {
+    if (typeof window === 'undefined') return;
+    
+    // Check all sessionStorage keys for this section
+    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
+    if (storedStoreId && parseInt(storedStoreId) !== currentStoreId) {
+      sessionStorage.removeItem(`${sectionKey}-products`);
+      sessionStorage.removeItem(`${sectionKey}-loaded`);
+      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
+      sessionStorage.removeItem(`${sectionKey}-storeId`);
+      setProducts([]);
+    }
+  };
+  
+  // Load storeId from user session (for customizer) or from URL (for storefront)
+  useEffect(() => {
+    const loadStoreId = async () => {
+      // If we have storeSlug in URL, try to get from localStorage first (for storefront)
+      if (storeSlug) {
+        if (typeof window !== 'undefined') {
+          const storedSlug = localStorage.getItem('quickshop_cart_store_slug');
+          const storedId = localStorage.getItem('quickshop_cart_store_id');
+          if (storedSlug === storeSlug && storedId) {
+            const parsedStoreId = parseInt(storedId);
+            setStoreId(parsedStoreId);
+            // Clear sessionStorage for wrong storeId
+            clearSessionStorageForWrongStore(parsedStoreId);
+            return;
+          }
+        }
+        // If not in localStorage, try API
+        try {
+          const response = await fetch(`/api/stores/${storeSlug}/id`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.storeId) {
+              setStoreId(data.storeId);
+              // Clear sessionStorage for wrong storeId
+              clearSessionStorageForWrongStore(data.storeId);
+              return;
+            }
+          }
+        } catch (error) {
+          // Error loading storeId from slug - ignore
+        }
+      }
+      
+      // Otherwise, get from user session (for customizer)
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.store?.id) {
+            setStoreId(data.store.id);
+            // Clear sessionStorage for wrong storeId
+            clearSessionStorageForWrongStore(data.store.id);
+          }
+        }
+      } catch (error) {
+        // Error loading storeId from session - ignore
+      }
+    };
+    
+    loadStoreId();
+  }, [storeSlug, sectionKey]);
+  
   const loadedRef = useRef<string>('');
   const prevSettingsRef = useRef<{ productsCount: number; productSelectionMode: string; selectedIdsString: string }>({ 
     productsCount: 0, 
@@ -48,30 +130,51 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   });
   
   // Initialize refs and products from sessionStorage if available (to persist across remounts)
+  // BUT: Only load if storeId matches to prevent showing products from wrong store
+  // IMPORTANT: This runs AFTER storeId is loaded
   useEffect(() => {
+    // Don't do anything if storeId is not loaded yet
+    if (!storeId) {
+      return;
+    }
+    
     const storedLoadedKey = sessionStorage.getItem(`${sectionKey}-loaded`);
     const storedPrevSettings = sessionStorage.getItem(`${sectionKey}-prevSettings`);
     const storedProducts = sessionStorage.getItem(`${sectionKey}-products`);
+    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
     
-    if (storedLoadedKey) {
-      loadedRef.current = storedLoadedKey;
-    }
-    if (storedPrevSettings) {
-      try {
-        prevSettingsRef.current = JSON.parse(storedPrevSettings);
-      } catch (e) {
-        // Ignore parse errors
+    // Only use stored data if storeId matches
+    if (storedStoreId && parseInt(storedStoreId) === storeId) {
+      if (storedLoadedKey) {
+        loadedRef.current = storedLoadedKey;
       }
-    }
-    if (storedProducts) {
-      try {
-        const parsedProducts = JSON.parse(storedProducts);
-        setProducts(parsedProducts);
-      } catch (e) {
-        // Ignore parse errors
+      if (storedPrevSettings) {
+        try {
+          prevSettingsRef.current = JSON.parse(storedPrevSettings);
+        } catch (e) {
+          // Ignore parse errors
+        }
       }
+      if (storedProducts) {
+        try {
+          const parsedProducts = JSON.parse(storedProducts);
+          setProducts(parsedProducts);
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    } else {
+      // Clear stored data if storeId doesn't match or doesn't exist
+      if (storedStoreId) {
+        sessionStorage.removeItem(`${sectionKey}-loaded`);
+        sessionStorage.removeItem(`${sectionKey}-prevSettings`);
+        sessionStorage.removeItem(`${sectionKey}-products`);
+        sessionStorage.removeItem(`${sectionKey}-storeId`);
+      }
+      // Always clear products if storeId doesn't match
+      setProducts([]);
     }
-  }, [sectionKey]);
+  }, [sectionKey, storeId]);
 
   // Memoize settings to prevent unnecessary re-renders
   const productsCount = useMemo(() => {
@@ -106,7 +209,12 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   // Load real products from API (only in storefront, not in customizer preview)
   useEffect(() => {
     // In preview mode, don't load real products - just show placeholders
-    if (isPreview || !storeId) return;
+    if (isPreview) {
+      return;
+    }
+    if (!storeId) {
+      return;
+    }
     
     // Create a stable key for this load attempt
     const loadKey = `${storeId}-${productsCount}-${productSelectionMode}-${selectedIdsString || 'all'}`;
@@ -179,9 +287,10 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
         if (loadedProducts.length > 0) {
           setProducts(loadedProducts);
           
-          // Save to sessionStorage
+          // Save to sessionStorage WITH storeId to prevent cross-store contamination
           sessionStorage.setItem(`${sectionKey}-products`, JSON.stringify(loadedProducts));
           sessionStorage.setItem(`${sectionKey}-loaded`, loadKey);
+          sessionStorage.setItem(`${sectionKey}-storeId`, String(storeId)); // CRITICAL: Store storeId
           sessionStorage.setItem(`${sectionKey}-prevSettings`, JSON.stringify({ 
             productsCount, 
             productSelectionMode, 
@@ -190,9 +299,16 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
           
           loadedRef.current = loadKey;
           prevSettingsRef.current = { productsCount, productSelectionMode, selectedIdsString };
+        } else {
+          // Clear products if API returns empty (no products for this store)
+          setProducts([]);
+          // Clear sessionStorage for this section
+          sessionStorage.removeItem(`${sectionKey}-products`);
+          sessionStorage.removeItem(`${sectionKey}-loaded`);
+          sessionStorage.removeItem(`${sectionKey}-storeId`);
         }
       } catch (error) {
-        console.error('Error loading featured products:', error);
+        // Error loading featured products - ignore
       } finally {
         setLoading(false);
       }
@@ -259,10 +375,10 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   const flexAlignClass = settings.content_align === 'left' ? 'items-end' : settings.content_align === 'center' ? 'items-center' : 'items-start';
   
   // Typography settings - use specific typography for heading
-  const headingTypography = style.typography?.heading || {};
+  const headingTypography = (style.typography as any)?.heading || {};
   
-  const fontFamily = headingTypography.font_family || style.typography?.font_family || '"Noto Sans Hebrew", sans-serif';
-  const textColor = headingTypography.color || style.typography?.color || '#111827';
+  const fontFamily = headingTypography.font_family || (style.typography as any)?.font_family || '"Noto Sans Hebrew", sans-serif';
+  const textColor = headingTypography.color || (style.typography as any)?.color || '#111827';
   
   // Title font size
   const getTitleSizeClass = () => {

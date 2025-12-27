@@ -133,11 +133,20 @@ export function Header() {
     };
   }, [showStoreSwitcher, showUserMenu]);
 
-  const handleLogout = async () => {
+  const handleLogout = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    // Close menu immediately
+    setShowUserMenu(false);
+    
     try {
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include', // Important: include cookies in request
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
       if (response.ok) {
@@ -145,6 +154,7 @@ export function Header() {
         window.location.href = '/login';
       } else {
         // Even if API fails, redirect to login
+        console.warn('Logout API returned non-OK status:', response.status);
         window.location.href = '/login';
       }
     } catch (error) {
@@ -342,7 +352,8 @@ export function Header() {
               </button>
               <div className="border-t border-gray-200"></div>
               <button
-                onClick={handleLogout}
+                onClick={(e) => handleLogout(e)}
+                type="button"
                 className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 last:rounded-b-lg transition-colors flex items-center gap-3"
               >
                 <HiLogout className="w-5 h-5 text-red-600" />
@@ -376,7 +387,8 @@ export function Header() {
               </button>
               <div className="border-t border-gray-200"></div>
               <button
-                onClick={handleLogout}
+                onClick={(e) => handleLogout(e)}
+                type="button"
                 className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 last:rounded-b-lg transition-colors flex items-center gap-3"
               >
                 <HiLogout className="w-5 h-5 text-red-600" />

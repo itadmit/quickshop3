@@ -191,7 +191,7 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
     case 'featured_products':
       return (
         <SectionWrapper>
-          <FeaturedProducts section={responsiveSection} onUpdate={onUpdate} editorDevice={device} />
+          <FeaturedProducts section={responsiveSection} onUpdate={onUpdate} editorDevice={device} isPreview={true} />
         </SectionWrapper>
       );
 
