@@ -79,7 +79,7 @@ export default function ThemesPage() {
                   </div>
                   {/* URL Bar */}
                   <div className="flex-1 bg-white rounded-md px-4 py-1.5 text-sm text-gray-500 font-mono text-center">
-                    mystore.quickshop.co.il
+                    my-quickshop.com
                   </div>
                   {/* Empty space for balance */}
                   <div className="w-16"></div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { HiArrowRight, HiSave, HiCode, HiEye, HiRefresh } from 'react-icons/hi';
+import { HiArrowRight, HiSave, HiCode, HiEye, HiRefresh, HiColorSwatch, HiDocumentText, HiLightningBolt, HiExclamation } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 
 interface CustomCode {
@@ -98,9 +98,9 @@ export default function ThemeCodePage() {
   };
 
   const tabs = [
-    { id: 'css', label: 'CSS מותאם אישית', icon: '🎨' },
-    { id: 'headScripts', label: 'סקריפטים (Head)', icon: '📜' },
-    { id: 'bodyScripts', label: 'סקריפטים (Body)', icon: '⚡' },
+    { id: 'css', label: 'CSS מותאם אישית', icon: HiColorSwatch },
+    { id: 'headScripts', label: 'סקריפטים (Head)', icon: HiDocumentText },
+    { id: 'bodyScripts', label: 'סקריפטים (Body)', icon: HiLightningBolt },
   ] as const;
 
   return (
@@ -148,7 +148,7 @@ export default function ThemeCodePage() {
 
       {/* Warning Banner */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-        <span className="text-2xl">⚠️</span>
+        <HiExclamation className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
         <div>
           <h3 className="font-medium text-amber-800">שים לב</h3>
           <p className="text-sm text-amber-700 mt-1">
@@ -172,7 +172,7 @@ export default function ThemeCodePage() {
                   : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
               }`}
             >
-              <span>{tab.icon}</span>
+              <tab.icon className="w-4 h-4" />
               {tab.label}
             </button>
           ))}
@@ -220,21 +220,27 @@ export default function ThemeCodePage() {
       {/* Help Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-2xl mb-3">🎨</div>
+          <div className="mb-3">
+            <HiColorSwatch className="w-8 h-8 text-gray-700" />
+          </div>
           <h3 className="font-semibold text-gray-900 mb-2">CSS מותאם אישית</h3>
           <p className="text-sm text-gray-600">
             הוסף סגנונות CSS מותאמים כדי לשנות את המראה של רכיבים ספציפיים בחנות.
           </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-2xl mb-3">📜</div>
+          <div className="mb-3">
+            <HiDocumentText className="w-8 h-8 text-gray-700" />
+          </div>
           <h3 className="font-semibold text-gray-900 mb-2">סקריפטי Head</h3>
           <p className="text-sm text-gray-600">
             מתאים לסקריפטי מעקב כמו Google Analytics, Facebook Pixel, או meta tags.
           </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-2xl mb-3">⚡</div>
+          <div className="mb-3">
+            <HiLightningBolt className="w-8 h-8 text-gray-700" />
+          </div>
           <h3 className="font-semibold text-gray-900 mb-2">סקריפטי Body</h3>
           <p className="text-sm text-gray-600">
             מתאים לווידג'טים כמו צ'אט חי, כפתורי שיתוף חברתי, או סקריפטים שצריכים DOM מוכן.
