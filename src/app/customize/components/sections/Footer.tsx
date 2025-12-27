@@ -8,6 +8,7 @@ import { CountrySelector } from '@/components/storefront/CountrySelector';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -17,7 +18,7 @@ interface FooterProps {
   editorDevice?: DeviceType;
 }
 
-export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterProps) {
+function FooterComponent({ section, onUpdate, editorDevice = 'desktop' }: FooterProps) {
   const settings = section.settings || {};
   const isMobileView = editorDevice === 'mobile' || editorDevice === 'tablet';
   const showCurrencySelector = settings.currency_selector?.enabled === true;
@@ -232,3 +233,5 @@ export function Footer({ section, onUpdate, editorDevice = 'desktop' }: FooterPr
     </footer>
   );
 }
+
+export const Footer = React.memo(FooterComponent, sectionPropsAreEqual);

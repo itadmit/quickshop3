@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface SpacerProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface SpacerProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Spacer({ section, onUpdate, editorDevice }: SpacerProps) {
+function SpacerComponent({ section, onUpdate, editorDevice }: SpacerProps) {
   const settings = section.settings || {};
   const height = settings.height || '20px';
 
@@ -24,4 +25,6 @@ export function Spacer({ section, onUpdate, editorDevice }: SpacerProps) {
     </div>
   );
 }
+
+export const Spacer = React.memo(SpacerComponent, sectionPropsAreEqual);
 

@@ -3,13 +3,14 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiStar } from 'react-icons/hi';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface TestimonialsProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function Testimonials({ section, onUpdate }: TestimonialsProps) {
+function TestimonialsComponent({ section, onUpdate }: TestimonialsProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks?.filter(b => b.type === 'text') || [];
@@ -90,3 +91,5 @@ export function Testimonials({ section, onUpdate }: TestimonialsProps) {
     </div>
   );
 }
+
+export const Testimonials = React.memo(TestimonialsComponent, sectionPropsAreEqual);

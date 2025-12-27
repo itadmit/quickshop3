@@ -3,13 +3,14 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiPlus } from 'react-icons/hi';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface LogoListProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function LogoList({ section, onUpdate }: LogoListProps) {
+function LogoListComponent({ section, onUpdate }: LogoListProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const logos = section.blocks?.filter(b => b.type === 'image') || [];
@@ -271,4 +272,6 @@ export function LogoList({ section, onUpdate }: LogoListProps) {
     </div>
   );
 }
+
+export const LogoList = React.memo(LogoListComponent, sectionPropsAreEqual);
 

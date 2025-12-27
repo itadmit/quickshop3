@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface HeadingProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface HeadingProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Heading({ section, onUpdate, editorDevice }: HeadingProps) {
+function HeadingComponent({ section, onUpdate, editorDevice }: HeadingProps) {
   const style = section.style || {};
   const blocks = section.blocks?.filter(b => b.type === 'heading') || [];
   
@@ -87,3 +88,5 @@ export function Heading({ section, onUpdate, editorDevice }: HeadingProps) {
     </div>
   );
 }
+
+export const Heading = React.memo(HeadingComponent, sectionPropsAreEqual);

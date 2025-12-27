@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiX } from 'react-icons/hi';
 import Link from 'next/link';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface AnnouncementBarProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function AnnouncementBar({ section, onUpdate }: AnnouncementBarProps) {
+function AnnouncementBarComponent({ section, onUpdate }: AnnouncementBarProps) {
   const [isDismissed, setIsDismissed] = useState(false);
   const settings = section.settings || {};
   const style = section.style || {};
@@ -120,3 +121,5 @@ export function AnnouncementBar({ section, onUpdate }: AnnouncementBarProps) {
     </div>
   );
 }
+
+export const AnnouncementBar = React.memo(AnnouncementBarComponent, sectionPropsAreEqual);

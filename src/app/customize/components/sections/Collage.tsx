@@ -4,13 +4,14 @@ import React from 'react';
 import { SectionSettings, BlockSettings } from '@/lib/customizer/types';
 import { HiPhotograph } from 'react-icons/hi';
 import Link from 'next/link';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface CollageProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function Collage({ section, onUpdate }: CollageProps) {
+function CollageComponent({ section, onUpdate }: CollageProps) {
   const settings = section.settings || {};
   const blocks = section.blocks || [];
   
@@ -147,3 +148,5 @@ export function Collage({ section, onUpdate }: CollageProps) {
     </div>
   );
 }
+
+export const Collage = React.memo(CollageComponent, sectionPropsAreEqual);

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface ContactFormProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface ContactFormProps {
   storeId?: number;
 }
 
-export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
+function ContactFormComponent({ section, onUpdate, storeId }: ContactFormProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -263,3 +264,5 @@ export function ContactForm({ section, onUpdate, storeId }: ContactFormProps) {
     </div>
   );
 }
+
+export const ContactForm = React.memo(ContactFormComponent, sectionPropsAreEqual);

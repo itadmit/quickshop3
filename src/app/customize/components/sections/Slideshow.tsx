@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface SlideshowProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function Slideshow({ section, onUpdate }: SlideshowProps) {
+function SlideshowComponent({ section, onUpdate }: SlideshowProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const settings = section.settings || {};
   const style = section.style || {};
@@ -233,4 +234,6 @@ export function Slideshow({ section, onUpdate }: SlideshowProps) {
     </div>
   );
 }
+
+export const Slideshow = React.memo(SlideshowComponent, sectionPropsAreEqual);
 

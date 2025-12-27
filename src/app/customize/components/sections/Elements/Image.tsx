@@ -4,6 +4,7 @@ import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiPhotograph } from 'react-icons/hi';
 import Link from 'next/link';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface ImageProps {
   section: SectionSettings;
@@ -11,7 +12,7 @@ interface ImageProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Image({ section, onUpdate, editorDevice }: ImageProps) {
+function ImageComponent({ section, onUpdate, editorDevice }: ImageProps) {
   const settings = section.settings || {};
   const style = section.style || {};
 
@@ -75,3 +76,5 @@ export function Image({ section, onUpdate, editorDevice }: ImageProps) {
     </div>
   );
 }
+
+export const Image = React.memo(ImageComponent, sectionPropsAreEqual);

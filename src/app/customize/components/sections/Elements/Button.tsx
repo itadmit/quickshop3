@@ -4,6 +4,7 @@ import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface ButtonProps {
   section: SectionSettings;
@@ -11,7 +12,7 @@ interface ButtonProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Button({ section, onUpdate, editorDevice }: ButtonProps) {
+function ButtonComponent({ section, onUpdate, editorDevice }: ButtonProps) {
   const settings = section.settings || {};
   const style = section.style || {};
 
@@ -117,3 +118,5 @@ export function Button({ section, onUpdate, editorDevice }: ButtonProps) {
     </div>
   );
 }
+
+export const Button = React.memo(ButtonComponent, sectionPropsAreEqual);

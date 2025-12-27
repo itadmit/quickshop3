@@ -3,13 +3,14 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiPlus, HiMinus } from 'react-icons/hi';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface FAQProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function FAQ({ section, onUpdate }: FAQProps) {
+function FAQComponent({ section, onUpdate }: FAQProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks?.filter(b => b.type === 'text') || [];
@@ -163,3 +164,5 @@ export function FAQ({ section, onUpdate }: FAQProps) {
     </div>
   );
 }
+
+export const FAQ = React.memo(FAQComponent, sectionPropsAreEqual);

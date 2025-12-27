@@ -3,13 +3,14 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiPlay } from 'react-icons/hi';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface VideoSectionProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function VideoSection({ section, onUpdate }: VideoSectionProps) {
+function VideoSectionComponent({ section, onUpdate }: VideoSectionProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -54,3 +55,5 @@ export function VideoSection({ section, onUpdate }: VideoSectionProps) {
     </div>
   );
 }
+
+export const VideoSection = React.memo(VideoSectionComponent, sectionPropsAreEqual);

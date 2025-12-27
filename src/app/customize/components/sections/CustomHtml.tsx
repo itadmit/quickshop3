@@ -2,13 +2,14 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface CustomHtmlProps {
   section: SectionSettings;
   onUpdate?: (updates: Partial<SectionSettings>) => void;
 }
 
-export function CustomHtml({ section, onUpdate }: CustomHtmlProps) {
+function CustomHtmlComponent({ section, onUpdate }: CustomHtmlProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -59,3 +60,5 @@ export function CustomHtml({ section, onUpdate }: CustomHtmlProps) {
     </div>
   );
 }
+
+export const CustomHtml = React.memo(CustomHtmlComponent, sectionPropsAreEqual);

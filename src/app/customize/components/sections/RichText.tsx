@@ -2,13 +2,14 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface RichTextProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function RichText({ section, onUpdate }: RichTextProps) {
+function RichTextComponent({ section, onUpdate }: RichTextProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
@@ -149,3 +150,5 @@ export function RichText({ section, onUpdate }: RichTextProps) {
     </div>
   );
 }
+
+export const RichText = React.memo(RichTextComponent, sectionPropsAreEqual);

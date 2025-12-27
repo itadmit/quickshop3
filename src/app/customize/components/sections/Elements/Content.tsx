@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface ContentProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface ContentProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Content({ section, onUpdate, editorDevice }: ContentProps) {
+function ContentComponent({ section, onUpdate, editorDevice }: ContentProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -54,4 +55,6 @@ export function Content({ section, onUpdate, editorDevice }: ContentProps) {
     </div>
   );
 }
+
+export const Content = React.memo(ContentComponent, sectionPropsAreEqual);
 

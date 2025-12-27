@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface DividerProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface DividerProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Divider({ section, onUpdate, editorDevice }: DividerProps) {
+function DividerComponent({ section, onUpdate, editorDevice }: DividerProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -51,4 +52,6 @@ export function Divider({ section, onUpdate, editorDevice }: DividerProps) {
     </div>
   );
 }
+
+export const Divider = React.memo(DividerComponent, sectionPropsAreEqual);
 

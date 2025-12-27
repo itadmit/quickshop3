@@ -2,13 +2,15 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface HeroBannerProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
+function HeroBannerComponent({ section, onUpdate }: HeroBannerProps) {
+  // Use responsive settings that are already merged in SectionRenderer
   const settings = section.settings || {};
   
   // Height logic
@@ -256,3 +258,5 @@ export function HeroBanner({ section, onUpdate }: HeroBannerProps) {
     </div>
   );
 }
+
+export const HeroBanner = React.memo(HeroBannerComponent, sectionPropsAreEqual);

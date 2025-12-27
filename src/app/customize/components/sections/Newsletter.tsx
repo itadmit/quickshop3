@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { emitTrackingEvent } from '@/lib/tracking/events';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface NewsletterProps {
   section: SectionSettings;
@@ -10,7 +11,7 @@ interface NewsletterProps {
   storeId?: number;
 }
 
-export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
+function NewsletterComponent({ section, onUpdate, storeId }: NewsletterProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
@@ -267,3 +268,5 @@ export function Newsletter({ section, onUpdate, storeId }: NewsletterProps) {
     </div>
   );
 }
+
+export const Newsletter = React.memo(NewsletterComponent, sectionPropsAreEqual);

@@ -3,6 +3,7 @@
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiVideoCamera } from 'react-icons/hi';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface VideoProps {
   section: SectionSettings;
@@ -10,7 +11,7 @@ interface VideoProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Video({ section, onUpdate, editorDevice }: VideoProps) {
+function VideoComponent({ section, onUpdate, editorDevice }: VideoProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -49,3 +50,5 @@ export function Video({ section, onUpdate, editorDevice }: VideoProps) {
     </div>
   );
 }
+
+export const Video = React.memo(VideoComponent, sectionPropsAreEqual);

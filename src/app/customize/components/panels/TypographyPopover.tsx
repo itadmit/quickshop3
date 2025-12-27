@@ -37,29 +37,50 @@ export function TypographyPopover({
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Calculate position - start from the button
+  // Update position based on anchor element
   useEffect(() => {
-    if (open && anchorEl) {
+    if (!open || !anchorEl) return;
+    
+    const updatePosition = () => {
       const rect = anchorEl.getBoundingClientRect();
       const popoverWidth = 320;
       const margin = 10;
+      const viewportWidth = window.innerWidth;
       
-      // Position to the left of the anchor (RTL) - start from button position
+      // Calculate horizontal position (RTL - prefer left side)
       let left = rect.left - popoverWidth - margin;
-      
-      // If not enough space on left, position to the right
       if (left < margin) {
         left = rect.right + margin;
       }
+      left = Math.max(margin, Math.min(left, viewportWidth - popoverWidth - margin));
       
-      // Ensure it doesn't go off screen
-      left = Math.max(margin, Math.min(left, window.innerWidth - popoverWidth - margin));
+      // Vertical position - start from button's top
+      let top = rect.top;
       
-      // Start from button's top position
-      setPosition({
-        top: rect.top,
-        left: left
-      });
+      // Ensure it doesn't go above viewport
+      if (top < margin) {
+        top = margin;
+      }
+      
+      setPosition({ top, left });
+    };
+    
+    updatePosition();
+    
+    // Find the scrollable parent (sidebar)
+    let scrollParent: HTMLElement | null = anchorEl.parentElement;
+    while (scrollParent && scrollParent !== document.body) {
+      const style = getComputedStyle(scrollParent);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        break;
+      }
+      scrollParent = scrollParent.parentElement;
+    }
+    
+    // Listen to scroll on the sidebar to update position
+    if (scrollParent && scrollParent !== document.body) {
+      scrollParent.addEventListener('scroll', updatePosition);
+      return () => scrollParent!.removeEventListener('scroll', updatePosition);
     }
   }, [open, anchorEl]);
 
@@ -164,13 +185,14 @@ export function TypographyPopover({
   const content = (
       <div 
       ref={popoverRef}
-      className="fixed z-[100] bg-white rounded-lg shadow-xl border border-gray-200 w-[320px] overflow-hidden"
+      className="fixed z-[100] bg-white rounded-lg shadow-xl border border-gray-200 w-[320px]"
       style={{ 
-        top: Math.max(10, Math.min(window.innerHeight - 500, position.top)), 
-        left: Math.max(10, position.left) 
+        top: `${position.top}px`,
+        left: `${position.left}px`
       }}
       dir="rtl"
     >
+      {/* Header */}
       <div className="p-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 bg-gray-200 rounded flex items-center justify-center">
@@ -198,7 +220,8 @@ export function TypographyPopover({
         </div>
       </div>
 
-      <div className="p-4 max-h-[600px] overflow-y-auto custom-scrollbar">
+      {/* Content */}
+      <div className="p-4">
         {/* Font Family */}
         <div className="mb-4 space-y-1.5">
           <label className="text-xs text-gray-500 font-medium">סוג</label>

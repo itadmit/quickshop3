@@ -13,7 +13,10 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { TypographyPopover } from './TypographyPopover';
 import { useDebounce } from '@/hooks/useDebounce';
-import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4, HiUpload, HiSearch, HiX, HiPencil, HiDocumentText } from 'react-icons/hi';
+import { RepeaterItem } from '../ui/RepeaterItem';
+import { MediaUploader } from '../ui/MediaUploader';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { HiPhotograph, HiVideoCamera, HiTrash, HiRefresh, HiPlus, HiDeviceMobile, HiDesktopComputer, HiMenuAlt4, HiUpload, HiSearch, HiX, HiPencil, HiDocumentText, HiChevronDown, HiChevronUp } from 'react-icons/hi';
 import { useStoreId } from '@/hooks/useStoreId';
 import { DeviceType } from '../Header';
 import {
@@ -172,6 +175,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   const [typographyAnchor, setTypographyAnchor] = useState<HTMLElement | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [selectedSectionType, setSelectedSectionType] = useState<string | null>(null);
+  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [collectionSearchTerm, setCollectionSearchTerm] = useState('');
   const debouncedCollectionSearch = useDebounce(collectionSearchTerm, 300);
@@ -4924,11 +4928,13 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
           onUpdate({
             blocks: [...(section.blocks || []), newBlock]
           });
+          setExpandedBlockId(newBlock.id);
         };
         
         const removeMcColumn = (blockId: string) => {
           const newBlocks = (section.blocks || []).filter(b => b.id !== blockId);
           onUpdate({ blocks: newBlocks });
+          if (expandedBlockId === blockId) setExpandedBlockId(null);
         };
 
         const updateMcColumn = (blockId: string, updates: any) => {
@@ -4956,257 +4962,251 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         };
 
         return (
-          <div className="space-y-1">
-            <SettingGroup title="כותרת סקשן">
+          <div className="space-y-6">
+            <SettingGroup title="תוכן וכותרת">
               <div className="space-y-4">
-                {renderInput('כותרת', 'title', 'למה לבחור בנו?')}
-                {renderSelect('יישור כותרת', 'title_align', [
-                  { label: 'ימין', value: 'right' },
-                  { label: 'מרכז', value: 'center' },
-                  { label: 'שמאל', value: 'left' },
-                ])}
+                {renderInput('כותרת ראשית', 'title', 'למשל: השירותים שלנו')}
+                <div className="grid grid-cols-2 gap-4">
+                   {renderSelect('יישור', 'title_align', [
+                     { label: 'ימין', value: 'right' },
+                     { label: 'מרכז', value: 'center' },
+                     { label: 'שמאל', value: 'left' },
+                   ])}
+                   {renderSelect('גודל', 'title_font_size', [
+                     { label: 'קטן', value: 'small' },
+                     { label: 'בינוני', value: 'medium' },
+                     { label: 'גדול', value: 'large' },
+                     { label: 'ענק', value: 'xlarge' },
+                   ])}
+                </div>
               </div>
             </SettingGroup>
 
             <SettingGroup title={`עמודות (${mcColumnBlocks.length})`} defaultOpen={true}>
               <div className="space-y-3">
-                {mcColumnBlocks.map((block, index) => (
-                  <div key={block.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-700">עמודה {index + 1}</span>
-                      <button
-                        onClick={() => removeMcColumn(block.id)}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded"
-                        title="מחק עמודה"
-                      >
-                        <HiTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    {/* Media (Image or Video) */}
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">מדיה</label>
-                      <div className="space-y-2">
-                        {/* Media Type Selector */}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              const isVideo = block.content?.video_url;
-                              if (isVideo) {
-                                updateMcColumn(block.id, { video_url: '', image_url: '' });
-                              }
-                              openMcColumnImagePicker(block.id);
-                            }}
-                            className={`flex-1 px-2 py-1.5 text-xs border rounded transition-colors ${
-                              block.content?.image_url && !block.content?.video_url
-                                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <HiPhotograph className="w-4 h-4 mx-auto mb-1" />
-                            תמונה
-                          </button>
-                          <button
-                            onClick={() => {
-                              const isImage = block.content?.image_url && !block.content?.video_url;
-                              if (isImage) {
-                                updateMcColumn(block.id, { image_url: '', video_url: '' });
-                              }
-                              openMcColumnVideoPicker(block.id);
-                            }}
-                            className={`flex-1 px-2 py-1.5 text-xs border rounded transition-colors ${
-                              block.content?.video_url
-                                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <HiVideoCamera className="w-4 h-4 mx-auto mb-1" />
-                            וידאו
-                          </button>
-                        </div>
-                        
-                        {/* Media Preview */}
-                        <div className="flex gap-2">
-                          {block.content?.video_url ? (
-                            <div className="relative w-20 h-20 rounded overflow-hidden bg-gray-100">
-                              <video 
-                                src={block.content.video_url} 
-                                className="w-full h-full object-cover"
-                                muted
-                                playsInline
-                              />
+                {mcColumnBlocks.map((block, index) => {
+                   const isOpen = expandedBlockId === block.id;
+                   const isVideoMode = !!block.content?.video_url;
+
+                   return (
+                     <div 
+                        key={block.id} 
+                        className={`border rounded-lg transition-all duration-200 overflow-hidden ${
+                          isOpen 
+                            ? 'border-gray-900 ring-1 ring-gray-900/5 bg-white shadow-sm' 
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                     >
+                        {/* Header */}
+                        <div 
+                          className={`flex items-center justify-between p-3 cursor-pointer select-none transition-colors ${isOpen ? 'bg-gray-50 border-b border-gray-100' : 'hover:bg-gray-50'}`}
+                          onClick={() => setExpandedBlockId(isOpen ? null : block.id)}
+                        >
+                           <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="text-gray-400 cursor-grab active:cursor-grabbing p-1 hover:text-gray-600 rounded">
+                                <HiMenuAlt4 className="w-4 h-4" />
+                              </div>
+                              {/* Thumbnail Preview */}
+                              <div className="w-8 h-8 rounded bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                                 {block.content?.image_url ? (
+                                   <img src={block.content.image_url} className="w-full h-full object-cover" alt="" />
+                                 ) : block.content?.video_url ? (
+                                   <HiVideoCamera className="w-4 h-4 text-gray-500" />
+                                 ) : (
+                                   <span className="text-xs font-bold text-gray-400">{index + 1}</span>
+                                 )}
+                              </div>
+                              <span className="font-medium text-sm text-gray-900 truncate">
+                                {block.content?.heading || `עמודה ${index + 1}`}
+                              </span>
+                           </div>
+                           <div className="flex items-center gap-1 shrink-0">
                               <button
-                                onClick={() => updateMcColumn(block.id, { video_url: '' })}
-                                className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
+                                onClick={(e) => { e.stopPropagation(); removeMcColumn(block.id); }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                title="מחק עמודה"
                               >
-                                <HiTrash className="w-3 h-3" />
+                                <HiTrash className="w-4 h-4" />
                               </button>
-                            </div>
-                          ) : block.content?.image_url ? (
-                            <div className="relative w-20 h-20 rounded overflow-hidden bg-gray-100">
-                              <img 
-                                src={block.content.image_url} 
-                                alt="" 
-                                className="w-full h-full object-cover"
-                              />
-                              <button
-                                onClick={() => updateMcColumn(block.id, { image_url: '' })}
-                                className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl"
-                              >
-                                <HiTrash className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400">
-                              <HiPhotograph className="w-6 h-6" />
-                            </div>
-                          )}
-                          {(block.content?.image_url || block.content?.video_url) && (
-                            <button
-                              onClick={() => {
-                                if (block.content?.video_url) {
-                                  openMcColumnVideoPicker(block.id);
-                                } else {
-                                  openMcColumnImagePicker(block.id);
-                                }
-                              }}
-                              className="text-xs text-blue-600 hover:underline self-center"
-                            >
-                              החלף
-                            </button>
-                          )}
+                              <div className={`p-1.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                                <HiChevronDown className="w-4 h-4" />
+                              </div>
+                           </div>
                         </div>
-                        
-                        {/* Video Settings */}
-                        {block.content?.video_url && (
-                          <div className="space-y-2 pt-2 border-t border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs text-gray-600">אוטופליי</label>
-                              <input
-                                type="checkbox"
-                                checked={block.content?.video_autoplay !== false}
-                                onChange={(e) => updateMcColumn(block.id, { video_autoplay: e.target.checked })}
-                                className="w-4 h-4"
-                              />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs text-gray-600">השתק</label>
-                              <input
-                                type="checkbox"
-                                checked={block.content?.video_muted !== false}
-                                onChange={(e) => updateMcColumn(block.id, { video_muted: e.target.checked })}
-                                className="w-4 h-4"
-                              />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs text-gray-600">לולאה</label>
-                              <input
-                                type="checkbox"
-                                checked={block.content?.video_loop === true}
-                                onChange={(e) => updateMcColumn(block.id, { video_loop: e.target.checked })}
-                                className="w-4 h-4"
-                              />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs text-gray-600">בקרות</label>
-                              <input
-                                type="checkbox"
-                                checked={block.content?.video_controls !== false}
-                                onChange={(e) => updateMcColumn(block.id, { video_controls: e.target.checked })}
-                                className="w-4 h-4"
-                              />
-                            </div>
+
+                        {/* Content */}
+                        {isOpen && (
+                          <div className="p-4 space-y-5">
+                             
+                             {/* Media Type Selector (Segmented Control) */}
+                             <div>
+                               <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">מדיה</label>
+                               <div className="bg-gray-100 p-1 rounded-lg flex">
+                                 <button
+                                   onClick={() => {
+                                      if (isVideoMode) updateMcColumn(block.id, { video_url: '', image_url: '' });
+                                      openMcColumnImagePicker(block.id);
+                                   }}
+                                   className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                     !isVideoMode 
+                                       ? 'bg-white text-gray-900 shadow-sm ring-1 ring-black/5' 
+                                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                   }`}
+                                 >
+                                   <HiPhotograph className="w-4 h-4" />
+                                   תמונה
+                                 </button>
+                                 <button
+                                   onClick={() => {
+                                      if (!isVideoMode) updateMcColumn(block.id, { image_url: '', video_url: '' });
+                                      openMcColumnVideoPicker(block.id);
+                                   }}
+                                   className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                     isVideoMode 
+                                       ? 'bg-white text-gray-900 shadow-sm ring-1 ring-black/5' 
+                                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                   }`}
+                                 >
+                                   <HiVideoCamera className="w-4 h-4" />
+                                   וידאו
+                                 </button>
+                               </div>
+                             </div>
+
+                             {/* Media Preview & Actions */}
+                             <div className="bg-gray-50 rounded-lg border border-gray-200/60 p-3">
+                                {(block.content?.image_url || block.content?.video_url) ? (
+                                   <div className="relative aspect-video rounded-md overflow-hidden bg-white border border-gray-200 shadow-sm group">
+                                      {isVideoMode ? (
+                                         <video src={block.content.video_url} className="w-full h-full object-cover" muted playsInline />
+                                      ) : (
+                                         <img src={block.content.image_url} className="w-full h-full object-cover" alt="" />
+                                      )}
+                                      
+                                      {/* Overlay Actions */}
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
+                                         <button
+                                            onClick={() => isVideoMode ? openMcColumnVideoPicker(block.id) : openMcColumnImagePicker(block.id)}
+                                            className="px-3 py-1.5 bg-white/90 hover:bg-white text-gray-900 text-xs font-medium rounded shadow-sm backdrop-blur-sm transition-colors"
+                                         >
+                                            החלף
+                                         </button>
+                                         <button
+                                            onClick={() => updateMcColumn(block.id, isVideoMode ? { video_url: '' } : { image_url: '' })}
+                                            className="p-1.5 bg-white/90 hover:bg-red-50 hover:text-red-600 text-gray-900 rounded shadow-sm backdrop-blur-sm transition-colors"
+                                         >
+                                            <HiTrash className="w-4 h-4" />
+                                         </button>
+                                      </div>
+                                   </div>
+                                ) : (
+                                   <div 
+                                     onClick={() => isVideoMode ? openMcColumnVideoPicker(block.id) : openMcColumnImagePicker(block.id)}
+                                     className="aspect-video border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 hover:bg-white cursor-pointer transition-all bg-white/50"
+                                   >
+                                      {isVideoMode ? <HiVideoCamera className="w-8 h-8 mb-2 opacity-50" /> : <HiPhotograph className="w-8 h-8 mb-2 opacity-50" />}
+                                      <span className="text-xs font-medium">לחץ להוספת {isVideoMode ? 'וידאו' : 'תמונה'}</span>
+                                   </div>
+                                )}
+                             </div>
+
+                             {/* Text Fields */}
+                             <div className="space-y-4">
+                                <div>
+                                   <div className="flex items-center justify-between mb-1.5">
+                                      <label className="text-xs font-medium text-gray-700">כותרת העמודה</label>
+                                      <button 
+                                        onClick={(e) => {
+                                          setTypographyAnchor(e.currentTarget);
+                                          setSelectedBlockId(block.id);
+                                          setSelectedSectionType('multicolumn');
+                                        }}
+                                        className="text-xs flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors px-1.5 py-0.5 rounded hover:bg-blue-50 group/type"
+                                        title="ערוך טיפוגרפיה"
+                                      >
+                                        <span className="font-serif italic font-bold group-hover/type:scale-110 transition-transform">Aa</span>
+                                        <span>עיצוב</span>
+                                      </button>
+                                   </div>
+                                   <input
+                                     type="text"
+                                     value={block.content?.heading || ''}
+                                     onChange={(e) => updateMcColumn(block.id, { heading: e.target.value })}
+                                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all bg-white hover:border-gray-300"
+                                     placeholder="הזן כותרת..."
+                                   />
+                                </div>
+
+                                <div>
+                                   <label className="block text-xs font-medium text-gray-700 mb-1.5">תיאור העמודה</label>
+                                   <textarea
+                                     value={block.content?.text || ''}
+                                     onChange={(e) => updateMcColumn(block.id, { text: e.target.value })}
+                                     rows={3}
+                                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all bg-white hover:border-gray-300 resize-none"
+                                     placeholder="הזן תיאור..."
+                                   />
+                                </div>
+                             </div>
+
+                             {/* Button Fields */}
+                             <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                                <div>
+                                   <label className="block text-xs font-medium text-gray-700 mb-1.5">טקסט כפתור</label>
+                                   <input
+                                     type="text"
+                                     value={block.content?.button_text || ''}
+                                     onChange={(e) => updateMcColumn(block.id, { button_text: e.target.value })}
+                                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all bg-white hover:border-gray-300"
+                                     placeholder="למשל: קרא עוד"
+                                   />
+                                </div>
+                                <div>
+                                   <label className="block text-xs font-medium text-gray-700 mb-1.5">קישור</label>
+                                   <input
+                                     type="text"
+                                     value={block.content?.button_url || ''}
+                                     onChange={(e) => updateMcColumn(block.id, { button_url: e.target.value })}
+                                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all bg-white hover:border-gray-300"
+                                     placeholder="/page"
+                                     dir="ltr"
+                                   />
+                                </div>
+                             </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                    
-                    {/* Heading */}
-                    <div className="mb-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <label className="block text-xs font-medium text-gray-600 flex-1">כותרת</label>
-                        <button 
-                          onClick={(e) => {
-                            setTypographyAnchor(e.currentTarget);
-                            setSelectedBlockId(block.id);
-                            setSelectedSectionType('multicolumn');
-                          }}
-                          className={`p-1 rounded transition-colors ${selectedBlockId === block.id && typographyAnchor ? 'text-gray-800 bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
-                          title="ערוך טיפוגרפיה"
-                        >
-                          <span className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>Aa</span>
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        value={block.content?.heading || ''}
-                        onChange={(e) => updateMcColumn(block.id, { heading: e.target.value })}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
-                        placeholder="כותרת עמודה"
-                      />
-                    </div>
-                    
-                    {/* Text */}
-                    <div className="mb-2">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">תיאור</label>
-                      <textarea
-                        value={block.content?.text || ''}
-                        onChange={(e) => updateMcColumn(block.id, { text: e.target.value })}
-                        rows={2}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black resize-none"
-                        placeholder="תיאור קצר..."
-                      />
-                    </div>
-                    
-                    {/* Button */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">טקסט כפתור</label>
-                        <input
-                          type="text"
-                          value={block.content?.button_text || ''}
-                          onChange={(e) => updateMcColumn(block.id, { button_text: e.target.value })}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
-                          placeholder="למד עוד"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">קישור</label>
-                        <input
-                          type="text"
-                          value={block.content?.button_url || ''}
-                          onChange={(e) => updateMcColumn(block.id, { button_url: e.target.value })}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-black"
-                          placeholder="/page/about"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
+                     </div>
+                   );
+                })}
+
                 <button
                   onClick={addMcColumn}
-                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 text-sm font-medium transition-all"
                 >
                   <HiPlus className="w-4 h-4" />
-                  הוסף עמודה
+                  הוסף עמודה חדשה
                 </button>
               </div>
             </SettingGroup>
 
-            <SettingGroup title="פריסה">
+            <SettingGroup title="פריסה ועיצוב">
               <div className="space-y-4">
-                {renderSelect('מספר עמודות (דסקטופ)', 'columns_desktop', [
-                  { label: '2 עמודות', value: 2 },
-                  { label: '3 עמודות', value: 3 },
-                  { label: '4 עמודות', value: 4 },
-                  { label: '5 עמודות', value: 5 },
-                  { label: '6 עמודות', value: 6 },
-                ])}
-                {renderSelect('מספר עמודות (מובייל)', 'columns_mobile', [
-                  { label: 'עמודה אחת', value: 1 },
-                  { label: '2 עמודות', value: 2 },
-                ])}
+                <div className="grid grid-cols-2 gap-4">
+                    {renderSelect('עמודות (דסקטופ)', 'columns_desktop', [
+                      { label: '2', value: 2 },
+                      { label: '3', value: 3 },
+                      { label: '4', value: 4 },
+                      { label: '5', value: 5 },
+                      { label: '6', value: 6 },
+                    ])}
+                    {renderSelect('עמודות (מובייל)', 'columns_mobile', [
+                      { label: '1', value: 1 },
+                      { label: '2', value: 2 },
+                    ])}
+                </div>
+                
+                <div className="border-t border-gray-100 my-2 pt-2"></div>
+                
                 {renderSelect('יישור תוכן', 'text_align', [
                   { label: 'ימין', value: 'right' },
                   { label: 'מרכז', value: 'center' },
@@ -5220,41 +5220,20 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
               </div>
             </SettingGroup>
 
-            <SettingGroup title="תמונות">
+            <SettingGroup title="תמונות ומדיה">
               <div className="space-y-4">
-                {renderSelect('יחס גובה-רוחב', 'image_ratio', [
-                  { label: 'ריבוע', value: 'square' },
-                  { label: 'דיוקן', value: 'portrait' },
-                  { label: 'נוף', value: 'landscape' },
-                  { label: 'עיגול', value: 'circle' },
-                ])}
-                {renderInput('עיגול פינות (px)', 'image_border_radius', '8px')}
+                <div className="grid grid-cols-2 gap-4">
+                    {renderSelect('יחס גובה-רוחב', 'image_ratio', [
+                      { label: 'ריבוע (1:1)', value: 'square' },
+                      { label: 'דיוקן (3:4)', value: 'portrait' },
+                      { label: 'נוף (4:3)', value: 'landscape' },
+                      { label: 'עיגול', value: 'circle' },
+                    ])}
+                    {renderInput('עיגול פינות (px)', 'image_border_radius', '8px')}
+                </div>
                 {renderSelect('מסגרת תמונה', 'image_border', [
                   { label: 'ללא', value: false },
                   { label: 'עם מסגרת', value: true },
-                ])}
-              </div>
-            </SettingGroup>
-            
-            <SettingGroup title="גדלי פונט">
-              <div className="space-y-4">
-                {renderSelect('גודל כותרת סקשן', 'title_font_size', [
-                  { label: 'קטן', value: 'small' },
-                  { label: 'בינוני', value: 'medium' },
-                  { label: 'גדול', value: 'large' },
-                  { label: 'גדול מאוד', value: 'xlarge' },
-                ])}
-                {renderSelect('גודל כותרת עמודה', 'column_heading_font_size', [
-                  { label: 'קטן', value: 'small' },
-                  { label: 'בינוני', value: 'medium' },
-                  { label: 'גדול', value: 'large' },
-                  { label: 'גדול מאוד', value: 'xlarge' },
-                ])}
-                {renderSelect('גודל טקסט עמודה', 'column_text_font_size', [
-                  { label: 'קטן', value: 'small' },
-                  { label: 'בינוני', value: 'medium' },
-                  { label: 'גדול', value: 'large' },
-                  { label: 'גדול מאוד', value: 'xlarge' },
                 ])}
               </div>
             </SettingGroup>

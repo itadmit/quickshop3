@@ -4,13 +4,14 @@ import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiPhotograph } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
+import { sectionPropsAreEqual } from './sectionMemoUtils';
 
 interface GalleryProps {
   section: SectionSettings;
   onUpdate: (updates: Partial<SectionSettings>) => void;
 }
 
-export function Gallery({ section, onUpdate }: GalleryProps) {
+function GalleryComponent({ section, onUpdate }: GalleryProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   const blocks = section.blocks || [];
@@ -119,4 +120,6 @@ export function Gallery({ section, onUpdate }: GalleryProps) {
     </div>
   );
 }
+
+export const Gallery = React.memo(GalleryComponent, sectionPropsAreEqual);
 

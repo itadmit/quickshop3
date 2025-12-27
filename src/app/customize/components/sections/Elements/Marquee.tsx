@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
+import { sectionPropsAreEqual } from '../sectionMemoUtils';
 
 interface MarqueeProps {
   section: SectionSettings;
@@ -9,7 +10,7 @@ interface MarqueeProps {
   editorDevice?: 'mobile' | 'tablet' | 'desktop';
 }
 
-export function Marquee({ section, onUpdate, editorDevice }: MarqueeProps) {
+function MarqueeComponent({ section, onUpdate, editorDevice }: MarqueeProps) {
   const settings = section.settings || {};
   const style = section.style || {};
   
@@ -79,4 +80,6 @@ export function Marquee({ section, onUpdate, editorDevice }: MarqueeProps) {
     </div>
   );
 }
+
+export const Marquee = React.memo(MarqueeComponent, sectionPropsAreEqual);
 
