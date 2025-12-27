@@ -46,7 +46,6 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
     }
 
-    const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '4', 10);
 
     // First, get the current product's details - CRITICAL: Verify it belongs to user's store
