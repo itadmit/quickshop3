@@ -38,12 +38,32 @@ export async function generateToken(payload: UserPayload & { store_id: number })
   return token;
 }
 
-// Verify JWT token
+// Verify JWT token and validate user-store relationship
 export async function verifyToken(token: string): Promise<(UserPayload & { store_id: number }) | null> {
   try {
     const secret = new TextEncoder().encode(JWT_SECRET);
     const { payload } = await jwtVerify(token, secret);
-    return payload as unknown as UserPayload & { store_id: number };
+    const userPayload = payload as unknown as UserPayload & { store_id: number };
+    
+    // CRITICAL SECURITY: Verify that the user actually owns or has access to this store
+    const { queryOne } = await import('@/lib/db');
+    const store = await queryOne<{ id: number; owner_id: number }>(
+      'SELECT id, owner_id FROM stores WHERE id = $1',
+      [userPayload.store_id]
+    );
+    
+    if (!store) {
+      console.error(`Security: Store ${userPayload.store_id} not found for user ${userPayload.id}`);
+      return null;
+    }
+    
+    // Verify user owns the store
+    if (store.owner_id !== userPayload.id) {
+      console.error(`Security: User ${userPayload.id} does not own store ${userPayload.store_id} (owner is ${store.owner_id})`);
+      return null;
+    }
+    
+    return userPayload;
   } catch (error: any) {
     console.log('Token verification failed:', error.message);
     return null;

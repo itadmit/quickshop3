@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
           );
 
           if (product) {
-            await query('DELETE FROM products WHERE id = $1', [productId]);
+            // CRITICAL SECURITY: Delete with store_id check
+            await query('DELETE FROM products WHERE id = $1 AND store_id = $2', [productId, storeId]);
             
             // Emit product.deleted event
             await eventBus.emitEvent('product.deleted', { product }, {

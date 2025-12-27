@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getUserFromRequest } from '@/lib/auth';
 
 /**
  * GET /api/products/by-ids?ids=1,2,3
- * Returns products by their IDs
+ * Returns products by their IDs (only from user's store)
  */
 export async function GET(request: NextRequest) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get('ids');
+    const storeId = user.store_id;
     
     if (!idsParam) {
       return NextResponse.json({ products: [] });
@@ -20,7 +27,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ products: [] });
     }
 
-    // Get products by IDs
+    // Get products by IDs - CRITICAL: Only from user's store
     const result = await query(
       `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
               pv.price,
@@ -30,8 +37,9 @@ export async function GET(request: NextRequest) {
        LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.position = 1
        LEFT JOIN stores s ON s.id = p.store_id
        WHERE p.id = ANY($1::int[])
+         AND p.store_id = $2
          AND p.status = 'active'`,
-      [ids]
+      [ids, storeId]
     );
 
     // Sort by original order of IDs

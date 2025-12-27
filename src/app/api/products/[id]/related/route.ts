@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, queryOne } from '@/lib/db';
+import { getUserFromRequest } from '@/lib/auth';
 
 /**
  * GET /api/products/[id]/related
@@ -14,8 +15,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const productId = parseInt(id, 10);
+    const storeId = user.store_id;
     
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
@@ -24,24 +31,32 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '4', 10);
 
-    // First, get the current product's details
-    const productResult = await query(
-      `SELECT p.id, p.store_id, p.vendor, p.product_type,
-              (SELECT array_agg(pcm.collection_id) FROM product_collection_map pcm WHERE pcm.product_id = p.id) as collection_ids
+    // First, get the current product's details - CRITICAL: Verify it belongs to user's store
+    const product = await queryOne<{
+      id: number;
+      store_id: number;
+      vendor: string;
+      product_type: string;
+    }>(
+      `SELECT p.id, p.store_id, p.vendor, p.product_type
        FROM products p
-       WHERE p.id = $1`,
-      [productId]
+       WHERE p.id = $1 AND p.store_id = $2`,
+      [productId, storeId]
     );
 
-    if (productResult.length === 0) {
-      return NextResponse.json({ products: [] });
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    const currentProduct = productResult[0];
-    const storeId = currentProduct.store_id;
-    const collectionIds = currentProduct.collection_ids || [];
-    const vendor = currentProduct.vendor;
-    const productType = currentProduct.product_type;
+    // Get collection IDs for this product
+    const collectionResult = await query<{ collection_id: number }>(
+      'SELECT collection_id FROM product_collection_map WHERE product_id = $1',
+      [productId]
+    );
+    const collectionIds = collectionResult.map(r => r.collection_id);
+
+    const vendor = product.vendor;
+    const productType = product.product_type;
 
     // Helper to get unique products (no duplicates by id)
     const seenIds = new Set<number>([productId]); // Start with current product excluded
