@@ -218,6 +218,8 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const limitParam = formData.get('limit') as string;
+    const limit = limitParam ? parseInt(limitParam) : undefined; // Limit number of products to import (for testing)
     const storeId = user.store_id;
 
     if (!file) {
@@ -332,8 +334,16 @@ export async function POST(request: NextRequest) {
     const imported: Array<{ id: string; name: string }> = [];
     const errors: string[] = [];
 
+    // Calculate total rows and limit if specified
+    const totalRows = lines.length - 1; // Exclude header
+    const maxRows = limit && limit > 0 ? Math.min(limit, totalRows) : totalRows;
+    
+    if (limit && limit > 0) {
+      console.log(`⚠️ Test mode: Importing only ${maxRows} products out of ${totalRows} total`);
+    }
+
     // Process each row
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = 1; i < lines.length && imported.length < maxRows; i++) {
       const values = parseCSVRow(lines[i]);
       
       if (values.length !== headers.length) {
@@ -562,6 +572,8 @@ export async function POST(request: NextRequest) {
       errors: errors.length,
       errorDetails: errors,
       products: imported,
+      totalRows: totalRows,
+      limited: limit && limit > 0 && imported.length < totalRows,
     });
   } catch (error: any) {
     console.error('Error importing products:', error);

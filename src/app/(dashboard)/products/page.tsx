@@ -69,11 +69,15 @@ export default function ProductsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [testMode, setTestMode] = useState(false);
+  const [testLimit, setTestLimit] = useState(3);
   const [importResult, setImportResult] = useState<{
     imported: number;
     errors: number;
     errorDetails: string[];
     products: Array<{ id: string; name: string }>;
+    totalRows?: number;
+    limited?: boolean;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -339,6 +343,11 @@ export default function ProductsPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
+      
+      // Add limit if test mode is enabled
+      if (testMode && testLimit > 0) {
+        formData.append('limit', testLimit.toString());
+      }
 
       const response = await fetch('/api/products/import', {
         method: 'POST',
@@ -382,6 +391,8 @@ export default function ProductsPage() {
     setImportDialogOpen(false);
     setSelectedFile(null);
     setImportResult(null);
+    setTestMode(false);
+    setTestLimit(3);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -956,11 +967,61 @@ export default function ProductsPage() {
                       </div>
                     )}
 
+                    {/* Test Mode Option */}
+                    {selectedFile && (
+                      <Card className="bg-yellow-50 border-yellow-200">
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="test-mode"
+                              checked={testMode}
+                              onChange={(e) => {
+                                setTestMode(e.target.checked);
+                                if (!e.target.checked) {
+                                  setTestLimit(3);
+                                }
+                              }}
+                              className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                            />
+                            <label htmlFor="test-mode" className="text-sm font-semibold text-yellow-900 cursor-pointer">
+                              מצב בדיקה - ייבא רק מספר מוצרים מוגבל
+                            </label>
+                          </div>
+                          {testMode && (
+                            <div className="mr-6 space-y-2">
+                              <label htmlFor="test-limit" className="block text-sm text-yellow-800">
+                                מספר מוצרים לייבא (ברירת מחדל: 3):
+                              </label>
+                              <input
+                                type="number"
+                                id="test-limit"
+                                min="1"
+                                max="100"
+                                value={testLimit}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value) || 3;
+                                  setTestLimit(Math.max(1, Math.min(100, value)));
+                                }}
+                                className="w-24 px-3 py-1.5 text-sm border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                              />
+                              <p className="text-xs text-yellow-700 mt-1">
+                                זה יעצור אחרי {testLimit} מוצרים כדי לבדוק שהכל עובד נכון
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    )}
+
                     <Card className="bg-blue-50 border-blue-200">
                       <div className="p-4">
                         <p className="text-sm text-blue-800 font-semibold mb-2">פורמט הקובץ:</p>
                         <p className="text-sm text-blue-800 mb-1">השדות החובה: <strong>name, price</strong></p>
                         <p className="text-sm text-blue-800 mb-1">שדות אופציונליים: description, sku, comparePrice, inventoryQty, status</p>
+                        <p className="text-sm text-blue-800 mt-2">
+                          <strong>תמיכה בפורמט הישן:</strong> כל השדות בעברית נתמכים (שם מוצר, מחיר רגיל, מקט, וכו')
+                        </p>
                       </div>
                     </Card>
                   </div>
@@ -976,6 +1037,11 @@ export default function ProductsPage() {
                           </div>
                           <span className="font-semibold text-green-700">
                             יובאו {importResult.imported} מוצרים בהצלחה
+                            {importResult.limited && importResult.totalRows && (
+                              <span className="text-yellow-700 mr-2">
+                                {' '}(מתוך {importResult.totalRows} בקובץ - מצב בדיקה)
+                              </span>
+                            )}
                           </span>
                         </div>
                         {importResult.errors > 0 && (
