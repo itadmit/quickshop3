@@ -41,17 +41,14 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   const sectionKey = `featured-products-${section.id}`;
   
   // Clear products immediately on mount to prevent showing wrong store's products
-  // Also clear sessionStorage if in preview mode (customizer)
   useEffect(() => {
     setProducts([]);
-    if (isPreview) {
-      // In preview mode, clear any stored products to prevent showing wrong store's products
-      sessionStorage.removeItem(`${sectionKey}-loaded`);
-      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
-      sessionStorage.removeItem(`${sectionKey}-products`);
-      sessionStorage.removeItem(`${sectionKey}-storeId`);
-    }
-  }, [isPreview, sectionKey]);
+    // Clear any stored products to prevent showing wrong store's products
+    sessionStorage.removeItem(`${sectionKey}-loaded`);
+    sessionStorage.removeItem(`${sectionKey}-prevSettings`);
+    sessionStorage.removeItem(`${sectionKey}-products`);
+    sessionStorage.removeItem(`${sectionKey}-storeId`);
+  }, [sectionKey]);
   
   // Helper function to clear sessionStorage for wrong storeId
   const clearSessionStorageForWrongStore = (currentStoreId: number) => {
@@ -206,12 +203,8 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     return [...selectedCollectionIds].sort((a, b) => a - b).join(',');
   }, [selectedCollectionIds, selectedProductIds, productSelectionMode]);
 
-  // Load real products from API (only in storefront, not in customizer preview)
+  // Load real products from API (both in storefront and customizer preview)
   useEffect(() => {
-    // In preview mode, don't load real products - just show placeholders
-    if (isPreview) {
-      return;
-    }
     if (!storeId) {
       return;
     }
@@ -322,24 +315,18 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     };
     
     loadProducts();
-  }, [storeId, isPreview, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds, selectedProductIds]);
+  }, [storeId, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds, selectedProductIds]);
   
-  // ✅ In preview mode, clear products when settings change to show updated placeholder count
-  // ✅ גם בטעינה מחדש של המוצרים כש-selectedCollectionIds משתנה
+  // ✅ Clear loadedRef when settings change to force reload
   useEffect(() => {
-    if (isPreview) {
-      // Clear products so the component re-renders with new placeholder count
-      setProducts([]);
-    } else {
-      // ✅ בטעינה מחדש - נקה את ה-loadedRef כדי לכפות טעינה מחדש
-      if (storeId && productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
-        loadedRef.current = '';
-        // Clear sessionStorage to force reload
-        sessionStorage.removeItem(`${sectionKey}-loaded`);
-        sessionStorage.removeItem(`${sectionKey}-products`);
-      }
+    // ✅ בטעינה מחדש - נקה את ה-loadedRef כדי לכפות טעינה מחדש
+    if (storeId && productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
+      loadedRef.current = '';
+      // Clear sessionStorage to force reload
+      sessionStorage.removeItem(`${sectionKey}-loaded`);
+      sessionStorage.removeItem(`${sectionKey}-products`);
     }
-  }, [isPreview, productsCount, productSelectionMode, selectedIdsString, selectedProductIds, selectedCollectionIds, storeId, sectionKey]);
+  }, [productsCount, productSelectionMode, selectedIdsString, selectedProductIds, selectedCollectionIds, storeId, sectionKey]);
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
@@ -473,7 +460,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
         </div>
 
         {/* Loading state */}
-        {loading && !isPreview && (
+        {loading && (
           <div className={`grid ${getGridCols()} gap-4 md:gap-8`}>
             {Array.from({ length: productsToShow }).map((_, i) => (
               <div key={i} className="animate-pulse">
@@ -485,11 +472,11 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
           </div>
         )}
 
-        {/* Real products (storefront) or placeholder (preview) */}
+        {/* Real products (both storefront and preview) */}
         {!loading && (
           <div className={`grid ${getGridCols()} gap-4 md:gap-8`}>
-            {/* Use real products in storefront, placeholder in preview */}
-            {(isPreview || products.length === 0 ? 
+            {/* Use real products if available, otherwise show placeholders */}
+            {(products.length === 0 ? 
               Array.from({ length: productsToShow }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
               products.slice(0, productsToShow)
             ).map((item: any, index: number) => {
