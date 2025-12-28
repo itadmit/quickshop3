@@ -56,7 +56,8 @@ async function migrateImageFromS3(
   s3UrlOrFilename: string,
   storeId: number,
   entityType: string = 'products',
-  userId?: number
+  userId?: number,
+  storeSlug?: string
 ): Promise<{ cloudinaryUrl: string; mediaFileId: number } | null> {
   try {
     // Skip noimage.svg
@@ -74,14 +75,25 @@ async function migrateImageFromS3(
       const possibleUrls: string[] = [];
       
       if (s3BaseUrl) {
-        // Use configured base URL
+        // Use configured base URL - try with store slug first, then storeId, then direct
+        if (storeSlug) {
+          possibleUrls.push(`${s3BaseUrl}/${storeSlug}/${s3UrlOrFilename}`);
+        }
         possibleUrls.push(`${s3BaseUrl}/${storeId}/${s3UrlOrFilename}`);
         possibleUrls.push(`${s3BaseUrl}/${s3UrlOrFilename}`);
       } else {
-        // Try common S3 formats
-        const bucketName = process.env.OLD_S3_BUCKET || 'quickshop-images';
+        // Try common S3 formats (quickshopil-storage pattern)
+        const bucketName = process.env.OLD_S3_BUCKET || 'quickshopil-storage';
         const region = process.env.OLD_S3_REGION || 'us-east-1';
         
+        // Try with store slug (most common for quickshopil)
+        if (storeSlug) {
+          possibleUrls.push(`https://${bucketName}.s3.amazonaws.com/uploads/${storeSlug}/${s3UrlOrFilename}`);
+          possibleUrls.push(`https://${bucketName}.s3.${region}.amazonaws.com/uploads/${storeSlug}/${s3UrlOrFilename}`);
+        }
+        
+        // Try with storeId
+        possibleUrls.push(`https://${bucketName}.s3.amazonaws.com/uploads/${storeId}/${s3UrlOrFilename}`);
         possibleUrls.push(`https://${bucketName}.s3.${region}.amazonaws.com/${storeId}/${s3UrlOrFilename}`);
         possibleUrls.push(`https://${bucketName}.s3.${region}.amazonaws.com/${s3UrlOrFilename}`);
         possibleUrls.push(`https://s3.${region}.amazonaws.com/${bucketName}/${storeId}/${s3UrlOrFilename}`);
@@ -96,6 +108,7 @@ async function migrateImageFromS3(
           const testResponse = await fetch(url, { method: 'HEAD' });
           if (testResponse.ok) {
             imageUrl = url;
+            console.log(`✅ Found image at: ${url}`);
             break;
           }
         } catch (e) {
@@ -104,7 +117,7 @@ async function migrateImageFromS3(
       }
       
       if (!imageUrl) {
-        console.warn(`Could not find image: ${s3UrlOrFilename}`);
+        console.warn(`Could not find image: ${s3UrlOrFilename}. Tried URLs:`, possibleUrls.slice(0, 3));
         return null;
       }
     }
@@ -221,6 +234,10 @@ export async function POST(request: NextRequest) {
     const limitParam = formData.get('limit') as string;
     const limit = limitParam ? parseInt(limitParam) : undefined; // Limit number of products to import (for testing)
     const storeId = user.store_id;
+
+    // Get store slug for S3 image URLs
+    const store = await queryOne<{ slug: string }>('SELECT slug FROM stores WHERE id = $1', [storeId]);
+    const storeSlug = process.env.OLD_S3_STORE_SLUG || store?.slug;
 
     if (!file) {
       return NextResponse.json(
@@ -483,7 +500,8 @@ export async function POST(request: NextRequest) {
                 imageFilename,
                 storeId,
                 'products',
-                user.id
+                user.id,
+                storeSlug
               );
               
               if (imageResult) {
