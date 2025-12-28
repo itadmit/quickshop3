@@ -71,6 +71,7 @@ export default function ProductsPage() {
   const [importing, setImporting] = useState(false);
   const [testMode, setTestMode] = useState(false);
   const [testLimit, setTestLimit] = useState(3);
+  const [sourceStoreSlug, setSourceStoreSlug] = useState(''); // Slug of original store for S3 images
   const [importResult, setImportResult] = useState<{
     imported: number;
     errors: number;
@@ -347,6 +348,11 @@ export default function ProductsPage() {
       // Add limit if test mode is enabled
       if (testMode && testLimit > 0) {
         formData.append('limit', testLimit.toString());
+      }
+      
+      // Add source store slug for S3 images
+      if (sourceStoreSlug.trim()) {
+        formData.append('source_store_slug', sourceStoreSlug.trim());
       }
 
       const response = await fetch('/api/products/import', {
@@ -1010,6 +1016,33 @@ export default function ProductsPage() {
                               </p>
                             </div>
                           )}
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Source Store Slug for S3 Images */}
+                    {selectedFile && (
+                      <Card className="bg-purple-50 border-purple-200">
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <HiPhotograph className="w-5 h-5 text-purple-600" />
+                            <label className="text-sm font-semibold text-purple-900">
+                              סלאג החנות המקורית (לייבוא תמונות)
+                            </label>
+                          </div>
+                          <p className="text-xs text-purple-700 mr-7">
+                            אם מייבאים מחנות ישנה עם תמונות ב-S3, הזינו את הסלאג של החנות המקורית
+                          </p>
+                          <input
+                            type="text"
+                            value={sourceStoreSlug}
+                            onChange={(e) => setSourceStoreSlug(e.target.value)}
+                            placeholder="לדוגמה: argania"
+                            className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          />
+                          <p className="text-xs text-purple-600">
+                            הכתובת תהיה: https://quickshopil-storage.s3.amazonaws.com/uploads/<strong>{sourceStoreSlug || 'SLUG'}</strong>/filename.webp
+                          </p>
                         </div>
                       </Card>
                     )}

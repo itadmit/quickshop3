@@ -233,11 +233,15 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const limitParam = formData.get('limit') as string;
     const limit = limitParam ? parseInt(limitParam) : undefined; // Limit number of products to import (for testing)
+    const sourceStoreSlugParam = formData.get('source_store_slug') as string; // Slug of the original store (for S3 images)
     const storeId = user.store_id;
 
     // Get store slug for S3 image URLs
+    // Priority: 1. source_store_slug from form, 2. env var, 3. current store slug
     const store = await queryOne<{ slug: string }>('SELECT slug FROM stores WHERE id = $1', [storeId]);
-    const storeSlug = process.env.OLD_S3_STORE_SLUG || store?.slug;
+    const storeSlug = sourceStoreSlugParam || process.env.OLD_S3_STORE_SLUG || store?.slug;
+    
+    console.log(`🔗 Using store slug for S3 images: ${storeSlug}`);
 
     if (!file) {
       return NextResponse.json(

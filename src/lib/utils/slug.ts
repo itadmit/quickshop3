@@ -1,16 +1,16 @@
 import { queryOne } from '@/lib/db';
 
 /**
- * Generate a unique slug (handle) for a product, page, or blog post
+ * Generate a unique slug (handle) for a product, page, blog post, or collection
  * @param title - Title
- * @param tableName - Table name ('products', 'pages', 'blog_posts')
+ * @param tableName - Table name ('products', 'pages', 'blog_posts', 'collections')
  * @param storeId - Store ID
  * @param excludeId - ID to exclude from uniqueness check (for updates)
  * @returns Unique slug
  */
 export async function generateUniqueSlug(
   title: string,
-  tableName: 'products' | 'pages' | 'blog_posts',
+  tableName: 'products' | 'pages' | 'blog_posts' | 'collections',
   storeId: number,
   excludeId?: number
 ): Promise<string> {
@@ -49,9 +49,12 @@ export async function generateUniqueSlug(
   let slug = baseSlug;
   let counter = 1;
 
+  // Map table name to actual database table
+  const dbTableName = tableName === 'collections' ? 'product_collections' : tableName;
+
   while (true) {
     const existing = await queryOne<{ id: number }>(
-      `SELECT id FROM ${tableName} 
+      `SELECT id FROM ${dbTableName} 
        WHERE store_id = $1 AND handle = $2 
        ${excludeId ? 'AND id != $3' : ''}`,
       excludeId ? [storeId, slug, excludeId] : [storeId, slug]
