@@ -184,12 +184,13 @@ async function migrateImageFromS3(
     });
 
     // Save to media_files (as if uploaded manually)
+    // Note: created_by is omitted because user may not be in admin_users table
     const mediaFile = await queryOne<{ id: number }>(
       `INSERT INTO media_files (
         store_id, filename, original_filename, file_path, file_url,
         file_type, mime_type, file_size, width, height,
-        folder_path, created_by, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
+        folder_path, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
       RETURNING id`,
       [
         storeId,
@@ -203,7 +204,6 @@ async function migrateImageFromS3(
         width,
         height,
         `${entityType}`, // folder_path
-        userId || null, // created_by
       ]
     );
 
@@ -521,8 +521,10 @@ export async function POST(request: NextRequest) {
 
           // Handle categories (קטגוריות) - comma-separated
           const categoriesStr = row.categories || row['קטגוריות'];
+          console.log(`📁 Product "${name}" categories field:`, categoriesStr || '(empty)');
           if (categoriesStr && categoriesStr.trim()) {
             const categoryNames = categoriesStr.split(',').map(c => c.trim()).filter(c => c);
+            console.log(`📁 Parsed categories:`, categoryNames);
             for (const categoryName of categoryNames) {
               try {
                 // Find or create collection (categories are collections in our system)
@@ -534,6 +536,7 @@ export async function POST(request: NextRequest) {
                 if (!collection) {
                   // Create new collection
                   const handle = await generateUniqueSlug(categoryName, 'collections', storeId);
+                  console.log(`📁 Creating new category: "${categoryName}" with handle: ${handle}`);
                   const newCollection = await queryOne<{ id: number }>(
                     `INSERT INTO product_collections (
                       store_id, title, handle, created_at, updated_at
@@ -542,6 +545,9 @@ export async function POST(request: NextRequest) {
                     [storeId, categoryName, handle]
                   );
                   collection = newCollection;
+                  console.log(`📁 Created category ID: ${collection?.id}`);
+                } else {
+                  console.log(`📁 Found existing category: "${categoryName}" ID: ${collection.id}`);
                 }
 
                 if (collection) {
