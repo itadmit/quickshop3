@@ -37,7 +37,7 @@ export function ProductCard({ product, storeSlug: propStoreSlug, variant = 'mini
   
   // Track ViewContent when product card is viewed
   useEffect(() => {
-    if (pathname?.includes('/products/') || pathname?.includes('/collections/')) {
+    if (pathname?.includes('/products/') || pathname?.includes('/collections/') || pathname?.includes('/categories/')) {
       emitTrackingEvent({
         event: 'ViewContent',
         content_type: 'product',

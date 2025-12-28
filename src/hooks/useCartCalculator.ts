@@ -580,7 +580,13 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
         const newCalculation = globalCalculation[options.storeId];
         const isCodeApplied = newCalculation?.discounts?.some(d => d.source === 'code' && d.code === upperCode);
         
-        if (!isCodeApplied) {
+        // ✅ בדיקה אם יש אזהרות ספציפיות לקופון הזה
+        const codeWarnings = newCalculation?.warnings?.filter(w => 
+          w.includes(upperCode) || w.includes('קופון') || w.includes('הנחה')
+        ) || [];
+        
+        // ✅ אם הקופון לא מופיע ב-discounts אבל יש אזהרות, זה אומר שהקופון לא עומד בתנאים
+        if (!isCodeApplied && codeWarnings.length > 0) {
           // הקופון קיים אבל לא עומד בקריטריונים (סף מינימום, תאריך, וכו')
           setDiscountCode('');
           globalDiscountCode[options.storeId] = '';
@@ -589,14 +595,24 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
           isValidatingRef.current = false;
           setValidatingCode(false);
           
-          // ✅ בדיקה אם יש הודעת שגיאה ספציפית מהחישוב
-          const warning = newCalculation?.warnings?.find(w => w.includes(upperCode) || w.includes('קופון') || w.includes('הנחה'));
-          return { valid: false, error: warning || 'הקופון לא עומד בתנאי ההנחה (סכום מינימום / תאריך תוקף / מוצרים מסוימים)' };
+          return { valid: false, error: codeWarnings[0] || 'הקופון לא עומד בתנאי ההנחה (סכום מינימום / תאריך תוקף / מוצרים מסוימים)' };
         }
         
+        // ✅ אם הקופון מופיע ב-discounts, הוא תקף (גם אם יש אזהרות אחרות)
+        if (isCodeApplied) {
+          isValidatingRef.current = false;
+          setValidatingCode(false);
+          return { valid: true };
+        }
+        
+        // ✅ אם הקופון לא מופיע ב-discounts ואין אזהרות, זה אומר שהקופון לא תקף כלל
+        setDiscountCode('');
+        globalDiscountCode[options.storeId] = '';
+        sessionStorage.setItem(`discount_code_${options.storeId}`, '');
+        notifyDiscountListeners();
         isValidatingRef.current = false;
         setValidatingCode(false);
-        return { valid: true };
+        return { valid: false, error: 'קופון לא תקף' };
       } else {
         // ✅ אם הקופון לא תקף, הסר אותו מיד
         setDiscountCode('');

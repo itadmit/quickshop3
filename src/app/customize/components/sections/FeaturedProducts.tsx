@@ -216,8 +216,15 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
       return;
     }
     
-    // Create a stable key for this load attempt
+    // ✅ Create a stable key for this load attempt - כולל selectedCollectionIds כדי לזהות שינויים
     const loadKey = `${storeId}-${productsCount}-${productSelectionMode}-${selectedIdsString || 'all'}`;
+    
+    // ✅ אם selectedIdsString השתנה, נקה את ה-loadedRef כדי לכפות טעינה מחדש
+    if (selectedIdsString !== prevSettingsRef.current.selectedIdsString) {
+      loadedRef.current = '';
+      sessionStorage.removeItem(`${sectionKey}-loaded`);
+      sessionStorage.removeItem(`${sectionKey}-products`);
+    }
     
     // Check if we already loaded with these exact settings
     if (loadedRef.current === loadKey) {
@@ -317,13 +324,22 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     loadProducts();
   }, [storeId, isPreview, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds, selectedProductIds]);
   
-  // In preview mode, clear products when settings change to show updated placeholder count
+  // ✅ In preview mode, clear products when settings change to show updated placeholder count
+  // ✅ גם בטעינה מחדש של המוצרים כש-selectedCollectionIds משתנה
   useEffect(() => {
     if (isPreview) {
       // Clear products so the component re-renders with new placeholder count
       setProducts([]);
+    } else {
+      // ✅ בטעינה מחדש - נקה את ה-loadedRef כדי לכפות טעינה מחדש
+      if (storeId && productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
+        loadedRef.current = '';
+        // Clear sessionStorage to force reload
+        sessionStorage.removeItem(`${sectionKey}-loaded`);
+        sessionStorage.removeItem(`${sectionKey}-products`);
+      }
     }
-  }, [isPreview, productsCount, productSelectionMode, selectedIdsString, selectedProductIds]);
+  }, [isPreview, productsCount, productSelectionMode, selectedIdsString, selectedProductIds, selectedCollectionIds, storeId, sectionKey]);
 
   // Responsive items per row logic
   const getItemsPerRow = () => {

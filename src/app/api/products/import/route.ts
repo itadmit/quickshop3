@@ -231,14 +231,6 @@ export async function POST(request: NextRequest) {
 
     // Read CSV file
     const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim());
-
-    if (lines.length < 2) {
-      return NextResponse.json(
-        { error: 'CSV file must have at least a header row and one data row' },
-        { status: 400 }
-      );
-    }
 
     // Parse header - support Hebrew and English
     // תואם בדיוק לפורמט של קוויק שופ הישן:
@@ -283,39 +275,84 @@ export async function POST(request: NextRequest) {
       'תאריך יצירה': 'created_at',
     };
 
-    // Parse CSV header with proper quote handling
-    const parseCSVRow = (line: string): string[] => {
-      const values: string[] = [];
+    // Parse entire CSV file properly handling multi-line quoted fields
+    const parseCSV = (csvText: string): string[][] => {
+      const rows: string[][] = [];
+      let currentRow: string[] = [];
       let currentValue = '';
       let inQuotes = false;
       
-      for (let j = 0; j < line.length; j++) {
-        const char = line[j];
+      // Remove BOM if present
+      let text = csvText;
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+      }
+      
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+        
         if (char === '"') {
-          if (inQuotes && line[j + 1] === '"') {
+          if (!inQuotes) {
+            // Starting a quoted field
+            inQuotes = true;
+          } else if (nextChar === '"') {
+            // Escaped quote inside quoted field
             currentValue += '"';
-            j++;
+            i++; // Skip next quote
           } else {
-            inQuotes = !inQuotes;
+            // Ending a quoted field
+            inQuotes = false;
           }
         } else if (char === ',' && !inQuotes) {
-          values.push(currentValue.trim());
+          // End of field
+          currentRow.push(currentValue.trim());
+          currentValue = '';
+        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+          // End of row (but NOT if we're inside quotes - that's a multi-line field)
+          if (char === '\r') i++; // Skip \r in \r\n
+          currentRow.push(currentValue.trim());
+          if (currentRow.some(v => v !== '')) { // Skip empty rows
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentValue = '';
+        } else if (char === '\r' && !inQuotes) {
+          // Handle standalone \r as line ending
+          currentRow.push(currentValue.trim());
+          if (currentRow.some(v => v !== '')) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
           currentValue = '';
         } else {
+          // Regular character (including newlines inside quotes)
           currentValue += char;
         }
       }
-      values.push(currentValue.trim());
-      return values;
+      
+      // Don't forget the last field and row
+      if (currentValue || currentRow.length > 0) {
+        currentRow.push(currentValue.trim());
+        if (currentRow.some(v => v !== '')) {
+          rows.push(currentRow);
+        }
+      }
+      
+      return rows;
     };
 
-    // Remove BOM if present
-    let headerLine = lines[0];
-    if (headerLine.charCodeAt(0) === 0xFEFF) {
-      headerLine = headerLine.slice(1);
-    }
+    // Parse the entire CSV
+    const allRows = parseCSV(text);
     
-    const rawHeaders = parseCSVRow(headerLine);
+    if (allRows.length < 2) {
+      return NextResponse.json(
+        { error: 'CSV file must have at least a header row and one data row' },
+        { status: 400 }
+      );
+    }
+
+    const rawHeaders = allRows[0];
     const headers = rawHeaders.map(h => {
       const normalized = h.trim().toLowerCase().replace(/"/g, '');
       return headerMap[normalized] || normalized;
@@ -334,8 +371,9 @@ export async function POST(request: NextRequest) {
     const imported: Array<{ id: string; name: string }> = [];
     const errors: string[] = [];
 
-    // Calculate total rows and limit if specified
-    const totalRows = lines.length - 1; // Exclude header
+    // Calculate total rows and limit if specified (using allRows, excluding header)
+    const dataRows = allRows.slice(1); // All rows except header
+    const totalRows = dataRows.length;
     const maxRows = limit && limit > 0 ? Math.min(limit, totalRows) : totalRows;
     
     if (limit && limit > 0) {
@@ -343,11 +381,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Process each row
-    for (let i = 1; i < lines.length && imported.length < maxRows; i++) {
-      const values = parseCSVRow(lines[i]);
+    for (let i = 0; i < dataRows.length && imported.length < maxRows; i++) {
+      const values = dataRows[i];
       
       if (values.length !== headers.length) {
-        errors.push(`Row ${i + 1}: Column count mismatch (expected ${headers.length}, got ${values.length})`);
+        errors.push(`Row ${i + 2}: Column count mismatch (expected ${headers.length}, got ${values.length})`);
         continue;
       }
 
@@ -385,9 +423,9 @@ export async function POST(request: NextRequest) {
         const compareAtPrice = salePrice && parseFloat(salePrice) > 0 ? parseFloat(salePrice) : null;
         const regularPrice = price;
 
-        // Determine status
+        // Determine status - if not hidden, set to active
         const isHidden = row.hidden === 'כן' || row.hidden === 'yes' || row.hidden === '1' || row['מוסתר'] === 'כן';
-        const status = isHidden ? 'draft' : (row.status === 'active' ? 'active' : 'draft');
+        const status = isHidden ? 'draft' : 'active';
 
         // Create product
         const sql = `

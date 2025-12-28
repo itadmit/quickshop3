@@ -20,7 +20,21 @@ function CollageComponent({ section, onUpdate }: CollageProps) {
   const titleAlign = settings.title_align || 'center';
   const layout = settings.layout || 'left-large'; // left-large, right-large, equal
   const gap = settings.gap || 'medium';
-  const imageBorderRadius = settings.image_border_radius || '8px';
+  // ✅ תמיכה במספר בלבד או במחרוזת עם px
+  const getImageBorderRadius = () => {
+    const radius = settings.image_border_radius || '8px';
+    // אם זה מספר בלבד, הוסף px
+    if (typeof radius === 'number') {
+      return `${radius}px`;
+    }
+    // אם זה מחרוזת מספרית בלבד (ללא px), הוסף px
+    if (typeof radius === 'string' && /^\d+$/.test(radius.trim())) {
+      return `${radius.trim()}px`;
+    }
+    // אחרת, החזר כמו שזה
+    return radius;
+  };
+  const imageBorderRadius = getImageBorderRadius();
   
   // Text alignment mapping
   const textAlignClasses: Record<string, string> = {

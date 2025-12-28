@@ -254,9 +254,9 @@ export async function createOrder(input: CreateOrderInput) {
     };
   }
   
-  // ✅ הסכום הסופי כבר מחושב למעלה (finalTotal)
-  // finalTotal כבר כולל את כל ההנחות (גיפט קארד + קרדיט בחנות)
-  const finalTotalAfterCredits = finalTotal;
+  // ✅ הסכום הסופי אחרי קרדיט וגיפט קארד
+  // input.total כבר כולל את כל ההנחות (גיפט קארד + קרדיט בחנות) - זה הסכום הסופי לתשלום
+  const finalTotalAfterCredits = input.total;
   
   // קבע את שיטת התשלום בפועל - אם גיפט קארד או קרדיט מכסים הכל, זה שיטת התשלום
   let actualPaymentMethod = input.paymentMethod || 'credit_card';
@@ -354,6 +354,8 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // חישוב ערכים לשמירה
+  // ✅ חשוב: finalTotalAfterCredits הוא הסכום הסופי אחרי כל ההנחות (קרדיט + גיפט קארד)
+  // זה הסכום שצריך לעבור לסליקה ולשמור ב-total_price
   const subtotalPrice = input.subtotal || finalTotal;
   const shippingPrice = input.shippingCost || 0;
   const totalDiscounts = input.totalDiscount || 0;
@@ -376,7 +378,7 @@ export async function createOrder(input: CreateOrderInput) {
     [
       storeId,                                    // $1 - store_id
       customer.id,                                // $2 - customer_id
-      finalTotal,                                 // $3 - total_price
+      finalTotalAfterCredits,                     // $3 - total_price - ✅ הסכום הסופי אחרי קרדיט וגיפט קארד
       JSON.stringify(billingAddressObject),       // $4 - billing_address
       JSON.stringify(shippingAddressObject),      // $5 - shipping_address
       input.customer.email,                       // $6 - email

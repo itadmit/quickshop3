@@ -41,6 +41,12 @@ function ImageComponent({ section, onUpdate, editorDevice }: ImageProps) {
       case 'square': return 'aspect-square';
       case 'portrait': return 'aspect-[3/4]';
       case 'landscape': return 'aspect-[4/3]';
+      case 'story': return 'aspect-[9/16]';
+      case 'wide': return 'aspect-[16/9]';
+      case 'tall': return 'aspect-[2/3]';
+      case 'ultra_wide': return 'aspect-[21/9]';
+      case 'vertical': return 'aspect-[9/16]';
+      case 'horizontal': return 'aspect-[16/10]';
       case 'adapt':
       default: return ''; // Adapt to image content
     }

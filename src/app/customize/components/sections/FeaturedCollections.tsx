@@ -42,31 +42,62 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   const prevSettingsRef = useRef<{ mode: string; ids: string }>({ mode: '', ids: '' });
   const renderCountRef = useRef(0);
   
+  // Helper function to clear sessionStorage for wrong storeId
+  const clearSessionStorageForWrongStore = (currentStoreId: number) => {
+    if (typeof window === 'undefined') return;
+    
+    // Check all sessionStorage keys for this section
+    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
+    if (storedStoreId && parseInt(storedStoreId) !== currentStoreId) {
+      sessionStorage.removeItem(`${sectionKey}-collections`);
+      sessionStorage.removeItem(`${sectionKey}-loaded`);
+      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
+      sessionStorage.removeItem(`${sectionKey}-storeId`);
+      setCollections([]);
+    }
+  };
+
   // Initialize refs and collections from sessionStorage if available (to persist across remounts)
+  // ✅ אבל רק אם storeId תואם - מונע הצגת קטגוריות מחנות אחרת
   useEffect(() => {
+    if (!storeId) return;
+    
+    // Clear sessionStorage if storeId changed
+    clearSessionStorageForWrongStore(storeId);
+    
     const storedLoadedKey = sessionStorage.getItem(`${sectionKey}-loaded`);
     const storedPrevSettings = sessionStorage.getItem(`${sectionKey}-prevSettings`);
     const storedCollections = sessionStorage.getItem(`${sectionKey}-collections`);
+    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
     
-    if (storedLoadedKey) {
-      loadedRef.current = storedLoadedKey;
-    }
-    if (storedPrevSettings) {
-      try {
-        prevSettingsRef.current = JSON.parse(storedPrevSettings);
-      } catch (e) {
-        // Ignore parse errors
+    // ✅ רק אם storeId תואם - מונע הצגת קטגוריות מחנות אחרת
+    if (storedStoreId && parseInt(storedStoreId) === storeId) {
+      if (storedLoadedKey) {
+        loadedRef.current = storedLoadedKey;
       }
-    }
-    if (storedCollections) {
-      try {
-        const parsedCollections = JSON.parse(storedCollections);
-        setCollections(parsedCollections);
-      } catch (e) {
-        // Ignore parse errors
+      if (storedPrevSettings) {
+        try {
+          prevSettingsRef.current = JSON.parse(storedPrevSettings);
+        } catch (e) {
+          // Ignore parse errors
+        }
       }
+      if (storedCollections) {
+        try {
+          const parsedCollections = JSON.parse(storedCollections);
+          setCollections(parsedCollections);
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    } else {
+      // StoreId לא תואם - נקה הכל
+      sessionStorage.removeItem(`${sectionKey}-collections`);
+      sessionStorage.removeItem(`${sectionKey}-loaded`);
+      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
+      setCollections([]);
     }
-  }, [sectionKey]);
+  }, [sectionKey, storeId]);
 
   // Track renders (for debugging if needed)
   renderCountRef.current += 1;
@@ -149,33 +180,15 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
           }
         }
         
-        // If no collections found, try loading from /api/collections as fallback
-        if (collectionsData.length === 0 && storeId) {
-          try {
-            const fallbackResponse = await fetch(`/api/collections?limit=100`, {
-              credentials: 'include',
-            });
-            if (fallbackResponse.ok) {
-              const fallbackData = await fallbackResponse.json();
-              const fallbackCollections = fallbackData.collections || [];
-              // Map to Collection format
-              collectionsData = fallbackCollections.map((c: any) => ({
-                id: c.id,
-                title: c.title,
-                handle: c.handle,
-                image_url: c.image_url,
-                products_count: 0,
-              }));
-            }
-          } catch (fallbackError) {
-            console.error('Error loading collections from fallback API:', fallbackError);
-          }
-        }
+        // ✅ אין fallback - אם אין קטגוריות, נשאיר רשימה ריקה
+        // זה מונע הצגת קטגוריות מחנות אחרת
+        // אם אין קטגוריות, המשתמש יכול ליצור חדשות בדשבורד
         
         setCollections(collectionsData);
         // loadedRef.current already set before async call
-        // Persist collections to sessionStorage
+        // ✅ Persist collections to sessionStorage עם storeId - מונע הצגת קטגוריות מחנות אחרת
         sessionStorage.setItem(`${sectionKey}-collections`, JSON.stringify(collectionsData));
+        sessionStorage.setItem(`${sectionKey}-storeId`, String(storeId));
       } catch (error) {
         console.error('[FeaturedCollections] Error loading featured collections:', error);
         loadedRef.current = loadKey; // Mark as attempted even on error
@@ -285,7 +298,7 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
             </h2>
             {settings.show_view_all !== false && (
               <a 
-                href={settings.view_all_url || '/collections'}
+                href={settings.view_all_url || `/shops/${storeSlug}/categories`}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
               >
                 {settings.view_all_text || t('sections.featured_collections.view_all') || 'לכל הקטגוריות'}

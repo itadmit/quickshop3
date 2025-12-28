@@ -125,11 +125,24 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // סיכומים
+    // סיכומים - תיקון: חישוב נכון של total_orders
+    const uniqueOrderIds = new Set<number>();
+    const orderIdsResult = await query<{ order_id: number }>(`
+      SELECT DISTINCT o.id as order_id
+      FROM order_line_items oli
+      JOIN orders o ON o.id = oli.order_id
+      WHERE o.store_id = $1
+        AND o.created_at >= $2
+        AND o.created_at <= $3::date + interval '1 day'
+        AND o.financial_status IN ('paid', 'partially_paid', 'authorized')
+    `, [user.store_id, start_date, end_date]);
+    
+    orderIdsResult.forEach((r) => uniqueOrderIds.add(r.order_id));
+    
     const totals = {
       total_products: products.length,
       total_quantity: products.reduce((acc, p) => acc + p.quantity_sold, 0),
-      total_orders: new Set(productsData.map((p) => p.orders_count)).size,
+      total_orders: uniqueOrderIds.size,
       total_revenue: products.reduce((acc, p) => acc + p.revenue, 0),
       avg_order_value: 0,
     };

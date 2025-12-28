@@ -1640,7 +1640,61 @@ export default function StorefrontAccountPage() {
                               </div>
                             ))}
                           
-                          {returns.filter((r: any) => r.refundMethod === "STORE_CREDIT" && (r.status === "APPROVED" || r.status === "COMPLETED")).length === 0 && (
+                          {/* ✅ הצגת היסטוריית עסקאות אם יש */}
+                          {storeCredit.transactions && storeCredit.transactions.length > 0 && (
+                            <>
+                              {storeCredit.transactions.map((transaction: any) => (
+                                <div
+                                  key={transaction.id}
+                                  className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <HiCurrencyDollar className={`w-4 h-4 ${
+                                          transaction.transactionType === 'earned' || transaction.transactionType === 'manual_adjustment'
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }`} />
+                                        <span className={`font-semibold ${
+                                          transaction.transactionType === 'earned' || transaction.transactionType === 'manual_adjustment'
+                                            ? "text-green-700"
+                                            : "text-red-700"
+                                        }`}>
+                                          {transaction.transactionType === 'earned' ? 'צבירה' :
+                                           transaction.transactionType === 'used' ? 'שימוש' :
+                                           transaction.transactionType === 'refunded' ? 'החזר' :
+                                           transaction.transactionType === 'expired' ? 'פג תוקף' :
+                                           transaction.transactionType === 'manual_adjustment' ? 'עדכון ידני' : 'עסקה'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                                        <div className="flex items-center gap-1">
+                                          <HiCalendar className="w-4 h-4" />
+                                          {new Date(transaction.createdAt).toLocaleDateString("he-IL")}
+                                        </div>
+                                        <div className={`flex items-center gap-1 font-semibold ${
+                                          transaction.transactionType === 'earned' || transaction.transactionType === 'manual_adjustment'
+                                            ? "text-green-700"
+                                            : "text-red-700"
+                                        }`}>
+                                          {transaction.transactionType === 'earned' || transaction.transactionType === 'manual_adjustment' ? '+' : '-'}₪{Math.abs(transaction.amount).toFixed(2)}
+                                        </div>
+                                      </div>
+                                      {transaction.description && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {transaction.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          
+                          {(!storeCredit.transactions || storeCredit.transactions.length === 0) && 
+                           returns.filter((r: any) => r.refundMethod === "STORE_CREDIT" && (r.status === "APPROVED" || r.status === "COMPLETED")).length === 0 && (
                             <div className="text-center py-8 text-gray-500">
                               <HiCurrencyDollar className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                               <p>אין היסטוריית קרדיט עדיין</p>

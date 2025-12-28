@@ -85,6 +85,20 @@ export default function OrderDetailsPage() {
       if (!response.ok) throw new Error('Failed to load order');
       const data = await response.json();
       setOrder(data.order);
+      
+      // ✅ סמן את ההזמנה כנקראה כשפותחים אותה
+      if (data.order && !data.order.is_read) {
+        try {
+          await fetch(`/api/orders/${orderId}/mark-read`, {
+            method: 'POST',
+            credentials: 'include',
+          });
+          // עדכן את המונה ב-Sidebar
+          window.dispatchEvent(new CustomEvent('orderMarkedAsRead'));
+        } catch (error) {
+          console.error('Error marking order as read:', error);
+        }
+      }
     } catch (error: any) {
       if (error.name === 'AbortError') return;
       console.error('Error loading order:', error);
@@ -608,10 +622,23 @@ export default function OrderDetailsPage() {
                   // Get image from item.image or from properties
                   const itemImage = (item as any).image || null;
                   
+                  // ✅ בדיקה אם זה מוצר מתנה
+                  const parsedProperties = item.properties 
+                    ? (typeof item.properties === 'string' ? JSON.parse(item.properties) : item.properties)
+                    : null;
+                  const isGiftProduct = parsedProperties && Array.isArray(parsedProperties)
+                    ? parsedProperties.some((prop: { name: string; value: string }) => prop.name === 'מתנה')
+                    : parsedProperties && typeof parsedProperties === 'object' && !Array.isArray(parsedProperties)
+                    ? Object.keys(parsedProperties).some(key => key === 'מתנה' || parsedProperties[key]?.name === 'מתנה')
+                    : false;
+                  const giftDiscountName = parsedProperties && Array.isArray(parsedProperties)
+                    ? parsedProperties.find((prop: { name: string; value: string }) => prop.name === 'מתנה')?.value
+                    : null;
+                  
                   const isEditingItem = isEditing && editData.line_items?.find((li: any) => li.id === item.id);
                   
                   return (
-                    <div key={item.id} className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0">
+                    <div key={item.id} className={`flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0 ${isGiftProduct ? 'bg-green-50 rounded-lg p-3 -mx-3' : ''}`}>
                       {/* Image - Always show placeholder if no image */}
                       <div className="w-16 h-16 flex-shrink-0 relative">
                         {itemImage ? (
@@ -678,7 +705,19 @@ export default function OrderDetailsPage() {
                           </div>
                         ) : (
                           <>
-                            <div className="font-medium text-gray-900">{productTitle}</div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-medium text-gray-900">{productTitle}</div>
+                              {isGiftProduct && (
+                                <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full flex-shrink-0">
+                                  מתנה
+                                </span>
+                              )}
+                            </div>
+                            {isGiftProduct && giftDiscountName && (
+                              <p className="text-xs text-green-700 font-medium mt-1">
+                                מתנה מהנחת {giftDiscountName}
+                              </p>
+                            )}
                             {variantTitle && (
                               <div className="text-sm text-gray-500">{variantTitle}</div>
                             )}

@@ -62,8 +62,8 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
   };
 
   return (
-    <div className="w-full py-8 md:py-12">
-      <div className={`${getSectionWidthClass()} px-4 sm:px-6 lg:px-8`}>
+    <div className="w-full py-8 md:py-12 overflow-x-hidden">
+      <div className={`${getSectionWidthClass()} px-4 sm:px-6 lg:px-8 max-w-full`}>
         {/* Header */}
         {(settings.heading || settings.subheading) && (
           <div className="text-center mb-12 space-y-4">
@@ -138,7 +138,7 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
         ) : (
           // Desktop Grid
           <div 
-            className="hidden md:grid items-start justify-items-center"
+            className="hidden md:grid items-start justify-items-center w-full max-w-full overflow-x-hidden"
             style={getDesktopGridStyle()}
           >
             {logos.map((logo) => (
@@ -187,7 +187,7 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
         )}
 
         {/* Mobile Horizontal Scroll (always slider) */}
-        <div className="md:hidden overflow-x-auto scrollbar-hide -mx-4">
+        <div className="md:hidden overflow-x-auto scrollbar-hide -mx-4 max-w-full">
           <div className="flex px-4 py-2" style={{ width: 'max-content', gap: settings.logo_gap === 'small' ? '0.5rem' : settings.logo_gap === 'large' ? '2rem' : '1rem' }}>
             {logos.map((logo) => (
               <div

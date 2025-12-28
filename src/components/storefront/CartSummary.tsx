@@ -81,6 +81,18 @@ export function CartSummary({
 
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
+  
+  // ✅ ניקוי שגיאת קופון כשהקופון מוחל בהצלחה
+  useEffect(() => {
+    if (discountCode && calculation) {
+      // בדוק אם הקופון מופיע ב-discounts עם source === 'code'
+      const isCodeApplied = calculation.discounts?.some(d => d.source === 'code' && d.code === discountCode);
+      if (isCodeApplied && codeError) {
+        // הקופון מוחל - נקה את השגיאה
+        setCodeError('');
+      }
+    }
+  }, [discountCode, calculation, codeError]);
 
   const handleApplyCode = async () => {
     if (!codeInput.trim()) return;

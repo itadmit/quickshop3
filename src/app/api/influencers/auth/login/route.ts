@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryOne } from '@/lib/db';
+import { queryOne, query } from '@/lib/db';
 import { verifyPassword, generateInfluencerToken } from '@/lib/auth';
 import { setInfluencerSessionCookie } from '@/lib/auth/influencerAuth';
 
@@ -49,14 +49,21 @@ export async function POST(req: NextRequest) {
     // Verify password
     const isValidPassword = await verifyPassword(password, influencer.password_hash);
     if (!isValidPassword) {
+      console.error('Influencer login failed: Invalid password for', email);
       return NextResponse.json(
         { error: 'אימייל או סיסמה שגויים' },
         { status: 401 }
       );
     }
+    
+    console.log('Influencer login successful:', {
+      id: influencer.id,
+      email: influencer.email,
+      store_id: influencer.store_id,
+    });
 
     // Update last_login_at
-    await queryOne(
+    await query(
       'UPDATE influencers SET last_login_at = now() WHERE id = $1',
       [influencer.id]
     );

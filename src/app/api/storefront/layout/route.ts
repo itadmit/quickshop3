@@ -31,14 +31,16 @@ export async function GET(request: NextRequest) {
     // Load store information
     const store = await getStoreBySlug(storeSlug);
 
-    // Load page layout from customizer
+    // ✅ תמיד לטעון את ההדר והפוטר מדף הבית - כך שהם יהיו אחידים בכל הדפים
+    const homeLayout = await getPageLayout(storeId, 'home', undefined);
+    
+    // Load page layout from customizer for current page
     // For product/collection pages, pass the handle to find specific or generic layout
-    // For 'other' pages, first try to load home layout to get header/footer settings
     let pageLayout = await getPageLayout(storeId, pageType, pageHandle || undefined);
     
-    // If no layout found for 'other' type pages, load 'home' layout for header/footer
+    // If no layout found for 'other' type pages, use home layout
     if (!pageLayout && pageType === 'other') {
-      pageLayout = await getPageLayout(storeId, 'home', undefined);
+      pageLayout = homeLayout;
     }
     
     let sections = [];
@@ -46,6 +48,31 @@ export async function GET(request: NextRequest) {
       sections = pageLayout.sections;
     } else {
       sections = getDefaultSectionsForPage(pageType);
+    }
+
+    // ✅ תמיד להשתמש בהדר והפוטר מדף הבית (אם קיים)
+    if (homeLayout && homeLayout.sections && homeLayout.sections.length > 0) {
+      const homeHeaderSection = homeLayout.sections.find((s: any) => s.type === 'header' && s.visible !== false);
+      const homeFooterSection = homeLayout.sections.find((s: any) => s.type === 'footer' && s.visible !== false);
+      
+      // החלפת ההדר והפוטר בהדר והפוטר מדף הבית
+      if (homeHeaderSection) {
+        const currentHeaderIndex = sections.findIndex((s: any) => s.type === 'header');
+        if (currentHeaderIndex !== -1) {
+          sections[currentHeaderIndex] = homeHeaderSection;
+        } else {
+          sections.unshift(homeHeaderSection);
+        }
+      }
+      
+      if (homeFooterSection) {
+        const currentFooterIndex = sections.findIndex((s: any) => s.type === 'footer');
+        if (currentFooterIndex !== -1) {
+          sections[currentFooterIndex] = homeFooterSection;
+        } else {
+          sections.push(homeFooterSection);
+        }
+      }
     }
 
     // Helper function to load menu items from database
@@ -66,11 +93,12 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // Update header section with store name, logo, and navigation menus
+    // ✅ עדכון ההדר והפוטר עם פרטי החנות - תמיד להשתמש בהדר מהקסטומייזר של דף הבית
     if (store) {
       const headerIndex = sections.findIndex((s: any) => s.type === 'header' && s.visible !== false);
-      if (headerIndex !== -1) {
-        const headerSection = sections[headerIndex];
+      const headerSection = headerIndex !== -1 ? sections[headerIndex] : null;
+      
+      if (headerSection) {
         const navigationSettings = headerSection.settings?.navigation || {};
         
         // Load desktop menu items if menu_desktop is set
@@ -112,7 +140,7 @@ export async function GET(request: NextRequest) {
           }
         };
       } else {
-        // Create header section if it doesn't exist
+        // ✅ אם אין הדר - ליצור הדר ברירת מחדל מהתבנית
         const defaultHeader = NEW_YORK_TEMPLATE.sections.find((s: any) => s.type === 'header');
         if (defaultHeader) {
           sections.unshift({
@@ -126,6 +154,15 @@ export async function GET(request: NextRequest) {
               }
             }
           });
+        }
+      }
+      
+      // ✅ וידוא שיש פוטר גם כן
+      const footerIndex = sections.findIndex((s: any) => s.type === 'footer' && s.visible !== false);
+      if (footerIndex === -1) {
+        const defaultFooter = NEW_YORK_TEMPLATE.sections.find((s: any) => s.type === 'footer');
+        if (defaultFooter) {
+          sections.push(defaultFooter);
         }
       }
     }

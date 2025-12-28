@@ -77,14 +77,17 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
   const style = getResponsiveStyle(section, device);
   const settings = getResponsiveSettings(section, device);
 
-  // Create responsiveSection - React.memo in child components will handle optimization
-  // We create a new object here so that React.memo can properly detect changes via areSectionsEqual
-  const responsiveSection = useMemo(() => ({
-    ...section,
-    settings: settings,
-    style: style,
-    blocks: section.blocks // Include blocks to ensure updates are detected
-  }), [section, JSON.stringify(settings), JSON.stringify(style), JSON.stringify(section.blocks)]);
+  // ✅ Create responsiveSection - React.memo in child components will handle optimization
+  // ✅ חשוב: ה-style כולל את ה-background images/videos, אז צריך לוודא שהוא מתעדכן
+  // ✅ שימוש ב-JSON.stringify של section.style כדי לוודא שהעדכונים מתעדכנים מיד
+  const responsiveSection = useMemo(() => {
+    return {
+      ...section,
+      settings: settings,
+      style: style, // ✅ זה כולל את style.background.background_image ו-style.background.background_video
+      blocks: section.blocks
+    };
+  }, [section.id, JSON.stringify(section.style), JSON.stringify(settings), JSON.stringify(style), JSON.stringify(section.blocks), device]);
 
   // Base section wrapper with common styles
   const SectionWrapper = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
@@ -99,17 +102,17 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
         overflow: style.border?.border_radius ? 'hidden' : undefined, // ✅ מונע מהתוכן לצאת מהפינות המעוגלות
     };
 
-    // If there is an image and NO video, use it as CSS background
-    // Choose mobile image if device is mobile and mobile image exists
-    const backgroundImage = (device === 'mobile' && style.background?.background_image_mobile) 
+    // ✅ If there is an image and NO video, use it as CSS background
+    // ✅ Choose mobile/tablet image if device is mobile/tablet and mobile image exists, otherwise use desktop
+    const backgroundImage = (device === 'mobile' || device === 'tablet') && style.background?.background_image_mobile
         ? style.background.background_image_mobile 
         : style.background?.background_image;
     
-    // Check for video - also check mobile video if device is mobile
-    const backgroundVideo = (device === 'mobile' && style.background?.background_video_mobile) 
+    // ✅ Check for video - also check mobile/tablet video if device is mobile/tablet
+    const backgroundVideo = (device === 'mobile' || device === 'tablet') && style.background?.background_video_mobile
         ? style.background.background_video_mobile 
         : style.background?.background_video;
-        
+    
     if (backgroundImage && !backgroundVideo) {
         bgStyle.backgroundImage = `url(${backgroundImage})`;
         bgStyle.backgroundSize = style.background?.background_size || 'cover';
@@ -117,10 +120,10 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
         bgStyle.backgroundRepeat = style.background?.background_repeat || 'no-repeat';
     }
 
-    // Video Background Element
+    // ✅ Video Background Element
     const VideoBackground = () => {
-        // Check for video - also check mobile video if device is mobile
-        const videoSrc = (device === 'mobile' && style.background?.background_video_mobile) 
+        // ✅ Check for video - also check mobile/tablet video if device is mobile/tablet
+        const videoSrc = (device === 'mobile' || device === 'tablet') && style.background?.background_video_mobile
             ? style.background.background_video_mobile 
             : style.background?.background_video;
         

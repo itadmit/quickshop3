@@ -49,7 +49,7 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    // Get line items
+    // Get line items with properties and image
     const items = await query<{
       id: number;
       title: string;
@@ -57,8 +57,12 @@ export async function GET(
       quantity: number;
       price: number;
       total_discount: number | null;
+      properties: any;
+      product_id: number | null;
     }>(
-      `SELECT id, title, variant_title, quantity, price, total_discount
+      `SELECT 
+        id, title, variant_title, quantity, price, total_discount, properties, product_id,
+        (SELECT src FROM product_images WHERE product_id = order_line_items.product_id ORDER BY position LIMIT 1) as product_image
        FROM order_line_items
        WHERE order_id = $1
        ORDER BY id`,
@@ -111,14 +115,45 @@ export async function GET(
       shippingAddress: order.shipping_address,
       noteAttributes: order.note_attributes || {}, // ✅ מוסיף note_attributes
       discountCodes: discountCodes, // ✅ מוסיף discount_codes
-      items: items.map((item) => ({
-        id: item.id,
-        name: item.title,
-        variant: item.variant_title,
-        quantity: item.quantity,
-        price: parseFloat(item.price.toString()),
-        discount: item.total_discount ? parseFloat(item.total_discount.toString()) : null,
-      })),
+      items: items.map((item) => {
+        // Parse properties and extract image
+        let imageUrl = null;
+        let parsedProperties = null;
+        
+        if (item.properties) {
+          try {
+            parsedProperties = typeof item.properties === 'string' 
+              ? JSON.parse(item.properties) 
+              : item.properties;
+            
+            // Extract image from properties (_image)
+            if (Array.isArray(parsedProperties)) {
+              const imageProperty = parsedProperties.find((p: any) => p.name === '_image');
+              if (imageProperty) {
+                imageUrl = imageProperty.value;
+              }
+            }
+          } catch (e) {
+            console.warn('Error parsing properties:', e);
+          }
+        }
+        
+        // Fallback to product_image if no image in properties
+        if (!imageUrl && (item as any).product_image) {
+          imageUrl = (item as any).product_image;
+        }
+        
+        return {
+          id: item.id,
+          name: item.title,
+          variant: item.variant_title,
+          quantity: item.quantity,
+          price: parseFloat(item.price.toString()),
+          discount: item.total_discount ? parseFloat(item.total_discount.toString()) : null,
+          image: imageUrl,
+          properties: parsedProperties,
+        };
+      }),
       fulfillments: fulfillments.map((f) => ({
         id: f.id,
         status: f.status,

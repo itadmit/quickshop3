@@ -40,9 +40,15 @@ export default function InfluencerLoginPage() {
         throw new Error(data.error || 'שגיאה בהתחברות');
       }
 
-      setTimeout(() => {
-        router.push('/influencer/dashboard');
-      }, 300);
+      // ✅ וידוא שהתגובה הצליחה לפני מעבר לדשבורד
+      if (data.success) {
+        // ✅ שימוש ב-window.location במקום router.push כדי לוודא שהקוקי נשמר
+        setTimeout(() => {
+          window.location.href = '/influencer/dashboard';
+        }, 300);
+      } else {
+        throw new Error(data.error || 'שגיאה בהתחברות');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'שגיאה בהתחברות. נסה שוב.');

@@ -17,8 +17,9 @@ export async function GET(request: NextRequest) {
     const start_date = searchParams.get('start_date') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const end_date = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
 
-    // קופונים בשימוש
+    // קופונים בשימוש - תיקון: שימוש ב-LEFT JOIN במקום JOIN כדי לא לפספס הזמנות
     const discountsData = await query<{
+      discount_id: number;
       discount_code: string;
       discount_type: string;
       usage_count: string;
@@ -28,11 +29,12 @@ export async function GET(request: NextRequest) {
       avg_order_value: string;
     }>(`
       SELECT 
-        dc.code as discount_code,
-        dc.discount_type,
+        COALESCE(dc.id, 0) as discount_id,
+        COALESCE(dc.code, dc_elem->>'code', dc_elem#>>'{}') as discount_code,
+        COALESCE(dc.discount_type, 'unknown') as discount_type,
         COALESCE(dc.usage_count, 0) as usage_count,
         COUNT(DISTINCT o.id) as orders_count,
-        SUM(o.total_discounts) as total_discount_amount,
+        SUM(COALESCE(o.total_discounts, 0)) as total_discount_amount,
         SUM(o.total_price) as revenue_generated,
         AVG(o.total_price) as avg_order_value
       FROM orders o
@@ -43,13 +45,16 @@ export async function GET(request: NextRequest) {
           ELSE '[]'::jsonb
         END
       ) as dc_elem
-      JOIN discount_codes dc ON dc.code = COALESCE(
-        dc_elem->>'code',
-        CASE 
-          WHEN jsonb_typeof(dc_elem) = 'string' THEN dc_elem#>>'{}'
-          WHEN jsonb_typeof(dc_elem) = 'number' THEN dc_elem::text
-          ELSE NULL
-        END
+      LEFT JOIN discount_codes dc ON (
+        dc.store_id = $1 
+        AND dc.code = COALESCE(
+          dc_elem->>'code',
+          CASE 
+            WHEN jsonb_typeof(dc_elem) = 'string' THEN dc_elem#>>'{}'
+            WHEN jsonb_typeof(dc_elem) = 'number' THEN dc_elem::text
+            ELSE NULL
+          END
+        )
       )
       WHERE o.store_id = $1
         AND o.created_at >= $2
@@ -58,8 +63,7 @@ export async function GET(request: NextRequest) {
         AND o.discount_codes IS NOT NULL
         AND jsonb_typeof(o.discount_codes) = 'array'
         AND jsonb_array_length(o.discount_codes) > 0
-        AND dc.store_id = $1
-      GROUP BY dc.id, dc.code, dc.discount_type
+      GROUP BY dc.id, dc.code, dc.discount_type, dc_elem->>'code', dc_elem#>>'{}'
       ORDER BY total_discount_amount DESC
       LIMIT 50
     `, [user.store_id, start_date, end_date]);
@@ -107,10 +111,10 @@ export async function GET(request: NextRequest) {
     const totalDiscountAmount = parseFloat(totalsResult?.total_discount_amount || '0');
 
     const discounts = discountsData.map((d) => ({
-      discount_id: 0,
-      discount_code: d.discount_code,
+      discount_id: d.discount_id || 0,
+      discount_code: d.discount_code || 'לא ידוע',
       discount_type: d.discount_type,
-      usage_count: parseInt(d.usage_count),
+      usage_count: parseInt(d.usage_count) || parseInt(d.orders_count),
       orders_count: parseInt(d.orders_count),
       total_discount_amount: parseFloat(d.total_discount_amount) || 0,
       revenue_generated: parseFloat(d.revenue_generated) || 0,

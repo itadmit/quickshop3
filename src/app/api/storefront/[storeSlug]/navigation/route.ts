@@ -92,7 +92,7 @@ export async function GET(
             url = `/p/${item.resource_handle}`;
             break;
           case 'collection':
-            url = `/collections/${item.resource_handle}`;
+            url = `/categories/${item.resource_handle}`; // ✅ תיקון: שימוש ב-/categories במקום /collections
             break;
           case 'product':
             url = `/products/${item.resource_handle}`;

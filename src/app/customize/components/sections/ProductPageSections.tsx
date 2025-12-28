@@ -43,11 +43,17 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
     large: 'w-[100px] h-[100px]',
   }[thumbnailSize] || 'w-[80px] h-[80px]';
 
-  // Image ratio classes
+  // Image ratio classes - ✅ הוספת אפשרויות חדשות כולל סטורי
   const imageRatioClasses = {
     square: 'aspect-square',
     portrait: 'aspect-[3/4]',
     landscape: 'aspect-[4/3]',
+    story: 'aspect-[9/16]',
+    wide: 'aspect-[16/9]',
+    tall: 'aspect-[2/3]',
+    ultra_wide: 'aspect-[21/9]',
+    vertical: 'aspect-[9/16]',
+    horizontal: 'aspect-[16/10]',
     original: '',
   }[imageRatio] || 'aspect-square';
   

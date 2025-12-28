@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const search = searchParams.get('search'); // Search by order number, customer name/email
 
-    // Build WHERE clause
+    // Build WHERE clause - ✅ שימוש ב-LEFT JOIN כדי לאפשר החזרות ללא הזמנה
     let sql = `
       SELECT 
         r.*,
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         c.first_name || ' ' || COALESCE(c.last_name, '') as customer_name,
         c.email as customer_email
       FROM returns r
-      JOIN orders o ON r.order_id = o.id
+      LEFT JOIN orders o ON r.order_id = o.id
       LEFT JOIN customers c ON r.customer_id = c.id
       WHERE r.store_id = $1
     `;
@@ -48,17 +48,18 @@ export async function GET(request: NextRequest) {
         o.order_name ILIKE $${paramIndex} OR 
         c.email ILIKE $${paramIndex} OR
         c.first_name ILIKE $${paramIndex} OR
-        c.last_name ILIKE $${paramIndex}
+        c.last_name ILIKE $${paramIndex} OR
+        r.reason ILIKE $${paramIndex}
       )`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    // Get total count for pagination
+    // Get total count for pagination - ✅ שימוש ב-LEFT JOIN כדי לאפשר החזרות ללא הזמנה
     let countSql = `
       SELECT COUNT(*) as total 
       FROM returns r
-      JOIN orders o ON r.order_id = o.id
+      LEFT JOIN orders o ON r.order_id = o.id
       LEFT JOIN customers c ON r.customer_id = c.id
       WHERE r.store_id = $1
     `;
@@ -77,7 +78,8 @@ export async function GET(request: NextRequest) {
         o.order_name ILIKE $${countParamIndex} OR 
         c.email ILIKE $${countParamIndex} OR
         c.first_name ILIKE $${countParamIndex} OR
-        c.last_name ILIKE $${countParamIndex}
+        c.last_name ILIKE $${countParamIndex} OR
+        r.reason ILIKE $${countParamIndex}
       )`;
       countParams.push(`%${search}%`);
       countParamIndex++;
@@ -97,13 +99,13 @@ export async function GET(request: NextRequest) {
       returns: returns.map((r) => ({
         id: r.id,
         orderId: r.order_id,
-        orderNumber: r.order_number,
-        orderName: r.order_name,
-        orderTotal: parseFloat(r.order_total),
-        orderFinancialStatus: r.order_financial_status,
+        orderNumber: r.order_number || null,
+        orderName: r.order_name || null,
+        orderTotal: r.order_total ? parseFloat(r.order_total) : null,
+        orderFinancialStatus: r.order_financial_status || null,
         customerId: r.customer_id,
-        customerName: r.customer_name,
-        customerEmail: r.customer_email,
+        customerName: r.customer_name || null,
+        customerEmail: r.customer_email || null,
         status: r.status,
         reason: r.reason,
         items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
@@ -139,12 +141,9 @@ export async function POST(request: NextRequest) {
 
     const storeId = user.store_id;
     const body = await request.json();
-    const { orderId, customerId, reason, items, refundAmount, refundMethod, notes, status } = body;
+    const { orderId, customerId, reason, items, refundAmount, refundMethod, notes, status, isManual } = body;
 
     // Validate required fields
-    if (!orderId) {
-      return NextResponse.json({ error: 'מספר הזמנה נדרש' }, { status: 400 });
-    }
     if (!reason) {
       return NextResponse.json({ error: 'סיבה נדרשת' }, { status: 400 });
     }
@@ -152,20 +151,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'יש לבחור לפחות פריט אחד' }, { status: 400 });
     }
 
-    // Verify order belongs to this store
-    const order = await queryOne<any>(
-      `SELECT id, customer_id FROM orders WHERE id = $1 AND store_id = $2`,
-      [orderId, storeId]
-    );
+    let finalOrderId: number | null = null;
+    let finalCustomerId: number | null = null;
 
-    if (!order) {
-      return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
+    // ✅ אם יש orderId, וודא שההזמנה קיימת ושייכת לחנות
+    if (orderId) {
+      const order = await queryOne<any>(
+        `SELECT id, customer_id FROM orders WHERE id = $1 AND store_id = $2`,
+        [orderId, storeId]
+      );
+
+      if (!order) {
+        return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
+      }
+
+      finalOrderId = order.id;
+      // Use the customer from the order if not provided
+      finalCustomerId = customerId || order.customer_id;
+    } else {
+      // ✅ החזרה ידנית ללא הזמנה - צריך customerId
+      if (!customerId) {
+        return NextResponse.json({ error: 'יש לבחור לקוח להחזרה ידנית' }, { status: 400 });
+      }
+      
+      // Verify customer belongs to this store
+      const customer = await queryOne<any>(
+        `SELECT id FROM customers WHERE id = $1 AND store_id = $2`,
+        [customerId, storeId]
+      );
+
+      if (!customer) {
+        return NextResponse.json({ error: 'לקוח לא נמצא' }, { status: 404 });
+      }
+
+      finalCustomerId = customerId;
     }
 
-    // Use the customer from the order if not provided
-    const finalCustomerId = customerId || order.customer_id;
-
-    // Insert the return
+    // Insert the return - ✅ order_id יכול להיות null להחזרה ידנית
     const result = await queryOne<any>(
       `INSERT INTO returns (
         store_id, order_id, customer_id, status, reason, items, refund_amount, refund_method, notes
@@ -173,7 +195,7 @@ export async function POST(request: NextRequest) {
       RETURNING *`,
       [
         storeId,
-        orderId,
+        finalOrderId, // ✅ יכול להיות null
         finalCustomerId,
         status || 'PENDING',
         reason,

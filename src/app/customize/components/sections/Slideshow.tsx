@@ -123,11 +123,38 @@ function SlideshowComponent({ section, onUpdate }: SlideshowProps) {
         {slides.map((slide, index) => {
           const desktopImage = slide.content?.image_url;
           const mobileImage = slide.content?.image_url_mobile || desktopImage;
+          const desktopVideo = slide.content?.video_url;
+          const mobileVideo = slide.content?.video_url_mobile || desktopVideo;
           const hasImage = desktopImage || mobileImage;
+          const hasVideo = desktopVideo || mobileVideo;
+          const hasMedia = hasImage || hasVideo;
 
           return (
           <div key={slide.id} className="relative min-w-full h-full">
-            {hasImage ? (
+            {hasVideo ? (
+              // ✅ תמיכה בווידאו
+              <video
+                src={desktopVideo || mobileVideo}
+                className="w-full h-full"
+                autoPlay
+                muted
+                loop
+                playsInline
+                style={{ 
+                  objectFit: imageFit as 'cover' | 'contain' | 'fill',
+                  objectPosition: imagePosition
+                }}
+              >
+                {/* Mobile video (up to 768px) */}
+                {mobileVideo && mobileVideo !== desktopVideo && (
+                  <source media="(max-width: 768px)" src={mobileVideo} />
+                )}
+                {/* Desktop video */}
+                {desktopVideo && (
+                  <source src={desktopVideo} />
+                )}
+              </video>
+            ) : hasImage ? (
               <picture className="w-full h-full block">
                 {/* Mobile image (up to 768px) */}
                 {mobileImage && (
@@ -146,7 +173,7 @@ function SlideshowComponent({ section, onUpdate }: SlideshowProps) {
               </picture>
             ) : (
               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-400">תמונה חסרה</span>
+                <span className="text-gray-400">תמונה/וידאו חסר</span>
               </div>
             )}
             

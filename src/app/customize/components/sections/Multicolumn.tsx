@@ -32,7 +32,21 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
   const textAlign = settings.text_align || 'center';
   const columnGap = settings.column_gap || 'medium';
   const imageRatio = settings.image_ratio || 'square';
-  const imageBorderRadius = settings.image_border_radius || '8px';
+  // ✅ תמיכה במספר בלבד או במחרוזת עם px
+  const getImageBorderRadius = () => {
+    const radius = settings.image_border_radius || '8px';
+    // אם זה מספר בלבד, הוסף px
+    if (typeof radius === 'number') {
+      return `${radius}px`;
+    }
+    // אם זה מחרוזת מספרית בלבד (ללא px), הוסף px
+    if (typeof radius === 'string' && /^\d+$/.test(radius.trim())) {
+      return `${radius.trim()}px`;
+    }
+    // אחרת, החזר כמו שזה
+    return radius;
+  };
+  const imageBorderRadius = getImageBorderRadius();
   const imageBorder = settings.image_border || false;
   
   // Button Styles
@@ -111,12 +125,18 @@ function MulticolumnComponent({ section, onUpdate }: MulticolumnProps) {
     large: 'gap-6 md:gap-8',
   };
   
-  // Image ratio mapping
+  // Image ratio mapping - ✅ הוספת אפשרויות חדשות כולל סטורי
   const ratioClasses: Record<string, string> = {
     square: 'aspect-square',
     portrait: 'aspect-[3/4]',
     landscape: 'aspect-[4/3]',
     circle: 'aspect-square rounded-full',
+    story: 'aspect-[9/16]', // ✅ פורמט סטורי (Instagram Stories)
+    wide: 'aspect-[16/9]', // ✅ רחב (וידאו)
+    tall: 'aspect-[2/3]', // ✅ גבוה
+    ultra_wide: 'aspect-[21/9]', // ✅ אולטרה רחב
+    vertical: 'aspect-[9/16]', // ✅ אנכי (זהה לסטורי)
+    horizontal: 'aspect-[16/10]', // ✅ אופקי רחב
   };
   
   // Text alignment mapping

@@ -50,6 +50,13 @@ export function setInfluencerSessionCookie(response: NextResponse, token: string
   
   response.cookies.set(INFLUENCER_SESSION_COOKIE, token, cookieOptions);
   
+  console.log('Influencer cookie set:', {
+    name: INFLUENCER_SESSION_COOKIE,
+    hasValue: !!token,
+    tokenLength: token.length,
+    options: cookieOptions,
+  });
+  
   return response;
 }
 

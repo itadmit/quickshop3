@@ -422,6 +422,8 @@ export default function OrdersPage() {
           description: 'ההזמנה סומנה כנקראה',
         });
         loadOrders();
+        // ✅ עדכן את המונה ב-Sidebar
+        window.dispatchEvent(new CustomEvent('orderMarkedAsRead'));
         // Trigger custom event to update sidebar
         window.dispatchEvent(new CustomEvent('orderMarkedAsRead'));
       } else {

@@ -1,18 +1,21 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 const CART_STORE_ID_KEY = 'quickshop_cart_store_id';
 const CART_STORE_SLUG_KEY = 'quickshop_cart_store_slug';
 
 /**
- * Hook לקבלת storeId מה-URL
- * פשוט כמו Shopify: מיידי מ-localStorage, אסינכרוני מ-API
+ * Hook לקבלת storeId מה-URL או מה-session
+ * בקסטומייזר: טוען מה-session של המשתמש
+ * בפרונט: טוען מה-URL/localStorage
  */
 export function useStoreId(): number | null {
   const params = useParams();
+  const pathname = usePathname();
   const storeSlug = params?.storeSlug as string | undefined;
+  const isCustomizer = pathname?.startsWith('/customize');
   
   // Initialize from localStorage immediately (synchronous)
   const [storeId, setStoreId] = useState<number | null>(() => {
@@ -27,12 +30,36 @@ export function useStoreId(): number | null {
       }
     }
     
-    // Fallback to stored ID or default
-    const stored = localStorage.getItem(CART_STORE_ID_KEY);
-    return stored ? parseInt(stored) : 1;
+    // Don't use fallback - return null and load from API
+    return null;
   });
 
   useEffect(() => {
+    // ✅ בקסטומייזר: תמיד טוען מה-session של המשתמש
+    if (isCustomizer) {
+      fetch('/api/auth/me', {
+        credentials: 'include',
+      })
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error('Failed to get user');
+        })
+        .then((data) => {
+          if (data.store?.id) {
+            setStoreId(data.store.id);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(CART_STORE_ID_KEY, String(data.store.id));
+            }
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading storeId from session:', error);
+          setStoreId(null);
+        });
+      return;
+    }
+
+    // בפרונט: טוען מה-URL/localStorage
     if (!storeSlug) return;
 
     // Check if we already have the correct storeId
@@ -61,11 +88,11 @@ export function useStoreId(): number | null {
           }
         }
       })
-      .catch(() => {
-        // Fallback to default
-        setStoreId(1);
+      .catch((error) => {
+        console.error('Error loading storeId from slug:', error);
+        setStoreId(null);
       });
-  }, [storeSlug]);
+  }, [storeSlug, isCustomizer]);
 
   return storeId;
 }

@@ -133,10 +133,36 @@ export function OrderDetailsContent({
         <div className="p-4">
           <h3 className="font-semibold text-gray-900 mb-3">פריטי הזמנה</h3>
           <div className="space-y-3">
-            {order.line_items?.map((item) => (
-              <div key={item.id} className="flex items-start gap-4 pb-3 border-b border-gray-200 last:border-0">
+            {order.line_items?.map((item) => {
+              // ✅ בדיקה אם זה מוצר מתנה
+              const parsedProperties = item.properties 
+                ? (typeof item.properties === 'string' ? JSON.parse(item.properties) : item.properties)
+                : null;
+              const isGiftProduct = parsedProperties && Array.isArray(parsedProperties)
+                ? parsedProperties.some((prop: { name: string; value: string }) => prop.name === 'מתנה')
+                : parsedProperties && typeof parsedProperties === 'object' && !Array.isArray(parsedProperties)
+                ? Object.keys(parsedProperties).some(key => key === 'מתנה' || parsedProperties[key]?.name === 'מתנה')
+                : false;
+              const giftDiscountName = parsedProperties && Array.isArray(parsedProperties)
+                ? parsedProperties.find((prop: { name: string; value: string }) => prop.name === 'מתנה')?.value
+                : null;
+              
+              return (
+              <div key={item.id} className={`flex items-start gap-4 pb-3 border-b border-gray-200 last:border-0 ${isGiftProduct ? 'bg-green-50 rounded-lg p-3 -mx-3' : ''}`}>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900">{item.title}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-medium text-gray-900">{item.title}</div>
+                    {isGiftProduct && (
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full flex-shrink-0">
+                        מתנה
+                      </span>
+                    )}
+                  </div>
+                  {isGiftProduct && giftDiscountName && (
+                    <p className="text-xs text-green-700 font-medium mt-1">
+                      מתנה מהנחת {giftDiscountName}
+                    </p>
+                  )}
                   {item.variant_title && item.variant_title !== 'Default Title' && (
                     <div className="text-sm text-gray-500">{item.variant_title}</div>
                   )}
@@ -176,7 +202,8 @@ export function OrderDetailsContent({
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           {/* Totals */}
@@ -389,6 +416,7 @@ export function OrderDetailsContent({
     </div>
   );
 }
+
 
 
 

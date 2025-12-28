@@ -216,10 +216,10 @@ function PreviewFrameComponent({
   const useProductLayout = isProductPage && (gallerySections.length > 0 || infoSections.length > 0);
 
   return (
-    <div className="h-full bg-gray-100 overflow-auto">
-      <div className="min-h-full p-8">
+    <div className="h-full bg-gray-100 overflow-auto overflow-x-hidden">
+      <div className="min-h-full p-8 max-w-full">
         <div
-          className={`bg-white shadow-lg mx-auto transition-all duration-300 ${getDeviceStyles()}`}
+          className={`bg-white shadow-lg mx-auto transition-all duration-300 ${getDeviceStyles()} max-w-full overflow-x-hidden`}
           style={{
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top center'
@@ -227,7 +227,7 @@ function PreviewFrameComponent({
         >
           {/* Canvas Area */}
           <div
-            className={`min-h-screen relative ${showGrid ? 'bg-grid' : ''}`}
+            className={`min-h-screen relative ${showGrid ? 'bg-grid' : ''} max-w-full overflow-x-hidden`}
             onClick={handleCanvasClick}
           >
             {/* Product Page Layout */}

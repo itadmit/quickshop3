@@ -37,8 +37,9 @@ export async function GET(
     const [returns, totalResult] = await Promise.all([
       query<{
         id: number;
-        order_id: number;
-        order_number: number; // ✅ הוספת order_number לטיפוס
+        order_id: number | null; // ✅ יכול להיות null להחזרה ידנית
+        order_number: number | null; // ✅ יכול להיות null להחזרה ידנית
+        order_total: number | null; // ✅ יכול להיות null להחזרה ידנית
         status: string;
         reason: string;
         items: any;
@@ -49,7 +50,7 @@ export async function GET(
       }>(
         `SELECT r.*, o.order_number, o.total_price as order_total
          FROM returns r
-         JOIN orders o ON r.order_id = o.id
+         LEFT JOIN orders o ON r.order_id = o.id
          WHERE r.store_id = $1 AND r.customer_id = $2
          ORDER BY r.created_at DESC
          LIMIT $3 OFFSET $4`,
@@ -67,7 +68,7 @@ export async function GET(
       returns: returns.map((r: any) => ({
         id: r.id,
         orderId: r.order_id,
-        orderNumber: r.order_number, // ✅ הוספת מספר ההזמנה
+        orderNumber: r.order_number || null, // ✅ יכול להיות null להחזרה ידנית
         status: r.status,
         reason: r.reason,
         items: r.items,

@@ -100,6 +100,7 @@ export default function OrderDetailsPage() {
   const orderId = params.id as string
 
   const [order, setOrder] = useState<Order | null>(null)
+  const [orderForDetails, setOrderForDetails] = useState<OrderWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus | null>(null)
   const [loadingTracking, setLoadingTracking] = useState(false)
@@ -212,7 +213,7 @@ export default function OrderDetailsPage() {
           gift_card: false,
           name: item.name,
           variant_inventory_quantity: null,
-          properties: null,
+          properties: item.properties || null, // ✅ שמירה על properties (כולל מוצרי מתנה)
           product_properties: null,
           total_discount: item.discount?.toString() || '0',
           price: item.price.toString(),

@@ -22,6 +22,7 @@ import {
   HiUser,
   HiPlus,
   HiSearch,
+  HiTrash,
 } from 'react-icons/hi';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
@@ -108,17 +109,29 @@ export default function ReturnsPage() {
   // Add return dialog
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [addingReturn, setAddingReturn] = useState(false);
+  const [returnType, setReturnType] = useState<'order' | 'manual'>('order'); // ✅ סוג החזרה: מהזמנה או ידנית
   const [orderSearch, setOrderSearch] = useState('');
   const [orderSearchResults, setOrderSearchResults] = useState<OrderOption[]>([]);
   const [searchingOrders, setSearchingOrders] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderOption | null>(null);
   const [selectedItems, setSelectedItems] = useState<Array<{ orderItemId: number; quantity: number; maxQuantity: number }>>([]);
+  
+  // ✅ מצב עבור החזרה ידנית
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState<Array<{ id: number; name: string; email: string }>>([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id: number; name: string; email: string } | null>(null);
+  const [manualItems, setManualItems] = useState<Array<{ title: string; quantity: number; price: string }>>([]);
+  const [showAddManualItem, setShowAddManualItem] = useState(false);
+  const [newManualItem, setNewManualItem] = useState({ title: '', quantity: 1, price: '0' });
+  
   const [addReason, setAddReason] = useState('');
   const [addRefundAmount, setAddRefundAmount] = useState<string>('');
   const [addRefundMethod, setAddRefundMethod] = useState<string>('');
   const [addNotes, setAddNotes] = useState('');
   const [addStatus, setAddStatus] = useState<string>('PENDING');
   const debouncedOrderSearch = useDebounce(orderSearch, 300);
+  const debouncedCustomerSearch = useDebounce(customerSearch, 300);
 
   useEffect(() => {
     // Cancel previous request if exists
@@ -297,87 +310,203 @@ export default function ReturnsPage() {
   };
 
   const handleAddReturn = async () => {
-    if (!selectedOrder) return;
-
-    const itemsToReturn = selectedItems.filter(item => item.quantity > 0);
-    if (itemsToReturn.length === 0) {
-      toast({
-        title: 'שגיאה',
-        description: 'יש לבחור לפחות פריט אחד להחזרה',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!addReason.trim()) {
-      toast({
-        title: 'שגיאה',
-        description: 'יש להזין סיבה להחזרה',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setAddingReturn(true);
-      const response = await fetch('/api/returns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          orderId: selectedOrder.id,
-          customerId: selectedOrder.customerId,
-          reason: addReason,
-          items: itemsToReturn.map(item => ({
-            orderItemId: item.orderItemId,
-            quantity: item.quantity,
-          })),
-          refundAmount: addRefundAmount ? parseFloat(addRefundAmount) : null,
-          refundMethod: addRefundMethod || null,
-          notes: addNotes || null,
-          status: addStatus,
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: 'הצלחה',
-          description: 'ההחזרה נוספה בהצלחה',
-        });
-        setIsAddDialogOpen(false);
-        resetAddForm();
-        loadReturns();
-        window.dispatchEvent(new Event('returnStatusChanged'));
-      } else {
-        const error = await response.json();
+    // ✅ בדיקות שונות לפי סוג החזרה
+    if (returnType === 'order') {
+      if (!selectedOrder) {
         toast({
           title: 'שגיאה',
-          description: error.error || 'לא הצלחנו להוסיף את ההחזרה',
+          description: 'יש לבחור הזמנה',
           variant: 'destructive',
         });
+        return;
       }
-    } catch (error: any) {
-      console.error('Error adding return:', error);
-      toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה בהוספת ההחזרה',
-        variant: 'destructive',
-      });
-    } finally {
-      setAddingReturn(false);
+
+      const itemsToReturn = selectedItems.filter(item => item.quantity > 0);
+      if (itemsToReturn.length === 0) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש לבחור לפחות פריט אחד להחזרה',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!addReason.trim()) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש להזין סיבה להחזרה',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      try {
+        setAddingReturn(true);
+        const response = await fetch('/api/returns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            orderId: selectedOrder.id,
+            customerId: selectedOrder.customerId,
+            reason: addReason,
+            items: itemsToReturn.map(item => ({
+              orderItemId: item.orderItemId,
+              quantity: item.quantity,
+            })),
+            refundAmount: addRefundAmount ? parseFloat(addRefundAmount) : null,
+            refundMethod: addRefundMethod || null,
+            notes: addNotes || null,
+            status: addStatus,
+            isManual: false,
+          }),
+        });
+
+        if (response.ok) {
+          toast({
+            title: 'הצלחה',
+            description: 'ההחזרה נוספה בהצלחה',
+          });
+          setIsAddDialogOpen(false);
+          resetAddForm();
+          loadReturns();
+          window.dispatchEvent(new Event('returnStatusChanged'));
+        } else {
+          const error = await response.json();
+          toast({
+            title: 'שגיאה',
+            description: error.error || 'לא הצלחנו להוסיף את ההחזרה',
+            variant: 'destructive',
+          });
+        }
+      } catch (error: any) {
+        console.error('Error adding return:', error);
+        toast({
+          title: 'שגיאה',
+          description: 'אירעה שגיאה בהוספת ההחזרה',
+          variant: 'destructive',
+        });
+      } finally {
+        setAddingReturn(false);
+      }
+    } else {
+      // ✅ החזרה ידנית
+      if (!selectedCustomer) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש לבחור לקוח',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (manualItems.length === 0) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש להוסיף לפחות פריט אחד להחזרה',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!addReason.trim()) {
+        toast({
+          title: 'שגיאה',
+          description: 'יש להזין סיבה להחזרה',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      try {
+        setAddingReturn(true);
+        const response = await fetch('/api/returns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            orderId: null, // ✅ אין הזמנה
+            customerId: selectedCustomer.id,
+            reason: addReason,
+            items: manualItems.map((item, index) => ({
+              orderItemId: null, // ✅ אין orderItemId להחזרה ידנית
+              quantity: item.quantity,
+              title: item.title, // ✅ שם המוצר להחזרה ידנית
+              price: parseFloat(item.price), // ✅ מחיר להחזרה ידנית
+            })),
+            refundAmount: addRefundAmount ? parseFloat(addRefundAmount) : null,
+            refundMethod: addRefundMethod || null,
+            notes: addNotes || null,
+            status: addStatus,
+            isManual: true,
+          }),
+        });
+
+        if (response.ok) {
+          toast({
+            title: 'הצלחה',
+            description: 'ההחזרה הידנית נוספה בהצלחה',
+          });
+          setIsAddDialogOpen(false);
+          resetAddForm();
+          loadReturns();
+          window.dispatchEvent(new Event('returnStatusChanged'));
+        } else {
+          const error = await response.json();
+          toast({
+            title: 'שגיאה',
+            description: error.error || 'לא הצלחנו להוסיף את ההחזרה',
+            variant: 'destructive',
+          });
+        }
+      } catch (error: any) {
+        console.error('Error adding manual return:', error);
+        toast({
+          title: 'שגיאה',
+          description: 'אירעה שגיאה בהוספת ההחזרה',
+          variant: 'destructive',
+        });
+      } finally {
+        setAddingReturn(false);
+      }
     }
   };
 
   const resetAddForm = () => {
+    setReturnType('order');
     setSelectedOrder(null);
     setSelectedItems([]);
     setOrderSearch('');
     setOrderSearchResults([]);
+    setSelectedCustomer(null);
+    setCustomerSearch('');
+    setCustomerSearchResults([]);
+    setManualItems([]);
+    setShowAddManualItem(false);
+    setNewManualItem({ title: '', quantity: 1, price: '0' });
     setAddReason('');
     setAddRefundAmount('');
     setAddRefundMethod('');
     setAddNotes('');
     setAddStatus('PENDING');
+  };
+
+  const handleAddManualItem = () => {
+    if (!newManualItem.title.trim() || parseFloat(newManualItem.price) <= 0) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להזין שם מוצר ומחיר תקין',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setManualItems([...manualItems, { ...newManualItem }]);
+    setNewManualItem({ title: '', quantity: 1, price: '0' });
+    setShowAddManualItem(false);
+  };
+
+  const handleRemoveManualItem = (index: number) => {
+    setManualItems(manualItems.filter((_, i) => i !== index));
   };
 
   const handleUpdateStatus = async () => {
@@ -715,13 +844,25 @@ export default function ReturnsPage() {
                   <div className="space-y-3">
                     {returnDetails.items.map((item: any, index: number) => {
                       const orderItem = returnDetails.orderItems?.find((oi: any) => oi.id === item.orderItemId);
+                      
+                      // ✅ הסרת "Default Title" משם המוצר
+                      let productTitle = orderItem?.title || 'פריט לא נמצא';
+                      if (productTitle.includes('Default Title')) {
+                        productTitle = productTitle.replace(/ - Default Title/g, '').replace(/Default Title - /g, '').replace(/Default Title/g, '').trim();
+                      }
+                      
+                      // ✅ הסרת "Default Title" מ-variant_title
+                      const variantTitle = orderItem?.variantTitle && orderItem.variantTitle !== 'Default Title'
+                        ? orderItem.variantTitle
+                        : null;
+                      
                       return (
                         <div key={index} className="border rounded-lg p-3">
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium">{orderItem?.title || 'פריט לא נמצא'}</p>
-                              {orderItem?.variantTitle && (
-                                <p className="text-sm text-gray-600">{orderItem.variantTitle}</p>
+                              <p className="font-medium">{productTitle}</p>
+                              {variantTitle && (
+                                <p className="text-sm text-gray-600">{variantTitle}</p>
                               )}
                               <p className="text-sm text-gray-600 mt-1">
                                 כמות: {item.quantity} / מחיר: ₪{orderItem?.price?.toFixed(2) || '0.00'}
@@ -844,12 +985,51 @@ export default function ReturnsPage() {
           <DialogHeader>
             <DialogTitle>הוספת החזרה/החלפה ידנית</DialogTitle>
             <DialogDescription>
-              הוסף החזרה או החלפה חדשה עבור הזמנה קיימת
+              הוסף החזרה או החלפה חדשה - מהזמנה קיימת או ידנית
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 min-h-0 px-8 py-6 space-y-6">
-            {/* Order Search */}
-            {!selectedOrder ? (
+            {/* ✅ בחירת סוג החזרה */}
+            <div>
+              <Label>סוג החזרה</Label>
+              <div className="mt-2 flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReturnType('order');
+                    setSelectedOrder(null);
+                    setSelectedCustomer(null);
+                    setManualItems([]);
+                  }}
+                  className={`flex-1 px-4 py-3 border-2 rounded-lg transition-colors ${
+                    returnType === 'order'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  מהזמנה קיימת
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReturnType('manual');
+                    setSelectedOrder(null);
+                    setSelectedCustomer(null);
+                    setManualItems([]);
+                  }}
+                  className={`flex-1 px-4 py-3 border-2 rounded-lg transition-colors ${
+                    returnType === 'manual'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  החזרה ידנית
+                </button>
+              </div>
+            </div>
+
+            {/* Order Search - רק אם returnType === 'order' */}
+            {returnType === 'order' && !selectedOrder ? (
               <div className="space-y-4">
                 <div>
                   <Label>חיפוש הזמנה</Label>
@@ -904,7 +1084,7 @@ export default function ReturnsPage() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : returnType === 'order' && selectedOrder ? (
               <>
                 {/* Selected Order Info */}
                 <Card>
@@ -1045,7 +1225,7 @@ export default function ReturnsPage() {
                   />
                 </div>
               </>
-            )}
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => {
@@ -1054,10 +1234,15 @@ export default function ReturnsPage() {
             }}>
               ביטול
             </Button>
-            {selectedOrder && (
+            {((returnType === 'order' && selectedOrder) || (returnType === 'manual' && selectedCustomer)) && (
               <Button
                 onClick={handleAddReturn}
-                disabled={addingReturn || !addReason || selectedItems.filter(i => i.quantity > 0).length === 0}
+                disabled={
+                  addingReturn || 
+                  !addReason || 
+                  (returnType === 'order' && selectedItems.filter(i => i.quantity > 0).length === 0) ||
+                  (returnType === 'manual' && manualItems.length === 0)
+                }
               >
                 {addingReturn ? 'מוסיף...' : 'הוסף החזרה'}
               </Button>

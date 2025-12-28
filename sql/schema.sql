@@ -1378,11 +1378,11 @@ CREATE INDEX idx_store_credit_transactions_order_id ON store_credit_transactions
 CREATE TABLE returns (
   id SERIAL PRIMARY KEY,
   store_id INT REFERENCES stores(id) ON DELETE CASCADE,
-  order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+  order_id INT REFERENCES orders(id) ON DELETE CASCADE, -- ✅ יכול להיות NULL להחזרה ידנית
   customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
   status VARCHAR(50) DEFAULT 'PENDING' NOT NULL, -- PENDING, APPROVED, REJECTED, PROCESSING, COMPLETED, CANCELLED
   reason VARCHAR(500) NOT NULL,
-  items JSONB NOT NULL, -- Array of { orderItemId, quantity, reason? }
+  items JSONB NOT NULL, -- Array of { orderItemId, quantity, reason?, title?, price? } - orderItemId יכול להיות null להחזרה ידנית
   refund_amount NUMERIC(12,2),
   refund_method VARCHAR(50), -- STORE_CREDIT, REFUND, EXCHANGE
   notes TEXT,
