@@ -348,8 +348,8 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
-                        <HiPhotograph className="w-12 h-12 opacity-20" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                        <HiPhotograph className="w-16 h-16 text-gray-400" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
-import { HiStar, HiShoppingBag } from 'react-icons/hi';
+import { HiStar, HiPhotograph } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -507,8 +507,8 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-200 bg-gray-50">
-                        <HiShoppingBag className="w-12 h-12 opacity-20" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                        <HiPhotograph className="w-16 h-16 text-gray-400" />
                       </div>
                     )}
                     
