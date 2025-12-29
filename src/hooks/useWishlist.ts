@@ -119,6 +119,13 @@ export function useWishlist() {
   useEffect(() => {
     if (typeof window !== 'undefined' && storeId && !globalWishlistLoaded[storeId]) {
       loadWishlist();
+    } else if (typeof window !== 'undefined' && storeId && globalWishlistLoaded[storeId]) {
+      // ✅ גם אם כבר טענו, נוודא שיש סנכרון עם localStorage
+      const localItems = getLocalWishlist(storeId);
+      if (localItems.length > 0 && (!globalWishlistItems[storeId] || globalWishlistItems[storeId].length === 0)) {
+        // יש פריטים ב-localStorage אבל לא ב-global state - צריך לטעון
+        loadWishlist();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId]);
@@ -256,18 +263,34 @@ export function useWishlist() {
           const newLocalItems = [...localItems, newItem];
           setLocalWishlist(newLocalItems, storeId);
           
+          // ✅ עדכון מיידי של המונה (עם placeholder)
+          const placeholderItem: WishlistItem = {
+            id: Date.now(), // temporary ID
+            product_id: productId,
+            product_title: 'טוען...',
+            product_handle: '',
+            price: 0,
+            created_at: new Date().toISOString(),
+          };
+          globalWishlistItems[storeId] = [...wishlistItems, placeholderItem];
+          notifyWishlistListeners();
+          
           // Fetch product details to update UI
           try {
             const detailsResponse = await fetch(`/api/storefront/wishlist/details?storeId=${storeId}&productIds=${productId}`);
             if (detailsResponse.ok) {
               const detailsData = await detailsResponse.json();
               if (detailsData.items && detailsData.items.length > 0) {
-                globalWishlistItems[storeId] = [...wishlistItems, detailsData.items[0]];
+                // ✅ החלפת ה-placeholder בנתונים אמיתיים
+                globalWishlistItems[storeId] = globalWishlistItems[storeId].map(item => 
+                  item.product_id === productId ? detailsData.items[0] : item
+                );
                 notifyWishlistListeners();
               }
             }
           } catch (e) {
             console.error('[useWishlist] Error fetching product details:', e);
+            // גם אם יש שגיאה, הפריט כבר נוסף ל-localStorage והמונה מתעדכן
           }
           return true;
         }

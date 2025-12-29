@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Execute all in parallel
-    const [pageLayout, homeLayout, pageData] = await Promise.all(promises);
+    let [pageLayout, homeLayout, pageData] = await Promise.all(promises);
     
     console.log(`[Layout API] Got all data (${Date.now() - layoutStartTime}ms, total: ${Date.now() - startTime}ms)`);
     

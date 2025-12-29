@@ -3,6 +3,7 @@
 import { HiHeart } from 'react-icons/hi';
 import Link from 'next/link';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useEffect, useState } from 'react';
 
 interface WishlistIconProps {
   storeSlug: string;
@@ -14,8 +15,13 @@ interface WishlistIconProps {
  * מציג את מספר הפריטים ברשימת המשאלות (גם למשתמשים רשומים וגם לאורחים)
  */
 export function WishlistIcon({ storeSlug, iconColor = '#4B5563' }: WishlistIconProps) {
-  const { getWishlistCount } = useWishlist();
-  const wishlistCount = getWishlistCount();
+  const { getWishlistCount, wishlistItems } = useWishlist();
+  const [wishlistCount, setWishlistCount] = useState(0);
+  
+  // Update count whenever wishlistItems changes
+  useEffect(() => {
+    setWishlistCount(getWishlistCount());
+  }, [wishlistItems, getWishlistCount]);
 
   return (
     <Link

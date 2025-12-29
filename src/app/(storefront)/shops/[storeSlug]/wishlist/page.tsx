@@ -30,8 +30,8 @@ export default async function WishlistPage({ params }: WishlistPageProps) {
   // Get store details directly from DB
   try {
     const stores = await query(
-      'SELECT id, name FROM stores WHERE slug = $1 AND status = $2',
-      [storeSlug, 'active']
+      'SELECT id, name FROM stores WHERE slug = $1',
+      [storeSlug]
     );
 
     if (!stores || stores.length === 0) {

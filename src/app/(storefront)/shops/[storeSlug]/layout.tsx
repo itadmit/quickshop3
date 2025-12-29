@@ -210,8 +210,8 @@ export default async function StoreSlugLayout({
       <PageViewTracker />
       <PopupManager storeId={store.id} />
       
-      {/* אם זה דף מיוחד (צ'ק אאוט / wishlist) - לא נשתמש ב-CustomizerLayoutWrapper */}
-      {isSpecial ? (
+      {/* אם זה צ'ק אאוט - לא נשתמש ב-CustomizerLayoutWrapper */}
+      {isCheckout ? (
         <div className="min-h-screen" dir="rtl">
           {children}
         </div>
