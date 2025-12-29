@@ -31,6 +31,9 @@ interface CollectionProductsClientProps {
     showAddToCart?: boolean;
     showWishlist?: boolean;
     emptyText?: string;
+    saleBadgeText?: string;
+    soldOutText?: string;
+    newBadgeText?: string;
   };
 }
 
@@ -68,6 +71,9 @@ function CollectionProductsClientComponent({
   const showShadow = settings.showShadow === true;
   const showBorder = settings.showBorder === true;
   const imageRatio = settings.imageRatio || 'square';
+  const saleBadgeText = settings.saleBadgeText || 'מבצע';
+  const soldOutText = settings.soldOutText || 'אזל מהמלאי';
+  const newBadgeText = settings.newBadgeText || 'חדש';
   
   // Gap classes
   const gapClasses = {
@@ -211,6 +217,9 @@ function CollectionProductsClientComponent({
                 showShadow={showShadow}
                 showBorder={showBorder}
                 imageRatio={imageRatio}
+                saleBadgeText={saleBadgeText}
+                soldOutText={soldOutText}
+                newBadgeText={newBadgeText}
               />
             );
           })}

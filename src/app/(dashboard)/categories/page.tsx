@@ -93,7 +93,7 @@ export default function CategoriesPage() {
     },
     {
       key: 'handle',
-      label: 'Handle',
+      label: 'סלאג',
       render: (collection) => (
         <div className="text-sm text-gray-500 font-mono">{collection.handle}</div>
       ),

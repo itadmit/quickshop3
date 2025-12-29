@@ -8,6 +8,7 @@ import { CustomizerLayoutWrapper } from '@/components/storefront/CustomizerLayou
 import { LocaleSetter } from '@/components/storefront/LocaleSetter';
 import { PopupManager } from '@/components/storefront/PopupManager';
 import { CookieBanner } from '@/components/storefront/CookieBanner';
+import { ScrollToTop } from '@/components/storefront/ScrollToTop';
 import { getStoreBySlug } from '@/lib/utils/store';
 import { getActivePixels, getActiveTrackingCodes } from '@/lib/tracking/pixels';
 import { query } from '@/lib/db';
@@ -201,6 +202,9 @@ export default async function StoreSlugLayout({
         ))}
 
       <LocaleSetter locale={store.locale || 'he'} />
+      
+      {/* Scroll to top on route change */}
+      <ScrollToTop />
       
       {/* Layout Structure: Customizer Layout (Header + Content + Footer from Customizer) */}
       <PageViewTracker />

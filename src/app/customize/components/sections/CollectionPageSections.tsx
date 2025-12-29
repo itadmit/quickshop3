@@ -390,7 +390,7 @@ export function CollectionProductsSection({ section, collection, products = [], 
   const productsPerRowMobile = settings.products_per_row_mobile || 2;
   const productsPerPage = settings.products_per_page || 12;
   const cardStyle = settings.card_style || 'minimal';
-  const showShadow = settings.show_shadow !== false;
+  const showShadow = settings.show_shadow === true;
   const showBorder = settings.show_border === true;
   const imageRatio = settings.image_ratio || 'square';
   const gap = settings.gap || 'medium';
@@ -404,6 +404,9 @@ export function CollectionProductsSection({ section, collection, products = [], 
   const showAddToCart = settings.show_add_to_cart === true;
   const showWishlist = settings.show_wishlist === true;
   const emptyText = settings.empty_text || t('collection.no_products') || 'אין מוצרים בקטגוריה זו כרגע';
+  const saleBadgeText = settings.sale_badge_text || 'מבצע';
+  const soldOutText = settings.sold_out_text || 'אזל מהמלאי';
+  const newBadgeText = settings.new_badge_text || 'חדש';
 
   // Gap classes
   const gapClasses = {
@@ -438,7 +441,10 @@ export function CollectionProductsSection({ section, collection, products = [], 
           showQuickView,
           showAddToCart,
           showWishlist,
-          emptyText
+          emptyText,
+          saleBadgeText,
+          soldOutText,
+          newBadgeText,
         }}
       />
     );
@@ -513,6 +519,9 @@ export function CollectionProductsSection({ section, collection, products = [], 
               showShadow={showShadow}
               showBorder={showBorder}
               imageRatio={imageRatio}
+              saleBadgeText={saleBadgeText}
+              soldOutText={soldOutText}
+              newBadgeText={newBadgeText}
             />
           );
         })}

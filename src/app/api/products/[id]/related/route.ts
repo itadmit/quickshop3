@@ -92,7 +92,9 @@ export async function GET(
     if (collectionIds.length > 0 && relatedProducts.length < limit) {
       const sameCollectionProducts = await query(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
-                pv.price,
+                pv.price, pv.compare_at_price,
+                p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
+                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -101,6 +103,7 @@ export async function GET(
          WHERE p.store_id = $1 
            AND p.id != $2
            AND p.status = 'active'
+           AND (p.availability = 'in_stock' OR p.availability = 'preorder' OR p.availability = 'backorder')
            AND p.id IN (SELECT product_id FROM product_collection_map WHERE collection_id = ANY($3::int[]))
          ORDER BY RANDOM()
          LIMIT $4`,
@@ -113,7 +116,9 @@ export async function GET(
     if (relatedProducts.length < limit && vendor) {
       const sameVendorProducts = await query(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
-                pv.price,
+                pv.price, pv.compare_at_price,
+                p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
+                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -122,6 +127,7 @@ export async function GET(
          WHERE p.store_id = $1 
            AND p.id != $2
            AND p.status = 'active'
+           AND (p.availability = 'in_stock' OR p.availability = 'preorder' OR p.availability = 'backorder')
            AND p.vendor = $3
          ORDER BY RANDOM()
          LIMIT $4`,
@@ -134,7 +140,9 @@ export async function GET(
     if (relatedProducts.length < limit && productType) {
       const sameTypeProducts = await query(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
-                pv.price,
+                pv.price, pv.compare_at_price,
+                p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
+                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -143,6 +151,7 @@ export async function GET(
          WHERE p.store_id = $1 
            AND p.id != $2
            AND p.status = 'active'
+           AND (p.availability = 'in_stock' OR p.availability = 'preorder' OR p.availability = 'backorder')
            AND p.product_type = $3
          ORDER BY RANDOM()
          LIMIT $4`,
@@ -155,7 +164,9 @@ export async function GET(
     if (relatedProducts.length < limit) {
       const randomProducts = await query(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
-                pv.price,
+                pv.price, pv.compare_at_price,
+                p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
+                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -164,6 +175,7 @@ export async function GET(
          WHERE p.store_id = $1 
            AND p.id != $2
            AND p.status = 'active'
+           AND (p.availability = 'in_stock' OR p.availability = 'preorder' OR p.availability = 'backorder')
          ORDER BY RANDOM()
          LIMIT $3`,
         [storeId, productId, limit * 2]

@@ -1768,13 +1768,21 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: 'רשת (Grid)', value: 'grid' },
                             { label: 'סליידר נגלל', value: 'slider' },
                         ])}
-                        {getValue('display_type') !== 'slider' && renderSelect('מספר קטגוריות בשורה', 'items_per_row', [
-                            { label: '2 קטגוריות', value: 2 },
-                            { label: '3 קטגוריות', value: 3 },
-                            { label: '4 קטגוריות', value: 4 },
-                            { label: '5 קטגוריות', value: 5 },
-                            { label: '6 קטגוריות', value: 6 },
-                        ])}
+                        {getValue('display_type') !== 'slider' && (
+                          <>
+                            {renderSelect('מספר קטגוריות בשורה (דסקטופ)', 'items_per_row', [
+                              { label: '2 קטגוריות', value: 2 },
+                              { label: '3 קטגוריות', value: 3 },
+                              { label: '4 קטגוריות', value: 4 },
+                              { label: '5 קטגוריות', value: 5 },
+                              { label: '6 קטגוריות', value: 6 },
+                            ])}
+                            {renderSelect('מספר קטגוריות בשורה (מובייל)', 'items_per_row_mobile', [
+                              { label: '1 קטגוריה', value: 1 },
+                              { label: '2 קטגוריות', value: 2 },
+                            ])}
+                          </>
+                        )}
                         {getValue('display_type') === 'slider' && renderSelect('פריטים נראים (מחשב)', 'slider_items_desktop', [
                             { label: '2.5 פריטים', value: 2.5 },
                             { label: '3.5 פריטים', value: 3.5 },
@@ -1786,6 +1794,18 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                             { label: '1.5 פריטים', value: 1.5 },
                             { label: '2.2 פריטים', value: 2.2 },
                         ])}
+                        {getValue('display_type') === 'slider' && (
+                          <>
+                            {renderSelect('הצג חיצים', 'show_arrows', [
+                              { label: 'כן', value: true },
+                              { label: 'לא', value: false },
+                            ])}
+                            {renderSelect('הצג נקודות', 'show_dots', [
+                              { label: 'כן', value: true },
+                              { label: 'לא', value: false },
+                            ])}
+                          </>
+                        )}
                         {renderSelect('יישור תוכן קטגוריה', 'content_align', [
                             { label: 'ימין', value: 'right' },
                             { label: 'מרכז', value: 'center' },
@@ -4251,7 +4271,14 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
             <SettingGroup title="מוצרים">
               <div className="space-y-4">
-                {renderInput('מספר מוצרים', 'products_count', '4', 'number')}
+                {renderInput('מספר מוצרים (דסקטופ)', 'products_count', '4', 'number')}
+                
+                {renderSelect('כמה מוצרים להציג (מובייל)', 'products_count_mobile', [
+                  { label: '2 מוצרים', value: 2 },
+                  { label: '4 מוצרים', value: 4 },
+                  { label: '6 מוצרים', value: 6 },
+                  { label: '8 מוצרים', value: 8 },
+                ])}
                 
                 {renderSelect('מוצרים בשורה (דסקטופ)', 'columns_desktop', [
                   { label: '2', value: 2 },
@@ -4276,6 +4303,19 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
             <SettingGroup title="תצוגת כרטיס מוצר">
               <div className="space-y-4">
+                {renderSelect('יחס תמונה', 'image_ratio', [
+                  { label: 'ריבוע (1:1)', value: 'square' },
+                  { label: 'פורטרט (3:4)', value: 'portrait' },
+                  { label: 'לנדסקייפ (4:3)', value: 'landscape' },
+                  { label: 'סטורי (9:16)', value: 'story' },
+                  { label: 'רחב (16:9)', value: 'wide' },
+                  { label: 'גבוה (2:3)', value: 'tall' },
+                  { label: 'אולטרה רחב (21:9)', value: 'ultra_wide' },
+                  { label: 'אנכי (9:16)', value: 'vertical' },
+                  { label: 'אופקי (16:10)', value: 'horizontal' },
+                  { label: 'מקורי', value: 'original' },
+                ])}
+                
                 {renderSelect('הצג מחיר', 'show_price', [
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },
@@ -4295,6 +4335,8 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },
                 ])}
+                
+                {renderInput('עיגול פינות (px)', 'card_border_radius', '0', 'number')}
               </div>
             </SettingGroup>
 
@@ -4370,6 +4412,19 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
 
             <SettingGroup title="תצוגת כרטיס מוצר">
               <div className="space-y-4">
+                {renderSelect('יחס תמונה', 'image_ratio', [
+                  { label: 'ריבוע (1:1)', value: 'square' },
+                  { label: 'פורטרט (3:4)', value: 'portrait' },
+                  { label: 'לנדסקייפ (4:3)', value: 'landscape' },
+                  { label: 'סטורי (9:16)', value: 'story' },
+                  { label: 'רחב (16:9)', value: 'wide' },
+                  { label: 'גבוה (2:3)', value: 'tall' },
+                  { label: 'אולטרה רחב (21:9)', value: 'ultra_wide' },
+                  { label: 'אנכי (9:16)', value: 'vertical' },
+                  { label: 'אופקי (16:10)', value: 'horizontal' },
+                  { label: 'מקורי', value: 'original' },
+                ])}
+                
                 {renderSelect('הצג מחיר', 'show_price', [
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },

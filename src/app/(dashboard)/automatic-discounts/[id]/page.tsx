@@ -470,7 +470,7 @@ export default function EditAutomaticDiscountPage() {
               <Select
                 value={formData.discount_type}
                 onValueChange={(value: string) => 
-                  setFormData({ ...formData, discount_type: value as 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' })
+                  setFormData({ ...formData, discount_type: value as 'percentage' | 'fixed_amount' | 'free_shipping' | 'bogo' | 'bundle' | 'volume' | 'fixed_price' | 'spend_x_pay_y' })
                 }
               >
                 <SelectTrigger className="mt-1">

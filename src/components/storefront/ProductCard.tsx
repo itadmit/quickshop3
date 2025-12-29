@@ -23,6 +23,8 @@ interface ProductCardProps {
     colors?: ColorOption[]; // Color swatches to display
     vendor?: string;
     rating?: number;
+    availability?: 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder';
+    inventory_qty?: number | null;
   };
   storeSlug?: string;
   variant?: 'default' | 'minimal' | 'card'; // Style variant
@@ -41,6 +43,11 @@ interface ProductCardProps {
   showShadow?: boolean;
   showBorder?: boolean;
   imageRatio?: string; // 'square' | 'portrait' | 'landscape' | 'story' | 'wide' | 'tall' | 'horizontal' | 'vertical'
+  style?: React.CSSProperties; // Custom style for border radius etc.
+  // Text customization
+  saleBadgeText?: string;
+  soldOutText?: string;
+  newBadgeText?: string;
 }
 
 export function ProductCard({ 
@@ -60,6 +67,10 @@ export function ProductCard({
   showShadow = false,
   showBorder = false,
   imageRatio = 'square',
+  style,
+  saleBadgeText = 'מבצע',
+  soldOutText = 'אזל מהמלאי',
+  newBadgeText = 'חדש',
 }: ProductCardProps) {
   const params = useParams();
   const pathname = usePathname();
@@ -155,6 +166,7 @@ export function ProductCard({
       href={`/shops/${storeSlug}/products/${product.handle}`}
       prefetch={true}
       className={getContainerClasses()}
+      style={style}
       onClick={() => {
         emitTrackingEvent({
           event: 'ViewContent',
@@ -200,7 +212,14 @@ export function ProductCard({
         {/* Sale Badge */}
         {showBadges && hasDiscount && (
           <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded">
-            מבצע
+            {saleBadgeText}
+          </div>
+        )}
+        
+        {/* Out of Stock Badge */}
+        {showBadges && product.availability === 'out_of_stock' && (
+          <div className="absolute top-2 right-2 bg-gray-500 text-white text-xs font-medium px-2 py-1 rounded">
+            {soldOutText}
           </div>
         )}
         
@@ -281,16 +300,21 @@ export function ProductCard({
         </h3>
         
         {/* Rating */}
-        {showRating && (
+        {showRating && product.rating && product.rating > 0 && (
           <div className="flex items-center gap-1 mb-1.5">
             {[1, 2, 3, 4, 5].map((star) => (
               <HiStar 
                 key={star} 
-                className={`w-3.5 h-3.5 ${star <= (product.rating || 4) ? 'text-yellow-400' : 'text-gray-300'}`} 
+                className={`w-3.5 h-3.5 ${star <= Math.round(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`} 
               />
             ))}
-            <span className="text-xs text-gray-500">({product.rating || 4}.0)</span>
+            <span className="text-xs text-gray-500">({product.rating.toFixed(1)})</span>
           </div>
+        )}
+        
+        {/* Availability Status */}
+        {product.availability === 'out_of_stock' && (
+          <p className="text-xs text-red-600 mb-1">{soldOutText}</p>
         )}
         
         {showPrice && (

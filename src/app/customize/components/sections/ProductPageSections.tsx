@@ -13,12 +13,14 @@ import { useProductPage } from '@/contexts/ProductPageContext';
 import { DEMO_RELATED_PRODUCTS, DEMO_RECENTLY_VIEWED, DEMO_REVIEWS } from '@/lib/customizer/demoData';
 import { emitTrackingEvent } from '@/lib/tracking/events';
 import { areSectionsEqual } from './sectionMemoUtils';
+import { ProductCard } from '@/components/storefront/ProductCard';
 
 interface ProductSectionProps {
   section: SectionSettings;
   product: any;
   onUpdate: (updates: Partial<SectionSettings>) => void;
   isPreview?: boolean; // true when in customizer
+  editorDevice?: 'desktop' | 'tablet' | 'mobile'; // Device type in customizer
 }
 
 // Product Gallery Section
@@ -35,6 +37,7 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
   const imageRatio = settings.image_ratio || 'square';
   const showArrows = settings.show_arrows !== false;
   const showDots = settings.show_dots === true;
+  const imageBorderRadius = settings.image_border_radius || '8px';
 
   // Thumbnail size classes
   const thumbnailSizeClasses = {
@@ -152,17 +155,16 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
   // Thumbnails layout (default) with position support
   if (galleryLayout === 'thumbnails') {
     const isVertical = thumbnailPosition === 'left' || thumbnailPosition === 'right';
-    const mainContainerClass = isVertical ? 'flex gap-4' : 'flex flex-col gap-4';
-    const orderClass = thumbnailPosition === 'left' || thumbnailPosition === 'top' ? 'order-2' : 'order-1';
-
+    
     return (
-      <div className={mainContainerClass}>
-        {isVertical && thumbnailPosition === 'left' && renderThumbnails()}
-        {!isVertical && thumbnailPosition === 'top' && renderThumbnails()}
+      <div className={isVertical ? 'flex gap-4' : 'flex flex-col gap-4'}>
+        {/* Show thumbnails BEFORE main image if position is 'left' or 'top' */}
+        {thumbnailPosition === 'left' && renderThumbnails()}
+        {thumbnailPosition === 'top' && renderThumbnails()}
         
         {/* Main Image */}
-        <div className={`flex-1 ${orderClass}`}>
-          <div className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden`}>
+        <div className="flex-1">
+          <div className={`${imageRatioClasses} bg-gray-100 overflow-hidden`} style={{ borderRadius: imageBorderRadius }}>
             {selectedImage ? (
               <img 
                 src={selectedImage.src || selectedImage.url || selectedImage} 
@@ -177,8 +179,9 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
           </div>
         </div>
         
-        {isVertical && thumbnailPosition === 'right' && renderThumbnails()}
-        {!isVertical && thumbnailPosition === 'bottom' && renderThumbnails()}
+        {/* Show thumbnails AFTER main image if position is 'right' or 'bottom' */}
+        {thumbnailPosition === 'right' && renderThumbnails()}
+        {thumbnailPosition === 'bottom' && renderThumbnails()}
       </div>
     );
   }
@@ -746,6 +749,9 @@ export function ProductAddToCartSection({ section, product, onUpdate }: ProductS
   const buttonText = settings.button_text || t('product.add_to_cart') || 'הוסף לסל';
   const buyNowText = settings.buy_now_text || t('product.buy_now') || 'קנה עכשיו';
   const buttonStyle = settings.button_style || 'solid';
+  const buttonBgColor = settings.button_bg_color || '#111827'; // gray-900
+  const buttonTextColor = settings.button_text_color || '#FFFFFF';
+  const buttonRadius = settings.button_radius || '8px';
   
   // Available check: variant has available > 0
   const available = effectiveVariant ? (effectiveVariant.available || 0) > 0 : false;
@@ -838,13 +844,15 @@ export function ProductAddToCartSection({ section, product, onUpdate }: ProductS
       <button
         onClick={handleAddToCart}
         disabled={!available || isAddingToCart}
-        className={`w-full py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-          buttonStyle === 'outline'
-            ? 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
-            : added
-            ? 'bg-green-500 text-white'
-            : 'bg-gray-900 text-white hover:bg-gray-800'
-        } ${!available || isAddingToCart ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full py-3 px-6 font-medium transition-colors flex items-center justify-center gap-2 ${
+          !available || isAddingToCart ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
+        style={{
+          backgroundColor: added ? '#10b981' : (buttonStyle === 'outline' ? 'transparent' : buttonBgColor),
+          color: buttonStyle === 'outline' ? buttonBgColor : buttonTextColor,
+          border: buttonStyle === 'outline' ? `2px solid ${buttonBgColor}` : 'none',
+          borderRadius: buttonRadius,
+        }}
       >
         {isAddingToCart ? (
           <>
@@ -882,6 +890,9 @@ export function ProductDescriptionSection({ section, product, onUpdate }: Produc
   const { t } = useTranslation('storefront');
   
   const description = product?.body_html || product?.description || '';
+  const displayStyle = settings.display_style || 'open'; // open, accordion, tabs
+  const title = settings.title || t('product.description') || 'תיאור המוצר';
+  const [isOpen, setIsOpen] = React.useState(displayStyle === 'open');
   
   if (!product) {
     return (
@@ -893,10 +904,68 @@ export function ProductDescriptionSection({ section, product, onUpdate }: Produc
     );
   }
 
+  // Accordion style
+  if (displayStyle === 'accordion') {
+    return (
+      <div className="py-4 border-t border-gray-200">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full flex items-center justify-between text-lg font-semibold text-gray-900 py-3 hover:text-gray-700 transition-colors"
+        >
+          <span>{title}</span>
+          <svg
+            className={`w-5 h-5 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {isOpen && (
+          <div className="py-3">
+            {description ? (
+              <div 
+                className="prose prose-sm max-w-none text-gray-600"
+                dangerouslySetInnerHTML={{ __html: description }}
+              />
+            ) : (
+              <p className="text-gray-400 text-sm">אין תיאור למוצר זה</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Tabs style - for now showing as open, can be enhanced with multiple tabs
+  if (displayStyle === 'tabs') {
+    return (
+      <div className="py-4">
+        <div className="border-b border-gray-200">
+          <button className="px-6 py-3 border-b-2 border-gray-900 font-semibold text-gray-900">
+            {title}
+          </button>
+        </div>
+        <div className="py-4">
+          {description ? (
+            <div 
+              className="prose prose-sm max-w-none text-gray-600"
+              dangerouslySetInnerHTML={{ __html: description }}
+            />
+          ) : (
+            <p className="text-gray-400 text-sm">אין תיאור למוצר זה</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Default: open style
   return (
     <div className="py-4">
       <h3 className="text-lg font-semibold text-gray-900 mb-3">
-        {t('product.description') || 'תיאור המוצר'}
+        {title}
       </h3>
       {description ? (
         <div 
@@ -1202,7 +1271,7 @@ export const ProductReviewsSection = React.memo(ProductReviewsSectionComponent, 
 });
 
 // Related Products Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
+function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview = false, editorDevice = 'desktop' }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
@@ -1213,7 +1282,19 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
   const loadedRef = React.useRef(false); // Track if already loaded
   
   const title = settings.title || t('product.related_products') || 'מוצרים שאולי יעניינו אותך';
-  const productsCount = settings.products_count || 4;
+  
+  // Get responsive settings
+  const layoutStyle = settings.layout_style || 'grid';
+  const columnsDesktop = settings.columns_desktop || 4;
+  const columnsMobile = settings.columns_mobile || 2;
+  const productsCountDesktop = settings.products_count || 4;
+  const productsCountMobile = settings.products_count_mobile || productsCountDesktop;
+  const cardBorderRadius = settings.card_border_radius ? `${settings.card_border_radius}px` : undefined;
+  const imageRatio = settings.image_ratio || 'square';
+  
+  // Detect mobile view (in customizer use editorDevice, otherwise check window width)
+  const isMobile = editorDevice === 'mobile' || (typeof window !== 'undefined' && window.innerWidth < 768);
+  const productsCount = isMobile ? productsCountMobile : productsCountDesktop;
 
   // In customizer preview (isPreview === true), use demo data immediately - no API calls
   React.useEffect(() => {
@@ -1255,15 +1336,29 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
     loadRelatedProducts();
   }, [product?.id, productsCount, isPreview]);
 
+  // Get grid columns classes based on settings
+  const getGridCols = () => {
+    const mobileCols = columnsMobile === 1 ? 'grid-cols-1' : 'grid-cols-2';
+    let desktopCols = 'md:grid-cols-4';
+    switch (columnsDesktop) {
+      case 2: desktopCols = 'md:grid-cols-2'; break;
+      case 3: desktopCols = 'md:grid-cols-3'; break;
+      case 5: desktopCols = 'md:grid-cols-5'; break;
+      case 6: desktopCols = 'md:grid-cols-6'; break;
+      default: desktopCols = 'md:grid-cols-4';
+    }
+    return `${mobileCols} ${desktopCols}`;
+  };
+
   // Loading state (only in storefront)
   if (loading) {
     return (
       <div className="py-8">
         <h3 className="text-xl font-semibold text-gray-900 mb-6">{title}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className={`grid ${getGridCols()} gap-4`}>
+          {Array.from({ length: productsCount }).map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="aspect-square bg-gray-200 rounded-lg mb-2" />
+              <div className="aspect-square bg-gray-200 rounded-lg mb-2" style={{ borderRadius: cardBorderRadius }} />
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
               <div className="h-4 bg-gray-200 rounded w-1/2" />
             </div>
@@ -1278,34 +1373,96 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
     return null;
   }
 
+  // Filter out products that are out of stock
+  const availableProducts = relatedProducts.filter((p: any) => 
+    p.availability !== 'out_of_stock'
+  ).slice(0, productsCount);
+
+  // Carousel layout
+  if (layoutStyle === 'carousel') {
+    const itemsToShow = isMobile ? columnsMobile : columnsDesktop;
+    return (
+      <div className="py-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">{title}</h3>
+        {availableProducts.length === 0 ? (
+          <p className="text-gray-500 text-sm">אין מוצרים זמינים להצגה</p>
+        ) : (
+          <div className="relative">
+            <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
+                {availableProducts.map((relProduct: any) => {
+                  const cardWidth = isMobile 
+                    ? `calc((100vw - 2rem) / ${columnsMobile})`
+                    : `calc((100vw - 4rem) / ${columnsDesktop})`;
+                  return (
+                    <div
+                      key={relProduct.id}
+                      className="flex-shrink-0"
+                      style={{ 
+                        width: cardWidth,
+                        scrollSnapAlign: 'start'
+                      }}
+                    >
+                      <ProductCard
+                        product={{
+                          id: relProduct.id,
+                          title: relProduct.title,
+                          handle: relProduct.handle,
+                          image: relProduct.image || relProduct.images?.[0]?.src || null,
+                          price: parseFloat(relProduct.price || relProduct.variants?.[0]?.price || 0),
+                          compare_at_price: relProduct.compare_price ? parseFloat(relProduct.compare_price) : undefined,
+                          availability: relProduct.availability,
+                          inventory_qty: relProduct.inventory_qty,
+                          rating: relProduct.rating ? parseFloat(relProduct.rating) : undefined,
+                        }}
+                        storeSlug={storeSlug}
+                        showRating={settings.show_rating !== false}
+                        showBadges={settings.show_badges !== false}
+                        imageRatio={imageRatio}
+                        style={cardBorderRadius ? { borderRadius: cardBorderRadius } : undefined}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Grid layout (default)
   return (
     <div className="py-8">
       <h3 className="text-xl font-semibold text-gray-900 mb-6">{title}</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {relatedProducts.slice(0, productsCount).map((relProduct: any) => (
-          <Link
-            key={relProduct.id}
-            href={`/shops/${storeSlug}/products/${relProduct.handle}`}
-            className="group cursor-pointer block"
-          >
-            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2 group-hover:opacity-90 transition-opacity">
-              {relProduct.image || relProduct.images?.[0]?.src ? (
-                <img 
-                  src={relProduct.image || relProduct.images?.[0]?.src} 
-                  alt={relProduct.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                  <HiPhotograph className="w-12 h-12" />
-                </div>
-              )}
-            </div>
-            <p className="text-sm font-medium text-gray-900 truncate group-hover:text-gray-600">{relProduct.title}</p>
-            <p className="text-sm text-gray-500">₪{parseFloat(relProduct.price || relProduct.variants?.[0]?.price || 0).toFixed(2)}</p>
-          </Link>
-        ))}
-      </div>
+      {availableProducts.length === 0 ? (
+        <p className="text-gray-500 text-sm">אין מוצרים זמינים להצגה</p>
+      ) : (
+        <div className={`grid ${getGridCols()} gap-4`}>
+          {availableProducts.map((relProduct: any) => (
+            <ProductCard
+              key={relProduct.id}
+              product={{
+                id: relProduct.id,
+                title: relProduct.title,
+                handle: relProduct.handle,
+                image: relProduct.image || relProduct.images?.[0]?.src || null,
+                price: parseFloat(relProduct.price || relProduct.variants?.[0]?.price || 0),
+                compare_at_price: relProduct.compare_price ? parseFloat(relProduct.compare_price) : undefined,
+                availability: relProduct.availability,
+                inventory_qty: relProduct.inventory_qty,
+                rating: relProduct.rating ? parseFloat(relProduct.rating) : undefined,
+              }}
+              storeSlug={storeSlug}
+              showRating={settings.show_rating !== false}
+              showBadges={settings.show_badges !== false}
+              imageRatio={imageRatio}
+              style={cardBorderRadius ? { borderRadius: cardBorderRadius } : undefined}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1324,6 +1481,23 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
   
   const title = settings.title || t('product.recently_viewed') || 'צפית לאחרונה';
   const productsCount = settings.products_count || 4;
+  const imageRatio = settings.image_ratio || 'square';
+
+  // Image ratio class mapping
+  const imageRatioClasses: Record<string, string> = {
+    'square': 'aspect-square',
+    'portrait': 'aspect-[3/4]',
+    'landscape': 'aspect-[4/3]',
+    'story': 'aspect-[9/16]',
+    'wide': 'aspect-[16/9]',
+    'tall': 'aspect-[2/3]',
+    'ultra_wide': 'aspect-[21/9]',
+    'vertical': 'aspect-[9/16]',
+    'horizontal': 'aspect-[16/10]',
+    'original': 'aspect-auto',
+  };
+
+  const aspectClass = imageRatioClasses[imageRatio] || 'aspect-square';
 
   // Only fetch from API in storefront mode (isPreview !== true)
   React.useEffect(() => {
@@ -1418,7 +1592,7 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
             href={`/shops/${storeSlug}/products/${recentProduct.handle}`}
             className="group cursor-pointer block"
           >
-            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2 group-hover:opacity-90 transition-opacity">
+            <div className={`${aspectClass} bg-gray-100 rounded-lg overflow-hidden mb-2 group-hover:opacity-90 transition-opacity`}>
               {recentProduct.image || recentProduct.images?.[0]?.src ? (
                 <img 
                   src={recentProduct.image || recentProduct.images?.[0]?.src} 

@@ -116,9 +116,11 @@ export async function PUT(
       );
     }
 
-    // Generate unique slug if not provided or if title changed
+    // Use provided handle if it exists and is valid, otherwise generate unique slug
     let handle = body.handle;
-    if (!handle || (body.title && body.title !== oldProduct.title)) {
+    // Only generate new slug if handle is not provided or is empty
+    // If handle is provided (even if title changed), use it as-is
+    if (!handle || handle.trim() === '') {
       handle = await generateUniqueSlug(body.title || oldProduct.title, 'products', oldProduct.store_id, productId);
     }
 

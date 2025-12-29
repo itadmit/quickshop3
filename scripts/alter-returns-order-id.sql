@@ -7,3 +7,4 @@
 
 ALTER TABLE returns ALTER COLUMN order_id DROP NOT NULL;
 
+

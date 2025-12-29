@@ -430,7 +430,7 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
     case 'related_products':
       return (
         <SectionWrapper className="py-8">
-          <RelatedProductsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+          <RelatedProductsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} isPreview={true} editorDevice={device} />
         </SectionWrapper>
       );
 

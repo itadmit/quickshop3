@@ -493,7 +493,22 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-title',
     type: 'product_name',
-    name: 'שם המוצר',
+    name: 'שם מוצר',
+    visible: true,
+    order: 2,
+    locked: false,
+    blocks: [],
+    style: {},
+    settings: {
+      show_vendor: true,
+      show_sku: false,
+      title_size: 'large' // small | medium | large
+    }
+  },
+  {
+    id: 'product-name',
+    type: 'product_name',
+    name: 'שם מוצר',
     visible: true,
     order: 2,
     locked: false,
@@ -508,7 +523,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-price',
     type: 'product_price',
-    name: 'מחיר',
+    name: 'מחיר מוצר',
     visible: true,
     order: 3,
     locked: false,
@@ -523,7 +538,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-variants',
     type: 'product_variants',
-    name: 'וריאציות',
+    name: 'וריאציות מוצר',
     visible: true,
     order: 4,
     locked: false,
@@ -538,7 +553,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-add-to-cart',
     type: 'product_add_to_cart',
-    name: 'הוספה לסל',
+    name: 'כפתור הוסף לסל',
     visible: true,
     order: 5,
     locked: false,
@@ -555,7 +570,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-description',
     type: 'product_description',
-    name: 'תיאור המוצר',
+    name: 'תיאור מוצר',
     visible: true,
     order: 6,
     locked: false,
@@ -569,7 +584,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-custom-fields',
     type: 'product_custom_fields',
-    name: 'שדות מותאמים',
+    name: 'שדות מותאמים אישית',
     visible: true,
     order: 7,
     locked: false,
@@ -583,7 +598,7 @@ export const PRODUCT_PAGE_SECTIONS: SectionSettings[] = [
   {
     id: 'product-reviews',
     type: 'product_reviews',
-    name: 'ביקורות',
+    name: 'ביקורות מוצר',
     visible: true,
     order: 8,
     locked: false,

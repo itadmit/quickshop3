@@ -475,6 +475,24 @@ export function CustomizerLayout() {
     loadPageData(newPageType, null);
   }, [currentPageType, pageSections, loadPageData, searchParams, router, storeIdState]);
 
+  // Handle page handle change (for collection/product pages)
+  const handlePageHandleChange = useCallback((newHandle: string | null) => {
+    if (newHandle === currentPageHandle) return;
+    
+    setCurrentPageHandle(newHandle);
+    
+    // Update URL to reflect new handle
+    const currentStoreId = storeIdState || searchParams.get('storeId');
+    let newUrl = `/customize?storeId=${currentStoreId}&pageType=${currentPageType}`;
+    if (newHandle) {
+      newUrl += `&pageHandle=${encodeURIComponent(newHandle)}`;
+    }
+    router.push(newUrl, { scroll: false });
+    
+    // Reload page data with new handle
+    loadPageData(currentPageType, newHandle);
+  }, [currentPageHandle, currentPageType, loadPageData, searchParams, router, storeIdState]);
+
   const handleDeviceChange = useCallback((device: DeviceType) => {
     setEditorState(prev => ({ ...prev, device }));
   }, []);
@@ -1059,6 +1077,8 @@ export function CustomizerLayout() {
         isPublishing={isPublishing}
         pageType={currentPageType}
         onPageTypeChange={handlePageTypeChange}
+        pageHandle={currentPageHandle}
+        onPageHandleChange={handlePageHandleChange}
       />
 
       {/* Templates Modal */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiDeviceMobile, HiDeviceTablet, HiDesktopComputer, HiEye, HiUpload, HiDownload, HiChevronDown, HiCog, HiArrowRight } from 'react-icons/hi';
 import { cn } from '@/lib/utils';
 import { PageType } from '@/lib/customizer/types';
@@ -17,6 +17,18 @@ const PAGE_TYPE_OPTIONS: Array<{ value: PageType; label: string; description: st
   { value: 'page', label: 'עמוד תוכן', description: 'תבנית לעמודי תוכן' },
 ];
 
+interface Collection {
+  id: number;
+  title: string;
+  handle: string;
+}
+
+interface Product {
+  id: number;
+  title: string;
+  handle: string;
+}
+
 interface HeaderProps {
   onPreview: () => void;
   onPublish: () => void;
@@ -27,6 +39,8 @@ interface HeaderProps {
   isPublishing?: boolean;
   pageType?: PageType;
   onPageTypeChange?: (pageType: PageType) => void;
+  pageHandle?: string | null;
+  onPageHandleChange?: (handle: string | null) => void;
 }
 
 export function Header({ 
@@ -38,10 +52,67 @@ export function Header({
   onDeviceChange, 
   isPublishing = false,
   pageType = 'home',
-  onPageTypeChange
+  onPageTypeChange,
+  pageHandle = null,
+  onPageHandleChange
 }: HeaderProps) {
-  const [isPageTypeOpen, setIsPageTypeOpen] = React.useState(false);
+  const [isPageTypeOpen, setIsPageTypeOpen] = useState(false);
+  const [isHandleSelectorOpen, setIsHandleSelectorOpen] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  
   const currentPage = PAGE_TYPE_OPTIONS.find(p => p.value === pageType) || PAGE_TYPE_OPTIONS[0];
+
+  // Load collections/products when page type changes
+  useEffect(() => {
+    if (pageType === 'collection') {
+      loadCollections();
+    } else if (pageType === 'product') {
+      loadProducts();
+    }
+  }, [pageType]);
+
+  const loadCollections = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/collections?limit=100', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setCollections(data.collections || []);
+      }
+    } catch (error) {
+      console.error('Error loading collections:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/products?limit=100', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCurrentItem = () => {
+    if (pageType === 'collection' && pageHandle) {
+      const collection = collections.find(c => c.handle === pageHandle);
+      return collection?.title || 'בחר קטגוריה';
+    } else if (pageType === 'product' && pageHandle) {
+      const product = products.find(p => p.handle === pageHandle);
+      return product?.title || 'בחר מוצר';
+    }
+    return pageType === 'collection' ? 'תוכן דמו (בחר קטגוריה)' : 'תוכן דמו (בחר מוצר)';
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10 relative">
@@ -63,7 +134,7 @@ export function Header({
       </div>
 
       {/* Page Type Selector - Center */}
-      <div className="absolute left-1/2 -translate-x-1/2">
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
         <div className="relative">
           <button
             onClick={() => setIsPageTypeOpen(!isPageTypeOpen)}
@@ -100,6 +171,93 @@ export function Header({
             </>
           )}
         </div>
+
+        {/* Handle Selector - Only for collection and product pages */}
+        {(pageType === 'collection' || pageType === 'product') && (
+          <div className="relative">
+            <button
+              onClick={() => setIsHandleSelectorOpen(!isHandleSelectorOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+            >
+              <span className="text-sm text-gray-700 max-w-[200px] truncate">{getCurrentItem()}</span>
+              <HiChevronDown className={cn("w-4 h-4 text-gray-500 transition-transform", isHandleSelectorOpen && "rotate-180")} />
+            </button>
+            
+            {isHandleSelectorOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-10" 
+                  onClick={() => setIsHandleSelectorOpen(false)} 
+                />
+                <div className="absolute top-full mt-2 left-0 bg-white rounded-lg shadow-lg border border-gray-200 py-2 min-w-[250px] max-h-[400px] overflow-y-auto z-20">
+                  {/* Demo option */}
+                  <button
+                    onClick={() => {
+                      onPageHandleChange?.(null);
+                      setIsHandleSelectorOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-4 py-2 text-right hover:bg-gray-50 transition-colors",
+                      !pageHandle && "bg-gray-100"
+                    )}
+                  >
+                    <div className="text-sm font-medium text-gray-900">תוכן דמו</div>
+                    <div className="text-xs text-gray-500">הצג נתונים לדוגמה</div>
+                  </button>
+                  
+                  {loading ? (
+                    <div className="px-4 py-8 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto"></div>
+                      <p className="text-xs text-gray-500 mt-2">טוען...</p>
+                    </div>
+                  ) : pageType === 'collection' ? (
+                    collections.length > 0 ? (
+                      collections.map((collection) => (
+                        <button
+                          key={collection.id}
+                          onClick={() => {
+                            onPageHandleChange?.(collection.handle);
+                            setIsHandleSelectorOpen(false);
+                          }}
+                          className={cn(
+                            "w-full px-4 py-2 text-right hover:bg-gray-50 transition-colors",
+                            pageHandle === collection.handle && "bg-gray-100"
+                          )}
+                        >
+                          <div className="text-sm font-medium text-gray-900">{collection.title}</div>
+                          <div className="text-xs text-gray-500 font-mono">{collection.handle}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-sm text-gray-500">לא נמצאו קטגוריות</div>
+                    )
+                  ) : (
+                    products.length > 0 ? (
+                      products.map((product) => (
+                        <button
+                          key={product.id}
+                          onClick={() => {
+                            onPageHandleChange?.(product.handle);
+                            setIsHandleSelectorOpen(false);
+                          }}
+                          className={cn(
+                            "w-full px-4 py-2 text-right hover:bg-gray-50 transition-colors",
+                            pageHandle === product.handle && "bg-gray-100"
+                          )}
+                        >
+                          <div className="text-sm font-medium text-gray-900">{product.title}</div>
+                          <div className="text-xs text-gray-500 font-mono">{product.handle}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-sm text-gray-500">לא נמצאו מוצרים</div>
+                    )
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

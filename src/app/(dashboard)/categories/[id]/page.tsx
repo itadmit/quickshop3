@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
-import { HiSave, HiX, HiTrash, HiPlus, HiSearch, HiFilter } from 'react-icons/hi';
+import { HiSave, HiX, HiTrash, HiPlus, HiSearch, HiFilter, HiPhotograph } from 'react-icons/hi';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
 import { CategoryTreeSelector } from '@/components/products/CategoryTreeSelector';
+import { MediaPicker } from '@/components/MediaPicker';
+import { useStoreId } from '@/hooks/useStoreId';
 
 interface CollectionRule {
   field: 'title' | 'price' | 'tag' | 'vendor' | 'type';
@@ -23,7 +25,7 @@ interface Product {
   slug: string;
   price: number;
   comparePrice: number | null;
-  images: string[];
+  images: (string | { src?: string; url?: string; image_url?: string })[];
   status: string;
   availability: string;
   sku: string | null;
@@ -39,12 +41,14 @@ export default function CategoryDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useOptimisticToast();
+  const storeId = useStoreId();
   const categoryId = params.id as string;
   const isNew = categoryId === 'new';
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: number; title: string }>>([]);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -472,16 +476,52 @@ export default function CategoryDetailsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="imageUrl">תמונת קטגוריה (URL)</Label>
-                  <Input
-                    id="imageUrl"
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                    dir="ltr"
-                    className="text-left mt-2"
-                  />
+                  <Label htmlFor="imageUrl">תמונת קטגוריה</Label>
+                  <div className="mt-2 space-y-2">
+                    {formData.imageUrl ? (
+                      <div className="relative group">
+                        <img
+                          src={formData.imageUrl}
+                          alt="תמונת קטגוריה"
+                          className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsMediaPickerOpen(true)}
+                            className="bg-white/90 hover:bg-white text-gray-900"
+                          >
+                            <HiPhotograph className="w-4 h-4 ml-2" />
+                            החלף תמונה
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                            className="bg-white/90 hover:bg-red-50 hover:text-red-600 text-gray-900"
+                          >
+                            <HiTrash className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsMediaPickerOpen(true)}
+                        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <HiPhotograph className="w-12 h-12 mb-2" />
+                        <span>לחץ להעלאת תמונה</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -660,17 +700,29 @@ export default function CategoryDetailsPage() {
                               className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-green-300 cursor-pointer transition-colors"
                               onClick={() => addProduct(product)}
                             >
-                              {product.images?.[0] ? (
-                                <img
-                                  src={product.images[0]}
-                                  alt={product.name}
-                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                                />
-                              ) : (
-                                <div className="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0">
-                                  <HiSearch className="w-8 h-8 text-gray-400" />
-                                </div>
-                              )}
+                              {(() => {
+                                const firstImage = product.images?.[0];
+                                let imageUrl: string | null = null;
+                                if (firstImage) {
+                                  if (typeof firstImage === 'string') {
+                                    imageUrl = firstImage;
+                                  } else if (typeof firstImage === 'object' && firstImage !== null) {
+                                    const imageObj = firstImage as { src?: string; url?: string; image_url?: string };
+                                    imageUrl = imageObj.src || imageObj.url || imageObj.image_url || null;
+                                  }
+                                }
+                                return imageUrl ? (
+                                  <img
+                                    src={imageUrl}
+                                    alt={product.name}
+                                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                    <HiSearch className="w-8 h-8 text-gray-400" />
+                                  </div>
+                                );
+                              })()}
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 truncate">{product.name || 'ללא שם'}</p>
                                 <p className="text-sm text-gray-500 mt-1">
@@ -735,8 +787,9 @@ export default function CategoryDetailsPage() {
                             if (firstImage) {
                               if (typeof firstImage === 'string') {
                                 imageUrl = firstImage;
-                              } else if (typeof firstImage === 'object') {
-                                imageUrl = firstImage.src || firstImage.url || firstImage.image_url || null;
+                              } else if (typeof firstImage === 'object' && firstImage !== null) {
+                                const imageObj = firstImage as { src?: string; url?: string; image_url?: string };
+                                imageUrl = imageObj.src || imageObj.url || imageObj.image_url || null;
                               }
                             }
                             
@@ -816,6 +869,25 @@ export default function CategoryDetailsPage() {
         </div>
 
       </form>
+
+      {/* Media Picker Modal */}
+      <MediaPicker
+        open={isMediaPickerOpen}
+        onOpenChange={setIsMediaPickerOpen}
+        onSelect={(files) => {
+          if (files.length > 0) {
+            setFormData({ ...formData, imageUrl: files[0] });
+            setIsMediaPickerOpen(false);
+          }
+        }}
+        selectedFiles={formData.imageUrl ? [formData.imageUrl] : []}
+        shopId={storeId ? String(storeId) : undefined}
+        entityType="collections"
+        entityId={isNew ? 'new' : categoryId}
+        multiple={false}
+        title="בחר תמונת קטגוריה"
+        accept="image"
+      />
     </div>
   );
 }

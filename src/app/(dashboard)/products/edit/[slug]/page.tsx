@@ -277,10 +277,23 @@ export default function EditProductPage() {
       const method = isNew ? 'POST' : 'PUT';
 
       // Product-level data (not variant-level)
-      // Generate URL-safe slug from product name using the helper function
-      const safeHandle = formData.slug 
-        ? generateSlugFromHebrew(formData.slug) 
-        : generateSlugFromHebrew(formData.name);
+      // If slug is manually entered, use it as-is (with basic cleaning)
+      // Otherwise, generate from product name
+      let safeHandle: string;
+      if (formData.slug && formData.slug.trim()) {
+        // User manually entered a slug - clean it but preserve hyphens
+        safeHandle = formData.slug
+          .trim()
+          // Remove leading/trailing hyphens and spaces
+          .replace(/^[\s-]+|[\s-]+$/g, '')
+          // Replace multiple spaces/hyphens with single hyphen
+          .replace(/[\s-]+/g, '-')
+          // Remove invalid characters (keep Hebrew, Latin, numbers, hyphens)
+          .replace(/[^\u0590-\u05FFa-zA-Z0-9-]/g, '');
+      } else {
+        // Generate from product name
+        safeHandle = generateSlugFromHebrew(formData.name);
+      }
       
       const payload: any = {
         title: formData.name,

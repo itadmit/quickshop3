@@ -15,10 +15,20 @@ export async function generateUniqueSlug(
   excludeId?: number
 ): Promise<string> {
   // Convert title to slug - keep Hebrew and Latin characters
-  let baseSlug = title
+  // Normalize: preserve existing spaces, add space before numbers that follow Hebrew/Latin letters
+  let normalized = title
     .trim()
+    // Normalize multiple spaces to single space
+    .replace(/\s+/g, ' ')
+    // Add space before numbers that follow Hebrew/Latin letters (e.g., "שמפו450" -> "שמפו 450")
+    .replace(/([\u0590-\u05FFa-zA-Z])(\d)/g, '$1 $2')
+    // Add space between Hebrew and Latin characters
+    .replace(/([\u0590-\u05FF])([a-zA-Z])/g, '$1 $2')
+    .replace(/([a-zA-Z])([\u0590-\u05FF])/g, '$1 $2');
+  
+  let baseSlug = normalized
     .split('')
-    .map((char) => {
+    .map((char, index, array) => {
       // Keep Hebrew characters (א-ת)
       if (/[\u0590-\u05FF]/.test(char)) {
         return char;

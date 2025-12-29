@@ -6,7 +6,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useStoreId } from '@/hooks/useStoreId';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { HiPhotograph } from 'react-icons/hi';
+import { HiPhotograph, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { areSectionsEqual } from './sectionMemoUtils';
 
 interface FeaturedCollectionsProps {
@@ -205,9 +205,13 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
     };
   }, [settingsKey, storeId, sectionKey]); // Removed collections.length to prevent re-runs when collections change
   
+  const displayType = settings.display_type || 'grid';
   const itemsPerRow = settings.items_per_row || 3;
+  const itemsPerRowMobile = settings.items_per_row_mobile || 2;
   const sliderItemsDesktop = settings.slider_items_desktop || 4.5;
   const sliderItemsMobile = settings.slider_items_mobile || 1.5;
+  const showArrows = settings.show_arrows !== false;
+  const showDots = settings.show_dots !== false;
 
   // Calculate item width for slider based on visible items
   const getSliderItemWidth = (visibleItems: number) => {
@@ -218,26 +222,31 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   };
 
   const getGridCols = () => {
+    // Mobile columns based on settings
+    const mobileCols = itemsPerRowMobile === 1 ? 'grid-cols-1' : 'grid-cols-2';
+    
     // If in editor with mobile/tablet view, force mobile layout
     if (editorDevice === 'mobile' || editorDevice === 'tablet') {
-      return 'grid-cols-2';
+      return mobileCols;
     }
+    
     // Desktop: based on settings (with responsive fallback for actual storefront)
+    let desktopCols = 'md:grid-cols-3';
     switch (itemsPerRow) {
-      case 2: return 'grid-cols-2 md:grid-cols-2';
-      case 3: return 'grid-cols-2 md:grid-cols-3';
-      case 4: return 'grid-cols-2 md:grid-cols-4';
-      case 5: return 'grid-cols-2 md:grid-cols-5';
-      case 6: return 'grid-cols-2 md:grid-cols-3'; // 6 items = 2 rows of 3
-      default: return 'grid-cols-2 md:grid-cols-3';
+      case 2: desktopCols = 'md:grid-cols-2'; break;
+      case 3: desktopCols = 'md:grid-cols-3'; break;
+      case 4: desktopCols = 'md:grid-cols-4'; break;
+      case 5: desktopCols = 'md:grid-cols-5'; break;
+      case 6: desktopCols = 'md:grid-cols-3'; break; // 6 items = 2 rows of 3
+      default: desktopCols = 'md:grid-cols-3';
     }
+    
+    return `${mobileCols} ${desktopCols}`;
   };
 
-  // Number of items to show in grid
-  const getGridItemCount = () => {
-    if (itemsPerRow === 6) return 6; // 2 rows of 3
-    return itemsPerRow;
-  };
+  // For grid: show ALL collections (not limited by itemsPerRow)
+  // For slider: show ALL collections (they scroll)
+  const collectionsToShow = collections; // Show all collections
 
   // Title alignment (separate from content)
   const titleAlignClass = settings.title_align === 'left' ? 'text-left' : settings.title_align === 'center' ? 'text-center' : 'text-right';
@@ -316,24 +325,178 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
 
         {/* Loading state */}
         {loading && (
-          <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
-            {Array.from({ length: getGridItemCount() }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-[4/3] bg-gray-200 rounded-lg mb-4" />
-                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-                <div className="h-4 bg-gray-200 rounded w-1/2" />
+          displayType === 'slider' || displayType === 'carousel' ? (
+            <div className="relative">
+              <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+                <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
+                  {Array.from({ length: Math.max(4, Math.ceil((editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop) * 2)) }).map((_, i) => (
+                    <div key={i} className="flex-shrink-0 animate-pulse" style={{ width: getSliderItemWidth(editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop), scrollSnapAlign: 'start' }}>
+                      <div className="aspect-[4/3] bg-gray-200 rounded-lg mb-4" />
+                      <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
+              {Array.from({ length: itemsPerRow || 3 }).map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="aspect-[4/3] bg-gray-200 rounded-lg mb-4" />
+                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Real collections or placeholder */}
         {!loading && (
-          <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
-            {(collections.length === 0 ? 
-              Array.from({ length: getGridItemCount() }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
-              collections.slice(0, getGridItemCount())
-            ).map((item: any, index: number) => {
+          displayType === 'slider' || displayType === 'carousel' ? (
+            <div className="relative group">
+              {/* Carousel/Slider Layout */}
+              <div 
+                id={`carousel-${section.id}`}
+                className="overflow-x-auto scrollbar-hide" 
+                style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+              >
+                <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
+                  {(collections.length === 0 ? 
+                    Array.from({ length: 4 }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
+                    collectionsToShow
+                  ).map((item: any, index: number) => {
+                    const isPlaceholder = item.isPlaceholder;
+                    const collection = isPlaceholder ? null : item as Collection;
+                    const visibleItems = editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop;
+                    const cardWidth = getSliderItemWidth(visibleItems);
+                    
+                    // In customizer, links should navigate to customizer edit mode
+                    const collectionUrl = collection 
+                      ? (isInCustomizer 
+                          ? `/customize?pageType=collection&pageHandle=${collection.handle}`
+                          : `/shops/${storeSlug}/categories/${collection.handle}`)
+                      : '#';
+
+                    return (
+                      <div
+                        key={collection?.id || index}
+                        className="flex-shrink-0"
+                        style={{ 
+                          width: cardWidth,
+                          scrollSnapAlign: 'start'
+                        }}
+                      >
+                        <Link 
+                          href={collectionUrl}
+                          className="group cursor-pointer block"
+                        >
+                          <div className="relative aspect-[4/3] bg-gray-200 rounded-lg overflow-hidden mb-3 md:mb-4 shadow-sm group-hover:shadow-md transition-all">
+                            {collection?.image_url ? (
+                              <img 
+                                src={collection.image_url} 
+                                alt={collection.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                                <HiPhotograph className="w-16 h-16 text-gray-400" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          
+                          <div className={`flex flex-col ${flexAlignClass} ${contentAlignClass}`}>
+                            <h3 
+                              className={`${getCollectionTitleSizeClass()} font-bold mb-1 group-hover:text-gray-700 transition-colors`}
+                              style={{ color: textColor }}
+                            >
+                              {collection?.title || t('sections.featured_collections.sample_collection', { number: index + 1 }) || `קטגוריה ${index + 1}`}
+                            </h3>
+                            {settings.show_products_count !== false && collection?.products_count !== undefined && (
+                              <p className="text-gray-500 text-xs md:text-sm">
+                                {collection.products_count} {t('product.items') || 'מוצרים'}
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Navigation Arrows */}
+              {showArrows && collectionsToShow.length > (editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop) && (
+                <>
+                  <button
+                    onClick={() => {
+                      const carousel = document.getElementById(`carousel-${section.id}`);
+                      if (carousel) {
+                        const visibleItems = editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop;
+                        const gap = 16; // gap-4 = 1rem = 16px
+                        const containerWidth = carousel.offsetWidth;
+                        const itemWidth = (containerWidth - (gap * (visibleItems - 1))) / visibleItems;
+                        const scrollAmount = itemWidth + gap;
+                        carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                      }
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white shadow-lg rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    aria-label="Previous"
+                  >
+                    <HiChevronRight className="w-6 h-6 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const carousel = document.getElementById(`carousel-${section.id}`);
+                      if (carousel) {
+                        const visibleItems = editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop;
+                        const gap = 16; // gap-4 = 1rem = 16px
+                        const containerWidth = carousel.offsetWidth;
+                        const itemWidth = (containerWidth - (gap * (visibleItems - 1))) / visibleItems;
+                        const scrollAmount = itemWidth + gap;
+                        carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                      }
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white shadow-lg rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    aria-label="Next"
+                  >
+                    <HiChevronLeft className="w-6 h-6 text-gray-700" />
+                  </button>
+                </>
+              )}
+              
+              {/* Dots Indicator */}
+              {showDots && collectionsToShow.length > (editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop) && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {Array.from({ length: Math.ceil(collectionsToShow.length / (editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop)) }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        const carousel = document.getElementById(`carousel-${section.id}`);
+                        if (carousel) {
+                          const visibleItems = editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop;
+                          const gap = 16;
+                          const containerWidth = carousel.offsetWidth;
+                          const itemWidth = (containerWidth - (gap * (visibleItems - 1))) / visibleItems;
+                          const scrollAmount = (itemWidth + gap) * visibleItems * i;
+                          carousel.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+                        }
+                      }}
+                      className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                      aria-label={`Go to slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={`grid ${getGridCols()} gap-4 md:gap-6`}>
+              {(collections.length === 0 ? 
+                Array.from({ length: itemsPerRow || 3 }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
+                collectionsToShow
+              ).map((item: any, index: number) => {
               const isPlaceholder = item.isPlaceholder;
               const collection = isPlaceholder ? null : item as Collection;
               // In customizer, links should navigate to customizer edit mode
@@ -381,6 +544,7 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
               );
             })}
           </div>
+          )
         )}
       </div>
 
@@ -405,7 +569,14 @@ export const FeaturedCollections = React.memo(FeaturedCollectionsComponent, (pre
   
   const relevantKeys = [
     'collection_selection_mode',
-    'selected_collection_ids'
+    'selected_collection_ids',
+    'display_type',
+    'items_per_row',
+    'items_per_row_mobile',
+    'slider_items_desktop',
+    'slider_items_mobile',
+    'show_arrows',
+    'show_dots'
   ];
   
   const changes: string[] = [];
