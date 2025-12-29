@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { HiCheckCircle, HiXCircle, HiClock } from 'react-icons/hi';
 
+// Prevent static generation for this page
+export const dynamic = 'force-dynamic';
+
 interface InvitationData {
   id: number;
   email: string;

@@ -179,7 +179,29 @@ export function useWishlist() {
       console.error('[useWishlist] Error loading wishlist:', error);
       // Fallback to local storage for guests
       globalIsLoggedIn[storeId] = false;
-      globalWishlistItems[storeId] = [];
+      
+      // ✅ נסה לטעון מ-localStorage גם אם יש שגיאת רשת
+      const localItems = getLocalWishlist(storeId);
+      if (localItems.length > 0) {
+        try {
+          const productIds = localItems.map(i => i.product_id);
+          const detailsResponse = await fetch(`/api/storefront/wishlist/details?storeId=${storeId}&productIds=${productIds.join(',')}`);
+          
+          if (detailsResponse.ok) {
+            const detailsData = await detailsResponse.json();
+            globalWishlistItems[storeId] = detailsData.items || [];
+          } else {
+            globalWishlistItems[storeId] = [];
+          }
+        } catch (detailsError) {
+          console.error('[useWishlist] Error loading details after error:', detailsError);
+          globalWishlistItems[storeId] = [];
+        }
+      } else {
+        globalWishlistItems[storeId] = [];
+      }
+      
+      globalWishlistLoaded[storeId] = true;
     } finally {
       globalWishlistLoading[storeId] = false;
       notifyWishlistListeners();

@@ -23,14 +23,12 @@ export function Header() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   
-  // TODO: לקבל מהקונטקסט/API את החנויות שהמשתמש מקושר אליהן
-  const userStores = [
-    { id: 1, name: 'החנות שלי' },
-    // אם יש יותר מחנות אחת, יוצג switcher
-    // { id: 2, name: 'חנות נוספת' }, // דוגמה - אם יש יותר מחנות אחת
-  ];
-  const currentStore = userStores[0];
+  // Store switcher state
+  const [userStores, setUserStores] = useState<Array<{ id: number; name: string; accessType: string; role?: string }>>([]);
+  const [currentStore, setCurrentStore] = useState<{ id: number; name: string } | null>(null);
+  const [loadingStores, setLoadingStores] = useState(true);
   const [showStoreSwitcher, setShowStoreSwitcher] = useState(false);
+  const [switchingStore, setSwitchingStore] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -53,8 +51,10 @@ export function Header() {
           // הגדרת תפקיד
           if (data.user?.is_super_admin) {
             setUserRole('סופר אדמין');
+          } else if (data.user?.type === 'staff') {
+            setUserRole(data.user?.role === 'admin' ? 'מנהל' : 'עובד');
           } else {
-            setUserRole('מנהל חנות');
+            setUserRole('בעלים');
           }
           // יצירת ראשי תיבות
           if (name) {
@@ -72,6 +72,23 @@ export function Header() {
         console.error('Error loading user:', error);
       } finally {
         setLoadingUser(false);
+      }
+    };
+    
+    const loadStores = async () => {
+      try {
+        const response = await fetch('/api/auth/stores', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUserStores(data.stores || []);
+          setCurrentStore(data.currentStore || null);
+        }
+      } catch (error) {
+        console.error('Error loading stores:', error);
+      } finally {
+        setLoadingStores(false);
       }
     };
     
@@ -100,6 +117,7 @@ export function Header() {
     };
     
     loadUser();
+    loadStores();
     loadSubscription();
   }, []);
 
@@ -168,6 +186,32 @@ export function Header() {
     // TODO: Navigate to settings page
     setShowUserMenu(false);
     router.push('/settings');
+  };
+
+  const handleSwitchStore = async (storeId: number) => {
+    if (storeId === currentStore?.id || switchingStore) return;
+
+    try {
+      setSwitchingStore(true);
+      const response = await fetch('/api/auth/switch-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ storeId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'שגיאה בהחלפת חנות');
+      }
+
+      // Reload page to refresh with new store context
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error switching store:', error);
+      alert(error.message || 'שגיאה בהחלפת חנות');
+      setSwitchingStore(false);
+    }
   };
 
   // באדג' לתקופת ניסיון - מוצג ליד הלוגו
@@ -343,6 +387,41 @@ export function Header() {
           </button>
           {showUserMenu && (
             <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              {/* Store Switcher - only if user has multiple stores */}
+              {userStores.length > 1 && currentStore && (
+                <>
+                  <div className="px-4 py-2 border-b border-gray-200">
+                    <div className="text-xs text-gray-500 mb-2">חנות נוכחית</div>
+                    <div className="text-sm font-medium text-gray-900">{currentStore.name}</div>
+                  </div>
+                  <div className="px-4 py-2">
+                    <div className="text-xs text-gray-500 mb-2">החלף לחנות</div>
+                    <div className="space-y-1">
+                      {userStores
+                        .filter((store) => store.id !== currentStore.id)
+                        .map((store) => (
+                          <button
+                            key={store.id}
+                            onClick={() => handleSwitchStore(store.id)}
+                            disabled={switchingStore}
+                            className="w-full text-right px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors flex items-center justify-between disabled:opacity-50"
+                          >
+                            <div className="flex flex-col">
+                              <span>{store.name}</span>
+                              {store.accessType === 'staff' && (
+                                <span className="text-xs text-gray-500">
+                                  {store.role === 'admin' ? 'מנהל' : 'עובד'}
+                                </span>
+                              )}
+                            </div>
+                            {switchingStore && <span className="text-xs">מחליף...</span>}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200"></div>
+                </>
+              )}
               <button
                 onClick={handleSettings}
                 className="w-full text-right px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg transition-colors flex items-center gap-3"
@@ -378,6 +457,41 @@ export function Header() {
                 </div>
                 <div className="text-xs text-gray-500">{userRole}</div>
               </div>
+              {/* Store Switcher - only if user has multiple stores */}
+              {userStores.length > 1 && currentStore && (
+                <>
+                  <div className="px-4 py-2 border-b border-gray-200">
+                    <div className="text-xs text-gray-500 mb-2">חנות נוכחית</div>
+                    <div className="text-sm font-medium text-gray-900">{currentStore.name}</div>
+                  </div>
+                  <div className="px-4 py-2">
+                    <div className="text-xs text-gray-500 mb-2">החלף לחנות</div>
+                    <div className="space-y-1">
+                      {userStores
+                        .filter((store) => store.id !== currentStore.id)
+                        .map((store) => (
+                          <button
+                            key={store.id}
+                            onClick={() => handleSwitchStore(store.id)}
+                            disabled={switchingStore}
+                            className="w-full text-right px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors flex items-center justify-between disabled:opacity-50"
+                          >
+                            <div className="flex flex-col">
+                              <span>{store.name}</span>
+                              {store.accessType === 'staff' && (
+                                <span className="text-xs text-gray-500">
+                                  {store.role === 'admin' ? 'מנהל' : 'עובד'}
+                                </span>
+                              )}
+                            </div>
+                            {switchingStore && <span className="text-xs">מחליף...</span>}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200"></div>
+                </>
+              )}
               <button
                 onClick={handleSettings}
                 className="w-full text-right px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"

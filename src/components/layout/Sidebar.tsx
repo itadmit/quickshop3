@@ -82,6 +82,14 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
+    label: 'ניהול',
+    href: '#',
+    icon: MenuIcons.customers,
+    children: [
+      { label: 'ניהול צוות', href: '/team', icon: MenuIcons.customers },
+    ],
+  },
+  {
     label: 'תוספות',
     href: '#',
     icon: MenuIcons.addons,
@@ -108,7 +116,7 @@ const menuItems: MenuItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות', 'תוספות', 'אינטגרציות']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['מכירות', 'שיווק והנחות', 'תוכן', 'שירות לקוחות', 'ניהול', 'תוספות', 'אינטגרציות']);
   const [clickedLink, setClickedLink] = useState<string | null>(null);
   
   // Use shared hook for unread counts - prevents duplicate API calls

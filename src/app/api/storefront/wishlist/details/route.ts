@@ -31,24 +31,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ items: [] });
     }
 
-    // Get product details
+    // Get product details with first variant's price
     const placeholders = productIds.map((_, i) => `$${i + 2}`).join(',');
     const items = await query<WishlistItem>(
       `SELECT 
         p.id as product_id,
         p.id,
-        NULL as variant_id,
-        p.name as product_title,
+        v.id as variant_id,
+        p.title as product_title,
         p.handle as product_handle,
-        p.price,
-        p.compare_price,
+        v.price,
+        v.compare_at_price as compare_price,
         (SELECT src FROM product_images WHERE product_id = p.id ORDER BY position LIMIT 1) as image,
         NOW() as created_at
       FROM products p
+      LEFT JOIN product_variants v ON v.product_id = p.id AND v.position = 1
       WHERE p.store_id = $1 
         AND p.id IN (${placeholders})
-        AND p.status = 'active'
-      ORDER BY p.name`,
+      ORDER BY p.title`,
       [storeId, ...productIds]
     );
 

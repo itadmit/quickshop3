@@ -24,6 +24,7 @@ const TEMPLATE_TYPES = [
   { value: 'ORDER_SHIPPED', label: 'הזמנה נשלחה' },
   { value: 'ORDER_CANCELLED', label: 'הזמנה בוטלה' },
   { value: 'RETURN_REQUEST_CONFIRMATION', label: 'אישור בקשת החזרה/החלפה' },
+  { value: 'STAFF_INVITATION', label: 'הזמנת עובד לצוות' },
 ];
 
 export default function EmailTemplatesPage() {

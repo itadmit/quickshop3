@@ -24,6 +24,12 @@ export function WishlistPageContent({ storeId, storeSlug, storeName }: WishlistP
   const { addToCart, isAddingToCart } = useCart();
   const [removingItems, setRemovingItems] = useState<Set<number>>(new Set());
   const [addingToCartItems, setAddingToCartItems] = useState<Set<number>>(new Set());
+  const [mounted, setMounted] = useState(false);
+
+  // Wait for client-side mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleRemove = async (productId: number) => {
     setRemovingItems(prev => new Set(prev).add(productId));
@@ -43,7 +49,7 @@ export function WishlistPageContent({ storeId, storeSlug, storeName }: WishlistP
       product_id: item.product_id,
       product_title: item.product_title,
       variant_title: '',
-      price: item.price,
+      price: Number(item.price) || 0,
       quantity: 1,
       image: item.image,
     });
@@ -60,8 +66,8 @@ export function WishlistPageContent({ storeId, storeSlug, storeName }: WishlistP
     });
   };
 
-  // Loading state
-  if (isLoading) {
+  // Loading state - רק אם באמת טוען ולא mounted
+  if (!mounted || (isLoading && wishlistItems.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
@@ -117,11 +123,6 @@ export function WishlistPageContent({ storeId, storeSlug, storeName }: WishlistP
           </div>
           <p className="text-gray-600">
             {wishlistItems.length} {wishlistItems.length === 1 ? 'מוצר' : 'מוצרים'} ברשימה
-            {!isLoggedIn && (
-              <span className="mr-2 text-sm text-amber-600">
-                (שמור מקומית - התחבר כדי לסנכרן בין מכשירים)
-              </span>
-            )}
           </p>
         </div>
 
@@ -179,15 +180,15 @@ export function WishlistPageContent({ storeId, storeSlug, storeName }: WishlistP
                   {/* Price */}
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-lg font-bold text-gray-900">
-                      ₪{item.price.toFixed(2)}
+                      ₪{(Number(item.price) || 0).toFixed(2)}
                     </span>
-                    {item.compare_price && item.compare_price > item.price && (
+                    {item.compare_price && Number(item.compare_price) > (Number(item.price) || 0) && (
                       <>
                         <span className="text-sm text-gray-400 line-through">
-                          ₪{item.compare_price.toFixed(2)}
+                          ₪{Number(item.compare_price).toFixed(2)}
                         </span>
                         <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                          חסכון {Math.round(((item.compare_price - item.price) / item.compare_price) * 100)}%
+                          חסכון {Math.round(((Number(item.compare_price) - (Number(item.price) || 0)) / Number(item.compare_price)) * 100)}%
                         </span>
                       </>
                     )}
