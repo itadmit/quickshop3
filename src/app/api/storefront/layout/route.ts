@@ -10,6 +10,7 @@ import { NEW_YORK_TEMPLATE, getDefaultSectionsForPage } from '@/lib/customizer/t
 import { query } from '@/lib/db';
 import { getProductByHandle, getProductsList } from '@/lib/storefront/queries';
 import { getCollectionByHandle } from '@/lib/storefront/queries';
+import { getCached } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -19,14 +20,17 @@ export async function GET(request: NextRequest) {
     const storeSlug = searchParams.get('storeSlug');
     const pageType = searchParams.get('pageType') || 'home';
     const pageHandle = searchParams.get('pageHandle') || undefined;
+    
+    // Decode the handle if it's URL encoded
+    const decodedPageHandle = pageHandle ? decodeURIComponent(pageHandle) : undefined;
 
-    console.log(`[Layout API] Start - ${pageType} ${pageHandle || ''}`);
+    console.log(`[Layout API] Start - ${pageType} ${decodedPageHandle || ''}`);
 
     if (!storeSlug) {
       return NextResponse.json({ error: 'storeSlug is required' }, { status: 400 });
     }
 
-    // ✅ אופטימיזציה: קרא את ה-store פעם אחת בלבד!
+    // ✅ אופטימיזציה: קרא את ה-store פעם אחת בלבד (עם cache)
     const store = await getStoreBySlug(storeSlug);
     console.log(`[Layout API] Got store (${Date.now() - startTime}ms)`);
     
@@ -35,24 +39,42 @@ export async function GET(request: NextRequest) {
     }
 
     const storeId = store.id;
-    console.log(`[Layout API] Using storeId: ${storeId}`);
 
-    // ✅ אופטימיזציה: טען רק את הלייאאוט הנדרש
-    let pageLayout;
-    let homeLayout;
-    
+    // ✅ אופטימיזציה: טען את הכל במקביל!
     const layoutStartTime = Date.now();
-    if (pageType === 'home') {
-      // אם זה דף הבית, טען רק אותו
-      pageLayout = await getPageLayout(storeId, 'home', undefined);
+    
+    // Prepare all parallel promises
+    const promises: Promise<any>[] = [];
+    
+    // Always need page layout
+    promises.push(getPageLayout(storeId, pageType, decodedPageHandle));
+    
+    // Need home layout only if not home page (for header/footer)
+    if (pageType !== 'home') {
+      promises.push(getPageLayout(storeId, 'home', undefined));
     } else {
-      // אם זה דף אחר, טען את שניהם במקביל
-      [homeLayout, pageLayout] = await Promise.all([
-        getPageLayout(storeId, 'home', undefined),
-        getPageLayout(storeId, pageType, pageHandle || undefined)
-      ]);
+      promises.push(Promise.resolve(null));
     }
-    console.log(`[Layout API] Got layouts (${Date.now() - layoutStartTime}ms, total: ${Date.now() - startTime}ms)`);
+    
+    // Load data based on page type (in parallel with layouts)
+    if (pageType === 'product' && decodedPageHandle) {
+      promises.push(getProductByHandle(decodedPageHandle, storeId));
+    } else if ((pageType === 'collection' || pageType === 'category') && decodedPageHandle) {
+      if (decodedPageHandle === 'all') {
+        promises.push(getProductsList(storeId, { limit: 20, offset: 0 }));
+      } else {
+        promises.push(getCollectionByHandle(decodedPageHandle, storeId, { limit: 20, offset: 0 }));
+      }
+    } else if (pageType === 'products') {
+      promises.push(getProductsList(storeId, { limit: 20, offset: 0 }));
+    } else {
+      promises.push(Promise.resolve(null));
+    }
+    
+    // Execute all in parallel
+    const [pageLayout, homeLayout, pageData] = await Promise.all(promises);
+    
+    console.log(`[Layout API] Got all data (${Date.now() - layoutStartTime}ms, total: ${Date.now() - startTime}ms)`);
     
     // If no layout found for 'other' type pages, use home layout
     if (!pageLayout && pageType === 'other') {
@@ -183,68 +205,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Load product/collection data if needed
+    // ✅ השתמש בנתונים שכבר נטענו במקביל
     let product = null;
     let collection = null;
     let products: any[] = [];
 
-    if (pageType === 'product' && pageHandle) {
-      try {
-        product = await getProductByHandle(pageHandle, storeId);
-      } catch (error) {
-        console.error('Error loading product for customizer:', error);
-      }
+    if (pageType === 'product' && decodedPageHandle && pageData) {
+      product = pageData;
     }
 
-    if (pageType === 'collection' && pageHandle) {
-      try {
-        if (pageHandle === 'all') {
-          products = await getProductsList(storeId, { limit: 20, offset: 0 });
-          collection = {
-            id: 0,
-            title: 'כל המוצרים',
-            handle: 'all',
-            description: '',
-            image_url: null,
-            product_count: products.length
-          };
-        } else {
-          const collectionData = await getCollectionByHandle(pageHandle, storeId, { limit: 20, offset: 0 });
-          collection = collectionData.collection;
-          products = collectionData.products || [];
-        }
-      } catch (error) {
-        console.error('Error loading collection for customizer:', error);
-      }
-    }
-
-    // ✅ תמיכה בדפי קטגוריה
-    if (pageType === 'category' && pageHandle) {
-      try {
-        if (pageHandle === 'all') {
-          products = await getProductsList(storeId, { limit: 20, offset: 0 });
-          collection = {
-            id: 0,
-            title: 'כל המוצרים',
-            handle: 'all',
-            description: '',
-            image_url: null,
-            product_count: products.length
-          };
-        } else {
-          const collectionData = await getCollectionByHandle(pageHandle, storeId, { limit: 20, offset: 0 });
-          collection = collectionData.collection;
-          products = collectionData.products || [];
-        }
-      } catch (error) {
-        console.error('Error loading category for customizer:', error);
-      }
-    }
-
-    // ✅ תמיכה בדף כל המוצרים
-    if (pageType === 'products') {
-      try {
-        products = await getProductsList(storeId, { limit: 20, offset: 0 });
+    if ((pageType === 'collection' || pageType === 'category') && decodedPageHandle && pageData) {
+      if (decodedPageHandle === 'all') {
+        products = pageData || [];
         collection = {
           id: 0,
           title: 'כל המוצרים',
@@ -253,9 +225,22 @@ export async function GET(request: NextRequest) {
           image_url: null,
           product_count: products.length
         };
-      } catch (error) {
-        console.error('Error loading products for customizer:', error);
+      } else {
+        collection = pageData?.collection;
+        products = pageData?.products || [];
       }
+    }
+
+    if (pageType === 'products' && pageData) {
+      products = pageData || [];
+      collection = {
+        id: 0,
+        title: 'כל המוצרים',
+        handle: 'all',
+        description: '',
+        image_url: null,
+        product_count: products.length
+      };
     }
 
     // ✅ תמיכה בדף כל הקטגוריות

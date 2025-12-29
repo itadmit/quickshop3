@@ -321,6 +321,10 @@ export async function POST(request: NextRequest) {
     await invalidateCache(`layout:${user.store_id}:${pageType}:*`);
     // Also invalidate the default layout pattern
     await invalidateCache(`layout:${user.store_id}:${pageType}:default`);
+    // If editing home page, invalidate all pages (header/footer changes affect all)
+    if (pageType === 'home') {
+      await invalidateCache(`layout:${user.store_id}:*`);
+    }
 
     return NextResponse.json({
       success: true,
