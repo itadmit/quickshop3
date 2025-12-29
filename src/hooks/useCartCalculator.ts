@@ -430,6 +430,8 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
   // Ref to track pending calculations to prevent duplicate calls
   const calculatingRef = useRef(false);
+  // ✅ Ref לעקוב אחרי כמות הפריטים הקודמת
+  const prevItemsCountRef = useRef(0);
   
   // Create a unique key for this calculation request
   const getCalculationKey = () => {
@@ -454,6 +456,22 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
     
     // Prevent duplicate calculations in this instance
     if (calculatingRef.current) {
+      return;
+    }
+    
+    // ✅ בדיקה אם נמחקו פריטים (ירידה במספר הפריטים)
+    const currentItemsCount = cartItems.length;
+    const itemsRemoved = prevItemsCountRef.current > currentItemsCount;
+    prevItemsCountRef.current = currentItemsCount;
+    
+    // ✅ אם נמחקו פריטים, חישוב מיידי ללא debounce
+    if (itemsRemoved) {
+      calculatingRef.current = true;
+      globalCartCalculating[calculationKey] = true;
+      recalculate().finally(() => {
+        calculatingRef.current = false;
+        delete globalCartCalculating[calculationKey];
+      });
       return;
     }
     
@@ -486,12 +504,23 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
   // ✅ Ref למנוע הסרות כפולות של קופון
   const removingCodeRef = useRef(false);
+  // ✅ Ref לעקוב אחרי מתי קופון הוחל לאחרונה
+  const lastCodeAppliedRef = useRef<{ code: string; timestamp: number } | null>(null);
   
   // ✅ בדיקה אוטומטית: אם קופון לא תקף אחרי חישוב, הסר אותו מיד
   // זה רלוונטי רק לקופונים שנטענו מ-sessionStorage (לא דרך validateCode)
   useEffect(() => {
     // ✅ לא מסירים קופון בזמן validation או loading (בודק גם ref וגם state)
     if (!options.storeId || !discountCode || !calculation || validatingCode || loading || isValidatingRef.current || removingCodeRef.current) return;
+    
+    // ✅ אם הקופון הוחל לאחרונה (פחות מ-2 שניות), לא מסירים אותו
+    // זה מונע מצב שבו הקופון מוסר לפני שהבדיקה מסתיימת
+    const now = Date.now();
+    if (lastCodeAppliedRef.current && 
+        lastCodeAppliedRef.current.code === discountCode && 
+        now - lastCodeAppliedRef.current.timestamp < 2000) {
+      return; // המתן לבדיקה להסתיים
+    }
     
     // בדוק אם הקופון מופיע ב-discounts (אם לא, הוא לא תקף)
     const isValidCode = calculation.discounts?.some(d => d.source === 'code' && d.code === discountCode);
@@ -534,6 +563,9 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
     globalDiscountCode[options.storeId] = upperCode;
     sessionStorage.setItem(`discount_code_${options.storeId}`, upperCode);
     notifyDiscountListeners();
+    
+    // ✅ סמן שהקופון הוחל עכשיו (למנוע הסרה מוקדמת)
+    lastCodeAppliedRef.current = { code: upperCode, timestamp: Date.now() };
     
     try {
       const subtotal = calculation?.subtotalAfterDiscount || 

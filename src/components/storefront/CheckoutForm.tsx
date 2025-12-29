@@ -2137,18 +2137,18 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                 backgroundColor: checkoutSettings.layout.left_column_color,
               }}
             >
-              <div className="w-full max-w-md px-8 py-8">
+              <div className="w-full max-w-md px-8 py-6">
                 <div 
-                  className="p-6 sticky top-24"
+                  className="p-4 sticky top-20"
                   style={{ 
                     backgroundColor: checkoutSettings.layout.left_column_color,
                   }}
                 >
                   <h2 
-                    className="text-lg font-semibold mb-6"
+                    className="text-base font-semibold mb-4"
                   >
                     {translationsLoading ? (
-                      <TextSkeleton width="w-32" height="h-6" />
+                      <TextSkeleton width="w-28" height="h-5" />
                     ) : (
                       t('checkout.order_summary')
                     )}
@@ -2163,7 +2163,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   )}
                   
                   {/* Cart Items */}
-                  <div className="space-y-4 mb-6">
+                  <div className="space-y-3 mb-4">
                     {calculation?.items?.map((calculatedItem, index) => {
                       const item = calculatedItem.item;
                       const hasDiscount = calculatedItem.lineDiscount > 0;
@@ -2478,16 +2478,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           ) : !calculation ? (
                             // ✅ כש-calculation עדיין לא מוכן - מציג מחיר נבחר או skeleton
                             selectedShippingRate ? (
-                              selectedShippingRate.free_shipping_threshold && subtotal >= selectedShippingRate.free_shipping_threshold ? (
-                                <>
-                                  <span className="text-green-600 font-medium">חינם</span>
-                                  {selectedShippingRate.price > 0 && (
-                                    <span className="text-xs text-gray-400 line-through">₪{selectedShippingRate.price.toFixed(2)}</span>
-                                  )}
-                                </>
-                              ) : (
-                                `₪${selectedShippingRate.price.toFixed(2)}`
-                              )
+                              // ✅ תמיד משתמש ב-shippingCost שמחושב נכון
+                              `₪${(selectedShippingRate.price || 0).toFixed(2)}`
                             ) : (
                               <TextSkeleton width="w-12" height="h-4" />
                             )

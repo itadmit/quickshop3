@@ -40,7 +40,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
-  const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState<string>('');
+  const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState<string>('paid');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
   

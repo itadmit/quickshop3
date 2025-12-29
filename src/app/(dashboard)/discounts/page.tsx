@@ -97,9 +97,11 @@ export default function DiscountsPage() {
           'percentage': 'אחוזים',
           'fixed_amount': 'סכום קבוע',
           'free_shipping': 'משלוח חינם',
-          'bogo': 'קנה X קבל Y (BOGO)',
+          'bogo': 'קנה X קבל Y',
           'bundle': 'חבילה',
           'volume': 'הנחת כמות',
+          'fixed_price': 'מחיר קבוע',
+          'spend_x_pay_y': 'קנה ב-X שלם Y',
         };
         return (
           <span className="text-sm text-gray-700">
@@ -204,6 +206,40 @@ export default function DiscountsPage() {
           return (
             <div className="font-semibold text-gray-900 text-sm">
               הנחת כמות
+            </div>
+          );
+        }
+        if (discount.discount_type === 'fixed_price') {
+          const qty = discount.fixed_price_quantity || 0;
+          const price = discount.fixed_price_amount;
+          
+          if (qty && price) {
+            return (
+              <div className="font-semibold text-gray-900 text-sm">
+                קנה {qty} פריטים ב-₪{parseFloat(price).toLocaleString('he-IL')}
+              </div>
+            );
+          }
+          return (
+            <div className="font-semibold text-gray-900 text-sm">
+              מחיר קבוע
+            </div>
+          );
+        }
+        if (discount.discount_type === 'spend_x_pay_y') {
+          const spendAmount = discount.spend_amount;
+          const payAmount = discount.pay_amount;
+          
+          if (spendAmount && payAmount) {
+            return (
+              <div className="font-semibold text-gray-900 text-sm">
+                קנה ב-₪{parseFloat(spendAmount).toLocaleString('he-IL')} שלם ₪{parseFloat(payAmount).toLocaleString('he-IL')}
+              </div>
+            );
+          }
+          return (
+            <div className="font-semibold text-gray-900 text-sm">
+              קנה ב-X שלם Y
             </div>
           );
         }

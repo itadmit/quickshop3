@@ -249,8 +249,6 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
   const handleQuantityChange = async (variantId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       await removeFromCart(variantId);
-      // ✅ רענון חישוב אחרי מחיקה
-      await recalculate();
       return;
     }
 
@@ -464,8 +462,6 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                                   <button
                                     onClick={async () => {
                                       await removeFromCart(item.variant_id);
-                                      // ✅ רענון חישוב אחרי מחיקה
-                                      await recalculate();
                                     }}
                                     className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
                                     aria-label={t('cart.remove_item')}

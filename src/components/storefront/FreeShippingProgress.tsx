@@ -30,12 +30,12 @@ export function FreeShippingProgress({
 
   if (subtotal >= threshold) {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 mb-4">
         <div className="flex items-center gap-2 text-green-700">
-          <span className="text-xl">🎉</span>
-          <p className="font-medium">
+          <span className="text-lg">🎉</span>
+          <p className="font-medium text-sm">
             {translationsLoading ? (
-              <TextSkeleton width="w-32" height="h-4" className="bg-green-200" />
+              <TextSkeleton width="w-28" height="h-4" className="bg-green-200" />
             ) : (
               t('cart.free_shipping_achieved') || 'קיבלת משלוח חינם!'
             )}
@@ -46,10 +46,10 @@ export function FreeShippingProgress({
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-      <p className="text-sm text-gray-700 mb-2">
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5 mb-4">
+      <p className="text-xs text-gray-700 mb-1.5">
         {translationsLoading ? (
-          <TextSkeleton width="w-48" height="h-4" />
+          <TextSkeleton width="w-40" height="h-3" />
         ) : (
           t('cart.free_shipping_progress', { 
             amount: remaining.toFixed(2),
@@ -57,7 +57,7 @@ export function FreeShippingProgress({
           }) || `נותרו ${remaining.toFixed(2)} ₪ למשלוח חינם`
         )}
       </p>
-      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
         <div
           className="bg-green-500 h-full transition-all duration-300 ease-out"
           style={{ width: `${progress}%` }}
