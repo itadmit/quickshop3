@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { WishlistPageContent } from '@/components/storefront/WishlistPageContent';
+import { query } from '@/lib/db';
 
 interface WishlistPageProps {
   params: Promise<{
@@ -26,17 +27,23 @@ export default async function WishlistPage({ params }: WishlistPageProps) {
     notFound();
   }
 
-  // Get store details
-  const storeRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/stores/by-slug/${storeSlug}`, {
-    cache: 'no-store',
-  });
+  // Get store details directly from DB
+  try {
+    const stores = await query(
+      'SELECT id, name FROM stores WHERE slug = $1 AND status = $2',
+      [storeSlug, 'active']
+    );
 
-  if (!storeRes.ok) {
+    if (!stores || stores.length === 0) {
+      notFound();
+    }
+
+    const store = stores[0];
+
+    return <WishlistPageContent storeId={store.id} storeSlug={storeSlug} storeName={store.name} />;
+  } catch (error) {
+    console.error('Error loading store:', error);
     notFound();
   }
-
-  const store = await storeRes.json();
-
-  return <WishlistPageContent storeId={store.id} storeSlug={storeSlug} storeName={store.name} />;
 }
 

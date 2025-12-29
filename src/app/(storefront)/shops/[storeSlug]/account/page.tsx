@@ -98,6 +98,7 @@ export default function StorefrontAccountPage() {
   const [cartItemCount, setCartItemCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"profile" | "orders" | "addresses" | "wishlist" | "returns" | "credits">(initialTab)
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>('paid') // ✅ ברירת מחדל: רק הזמנות ששולמו
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [addresses, setAddresses] = useState<any[]>([])
@@ -1241,22 +1242,59 @@ export default function StorefrontAccountPage() {
             {activeTab === "orders" && (
               <Card>
                 <CardHeader>
-                  <CardTitle>הזמנות שלי</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>הזמנות שלי</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={orderStatusFilter}
+                        onChange={(e) => setOrderStatusFilter(e.target.value)}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg bg-white text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                      >
+                        <option value="all">כל ההזמנות</option>
+                        <option value="paid">ששולמו</option>
+                        <option value="pending">ממתינות לתשלום</option>
+                      </select>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {orders.length === 0 ? (
-                    <div className="text-center py-12">
-                      <HiShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <p className="text-gray-600">אין הזמנות עדיין</p>
-                      <Link href={`/shops/${storeSlug}`}>
-                        <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white">
-                          התחל לקנות
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {orders.map((order: any) => {
+                  {(() => {
+                    // סינון הזמנות לפי סטטוס
+                    const filteredOrders = orderStatusFilter === 'all' 
+                      ? orders 
+                      : orders.filter(order => {
+                          if (orderStatusFilter === 'paid') {
+                            return order.status === 'paid' || order.paymentStatus === 'paid';
+                          }
+                          if (orderStatusFilter === 'pending') {
+                            return order.status === 'pending' || order.paymentStatus === 'pending';
+                          }
+                          return true;
+                        });
+                    
+                    if (filteredOrders.length === 0) {
+                      return (
+                        <div className="text-center py-12">
+                          <HiShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                          <p className="text-gray-600">
+                            {orderStatusFilter === 'all' ? 'אין הזמנות עדיין' : 
+                             orderStatusFilter === 'paid' ? 'אין הזמנות ששולמו' :
+                             'אין הזמנות ממתינות לתשלום'}
+                          </p>
+                          {orderStatusFilter === 'all' && (
+                            <Link href={`/shops/${storeSlug}`}>
+                              <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white">
+                                התחל לקנות
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="space-y-4">
+                        {filteredOrders.map((order: any) => {
                         const hasTracking = order.trackingNumber || order.trackingNumber
                         const trackingStatus = trackingStatuses[order.id]
                         const isLoadingTracking = loadingTracking[order.id]
@@ -1356,7 +1394,8 @@ export default function StorefrontAccountPage() {
                         )
                       })}
                     </div>
-                  )}
+                  );
+                  })()}
                 </CardContent>
               </Card>
             )}

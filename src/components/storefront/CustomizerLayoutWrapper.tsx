@@ -51,12 +51,27 @@ function getPageTypeFromPath(pathname: string, storeSlug: string): { pageType: s
   }
   
   // דף בלוג
-  if (pathWithoutStore.startsWith('/blog/')) {
+  if (pathWithoutStore.startsWith('/blog')) {
     const match = pathWithoutStore.match(/^\/blog\/([^/]+)/);
     if (match) {
       return { pageType: 'blog_post', pageHandle: match[1] };
     }
     return { pageType: 'blog' };
+  }
+  
+  // דף wishlist
+  if (pathWithoutStore === '/wishlist' || pathWithoutStore.startsWith('/wishlist/')) {
+    return { pageType: 'other' };
+  }
+  
+  // דף account
+  if (pathWithoutStore === '/account' || pathWithoutStore.startsWith('/account')) {
+    return { pageType: 'other' };
+  }
+  
+  // דף cart
+  if (pathWithoutStore === '/cart' || pathWithoutStore.startsWith('/cart/')) {
+    return { pageType: 'other' };
   }
   
   // דפים אחרים - לא מציגים content sections מהקסטומייזר
