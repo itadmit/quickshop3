@@ -744,6 +744,7 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
 
     // Helpers
     getSubtotal: () => calculation?.subtotal || 0,
+    getSubtotalAfterDiscount: () => calculation?.subtotalAfterDiscount || 0,
     getDiscount: () => calculation?.itemsDiscount || 0,
     getShipping: () => calculation?.shippingAfterDiscount || 0,
     getTotal: () => calculation?.total || 0,

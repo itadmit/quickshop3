@@ -17,13 +17,13 @@ export function FreeShippingProgress({
   storeId
 }: FreeShippingProgressProps) {
   const { cartItems } = useCart();
-  const { getSubtotal } = useCartCalculator({
+  const { getSubtotalAfterDiscount } = useCartCalculator({
     storeId,
     cartItems,
     autoCalculate: true,
   });
   const { t, loading: translationsLoading } = useTranslation('storefront');
-  const subtotal = getSubtotal();
+  const subtotal = getSubtotalAfterDiscount(); // ✅ משתמש בסכום אחרי הנחות
   
   const remaining = Math.max(0, threshold - subtotal);
   const progress = Math.min(100, (subtotal / threshold) * 100);

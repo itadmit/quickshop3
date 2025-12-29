@@ -243,6 +243,9 @@ export function CustomizerLayout() {
             },
             user_account: {
               enabled: true
+            },
+            wishlist: {
+              enabled: true
             }
           }
         };

@@ -150,6 +150,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     removeDiscountCode,
     recalculate,
     getSubtotal,
+    getSubtotalAfterDiscount,
     getDiscount,
     getShipping,
     getTotal,
@@ -281,10 +282,10 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   }, [isMounted, storeSlug]);
 
   // Load shipping rates - רק כשהסובטוטל משתנה (לא כל פעם ש-cartItems משתנה)
-  // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-getSubtotal מהמנוע המרכזי
+  // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-getSubtotalAfterDiscount מהמנוע המרכזי (אחרי הנחות)
   const subtotal = useMemo(() => {
-    return getSubtotal();
-  }, [getSubtotal]);
+    return getSubtotalAfterDiscount();
+  }, [getSubtotalAfterDiscount]);
   
   useEffect(() => {
     if (!isMounted) return;
@@ -849,8 +850,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     }
     // אם אין calculation עדיין, נשתמש ב-selectedShippingRate (fallback)
     if (selectedShippingRate) {
-      // בדוק אם יש משלוח חינם מעל סכום מסוים
-      const subtotal = getSubtotal(); // ✅ משתמש ב-getSubtotal מהמנוע המרכזי
+      // בדוק אם יש משלוח חינם מעל סכום מסוים - בודק אחרי הנחות
+      const subtotal = getSubtotalAfterDiscount(); // ✅ משתמש בסכום אחרי הנחות
       if (selectedShippingRate.free_shipping_threshold && subtotal >= selectedShippingRate.free_shipping_threshold) {
         return 0;
       }
@@ -858,7 +859,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     }
     // אם אין selectedShippingRate, נשתמש ב-getShipping מהמנוע המרכזי
     return getShipping();
-  }, [getShipping, getSubtotal, calculation, selectedShippingRate]);
+  }, [getShipping, getSubtotal, getSubtotalAfterDiscount, calculation, selectedShippingRate]);
 
   // Redirect אם אין פריטים - רק ב-client אחרי mount
   // לא מפנים אם ההזמנה הושלמה (כדי לאפשר redirect לעמוד התודה)

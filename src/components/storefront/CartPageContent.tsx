@@ -116,7 +116,6 @@ export function CartPageContent({
 
   const handleRemove = async (variantId: number) => {
     await removeFromCart(variantId);
-    await recalculate();
   };
 
   const handleQuantityChange = async (variantId: number, newQuantity: number) => {

@@ -1000,9 +1000,10 @@ export class CartCalculator {
         d => d.type === 'free_shipping'
       );
 
+      // ✅ בדיקת משלוח חינם לפי סף - בודק אחרי הנחות על מוצרים
       const hasFreeShippingThreshold = 
         this.shippingRate.free_shipping_threshold && 
-        subtotal >= this.shippingRate.free_shipping_threshold; // בדיקה על subtotal לפני הנחה
+        subtotalAfterDiscount >= this.shippingRate.free_shipping_threshold;
 
       // בדיקת משלוח חינם לפי premium club tier
       let hasFreeShippingFromTier = false;

@@ -701,6 +701,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                   { label: 'כן', value: true },
                   { label: 'לא', value: false },
                 ])}
+                {renderSelect('הצג רשימת משאלות', 'wishlist.enabled', [
+                  { label: 'כן', value: true },
+                  { label: 'לא', value: false },
+                ])}
               </div>
             </SettingGroup>
 
