@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = acceptInvitationSchema.parse(body);
 
-    // Get invitation details
+    // Get invitation details and lock the row to prevent race conditions
     const invitation = await queryOne<{
       id: number;
       email: string;
@@ -114,22 +114,18 @@ export async function POST(request: NextRequest) {
     }>(
       `SELECT id, email, store_id, role, permissions, status, expires_at
        FROM staff_invitations
-       WHERE token = $1`,
+       WHERE token = $1 AND status = 'pending'
+       FOR UPDATE`,
       [data.token]
     );
 
     if (!invitation) {
-      return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
+      return NextResponse.json({ error: 'הזמנה לא נמצאה או כבר אושרה' }, { status: 404 });
     }
 
     // Check if expired
     if (new Date(invitation.expires_at) < new Date()) {
       return NextResponse.json({ error: 'ההזמנה פגה תוקף' }, { status: 400 });
-    }
-
-    // Check if already accepted
-    if (invitation.status !== 'pending') {
-      return NextResponse.json({ error: 'ההזמנה כבר אושרה או בוטלה' }, { status: 400 });
     }
 
     // Hash password

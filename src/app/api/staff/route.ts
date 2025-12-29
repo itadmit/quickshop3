@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { verifyAuth } from '@/lib/auth';
+import { getUserFromRequest } from '@/lib/auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -15,7 +15,7 @@ const inviteStaffSchema = z.object({
 // GET /api/staff - Get all staff members for current store
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
+    const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -101,9 +101,22 @@ export async function GET(request: NextRequest) {
 // POST /api/staff - Invite new staff member
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
+    const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if user is store owner (only owners can invite staff)
+    const store = await queryOne<{ owner_id: number }>(
+      'SELECT owner_id FROM stores WHERE id = $1',
+      [user.store_id]
+    );
+
+    if (!store || store.owner_id !== user.id) {
+      return NextResponse.json(
+        { error: 'רק בעלי החנות יכולים להזמין עובדים' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -171,8 +184,8 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create invitation');
     }
 
-    // Get store and user info for email
-    const store = await queryOne<{ name: string }>(
+    // Get store name for email
+    const storeInfo = await queryOne<{ name: string }>(
       'SELECT name FROM stores WHERE id = $1',
       [user.store_id]
     );
@@ -181,7 +194,7 @@ export async function POST(request: NextRequest) {
     const { sendStaffInvitationEmail } = await import('@/lib/staff-email');
     sendStaffInvitationEmail(user.store_id, {
       email: invitation.email,
-      storeName: store?.name || 'החנות',
+      storeName: storeInfo?.name || 'החנות',
       inviterName: user.name || 'מנהל החנות',
       role: invitation.role,
       token: invitation.token,
@@ -219,7 +232,7 @@ export async function POST(request: NextRequest) {
 // DELETE /api/staff - Remove staff member or cancel invitation
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
+    const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
