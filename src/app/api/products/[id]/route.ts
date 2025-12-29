@@ -210,6 +210,13 @@ export async function PUT(
       source: 'api',
     });
 
+    // ✅ Invalidate cache for this product's layouts
+    const { invalidateCache } = await import('@/lib/cache');
+    await invalidateCache(`layout:${product.store_id}:product:${product.handle}`);
+    await invalidateCache(`layout:${product.store_id}:home:*`);
+    
+    console.log(`[Cache] 🗑️ Invalidated cache for product ${product.handle}`);
+
     // Emit product.published event if status changed to 'active'
     if (oldProduct.status !== 'active' && product.status === 'active') {
       await eventBus.emitEvent('product.published', { product }, {

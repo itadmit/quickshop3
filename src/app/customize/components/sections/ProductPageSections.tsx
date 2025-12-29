@@ -1283,9 +1283,10 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
       <h3 className="text-xl font-semibold text-gray-900 mb-6">{title}</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {relatedProducts.slice(0, productsCount).map((relProduct: any) => (
-          <div 
-            key={relProduct.id} 
-            className="group cursor-pointer"
+          <Link
+            key={relProduct.id}
+            href={`/shops/${storeSlug}/products/${relProduct.handle}`}
+            className="group cursor-pointer block"
           >
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2 group-hover:opacity-90 transition-opacity">
               {relProduct.image || relProduct.images?.[0]?.src ? (
@@ -1302,7 +1303,7 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
             </div>
             <p className="text-sm font-medium text-gray-900 truncate group-hover:text-gray-600">{relProduct.title}</p>
             <p className="text-sm text-gray-500">₪{parseFloat(relProduct.price || relProduct.variants?.[0]?.price || 0).toFixed(2)}</p>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
@@ -1412,9 +1413,10 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
       <h3 className="text-xl font-semibold text-gray-900 mb-6">{title}</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {recentProducts.slice(0, productsCount).map((recentProduct: any) => (
-          <div 
-            key={recentProduct.id} 
-            className="group cursor-pointer"
+          <Link
+            key={recentProduct.id}
+            href={`/shops/${storeSlug}/products/${recentProduct.handle}`}
+            className="group cursor-pointer block"
           >
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2 group-hover:opacity-90 transition-opacity">
               {recentProduct.image || recentProduct.images?.[0]?.src ? (
@@ -1431,7 +1433,7 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
             </div>
             <p className="text-sm font-medium text-gray-900 truncate group-hover:text-gray-600">{recentProduct.title}</p>
             <p className="text-sm text-gray-500">₪{parseFloat(recentProduct.price || recentProduct.variants?.[0]?.price || 0).toFixed(2)}</p>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

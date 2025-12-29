@@ -18,6 +18,7 @@ interface PreviewFrameProps {
   pageType?: string;
   sampleProduct?: any;
   sampleCollection?: any;
+  sampleProducts?: any[];
 }
 
 // Sections that belong in the product gallery column (left side on desktop)
@@ -55,7 +56,8 @@ function PreviewFrameComponent({
   onSectionDelete,
   pageType = 'home',
   sampleProduct,
-  sampleCollection
+  sampleCollection,
+  sampleProducts
 }: PreviewFrameProps) {
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [hoveredSectionId, setHoveredSectionId] = React.useState<string | null>(null);
@@ -159,6 +161,7 @@ function PreviewFrameComponent({
         device={device}
         sampleProduct={sampleProduct}
         sampleCollection={sampleCollection}
+        sampleProducts={sampleProducts}
       />
 
       {/* Overlay Border - Always on top */}

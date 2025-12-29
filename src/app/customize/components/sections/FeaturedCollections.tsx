@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useStoreId } from '@/hooks/useStoreId';
@@ -26,180 +26,184 @@ interface Collection {
 }
 
 function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedCollectionsProps) {
+  console.log(`📁 [FeaturedCollections] Component render - section.id: ${section.id}`);
+  
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
-  const storeId = useStoreId();
   const params = useParams();
-  const storeSlug = params?.storeSlug as string || '';
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isInCustomizer = pathname.startsWith('/customize');
   
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Get storeId from user session (for customizer) or from URL (for storefront)
+  const storeId = useStoreId();
   
-  // Use a stable key based on section ID to persist refs across remounts
+  // Get storeSlug - try from URL params first, then from API if in customizer
+  const [storeSlug, setStoreSlug] = useState<string>('');
+  
+  useEffect(() => {
+    const urlSlug = params?.storeSlug as string;
+    if (urlSlug) {
+      setStoreSlug(urlSlug);
+      return;
+    }
+    
+    // If in customizer and no slug in URL, fetch from API
+    if (isInCustomizer && storeId) {
+      fetch(`/api/customizer/pages?pageType=home`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.store?.slug) {
+            setStoreSlug(data.store.slug);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [params?.storeSlug, isInCustomizer, storeId]);
+  
+  // Initialize collections from sessionStorage if available
   const sectionKey = `featured-collections-${section.id}`;
-  const loadedRef = useRef<string>('');
-  const prevSettingsRef = useRef<{ mode: string; ids: string }>({ mode: '', ids: '' });
-  const renderCountRef = useRef(0);
+  const [collections, setCollections] = useState<Collection[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    // Don't show loading if we have cached data
+    if (typeof window === 'undefined') return true;
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    return !stored;
+  });
   
-  // Helper function to clear sessionStorage for wrong storeId
-  const clearSessionStorageForWrongStore = (currentStoreId: number) => {
-    if (typeof window === 'undefined') return;
-    
-    // Check all sessionStorage keys for this section
-    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
-    if (storedStoreId && parseInt(storedStoreId) !== currentStoreId) {
-      sessionStorage.removeItem(`${sectionKey}-collections`);
-      sessionStorage.removeItem(`${sectionKey}-loaded`);
-      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
-      sessionStorage.removeItem(`${sectionKey}-storeId`);
-      setCollections([]);
-    }
-  };
-
-  // Initialize refs and collections from sessionStorage if available (to persist across remounts)
-  // ✅ אבל רק אם storeId תואם - מונע הצגת קטגוריות מחנות אחרת
-  useEffect(() => {
-    if (!storeId) return;
-    
-    // Clear sessionStorage if storeId changed
-    clearSessionStorageForWrongStore(storeId);
-    
-    const storedLoadedKey = sessionStorage.getItem(`${sectionKey}-loaded`);
-    const storedPrevSettings = sessionStorage.getItem(`${sectionKey}-prevSettings`);
-    const storedCollections = sessionStorage.getItem(`${sectionKey}-collections`);
-    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
-    
-    // ✅ רק אם storeId תואם - מונע הצגת קטגוריות מחנות אחרת
-    if (storedStoreId && parseInt(storedStoreId) === storeId) {
-      if (storedLoadedKey) {
-        loadedRef.current = storedLoadedKey;
-      }
-      if (storedPrevSettings) {
-        try {
-          prevSettingsRef.current = JSON.parse(storedPrevSettings);
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-      if (storedCollections) {
-        try {
-          const parsedCollections = JSON.parse(storedCollections);
-          setCollections(parsedCollections);
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    } else {
-      // StoreId לא תואם - נקה הכל
-      sessionStorage.removeItem(`${sectionKey}-collections`);
-      sessionStorage.removeItem(`${sectionKey}-loaded`);
-      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
-      setCollections([]);
-    }
-  }, [sectionKey, storeId]);
-
-  // Track renders (for debugging if needed)
-  renderCountRef.current += 1;
-
-  // Extract settings values - memoize to prevent unnecessary re-renders
-  const collectionSelectionMode = useMemo(() => {
-    return settings.collection_selection_mode || 'all';
-  }, [settings.collection_selection_mode]);
+  // Get settings - simple and direct
+  const collectionSelectionMode = settings.collection_selection_mode || 'all';
+  const selectedCollectionIds = Array.isArray(settings.selected_collection_ids) ? settings.selected_collection_ids : [];
   
-  // Create stable string representation of IDs
-  const selectedIdsString = useMemo(() => {
-    const ids = settings.selected_collection_ids || [];
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return '';
-    }
-    return [...ids].sort((a, b) => a - b).join(',');
-  }, [settings.selected_collection_ids]);
-
-  // Load real collections from API - only when settings actually change
+  // Create stable key for settings - only reload when this changes
+  const settingsKey = useMemo(() => {
+    const idsStr = [...selectedCollectionIds].sort((a, b) => a - b).join(',');
+    const key = `${storeId}-${collectionSelectionMode}-${idsStr}`;
+    console.log(`📁 [FeaturedCollections] settingsKey calculated:`, key, {
+      storeId,
+      collectionSelectionMode,
+      selectedCollectionIds,
+      idsStr
+    });
+    return key;
+  }, [storeId, collectionSelectionMode, JSON.stringify(selectedCollectionIds)]);
+  
+  // Track previous settingsKey - use ref + sessionStorage to persist across remounts
+  const storedPrevKey = typeof window !== 'undefined' ? sessionStorage.getItem(`${sectionKey}-prevKey`) : null;
+  const prevSettingsKeyRef = useRef<string>(storedPrevKey || '');
+  const isLoadingRef = useRef<boolean>(false);
+  
+  // Load collections - simple: only when settingsKey changes
   useEffect(() => {
+    const prevKey = prevSettingsKeyRef.current;
+    console.log(`📁 [FeaturedCollections] useEffect triggered`, {
+      storeId,
+      settingsKey,
+      prevSettingsKey: prevKey,
+      isLoading: isLoadingRef.current,
+      willReload: settingsKey !== prevKey && storeId !== null && !isLoadingRef.current
+    });
+    
+    // Don't load if storeId is null - wait for it to load
     if (!storeId) {
+      setLoading(false);
       return;
     }
     
-    // Create a unique key for this load
-    const loadKey = `${storeId}-${collectionSelectionMode}-${selectedIdsString}`;
-    
-    // Skip if already loaded with same settings (check this FIRST)
-    if (loadedRef.current === loadKey) {
+    // Skip if already loading
+    if (isLoadingRef.current) {
+      console.log(`📁 [FeaturedCollections] Skipping reload - already loading`);
       return;
     }
     
-    // Check if settings actually changed
-    const currentSettings = { mode: collectionSelectionMode, ids: selectedIdsString };
-    if (
-      prevSettingsRef.current.mode === currentSettings.mode &&
-      prevSettingsRef.current.ids === currentSettings.ids &&
-      loadedRef.current !== ''
-    ) {
-      return; // Settings haven't changed, skip reload
+    // Skip if settingsKey hasn't changed (and we have collections)
+    if (settingsKey === prevKey && collections.length > 0) {
+      console.log(`📁 [FeaturedCollections] Skipping reload - settingsKey unchanged and have collections`);
+      return;
     }
     
-    // Update refs BEFORE starting async operation
-    prevSettingsRef.current = currentSettings;
-    loadedRef.current = loadKey; // Set immediately to prevent duplicate calls
+    // If settingsKey changed, update ref and sessionStorage
+    if (settingsKey !== prevKey) {
+      console.log(`📁 [FeaturedCollections] settingsKey changed from ${prevKey} to ${settingsKey}, loading new data`);
+      prevSettingsKeyRef.current = settingsKey;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`${sectionKey}-prevKey`, settingsKey);
+      }
+    }
     
-    // Persist to sessionStorage to survive remounts
-    sessionStorage.setItem(`${sectionKey}-loaded`, loadKey);
-    sessionStorage.setItem(`${sectionKey}-prevSettings`, JSON.stringify(currentSettings));
+    let cancelled = false;
     
     const loadCollections = async () => {
+      // Prevent duplicate calls
+      if (isLoadingRef.current) {
+        console.log(`📁 [FeaturedCollections] Already loading, skipping duplicate call`);
+        return;
+      }
+      
+      isLoadingRef.current = true;
+      console.log(`📁 [FeaturedCollections] Starting load...`);
       setLoading(true);
       try {
         let collectionsData: Collection[] = [];
         
-        // Get current selected IDs from settings (inside effect to avoid stale closure)
-        const currentSelectedIds = settings.selected_collection_ids || [];
-        const idsArray = Array.isArray(currentSelectedIds) ? currentSelectedIds : [];
-        
-        if (collectionSelectionMode === 'manual' && idsArray.length > 0) {
-          // Load all collections and filter by selected IDs
-          const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100`);
-          if (response.ok) {
+        if (collectionSelectionMode === 'manual' && selectedCollectionIds.length > 0) {
+          const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100&includeUnpublished=true`);
+          if (response.ok && !cancelled) {
             const data = await response.json();
             const allCollections = data.collections || [];
-            // Filter to only selected collections and maintain order
-            // ✅ מסנן תת-קטגוריות - מציג רק קטגוריות ראשיות (ללא parent_id)
-            collectionsData = idsArray
+            collectionsData = selectedCollectionIds
               .map((id: number) => allCollections.find((c: Collection) => c.id === id))
-              .filter((c): c is Collection => c !== undefined)
-              .filter((c: any) => !c.parent_id || c.parent_id === null); // רק קטגוריות ראשיות
+              .filter((c): c is Collection => c !== undefined);
           }
         } else {
-          // Load all collections (default behavior) - load more to show real data
-          const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100`);
-          if (response.ok) {
+          const response = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100&includeUnpublished=true`);
+          if (response.ok && !cancelled) {
             const data = await response.json();
-            // ✅ מסנן תת-קטגוריות - מציג רק קטגוריות ראשיות (ללא parent_id)
-            collectionsData = (data.collections || []).filter((c: any) => !c.parent_id || c.parent_id === null);
+            collectionsData = data.collections || [];
           }
         }
         
-        // ✅ אין fallback - אם אין קטגוריות, נשאיר רשימה ריקה
-        // זה מונע הצגת קטגוריות מחנות אחרת
-        // אם אין קטגוריות, המשתמש יכול ליצור חדשות בדשבורד
-        
-        setCollections(collectionsData);
-        // loadedRef.current already set before async call
-        // ✅ Persist collections to sessionStorage עם storeId - מונע הצגת קטגוריות מחנות אחרת
-        sessionStorage.setItem(`${sectionKey}-collections`, JSON.stringify(collectionsData));
-        sessionStorage.setItem(`${sectionKey}-storeId`, String(storeId));
+        if (!cancelled) {
+          console.log(`📁 [FeaturedCollections] Loaded ${collectionsData.length} collections`);
+          setCollections(collectionsData);
+          // Save to sessionStorage
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`${sectionKey}-data`, JSON.stringify(collectionsData));
+          }
+        }
       } catch (error) {
-        console.error('[FeaturedCollections] Error loading featured collections:', error);
-        loadedRef.current = loadKey; // Mark as attempted even on error
+        if (!cancelled) {
+          console.error('[FeaturedCollections] Error loading collections:', error);
+          setCollections([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          console.log(`📁 [FeaturedCollections] Loading finished`);
+          setLoading(false);
+          isLoadingRef.current = false;
+        }
       }
     };
     
     loadCollections();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId, collectionSelectionMode, selectedIdsString]);
+    
+    return () => {
+      console.log(`📁 [FeaturedCollections] Cleanup - cancelling load`);
+      cancelled = true;
+      isLoadingRef.current = false;
+    };
+  }, [settingsKey, storeId, sectionKey]); // Removed collections.length to prevent re-runs when collections change
   
   const itemsPerRow = settings.items_per_row || 3;
   const sliderItemsDesktop = settings.slider_items_desktop || 4.5;
@@ -332,7 +336,12 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
             ).map((item: any, index: number) => {
               const isPlaceholder = item.isPlaceholder;
               const collection = isPlaceholder ? null : item as Collection;
-              const collectionUrl = collection ? `/shops/${storeSlug}/categories/${collection.handle}` : '#';
+              // In customizer, links should navigate to customizer edit mode
+              const collectionUrl = collection 
+                ? (isInCustomizer 
+                    ? `/customize?pageType=collection&pageHandle=${collection.handle}`
+                    : `/shops/${storeSlug}/categories/${collection.handle}`)
+                : '#';
 
               return (
                 <Link 
@@ -388,16 +397,51 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   );
 }
 
-// Memoize component to prevent re-renders when parent re-renders
+// Memoize FeaturedCollections - only re-render if relevant settings changed
 export const FeaturedCollections = React.memo(FeaturedCollectionsComponent, (prevProps, nextProps) => {
-  // Use the utility function for comparison
-  const sectionsEqual = areSectionsEqual(prevProps.section, nextProps.section);
+  // Compare only relevant settings that affect data loading
+  const prevSettings = prevProps.section?.settings || {};
+  const nextSettings = nextProps.section?.settings || {};
+  
+  const relevantKeys = [
+    'collection_selection_mode',
+    'selected_collection_ids'
+  ];
+  
+  const changes: string[] = [];
+  
+  for (const key of relevantKeys) {
+    const prev = JSON.stringify(prevSettings[key]);
+    const next = JSON.stringify(nextSettings[key]);
+    if (prev !== next) {
+      changes.push(`${key}: ${prev} -> ${next}`);
+    }
+  }
   
   // Compare other props
-  const otherPropsEqual = (
-    prevProps.isPreview === nextProps.isPreview &&
-    prevProps.editorDevice === nextProps.editorDevice
-  );
+  if (prevProps.editorDevice !== nextProps.editorDevice) {
+    changes.push(`editorDevice: ${prevProps.editorDevice} -> ${nextProps.editorDevice}`);
+  }
+  if (prevProps.isPreview !== nextProps.isPreview) {
+    changes.push(`isPreview: ${prevProps.isPreview} -> ${nextProps.isPreview}`);
+  }
+  if (prevProps.section?.id !== nextProps.section?.id) {
+    changes.push(`section.id: ${prevProps.section?.id} -> ${nextProps.section?.id}`);
+  }
   
-  return sectionsEqual && otherPropsEqual;
+  // Check if section object reference changed (but content is the same)
+  const sectionRefChanged = prevProps.section !== nextProps.section;
+  if (sectionRefChanged && changes.length === 0) {
+    console.log(`📁 [FeaturedCollections] React.memo: SKIP RE-RENDER - section ref changed but content same`);
+    return true; // Skip re-render even if ref changed
+  }
+  
+  if (changes.length > 0) {
+    console.log(`📁 [FeaturedCollections] React.memo: WILL RE-RENDER`, changes);
+    return false; // Settings changed, re-render
+  }
+  
+  console.log(`📁 [FeaturedCollections] React.memo: SKIP RE-RENDER - no changes`);
+  // Everything else is the same, skip re-render
+  return true;
 });

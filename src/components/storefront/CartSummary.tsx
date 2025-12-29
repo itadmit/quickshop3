@@ -4,7 +4,7 @@ import { useCartCalculator } from '@/hooks/useCartCalculator';
 import { useCart, type CartItem } from '@/hooks/useCart';
 import { ShippingRate, type CartCalculationResult } from '@/lib/services/cartCalculator';
 import { HiTag, HiX } from 'react-icons/hi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface CartSummaryProps {
   storeId: number;

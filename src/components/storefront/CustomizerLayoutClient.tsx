@@ -7,7 +7,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { StorefrontSectionRenderer } from './StorefrontSectionRenderer';
 import { ProductPageProvider } from '@/contexts/ProductPageContext';
 import { FloatingAdvisorButton } from './FloatingAdvisorButton';
@@ -28,9 +28,9 @@ interface PageLayoutData {
   products?: any[];
 }
 
-// Cache for page layouts to avoid unnecessary re-fetches
+// Optimized cache for faster navigation
 const layoutCache: { [key: string]: { data: PageLayoutData; timestamp: number } } = {};
-const CACHE_TTL = 60000; // 1 minute cache
+const CACHE_TTL = 30000; // 30 seconds - מאזן בין טריות למהירות
 
 // ============================================
 // Page-Specific Skeletons
@@ -233,7 +233,9 @@ function getSkeletonForPageType(pageType: string) {
       return <ProductPageSkeleton />;
     case 'collection':
     case 'collections':
+    case 'category':
     case 'categories':
+    case 'products':
       return <CollectionPageSkeleton />;
     default:
       return <DefaultPageSkeleton />;
@@ -250,7 +252,7 @@ export function CustomizerLayoutClient({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create cache key
+  // Create cache key - pageHandle changes between products, so no need for pathname
   const cacheKey = useMemo(() => {
     return `${storeSlug}_${pageType}_${pageHandle || ''}`;
   }, [storeSlug, pageType, pageHandle]);
@@ -349,7 +351,7 @@ export function CustomizerLayoutClient({
     contentSections = sections.filter((s: any) => 
       s.type !== 'header' && s.type !== 'footer' && s.visible !== false
     );
-  } else if (pageType === 'product' || pageType === 'collection') {
+  } else if (pageType === 'product' || pageType === 'collection' || pageType === 'category' || pageType === 'products' || pageType === 'categories') {
     contentSections = sections.filter((s: any) => 
       s.type !== 'header' && s.type !== 'footer' && s.visible !== false
     );
@@ -359,7 +361,10 @@ export function CustomizerLayoutClient({
   const shouldShowCustomizerContent = 
     (pageType === 'product' && product) ||
     (pageType === 'collection' && collection) ||
-    (pageType !== 'product' && pageType !== 'collection' && contentSections.length > 0);
+    (pageType === 'category' && collection) ||
+    (pageType === 'products') ||
+    (pageType === 'categories') ||
+    (pageType !== 'product' && pageType !== 'collection' && pageType !== 'category' && pageType !== 'products' && pageType !== 'categories' && contentSections.length > 0);
 
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
@@ -434,6 +439,34 @@ export function CustomizerLayoutClient({
               />
             ))}
           </div>
+        ) : pageType === 'category' && collection ? (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Category page with customizer sections */}
+            {contentSections.map((section: any) => (
+              <StorefrontSectionRenderer 
+                key={section.id} 
+                section={section}
+                product={product}
+                collection={collection}
+                products={products}
+                storeId={storeId}
+              />
+            ))}
+          </div>
+        ) : pageType === 'categories' || pageType === 'products' ? (
+          <>
+            {/* Categories/Products listing pages with customizer sections */}
+            {contentSections.map((section: any) => (
+              <StorefrontSectionRenderer 
+                key={section.id} 
+                section={section}
+                product={product}
+                collection={collection}
+                products={products}
+                storeId={storeId}
+              />
+            ))}
+          </>
         ) : shouldShowCustomizerContent ? (
           <>
             {/* Render content sections from customizer */}

@@ -24,22 +24,22 @@ function getPageTypeFromPath(pathname: string, storeSlug: string): { pageType: s
     return { pageType: 'home' };
   }
   
-  // דף מוצר
-  if (pathWithoutStore.startsWith('/products/')) {
-    const match = pathWithoutStore.match(/^\/products\/([^/]+)/);
-    if (match) {
-      return { pageType: 'product', pageHandle: match[1] };
-    }
-    return { pageType: 'products' };
-  }
-  
   // דף קטגוריה
   if (pathWithoutStore.startsWith('/categories/')) {
-    const match = pathWithoutStore.match(/^\/categories\/([^/]+)/);
+    const match = pathWithoutStore.match(/^\/categories\/([^/?]+)/);
     if (match) {
       return { pageType: 'category', pageHandle: match[1] };
     }
     return { pageType: 'categories' };
+  }
+  
+  // דף מוצרים
+  if (pathWithoutStore.startsWith('/products')) {
+    const match = pathWithoutStore.match(/^\/products\/([^/?]+)/);
+    if (match) {
+      return { pageType: 'product', pageHandle: match[1] };
+    }
+    return { pageType: 'products' };
   }
   
   // דף תוכן

@@ -59,6 +59,7 @@ export function MegaMenu({ categories }: MegaMenuProps) {
           >
             <Link
               href={`/shops/${storeSlug}/categories/${category.handle}`}
+              prefetch={true}
               className="text-gray-700 hover:text-gray-900 font-medium transition-colors py-2 block"
               aria-haspopup={category.children && category.children.length > 0 ? 'true' : undefined}
               aria-expanded={openDropdown === category.id ? 'true' : 'false'}

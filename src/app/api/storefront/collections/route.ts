@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const storeSlug = searchParams.get('storeSlug');
     const handle = searchParams.get('handle'); // Single collection by handle
     const limit = parseInt(searchParams.get('limit') || '6');
+    const includeUnpublished = searchParams.get('includeUnpublished') === 'true'; // For customizer
 
     // Resolve store ID from slug if provided
     let resolvedStoreId = storeId ? parseInt(storeId) : null;
@@ -25,7 +26,9 @@ export async function GET(request: NextRequest) {
     // If handle is provided, return single collection with products
     if (handle) {
       try {
-        const collectionData = await getCollectionByHandle(handle, resolvedStoreId, { limit: 20, offset: 0 });
+        // ✅ Decode handle (may come encoded from URL)
+        const decodedHandle = decodeURIComponent(handle);
+        const collectionData = await getCollectionByHandle(decodedHandle, resolvedStoreId, { limit: 20, offset: 0 });
         if (collectionData.collection) {
           return NextResponse.json({ 
             collection: collectionData.collection,
@@ -42,6 +45,8 @@ export async function GET(request: NextRequest) {
 
     // List all collections - כולל תת-קטגוריות (עם parent_id)
     // ✅ תיקון ספירת מוצרים - סופר רק מוצרים פעילים
+    // ✅ בקסטומייזר מציג גם קטגוריות לא מפורסמות
+    const publishedCondition = includeUnpublished ? '' : 'AND pc.published_at IS NOT NULL';
     const sql = `
       SELECT 
         pc.id,
@@ -58,7 +63,7 @@ export async function GET(request: NextRequest) {
         ) as products_count
       FROM product_collections pc
       WHERE pc.store_id = $1 
-        AND pc.published_at IS NOT NULL
+        ${publishedCondition}
       ORDER BY COALESCE(pc.parent_id, pc.id), pc.sort_order ASC, pc.title ASC
       LIMIT $2
     `;

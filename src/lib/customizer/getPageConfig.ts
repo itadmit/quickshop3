@@ -6,6 +6,7 @@
 import { query } from '@/lib/db';
 import { PageTemplate, TemplateWidget } from './types';
 import { getSectionName } from './sectionNames';
+import { getCached } from '@/lib/cache';
 
 export async function getTemplateConfig(
   storeId: number,
@@ -117,93 +118,108 @@ export async function getTemplateConfig(
 }
 
 export async function getPageLayout(storeId: number, pageType: string, pageHandle?: string): Promise<any> {
-  try {
-    // First try to find a layout with the specific handle (if provided)
-    // Then fall back to a layout without handle (generic template for this page type)
-    // This allows product/collection pages to use the generic template if no specific one exists
-    const layoutQuery = `
-      SELECT
-        pl.*,
-        tt.name as theme_name,
-        tt.display_name as theme_display_name,
-        CASE 
-          WHEN pl.page_handle = $3 THEN 1  -- Exact match gets highest priority
-          WHEN pl.page_handle IS NULL THEN 2  -- Generic template is fallback
-          ELSE 3  -- Other handles (shouldn't match)
-        END as priority
-      FROM page_layouts pl
-      LEFT JOIN theme_templates tt ON pl.template_id = tt.id
-      WHERE pl.store_id = $1
-        AND pl.page_type = $2
-        AND (pl.page_handle = $3 OR pl.page_handle IS NULL)
-      ORDER BY priority ASC, pl.is_published DESC, pl.created_at DESC
-      LIMIT 1
-    `;
-
-    const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle || null]);
-
-    if (layoutResult.length === 0) {
-      return null;
-    }
-
-    const layout = layoutResult[0];
-
-    // Get sections for this layout
-    const sectionsQuery = `
-      SELECT * FROM page_sections
-      WHERE page_layout_id = $1
-      ORDER BY position ASC
-    `;
-
-    const sectionsResult = await query(sectionsQuery, [layout.id]);
-
-    // Get blocks for each section
-    const sections = [];
-    for (const sectionRow of sectionsResult) {
-      const blocksQuery = `
-        SELECT * FROM section_blocks
-        WHERE section_id = $1
-        ORDER BY position ASC
+  const cacheKey = `layout:${storeId}:${pageType}:${pageHandle || 'default'}`;
+  
+  return getCached(
+    cacheKey,
+    async () => {
+      // ✅ ONE QUERY - Join everything!
+      const layoutQuery = `
+        SELECT
+          pl.*,
+          tt.name as theme_name,
+          tt.display_name as theme_display_name,
+          CASE 
+            WHEN pl.page_handle = $3 THEN 1
+            WHEN pl.page_handle IS NULL THEN 2
+            ELSE 3
+          END as priority,
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', ps.section_id,
+                'type', ps.section_type,
+                'name', ps.section_type,
+                'visible', ps.is_visible,
+                'order', ps.position,
+                'locked', ps.is_locked,
+                'settings_json', ps.settings_json,
+                'blocks', (
+                  SELECT COALESCE(json_agg(
+                    json_build_object(
+                      'id', sb.block_id,
+                      'type', sb.block_type,
+                      'is_visible', sb.is_visible,
+                      'settings_json', sb.settings_json
+                    )
+                    ORDER BY sb.position ASC
+                  ), '[]'::json)
+                  FROM section_blocks sb
+                  WHERE sb.section_id = ps.id
+                )
+              )
+              ORDER BY ps.position ASC
+            )
+            FROM page_sections ps
+            WHERE ps.page_layout_id = pl.id
+          ) as sections_data
+        FROM page_layouts pl
+        LEFT JOIN theme_templates tt ON pl.template_id = tt.id
+        WHERE pl.store_id = $1
+          AND pl.page_type = $2
+          AND (pl.page_handle = $3 OR pl.page_handle IS NULL)
+        ORDER BY priority ASC, pl.is_published DESC, pl.created_at DESC
+        LIMIT 1
       `;
 
-      const blocksResult = await query(blocksQuery, [sectionRow.id]);
+      try {
+        const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle || null]);
 
-      // Parse settings_json for blocks - it contains content, style, and settings
-      const parsedBlocks = blocksResult.map(block => {
-        const blockSettings = block.settings_json || {};
-        // settings_json can contain content, style, and settings properties
+        if (layoutResult.length === 0) {
+          return null;
+        }
+
+        const layout = layoutResult[0];
+        const sectionsData = layout.sections_data || [];
+
+        // Parse sections and blocks
+        const sections = sectionsData.map((sectionData: any) => {
+          const sectionSettings = sectionData.settings_json || {};
+          
+          const parsedBlocks = (sectionData.blocks || []).map((block: any) => {
+            const blockSettings = block.settings_json || {};
+            return {
+              id: block.id,
+              type: block.type,
+              content: blockSettings.content || {},
+              style: blockSettings.style || {},
+              settings: blockSettings.settings || blockSettings,
+              is_visible: block.is_visible !== false
+            };
+          });
+
+          return {
+            id: sectionData.id,
+            type: sectionData.type,
+            name: getSectionName(sectionData.type),
+            visible: sectionData.visible,
+            order: sectionData.order,
+            locked: sectionData.locked,
+            blocks: parsedBlocks,
+            style: sectionSettings.style || {},
+            settings: sectionSettings.settings || sectionSettings
+          };
+        });
+
         return {
-          id: block.block_id,
-          type: block.block_type,
-          content: blockSettings.content || {},
-          style: blockSettings.style || {},
-          settings: blockSettings.settings || blockSettings,
-          is_visible: block.is_visible !== false
+          layout,
+          sections
         };
-      });
-
-      // Parse settings_json for section - it contains style and settings
-      const sectionSettings = sectionRow.settings_json || {};
-      
-      sections.push({
-        id: sectionRow.section_id,
-        type: sectionRow.section_type,
-        name: getSectionName(sectionRow.section_type),
-        visible: sectionRow.is_visible,
-        order: sectionRow.position,
-        locked: sectionRow.is_locked,
-        blocks: parsedBlocks,
-        style: sectionSettings.style || {},
-        settings: sectionSettings.settings || sectionSettings
-      });
-    }
-
-    return {
-      layout,
-      sections
-    };
-  } catch (error) {
-    console.error('Error getting page layout:', error);
-    return null;
-  }
+      } catch (error) {
+        console.error('Error getting page layout:', error);
+        return null;
+      }
+    },
+    120 // 2 minutes cache - layouts don't change often
+  );
 }

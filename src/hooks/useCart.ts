@@ -39,6 +39,7 @@ const globalCartItems: { [storeId: number]: CartItem[] } = {};
 const globalCartLoading: { [storeId: number]: boolean } = {};
 const globalCartLoaded: { [storeId: number]: boolean } = {};
 const globalIsAddingToCart: { [storeId: number]: boolean } = {};
+const globalIsSyncing: { [storeId: number]: boolean } = {}; // ✅ למנוע sync כפול
 
 // Listeners for real-time updates
 let cartListeners: Array<() => void> = [];
@@ -125,6 +126,50 @@ export function useCart() {
     notifyCartListeners();
   }, [storeId]);
 
+  // ✅ Sync prices from server (without loading state)
+  const syncCartPrices = useCallback(async () => {
+    if (!storeId || !globalCartItems[storeId]?.length) return;
+    
+    // ✅ מניעת sync כפול
+    if (globalIsSyncing[storeId]) return;
+    globalIsSyncing[storeId] = true;
+
+    try {
+      const variantIds = globalCartItems[storeId].map(item => item.variant_id);
+      
+      const response = await fetch(`/api/cart/sync-prices?storeId=${storeId}&variantIds=${variantIds.join(',')}`, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.prices && typeof data.prices === 'object') {
+          let hasChanges = false;
+          const updatedItems = globalCartItems[storeId].map(item => {
+            const newPrice = data.prices[item.variant_id];
+            if (newPrice !== undefined && newPrice !== item.price) {
+              hasChanges = true;
+              return { ...item, price: newPrice };
+            }
+            return item;
+          });
+          
+          if (hasChanges) {
+            globalCartItems[storeId] = updatedItems;
+            setCartToStorage(updatedItems, storeId);
+            notifyCartListeners();
+          }
+        }
+      }
+    } catch (error) {
+      // Silent fail - not critical
+    } finally {
+      globalIsSyncing[storeId] = false;
+    }
+  }, [storeId]);
+
   // Initialize cart from localStorage on first mount
   useEffect(() => {
     if (typeof window !== 'undefined' && storeId && !globalCartLoaded[storeId]) {
@@ -137,6 +182,9 @@ export function useCart() {
       if (!globalCartLoading[storeId]) {
         loadCartFromServer();
       }
+    } else if (storeId && globalCartLoaded[storeId] && globalCartItems[storeId]?.length > 0) {
+      // ✅ עדכון מחירים בכל רענון דף (גם אם כבר טענו את העגלה)
+      syncCartPrices();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId]);

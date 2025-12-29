@@ -25,6 +25,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         />
         <label
           htmlFor={generatedId}
+          onClick={(e) => e.stopPropagation()}
           className={`
             w-5 h-5 rounded-md border-2 cursor-pointer
             transition-all duration-200 ease-in-out

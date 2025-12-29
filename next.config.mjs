@@ -6,7 +6,7 @@ const __dirname = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Disable to prevent double renders in dev
   images: {
     remotePatterns: [
       {
@@ -23,6 +23,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Performance optimizations
+  experimental: {
+    // Enable optimized package imports
+    optimizePackageImports: ['react-icons'],
+  },
+  // Faster page transitions
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
 };
 
 export default nextConfig;

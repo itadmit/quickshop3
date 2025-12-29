@@ -372,7 +372,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
+    
     const rawHeaders = allRows[0];
     const headers = rawHeaders.map(h => {
       const normalized = h.trim().toLowerCase().replace(/"/g, '');

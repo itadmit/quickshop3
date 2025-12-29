@@ -12,31 +12,47 @@ import { getProductByHandle, getProductsList } from '@/lib/storefront/queries';
 import { getCollectionByHandle } from '@/lib/storefront/queries';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     const searchParams = request.nextUrl.searchParams;
     const storeSlug = searchParams.get('storeSlug');
     const pageType = searchParams.get('pageType') || 'home';
     const pageHandle = searchParams.get('pageHandle') || undefined;
 
+    console.log(`[Layout API] Start - ${pageType} ${pageHandle || ''}`);
+
     if (!storeSlug) {
       return NextResponse.json({ error: 'storeSlug is required' }, { status: 400 });
     }
 
-    const storeId = await getStoreIdBySlug(storeSlug);
+    // ✅ אופטימיזציה: קרא את ה-store פעם אחת בלבד!
+    const store = await getStoreBySlug(storeSlug);
+    console.log(`[Layout API] Got store (${Date.now() - startTime}ms)`);
     
-    if (!storeId) {
+    if (!store) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     }
 
-    // Load store information
-    const store = await getStoreBySlug(storeSlug);
+    const storeId = store.id;
+    console.log(`[Layout API] Using storeId: ${storeId}`);
 
-    // ✅ תמיד לטעון את ההדר והפוטר מדף הבית - כך שהם יהיו אחידים בכל הדפים
-    const homeLayout = await getPageLayout(storeId, 'home', undefined);
+    // ✅ אופטימיזציה: טען רק את הלייאאוט הנדרש
+    let pageLayout;
+    let homeLayout;
     
-    // Load page layout from customizer for current page
-    // For product/collection pages, pass the handle to find specific or generic layout
-    let pageLayout = await getPageLayout(storeId, pageType, pageHandle || undefined);
+    const layoutStartTime = Date.now();
+    if (pageType === 'home') {
+      // אם זה דף הבית, טען רק אותו
+      pageLayout = await getPageLayout(storeId, 'home', undefined);
+    } else {
+      // אם זה דף אחר, טען את שניהם במקביל
+      [homeLayout, pageLayout] = await Promise.all([
+        getPageLayout(storeId, 'home', undefined),
+        getPageLayout(storeId, pageType, pageHandle || undefined)
+      ]);
+    }
+    console.log(`[Layout API] Got layouts (${Date.now() - layoutStartTime}ms, total: ${Date.now() - startTime}ms)`);
     
     // If no layout found for 'other' type pages, use home layout
     if (!pageLayout && pageType === 'other') {
@@ -201,6 +217,53 @@ export async function GET(request: NextRequest) {
         console.error('Error loading collection for customizer:', error);
       }
     }
+
+    // ✅ תמיכה בדפי קטגוריה
+    if (pageType === 'category' && pageHandle) {
+      try {
+        if (pageHandle === 'all') {
+          products = await getProductsList(storeId, { limit: 20, offset: 0 });
+          collection = {
+            id: 0,
+            title: 'כל המוצרים',
+            handle: 'all',
+            description: '',
+            image_url: null,
+            product_count: products.length
+          };
+        } else {
+          const collectionData = await getCollectionByHandle(pageHandle, storeId, { limit: 20, offset: 0 });
+          collection = collectionData.collection;
+          products = collectionData.products || [];
+        }
+      } catch (error) {
+        console.error('Error loading category for customizer:', error);
+      }
+    }
+
+    // ✅ תמיכה בדף כל המוצרים
+    if (pageType === 'products') {
+      try {
+        products = await getProductsList(storeId, { limit: 20, offset: 0 });
+        collection = {
+          id: 0,
+          title: 'כל המוצרים',
+          handle: 'all',
+          description: '',
+          image_url: null,
+          product_count: products.length
+        };
+      } catch (error) {
+        console.error('Error loading products for customizer:', error);
+      }
+    }
+
+    // ✅ תמיכה בדף כל הקטגוריות
+    if (pageType === 'categories') {
+      // אין צורך לטעון נתונים מיוחדים - הסקשן featured_collections יטען את הקטגוריות
+    }
+
+    console.log(`[Layout API] Completed in ${Date.now() - startTime}ms`);
 
     return NextResponse.json({
       sections,

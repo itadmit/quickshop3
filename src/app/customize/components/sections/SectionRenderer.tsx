@@ -69,9 +69,10 @@ interface SectionRendererProps {
   device?: DeviceType; // Add device prop
   sampleProduct?: any; // Sample product for product page preview
   sampleCollection?: any; // Sample collection for collection page preview
+  sampleProducts?: any[]; // Sample products for collection page preview
 }
 
-function SectionRendererComponent({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection }: SectionRendererProps) {
+function SectionRendererComponent({ section, isSelected, onUpdate, device = 'desktop', sampleProduct, sampleCollection, sampleProducts }: SectionRendererProps) {
   
   // Get responsive style and settings
   const style = getResponsiveStyle(section, device);
@@ -466,7 +467,7 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
     case 'collection_products':
       return (
         <SectionWrapper className="py-4">
-          <CollectionProductsSection section={responsiveSection} collection={sampleCollection} onUpdate={onUpdate} />
+          <CollectionProductsSection section={responsiveSection} collection={sampleCollection} products={sampleProducts} onUpdate={onUpdate} />
         </SectionWrapper>
       );
 

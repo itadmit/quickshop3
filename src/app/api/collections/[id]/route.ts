@@ -334,6 +334,13 @@ export async function PUT(
       user_id: user.id,
     });
 
+    // ✅ Invalidate cache for this collection's layouts
+    const { invalidateCache } = await import('@/lib/cache');
+    await invalidateCache(`layout:${storeId}:category:${collection.handle}`);
+    await invalidateCache(`layout:${storeId}:collection:${collection.handle}`);
+    await invalidateCache(`layout:${storeId}:home:*`);
+    await invalidateCache(`layout:${storeId}:categories:*`);
+
     return NextResponse.json({
       collection,
       message: 'Collection updated successfully',

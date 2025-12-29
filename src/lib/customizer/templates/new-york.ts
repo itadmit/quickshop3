@@ -687,12 +687,23 @@ export const COLLECTION_PAGE_SECTIONS: SectionSettings[] = [
     style: {},
     settings: {
       products_per_row: 4,
+      products_per_row_tablet: 3,
       products_per_row_mobile: 2,
       products_per_page: 12,
-      show_quick_view: true,
+      show_quick_view: false,
       show_add_to_cart: true,
       show_wishlist: true,
-      card_style: 'default' // default | minimal | detailed
+      card_style: 'minimal', // ברירת מחדל נקייה יותר
+      show_shadow: true, // צל עדין
+      show_border: false, // בלי מסגרת
+      image_ratio: 'square', // תמונות ריבועיות
+      gap: 'medium', // רווח בינוני
+      show_price: true,
+      show_compare_price: true,
+      show_vendor: false,
+      show_rating: false,
+      show_badges: true,
+      show_color_swatches: false
     }
   },
   {
@@ -806,6 +817,45 @@ export function getDefaultSectionsForPage(pageType: string): SectionSettings[] {
         getFooterSection(collectionSections.length + 1)
       ];
       
+    case 'category':
+      const categorySections = COLLECTION_PAGE_SECTIONS.map((s, i) => ({ ...s, order: i + 1 }));
+      return [
+        header,
+        ...categorySections,
+        getFooterSection(categorySections.length + 1)
+      ];
+      
+    case 'categories':
+      // דף רשימת קטגוריות - משתמש בסקשנים של קולקשנים מוצגים
+      return [
+        header,
+        {
+          id: 'categories-grid',
+          type: 'featured_collections',
+          name: 'רשימת קטגוריות',
+          visible: true,
+          order: 1,
+          locked: false,
+          blocks: [],
+          style: {},
+          settings: {
+            title: 'הקטגוריות שלנו',
+            show_all: true,
+            columns: 3
+          }
+        },
+        getFooterSection(2)
+      ];
+      
+    case 'products':
+      // דף כל המוצרים - משתמש בסקשנים של קולקשן
+      const productsSections = COLLECTION_PAGE_SECTIONS.map((s, i) => ({ ...s, order: i + 1 }));
+      return [
+        header,
+        ...productsSections,
+        getFooterSection(productsSections.length + 1)
+      ];
+      
     case 'checkout':
       // צ'ק אאוט לא כולל header/footer רגילים
       return CHECKOUT_PAGE_SECTIONS;
@@ -847,6 +897,27 @@ export function getPageSpecificSections(pageType: string): Array<{ type: string;
         { type: 'collection_description', name: 'תיאור קטגוריה', description: 'תיאור הקטגוריה' },
         { type: 'collection_filters', name: 'מסננים', description: 'סינון לפי מחיר, זמינות וכו\'' },
         { type: 'collection_products', name: 'רשימת מוצרים', description: 'גריד המוצרים בקטגוריה' },
+        { type: 'collection_pagination', name: 'עמודים', description: 'ניווט בין עמודים' }
+      ];
+      
+    case 'category':
+      return [
+        { type: 'collection_header', name: 'כותרת קטגוריה', description: 'שם ותמונת הקטגוריה' },
+        { type: 'collection_description', name: 'תיאור קטגוריה', description: 'תיאור הקטגוריה' },
+        { type: 'collection_filters', name: 'מסננים', description: 'סינון לפי מחיר, זמינות וכו\'' },
+        { type: 'collection_products', name: 'רשימת מוצרים', description: 'גריד המוצרים בקטגוריה' },
+        { type: 'collection_pagination', name: 'עמודים', description: 'ניווט בין עמודים' }
+      ];
+      
+    case 'categories':
+      return [
+        { type: 'featured_collections', name: 'רשימת קטגוריות', description: 'גריד קטגוריות' }
+      ];
+      
+    case 'products':
+      return [
+        { type: 'collection_header', name: 'כותרת', description: 'כותרת העמוד' },
+        { type: 'collection_products', name: 'רשימת מוצרים', description: 'גריד המוצרים' },
         { type: 'collection_pagination', name: 'עמודים', description: 'ניווט בין עמודים' }
       ];
       

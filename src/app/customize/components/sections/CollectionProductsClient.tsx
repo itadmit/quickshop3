@@ -12,13 +12,34 @@ interface CollectionProductsClientProps {
   storeId: number;
   initialProducts?: any[];
   initialTotal?: number;
+  settings?: {
+    productsPerRow?: number;
+    productsPerRowTablet?: number;
+    productsPerRowMobile?: number;
+    cardStyle?: string;
+    showShadow?: boolean;
+    showBorder?: boolean;
+    imageRatio?: string;
+    gap?: string;
+    showPrice?: boolean;
+    showComparePrice?: boolean;
+    showVendor?: boolean;
+    showRating?: boolean;
+    showBadges?: boolean;
+    showColorSwatches?: boolean;
+    showQuickView?: boolean;
+    showAddToCart?: boolean;
+    showWishlist?: boolean;
+    emptyText?: string;
+  };
 }
 
 function CollectionProductsClientComponent({ 
   collectionHandle, 
   storeId,
   initialProducts = [],
-  initialTotal = 0
+  initialTotal = 0,
+  settings = {}
 }: CollectionProductsClientProps) {
   const searchParams = useSearchParams();
   const params = useParams();
@@ -27,6 +48,55 @@ function CollectionProductsClientComponent({
   
   const [products, setProducts] = useState(initialProducts);
   const [loading, setLoading] = useState(false);
+  
+  // Extract settings with defaults
+  const productsPerRow = settings.productsPerRow || 4;
+  const productsPerRowTablet = settings.productsPerRowTablet || 3;
+  const productsPerRowMobile = settings.productsPerRowMobile || 2;
+  const cardStyle = settings.cardStyle || 'minimal';
+  const gap = settings.gap || 'medium';
+  const emptyText = settings.emptyText || t('collection.no_products') || 'אין מוצרים בקטגוריה זו כרגע';
+  const showPrice = settings.showPrice !== false;
+  const showComparePrice = settings.showComparePrice !== false;
+  const showWishlist = settings.showWishlist !== false;
+  const showBadges = settings.showBadges !== false;
+  const showColorSwatches = settings.showColorSwatches !== false;
+  const showVendor = settings.showVendor === true;
+  const showRating = settings.showRating === true;
+  const showQuickView = settings.showQuickView === true;
+  const showAddToCart = settings.showAddToCart === true;
+  const showShadow = settings.showShadow === true;
+  const showBorder = settings.showBorder === true;
+  const imageRatio = settings.imageRatio || 'square';
+  
+  // Gap classes
+  const gapClasses = {
+    small: 'gap-3',
+    medium: 'gap-6',
+    large: 'gap-8',
+  }[gap] || 'gap-6';
+  
+  // Map settings to actual Tailwind classes (safe for JIT)
+  const gridColsClasses = {
+    mobile: {
+      1: 'grid-cols-1',
+      2: 'grid-cols-2',
+    }[productsPerRowMobile] || 'grid-cols-2',
+    tablet: {
+      2: 'md:grid-cols-2',
+      3: 'md:grid-cols-3',
+      4: 'md:grid-cols-4',
+    }[productsPerRowTablet] || 'md:grid-cols-3',
+    desktop: {
+      2: 'lg:grid-cols-2',
+      3: 'lg:grid-cols-3',
+      4: 'lg:grid-cols-4',
+      5: 'lg:grid-cols-5',
+      6: 'lg:grid-cols-6',
+    }[productsPerRow] || 'lg:grid-cols-4',
+  };
+
+  const gridClasses = `${gridColsClasses.mobile} ${gridColsClasses.tablet} ${gridColsClasses.desktop}`;
   
   // Get filters from URL
   const sort = searchParams.get('sort') || 'newest';
@@ -43,7 +113,8 @@ function CollectionProductsClientComponent({
       try {
         // Build query params for storefront API
         const queryParams = new URLSearchParams();
-        queryParams.set('collectionHandle', collectionHandle);
+        queryParams.set('storeId', storeId.toString());
+        queryParams.set('collection', collectionHandle); // Note: API expects 'collection' not 'collectionHandle'
         queryParams.set('limit', limit.toString());
         queryParams.set('offset', offset.toString());
         if (sort !== 'newest') queryParams.set('sort', sort);
@@ -63,26 +134,24 @@ function CollectionProductsClientComponent({
       }
     };
 
-    // Only reload if filters changed (not on initial mount if we have initialProducts)
-    if (initialProducts.length > 0 && page === 1 && sort === 'newest' && priceRange === 'all' && availability === 'all') {
-      // Use initial products
-      return;
-    }
-
+    // Always load products to ensure we have the latest data
+    // The initialProducts are just for initial render, but we should fetch fresh data
     loadProducts();
   }, [collectionHandle, storeId, sort, priceRange, availability, page, offset, initialProducts.length]);
 
   if (loading) {
     return (
-      <div className="py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="aspect-square bg-gray-200 rounded-lg mb-2" />
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-            </div>
-          ))}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8">
+          <div className={`grid ${gridClasses} ${gapClasses}`}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-square bg-gray-200 rounded-lg mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -90,39 +159,62 @@ function CollectionProductsClientComponent({
 
   if (!products || products.length === 0) {
     return (
-      <div className="py-12 text-center">
-        <p className="text-gray-500 text-lg mb-4">
-          {t('collection.no_products') || 'אין מוצרים בקטגוריה זו כרגע'}
-        </p>
+      <div className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-md mx-auto">
+          <p className="text-gray-500 text-lg mb-6">
+            {emptyText}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors text-sm font-medium"
+          >
+            רענן עמוד
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="py-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {products.map((product: any) => {
-          // Shopify logic: Every product has at least one variant
-          // Price always comes from variants[0].price
-          const productForCard = {
-            id: product.id,
-            title: product.title,
-            handle: product.handle,
-            image: product.image,
-            price: product.price || 0,
-            compare_at_price: product.compare_at_price,
-            colors: product.colors,
-          };
-          
-          return (
-            <ProductCard 
-              key={product.id} 
-              product={productForCard}
-              storeSlug={storeSlug}
-              variant="minimal"
-            />
-          );
-        })}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-8">
+        <div className={`grid ${gridClasses} ${gapClasses}`}>
+          {products.map((product: any) => {
+            // Shopify logic: Every product has at least one variant
+            // Price always comes from variants[0].price
+            const productForCard = {
+              id: product.id,
+              title: product.title,
+              handle: product.handle,
+              image: product.image,
+              price: product.price || 0,
+              compare_at_price: product.compare_at_price,
+              colors: product.colors,
+              vendor: product.vendor,
+            };
+            
+            return (
+              <ProductCard 
+                key={product.id} 
+                product={productForCard}
+                storeSlug={storeSlug}
+                variant={cardStyle === 'minimal' ? 'minimal' : cardStyle === 'detailed' ? 'card' : 'default'}
+                showPrice={showPrice}
+                showComparePrice={showComparePrice}
+                showWishlist={showWishlist}
+                showBadges={showBadges}
+                showColorSwatches={showColorSwatches}
+                showVendor={showVendor}
+                showRating={showRating}
+                showQuickView={showQuickView}
+                showAddToCart={showAddToCart}
+                showShadow={showShadow}
+                showBorder={showBorder}
+                imageRatio={imageRatio}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -137,6 +229,16 @@ export const CollectionProductsClient = React.memo(CollectionProductsClientCompo
     prevProps.initialTotal !== nextProps.initialTotal
   ) {
     return false; // Will re-render
+  }
+  
+  // Compare settings (shallow comparison)
+  const prevSettings = prevProps.settings || {};
+  const nextSettings = nextProps.settings || {};
+  const settingsKeys = new Set([...Object.keys(prevSettings), ...Object.keys(nextSettings)]);
+  for (const key of settingsKeys) {
+    if ((prevSettings as any)[key] !== (nextSettings as any)[key]) {
+      return false; // Will re-render
+    }
   }
   
   // Compare initialProducts array length and IDs

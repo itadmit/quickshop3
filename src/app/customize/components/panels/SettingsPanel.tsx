@@ -222,21 +222,24 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
   // Load collections when featured_products section is selected
   const prevProductSearchRef = useRef<string>('');
   const prevProductSectionTypeRef = useRef<string>('');
+  const prevProductSelectionModeRef = useRef<string>('');
   const hasLoadedProductsRef = useRef<boolean>(false);
   const prevProductManualSearchRef = useRef<string>('');
   
   useEffect(() => {
     if (section.type === 'featured_products' && storeId) {
       const productSelectionMode = section.settings?.product_selection_mode || 'all';
+      const modeChanged = prevProductSelectionModeRef.current !== productSelectionMode;
       
       // Load collections when collection mode is selected
       if (productSelectionMode === 'collection') {
         const sectionChanged = prevProductSectionTypeRef.current !== section.type;
         const searchChanged = prevProductSearchRef.current !== debouncedProductCollectionSearch;
         
-        if (sectionChanged || searchChanged || !hasLoadedProductsRef.current) {
+        if (sectionChanged || searchChanged || modeChanged || !hasLoadedProductsRef.current) {
           prevProductSectionTypeRef.current = section.type;
           prevProductSearchRef.current = debouncedProductCollectionSearch;
+          prevProductSelectionModeRef.current = productSelectionMode;
           hasLoadedProductsRef.current = true;
           loadCollections();
         }
@@ -247,9 +250,10 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
         const sectionChanged = prevProductSectionTypeRef.current !== section.type;
         const searchChanged = prevProductManualSearchRef.current !== debouncedProductSearch;
         
-        if (sectionChanged || searchChanged || !hasLoadedProductsRef.current) {
+        if (sectionChanged || searchChanged || modeChanged || !hasLoadedProductsRef.current) {
           prevProductSectionTypeRef.current = section.type;
           prevProductManualSearchRef.current = debouncedProductSearch;
+          prevProductSelectionModeRef.current = productSelectionMode;
           hasLoadedProductsRef.current = true;
           loadProducts();
         }
@@ -259,6 +263,7 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
       prevProductSectionTypeRef.current = '';
       prevProductSearchRef.current = '';
       prevProductManualSearchRef.current = '';
+      prevProductSelectionModeRef.current = '';
       hasLoadedProductsRef.current = false;
     }
   }, [section.type, section.settings?.product_selection_mode, storeId, debouncedProductCollectionSearch, debouncedProductSearch]);
@@ -286,16 +291,20 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
     try {
       const params = new URLSearchParams();
       params.append('storeId', storeId.toString());
-      params.append('status', 'active');
+      // Don't filter by status in customizer - show all products including drafts
       if (debouncedProductSearch) {
         params.append('search', debouncedProductSearch);
       }
       params.append('limit', '50');
       
-      const response = await fetch(`/api/products?${params.toString()}`);
+      const response = await fetch(`/api/products?${params.toString()}`, {
+        credentials: 'include', // Important: include cookies for authentication
+      });
       if (response.ok) {
         const data = await response.json();
         setProducts(data.products || []);
+      } else {
+        console.error('[SettingsPanel] Failed to load products:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error loading products:', error);
@@ -1324,20 +1333,22 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                               }`}
                             >
                               <div
+                                className="flex-shrink-0"
                                 onClick={(e) => {
+                                  // Don't toggle if clicking on checkbox (it handles its own click)
+                                  if ((e.target as HTMLElement).closest('label, input[type="checkbox"]')) {
+                                    return;
+                                  }
                                   e.stopPropagation();
                                   toggleProductCollection(collection.id);
                                 }}
-                                className="flex-shrink-0"
                               >
                                 <Checkbox
                                   checked={productSelectedCollectionIds.includes(collection.id)}
                                   onCheckedChange={(checked) => {
                                     toggleProductCollection(collection.id);
                                   }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                               </div>
                               <span 
@@ -1415,7 +1426,13 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                               className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-50 ${
                                 productSelectedProductIds.includes(product.id) ? 'bg-green-50 border border-green-200' : ''
                               }`}
-                              onClick={() => toggleProduct(product.id)}
+                              onClick={(e) => {
+                                // Don't toggle if clicking on checkbox (it handles its own click)
+                                if ((e.target as HTMLElement).closest('label, input[type="checkbox"]')) {
+                                  return;
+                                }
+                                toggleProduct(product.id);
+                              }}
                             >
                               <Checkbox
                                 checked={productSelectedProductIds.includes(product.id)}

@@ -78,34 +78,38 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
 
   if (layout === 'simple') {
     return (
-      <div className={`py-6 ${textAlignClasses}`}>
-        <h1 
-          className={`${titleSizeClasses} font-bold mb-2`}
-          style={{ color: titleColor }}
-        >
-          {collection.title}
-        </h1>
-        {showDescription && collection.description && (
-          <p 
-            className="text-lg mb-2"
-            style={{ color: descriptionColor }}
-          >
-            {collection.description}
-          </p>
-        )}
-        {showProductCount && collection.product_count !== undefined && (
-          <p className="text-sm text-gray-500">
-            {collection.product_count} {t('product.items') || 'פריטים'}
-          </p>
-        )}
+      <div className={`py-12 bg-white`}>
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${textAlignClasses}`}>
+          <div className={`max-w-3xl ${textAlign === 'center' ? 'mx-auto' : ''}`}>
+            <h1 
+              className={`${titleSizeClasses} font-bold mb-4 tracking-tight`}
+              style={{ color: titleColor }}
+            >
+              {collection.title}
+            </h1>
+            {showDescription && collection.description && (
+              <div 
+                className="text-lg mb-4 leading-relaxed"
+                style={{ color: descriptionColor }}
+                dangerouslySetInnerHTML={{ __html: collection.description }}
+              />
+            )}
+            {showProductCount && collection.product_count !== undefined && (
+              <p className="text-sm font-medium text-gray-500">
+                {collection.product_count} {t('product.products') === 'product.products' ? 'מוצרים' : t('product.products')}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (layout === 'hero') {
+    const hasImageToShow = showImage && collection.image_url;
     return (
-      <div className={`relative ${bannerHeightClasses} flex ${contentPositionClasses}`}>
-        {showImage && collection.image_url && (
+      <div className={`relative ${bannerHeightClasses} flex ${contentPositionClasses} ${!hasImageToShow ? 'bg-gray-50' : ''}`}>
+        {hasImageToShow && (
           <div className="absolute inset-0 z-0">
             <img
               src={collection.image_url}
@@ -118,26 +122,30 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
             />
           </div>
         )}
-        <div className={`relative z-10 w-full ${textAlignClasses} text-white px-4`}>
-          <h1 
-            className={`${titleSizeClasses} font-bold mb-4`}
-            style={{ color: showImage ? '#FFFFFF' : titleColor }}
-          >
-            {collection.title}
-          </h1>
-          {showDescription && collection.description && (
-            <p 
-              className="text-lg md:text-xl mb-4 max-w-2xl mx-auto"
-              style={{ color: showImage ? 'rgba(255,255,255,0.9)' : descriptionColor }}
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={`max-w-3xl ${textAlign === 'center' ? 'mx-auto' : textAlign === 'left' ? 'mr-auto' : 'ml-auto'} ${textAlignClasses}`}>
+            <h1 
+              className={`${titleSizeClasses} font-bold mb-4 tracking-tight`}
+              style={{ color: hasImageToShow ? '#FFFFFF' : titleColor }}
             >
-              {collection.description}
-            </p>
-          )}
-          {showProductCount && collection.product_count !== undefined && (
-            <p className="text-sm opacity-90">
-              {collection.product_count} {t('product.items') || 'פריטים'}
-            </p>
-          )}
+              {collection.title}
+            </h1>
+            {showDescription && collection.description && (
+              <div 
+                className="text-lg md:text-xl mb-6 leading-relaxed"
+                style={{ color: hasImageToShow ? 'rgba(255,255,255,0.95)' : descriptionColor }}
+                dangerouslySetInnerHTML={{ __html: collection.description }}
+              />
+            )}
+            {showProductCount && collection.product_count !== undefined && (
+              <p 
+                className="text-sm font-medium"
+                style={{ color: hasImageToShow ? 'rgba(255,255,255,0.9)' : '#6B7280' }}
+              >
+                {collection.product_count} {t('product.items') || 'מוצרים'}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -145,35 +153,38 @@ export function CollectionHeaderSection({ section, collection, onUpdate }: Colle
 
   // Default: banner layout
   return (
-    <div className={`py-8 ${textAlignClasses}`}>
-      {showImage && collection.image_url && (
-        <div className="mb-6">
-          <img
-            src={collection.image_url}
-            alt={collection.title}
-            className="w-full h-64 object-cover rounded-lg"
-          />
+    <div className={`py-12 bg-white`}>
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${textAlignClasses}`}>
+        {showImage && collection.image_url && (
+          <div className="mb-8 overflow-hidden rounded-2xl bg-gray-100 aspect-[21/9]">
+            <img
+              src={collection.image_url}
+              alt={collection.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        <div className={`max-w-3xl ${textAlign === 'center' ? 'mx-auto' : ''}`}>
+          <h1 
+            className={`${titleSizeClasses} font-bold mb-4 tracking-tight`}
+            style={{ color: titleColor }}
+          >
+            {collection.title}
+          </h1>
+          {showDescription && collection.description && (
+            <div 
+              className="text-lg mb-4 leading-relaxed"
+              style={{ color: descriptionColor }}
+              dangerouslySetInnerHTML={{ __html: collection.description }}
+            />
+          )}
+          {showProductCount && collection.product_count !== undefined && (
+            <p className="text-sm font-medium text-gray-500">
+              {collection.product_count} {t('product.products') === 'product.products' ? 'מוצרים' : t('product.products')}
+            </p>
+          )}
         </div>
-      )}
-      <h1 
-        className={`${titleSizeClasses} font-bold mb-4`}
-        style={{ color: titleColor }}
-      >
-        {collection.title}
-      </h1>
-      {showDescription && collection.description && (
-        <p 
-          className="text-lg mb-2"
-          style={{ color: descriptionColor }}
-        >
-          {collection.description}
-        </p>
-      )}
-      {showProductCount && collection.product_count !== undefined && (
-        <p className="text-sm text-gray-500">
-          {collection.product_count} {t('product.items') || 'פריטים'}
-        </p>
-      )}
+      </div>
     </div>
   );
 }
@@ -216,20 +227,22 @@ export function CollectionDescriptionSection({ section, collection, onUpdate }: 
     : collection.description;
 
   return (
-    <div className={`py-4 ${textAlignClasses}`}>
-      <div 
-        className={`prose max-w-none ${textSizeClasses}`}
-        style={{ color: textColor }}
-        dangerouslySetInnerHTML={{ __html: displayDescription }}
-      />
-      {!showFull && collection.description.length > maxChars && (
-        <button
-          onClick={() => setShowingFull(!showingFull)}
-          className="mt-2 text-sm font-medium text-gray-900 hover:text-gray-700 underline"
-        >
-          {showingFull ? (t('common.show_less') || 'הצג פחות') : readMoreText}
-        </button>
-      )}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={`py-4 ${textAlignClasses}`}>
+        <div 
+          className={`prose max-w-none ${textSizeClasses}`}
+          style={{ color: textColor }}
+          dangerouslySetInnerHTML={{ __html: displayDescription }}
+        />
+        {!showFull && collection.description.length > maxChars && (
+          <button
+            onClick={() => setShowingFull(!showingFull)}
+            className="mt-2 text-sm font-medium text-gray-900 hover:text-gray-700 underline"
+          >
+            {showingFull ? (t('common.show_less') || 'הצג פחות') : readMoreText}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -271,85 +284,94 @@ export function CollectionFiltersSection({ section, collection, onUpdate }: Coll
   };
 
   const selectStyle = {
-    backgroundColor: filterBgColor,
+    backgroundColor: 'transparent',
     color: filterTextColor,
-    borderColor: '#D1D5DB',
+    border: 'none',
+    paddingRight: '0',
+    paddingLeft: '1.5rem', // For chevron space
+    fontSize: '0.95rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+    backgroundPosition: 'left center',
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: '1.5em 1.5em',
+    appearance: 'none',
+    WebkitAppearance: 'none'
   };
 
   return (
     <div 
-      className="py-4 rounded-lg"
-      style={{ backgroundColor: filterBgColor }}
+      className="sticky top-0 z-20 border-b border-gray-100 backdrop-blur-md bg-white/90"
     >
-      <div className="flex flex-wrap items-center gap-4">
-        {showSort && (
-          <div className="flex items-center gap-2">
-            <label 
-              className="text-sm font-medium"
-              style={{ color: filterTextColor }}
-            >
-              {t('collection.sort') || 'מיון'}:
-            </label>
-            <select 
-              value={currentSort}
-              onChange={(e) => handleFilterChange('sort', e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-              style={selectStyle}
-            >
-              <option value="newest">{t('collection.sort_newest') || 'חדש ביותר'}</option>
-              <option value="oldest">{t('collection.sort_oldest') || 'ישן ביותר'}</option>
-              <option value="price-low">{t('collection.sort_price_low') || 'מחיר: נמוך לגבוה'}</option>
-              <option value="price-high">{t('collection.sort_price_high') || 'מחיר: גבוה לנמוך'}</option>
-              <option value="name-asc">{t('collection.sort_name_asc') || 'שם: א-ב'}</option>
-              <option value="name-desc">{t('collection.sort_name_desc') || 'שם: ב-א'}</option>
-              <option value="popularity">{t('collection.sort_popularity') || 'פופולריות'}</option>
-            </select>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            {showSort && (
+              <div className="relative group">
+                <span className="absolute -top-2.5 right-0 text-[10px] text-gray-500 bg-white px-1">
+                  {t('collection.sort') || 'מיון'}
+                </span>
+                <select 
+                  value={currentSort}
+                  onChange={(e) => handleFilterChange('sort', e.target.value)}
+                  className="focus:ring-0 focus:outline-none py-2"
+                  style={selectStyle}
+                >
+                  <option value="newest">{t('collection.sort_newest') || 'חדש ביותר'}</option>
+                  <option value="oldest">{t('collection.sort_oldest') || 'ישן ביותר'}</option>
+                  <option value="price-low">{t('collection.sort_price_low') || 'מחיר: נמוך לגבוה'}</option>
+                  <option value="price-high">{t('collection.sort_price_high') || 'מחיר: גבוה לנמוך'}</option>
+                  <option value="name-asc">{t('collection.sort_name_asc') || 'שם: א-ב'}</option>
+                  <option value="name-desc">{t('collection.sort_name_desc') || 'שם: ב-א'}</option>
+                  <option value="popularity">{t('collection.sort_popularity') || 'פופולריות'}</option>
+                </select>
+              </div>
+            )}
+            
+            {showPriceFilter && (
+              <div className="relative group">
+                <span className="absolute -top-2.5 right-0 text-[10px] text-gray-500 bg-white px-1">
+                  {t('collection.price_range') || 'מחיר'}
+                </span>
+                <select 
+                  value={currentPriceRange}
+                  onChange={(e) => handleFilterChange('price', e.target.value)}
+                  className="focus:ring-0 focus:outline-none py-2"
+                  style={selectStyle}
+                >
+                  <option value="all">{t('collection.all_prices') || 'הכל'}</option>
+                  <option value="0-100">₪0 - ₪100</option>
+                  <option value="100-200">₪100 - ₪200</option>
+                  <option value="200-500">₪200 - ₪500</option>
+                  <option value="500+">₪500+</option>
+                </select>
+              </div>
+            )}
+            
+            {showAvailabilityFilter && (
+              <div className="relative group">
+                <span className="absolute -top-2.5 right-0 text-[10px] text-gray-500 bg-white px-1">
+                  {t('collection.availability') || 'זמינות'}
+                </span>
+                <select 
+                  value={currentAvailability}
+                  onChange={(e) => handleFilterChange('availability', e.target.value)}
+                  className="focus:ring-0 focus:outline-none py-2"
+                  style={selectStyle}
+                >
+                  <option value="all">{t('collection.all') || 'הכל'}</option>
+                  <option value="in_stock">{t('product.in_stock') || 'במלאי'}</option>
+                  <option value="out_of_stock">{t('product.out_of_stock') || 'אזל מהמלאי'}</option>
+                </select>
+              </div>
+            )}
           </div>
-        )}
-        
-        {showPriceFilter && (
-          <div className="flex items-center gap-2">
-            <label 
-              className="text-sm font-medium"
-              style={{ color: filterTextColor }}
-            >
-              {t('collection.price_range') || 'טווח מחירים'}:
-            </label>
-            <select 
-              value={currentPriceRange}
-              onChange={(e) => handleFilterChange('price', e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-              style={selectStyle}
-            >
-              <option value="all">{t('collection.all_prices') || 'כל המחירים'}</option>
-              <option value="0-100">₪0 - ₪100</option>
-              <option value="100-200">₪100 - ₪200</option>
-              <option value="200-500">₪200 - ₪500</option>
-              <option value="500+">₪500+</option>
-            </select>
+          
+          <div className="hidden md:block text-sm text-gray-500">
+            {collection?.product_count || 0} {t('product.products') === 'product.products' ? 'מוצרים' : t('product.products')}
           </div>
-        )}
-        
-        {showAvailabilityFilter && (
-          <div className="flex items-center gap-2">
-            <label 
-              className="text-sm font-medium"
-              style={{ color: filterTextColor }}
-            >
-              {t('collection.availability') || 'זמינות'}:
-            </label>
-            <select 
-              value={currentAvailability}
-              onChange={(e) => handleFilterChange('availability', e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-              style={selectStyle}
-            >
-              <option value="all">{t('collection.all') || 'הכל'}</option>
-              <option value="in_stock">{t('product.in_stock') || 'במלאי'}</option>
-              <option value="out_of_stock">{t('product.out_of_stock') || 'אזל מהמלאי'}</option>
-            </select>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -390,7 +412,7 @@ export function CollectionProductsSection({ section, collection, products = [], 
     large: 'gap-8',
   }[gap] || 'gap-6';
 
-  // Use client component for dynamic loading with filters
+  // Use client component for dynamic loading with filters (only in storefront, not in customizer)
   if (collection?.handle && storeId) {
     return (
       <CollectionProductsClient
@@ -398,11 +420,31 @@ export function CollectionProductsSection({ section, collection, products = [], 
         storeId={storeId}
         initialProducts={products}
         initialTotal={collection?.product_count || 0}
+        settings={{
+          productsPerRow,
+          productsPerRowTablet,
+          productsPerRowMobile,
+          cardStyle,
+          showShadow,
+          showBorder,
+          imageRatio,
+          gap,
+          showPrice,
+          showComparePrice,
+          showVendor,
+          showRating,
+          showBadges,
+          showColorSwatches,
+          showQuickView,
+          showAddToCart,
+          showWishlist,
+          emptyText
+        }}
       />
     );
   }
 
-  // Fallback to static products if no collection handle
+  // For customizer or fallback: use static products display
   if (!products || products.length === 0) {
     return (
       <div className="py-12 text-center">
@@ -413,13 +455,33 @@ export function CollectionProductsSection({ section, collection, products = [], 
     );
   }
 
-  // Responsive grid classes
-  const gridCols = `grid-cols-${productsPerRowMobile} md:grid-cols-${productsPerRowTablet} lg:grid-cols-${productsPerRow}`;
+  // Map settings to actual Tailwind classes (safe for JIT)
+  const gridColsClasses = {
+    mobile: {
+      1: 'grid-cols-1',
+      2: 'grid-cols-2',
+    }[productsPerRowMobile] || 'grid-cols-2',
+    tablet: {
+      2: 'md:grid-cols-2',
+      3: 'md:grid-cols-3',
+      4: 'md:grid-cols-4',
+    }[productsPerRowTablet] || 'md:grid-cols-3',
+    desktop: {
+      2: 'lg:grid-cols-2',
+      3: 'lg:grid-cols-3',
+      4: 'lg:grid-cols-4',
+      5: 'lg:grid-cols-5',
+      6: 'lg:grid-cols-6',
+    }[productsPerRow] || 'lg:grid-cols-4',
+  };
+
+  const gridClasses = `${gridColsClasses.mobile} ${gridColsClasses.tablet} ${gridColsClasses.desktop}`;
 
   return (
-    <div className="py-8">
-      <div className={`grid ${gridCols} ${gapClasses}`}>
-        {products.map((product: any) => {
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-8">
+        <div className={`grid ${gridClasses} ${gapClasses}`}>
+          {products.map((product: any) => {
           // Shopify logic: Every product has at least one variant
           // Price always comes from variants[0] (or from product.price if it's already calculated)
           const productForCard = {
@@ -439,9 +501,22 @@ export function CollectionProductsSection({ section, collection, products = [], 
               product={productForCard}
               storeSlug={storeSlug}
               variant={cardStyle === 'minimal' ? 'minimal' : cardStyle === 'detailed' ? 'card' : 'default'}
+              showPrice={showPrice}
+              showComparePrice={showComparePrice}
+              showWishlist={showWishlist}
+              showBadges={showBadges}
+              showColorSwatches={showColorSwatches}
+              showVendor={showVendor}
+              showRating={showRating}
+              showQuickView={showQuickView}
+              showAddToCart={showAddToCart}
+              showShadow={showShadow}
+              showBorder={showBorder}
+              imageRatio={imageRatio}
             />
           );
         })}
+        </div>
       </div>
     </div>
   );
@@ -513,7 +588,7 @@ export function CollectionPaginationSection({ section, collection, onUpdate }: C
 
   if (style === 'load_more') {
     return (
-      <div className={`py-8 flex ${alignmentClasses}`}>
+      <div className={`py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex ${alignmentClasses}`}>
         {currentPage < totalPages && (
           <button 
             onClick={() => handlePageChange(currentPage + 1)}
@@ -547,7 +622,7 @@ export function CollectionPaginationSection({ section, collection, onUpdate }: C
   }
 
   return (
-    <div className={`py-8 flex ${alignmentClasses} items-center gap-2`}>
+    <div className={`py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex ${alignmentClasses} items-center gap-2`}>
       {showPrevNext && currentPage > 1 && (
         <button 
           onClick={() => handlePageChange(currentPage - 1)}

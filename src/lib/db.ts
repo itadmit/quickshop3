@@ -11,12 +11,22 @@ export function getDb(): Pool {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
+    // Optimized for Neon Serverless Postgres
     pool = new Pool({
       connectionString,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000, // Increased for Neon cloud connection
+      max: 10, // Reduced - Neon handles pooling on their side
+      min: 2,  // Keep 2 connections warm
+      idleTimeoutMillis: 60000, // Keep connections alive longer
+      connectionTimeoutMillis: 5000, // Faster timeout
       ssl: connectionString.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
+      // Neon-specific optimizations
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
+    });
+
+    // Handle pool errors
+    pool.on('error', (err) => {
+      console.error('Unexpected database pool error:', err);
     });
   }
 

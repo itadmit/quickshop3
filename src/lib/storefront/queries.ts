@@ -476,12 +476,15 @@ export const getCollectionByHandle = unstable_cache(
   }> => {
     const { limit = 20, offset = 0 } = options;
 
+    // Decode URL-encoded handle (for Hebrew slugs)
+    const decodedHandle = decodeURIComponent(handle);
+
     // Query לקטגוריה
     const collection = await queryOne<CollectionItem>(
       `SELECT id, title, handle, description, image_url
        FROM product_collections
        WHERE store_id = $1 AND handle = $2 AND published_scope = 'web'`,
-      [storeId, handle]
+      [storeId, decodedHandle]
     );
 
     if (!collection) {

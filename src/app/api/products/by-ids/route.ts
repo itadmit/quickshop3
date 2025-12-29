@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get products by IDs - CRITICAL: Only from user's store
+    // If user is authenticated (customizer), include draft products too
+    const statusFilter = user ? '' : 'AND p.status = \'active\'';
     const result = await query(
       `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
               pv.price,
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest) {
        LEFT JOIN stores s ON s.id = p.store_id
        WHERE p.id = ANY($1::int[])
          AND p.store_id = $2
-         AND p.status = 'active'`,
+         ${statusFilter}`,
       [ids, storeId]
     );
 

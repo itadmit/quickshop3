@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { SectionSettings } from '@/lib/customizer/types';
 import { HiStar, HiPhotograph } from 'react-icons/hi';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useStoreId } from '@/hooks/useStoreId';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { areSectionsEqual } from './sectionMemoUtils';
@@ -26,307 +27,262 @@ interface Product {
 }
 
 function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedProductsProps) {
+  console.log(`🛍️ [FeaturedProducts] Component render - section.id: ${section.id}`);
+  
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
-  const storeSlug = params?.storeSlug as string || '';
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isInCustomizer = pathname.startsWith('/customize');
   
   // Get storeId from user session (for customizer) or from URL (for storefront)
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
+  const storeId = useStoreId();
   
-  // Use a stable key based on section ID to persist refs across remounts
-  const sectionKey = `featured-products-${section.id}`;
+  // Get storeSlug - try from URL params first, then from API if in customizer
+  const [storeSlug, setStoreSlug] = useState<string>('');
   
-  // Clear products immediately on mount to prevent showing wrong store's products
   useEffect(() => {
-    setProducts([]);
-    // Clear any stored products to prevent showing wrong store's products
-    sessionStorage.removeItem(`${sectionKey}-loaded`);
-    sessionStorage.removeItem(`${sectionKey}-prevSettings`);
-    sessionStorage.removeItem(`${sectionKey}-products`);
-    sessionStorage.removeItem(`${sectionKey}-storeId`);
-  }, [sectionKey]);
-  
-  // Helper function to clear sessionStorage for wrong storeId
-  const clearSessionStorageForWrongStore = (currentStoreId: number) => {
-    if (typeof window === 'undefined') return;
-    
-    // Check all sessionStorage keys for this section
-    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
-    if (storedStoreId && parseInt(storedStoreId) !== currentStoreId) {
-      sessionStorage.removeItem(`${sectionKey}-products`);
-      sessionStorage.removeItem(`${sectionKey}-loaded`);
-      sessionStorage.removeItem(`${sectionKey}-prevSettings`);
-      sessionStorage.removeItem(`${sectionKey}-storeId`);
-      setProducts([]);
+    const urlSlug = params?.storeSlug as string;
+    if (urlSlug) {
+      setStoreSlug(urlSlug);
+      return;
     }
-  };
-  
-  // Load storeId from user session (for customizer) or from URL (for storefront)
-  useEffect(() => {
-    const loadStoreId = async () => {
-      // If we have storeSlug in URL, try to get from localStorage first (for storefront)
-      if (storeSlug) {
-        if (typeof window !== 'undefined') {
-          const storedSlug = localStorage.getItem('quickshop_cart_store_slug');
-          const storedId = localStorage.getItem('quickshop_cart_store_id');
-          if (storedSlug === storeSlug && storedId) {
-            const parsedStoreId = parseInt(storedId);
-            setStoreId(parsedStoreId);
-            // Clear sessionStorage for wrong storeId
-            clearSessionStorageForWrongStore(parsedStoreId);
-            return;
-          }
-        }
-        // If not in localStorage, try API
-        try {
-          const response = await fetch(`/api/stores/${storeSlug}/id`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.storeId) {
-              setStoreId(data.storeId);
-              // Clear sessionStorage for wrong storeId
-              clearSessionStorageForWrongStore(data.storeId);
-              return;
-            }
-          }
-        } catch (error) {
-          // Error loading storeId from slug - ignore
-        }
-      }
-      
-      // Otherwise, get from user session (for customizer)
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.store?.id) {
-            setStoreId(data.store.id);
-            // Clear sessionStorage for wrong storeId
-            clearSessionStorageForWrongStore(data.store.id);
-          }
-        }
-      } catch (error) {
-        // Error loading storeId from session - ignore
-      }
-    };
     
-    loadStoreId();
-  }, [storeSlug, sectionKey]);
-  
-  const loadedRef = useRef<string>('');
-  const prevSettingsRef = useRef<{ productsCount: number; productSelectionMode: string; selectedIdsString: string }>({ 
-    productsCount: 0, 
-    productSelectionMode: '', 
-    selectedIdsString: '' 
+    // If in customizer and no slug in URL, fetch from API
+    if (isInCustomizer && storeId) {
+      fetch(`/api/customizer/pages?pageType=home`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.store?.slug) {
+            setStoreSlug(data.store.slug);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [params?.storeSlug, isInCustomizer, storeId]);
+  // Initialize products from sessionStorage if available
+  const sectionKey = `featured-products-${section.id}`;
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    // Don't show loading if we have cached data
+    if (typeof window === 'undefined') return true;
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    return !stored;
   });
   
-  // Initialize refs and products from sessionStorage if available (to persist across remounts)
-  // BUT: Only load if storeId matches to prevent showing products from wrong store
-  // IMPORTANT: This runs AFTER storeId is loaded
-  useEffect(() => {
-    // Don't do anything if storeId is not loaded yet
-    if (!storeId) {
-      return;
-    }
-    
-    const storedLoadedKey = sessionStorage.getItem(`${sectionKey}-loaded`);
-    const storedPrevSettings = sessionStorage.getItem(`${sectionKey}-prevSettings`);
-    const storedProducts = sessionStorage.getItem(`${sectionKey}-products`);
-    const storedStoreId = sessionStorage.getItem(`${sectionKey}-storeId`);
-    
-    // Only use stored data if storeId matches
-    if (storedStoreId && parseInt(storedStoreId) === storeId) {
-      if (storedLoadedKey) {
-        loadedRef.current = storedLoadedKey;
-      }
-      if (storedPrevSettings) {
-        try {
-          prevSettingsRef.current = JSON.parse(storedPrevSettings);
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-      if (storedProducts) {
-        try {
-          const parsedProducts = JSON.parse(storedProducts);
-          setProducts(parsedProducts);
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    } else {
-      // Clear stored data if storeId doesn't match or doesn't exist
-      if (storedStoreId) {
-        sessionStorage.removeItem(`${sectionKey}-loaded`);
-        sessionStorage.removeItem(`${sectionKey}-prevSettings`);
-        sessionStorage.removeItem(`${sectionKey}-products`);
-        sessionStorage.removeItem(`${sectionKey}-storeId`);
-      }
-      // Always clear products if storeId doesn't match
-      setProducts([]);
-    }
-  }, [sectionKey, storeId]);
-
-  // Memoize settings to prevent unnecessary re-renders
-  const productsCount = useMemo(() => {
-    return settings.products_count || 8;
-  }, [settings.products_count]);
+  // Get settings - simple and direct
+  const productsCount = settings.products_count || 8;
+  const productSelectionMode = settings.product_selection_mode || 'all';
+  const selectedCollectionIds = Array.isArray(settings.selected_collection_ids) ? settings.selected_collection_ids : [];
+  const selectedProductIds = Array.isArray(settings.selected_product_ids) ? settings.selected_product_ids : [];
   
-  const productSelectionMode = useMemo(() => {
-    return settings.product_selection_mode || 'all';
-  }, [settings.product_selection_mode]);
+  // Create stable key for settings - only reload when this changes
+  const collectionIdsStr = useMemo(() => 
+    [...selectedCollectionIds].sort((a, b) => a - b).join(','), 
+    [selectedCollectionIds.join(',')]
+  );
+  const productIdsStr = useMemo(() => 
+    [...selectedProductIds].sort((a, b) => a - b).join(','), 
+    [selectedProductIds.join(',')]
+  );
   
-  const selectedCollectionIds = useMemo(() => {
-    const ids = settings.selected_collection_ids || [];
-    return Array.isArray(ids) ? ids : [];
-  }, [settings.selected_collection_ids]);
-  
-  const selectedProductIds = useMemo(() => {
-    const ids = settings.selected_product_ids || [];
-    return Array.isArray(ids) ? ids : [];
-  }, [settings.selected_product_ids]);
-  
-  // Create stable string representation of IDs for comparison
-  const selectedIdsString = useMemo(() => {
+  const settingsKey = useMemo(() => {
+    let idsStr = '';
     if (productSelectionMode === 'manual' && selectedProductIds.length > 0) {
-      return [...selectedProductIds].sort((a, b) => a - b).join(',');
+      idsStr = productIdsStr;
+    } else if (productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
+      idsStr = collectionIdsStr;
     }
-    if (!Array.isArray(selectedCollectionIds) || selectedCollectionIds.length === 0) {
-      return '';
-    }
-    return [...selectedCollectionIds].sort((a, b) => a - b).join(',');
-  }, [selectedCollectionIds, selectedProductIds, productSelectionMode]);
-
-  // Load real products from API (both in storefront and customizer preview)
+    const key = `${storeId}-${productsCount}-${productSelectionMode}-${idsStr}`;
+    console.log(`🛍️ [FeaturedProducts] settingsKey calculated:`, key, {
+      storeId,
+      productsCount,
+      productSelectionMode,
+      selectedCollectionIds,
+      selectedProductIds,
+      idsStr
+    });
+    return key;
+  }, [storeId, productsCount, productSelectionMode, collectionIdsStr, productIdsStr]);
+  
+  // Track previous settingsKey - use ref + sessionStorage to persist across remounts
+  const storedPrevKey = typeof window !== 'undefined' ? sessionStorage.getItem(`${sectionKey}-prevKey`) : null;
+  const prevSettingsKeyRef = useRef<string>(storedPrevKey || '');
+  const isLoadingRef = useRef<boolean>(false);
+  
+  // Load products - simple: only when settingsKey changes
   useEffect(() => {
+    const prevKey = prevSettingsKeyRef.current;
+    console.log(`🛍️ [FeaturedProducts] useEffect triggered`, {
+      storeId,
+      settingsKey,
+      prevSettingsKey: prevKey,
+      isLoading: isLoadingRef.current,
+      willReload: settingsKey !== prevKey && storeId !== null && !isLoadingRef.current
+    });
+    
+    // Don't load if storeId is null - wait for it to load
     if (!storeId) {
+      setLoading(false);
       return;
     }
     
-    // ✅ Create a stable key for this load attempt - כולל selectedCollectionIds כדי לזהות שינויים
-    const loadKey = `${storeId}-${productsCount}-${productSelectionMode}-${selectedIdsString || 'all'}`;
-    
-    // ✅ אם selectedIdsString השתנה, נקה את ה-loadedRef כדי לכפות טעינה מחדש
-    if (selectedIdsString !== prevSettingsRef.current.selectedIdsString) {
-      loadedRef.current = '';
-      sessionStorage.removeItem(`${sectionKey}-loaded`);
-      sessionStorage.removeItem(`${sectionKey}-products`);
+    // Skip if already loading
+    if (isLoadingRef.current) {
+      console.log(`🛍️ [FeaturedProducts] Skipping reload - already loading`);
+      return;
     }
     
-    // Check if we already loaded with these exact settings
-    if (loadedRef.current === loadKey) {
-      const currentSettings = { productsCount, productSelectionMode, selectedIdsString };
-      const prevSettings = prevSettingsRef.current;
-      
-      // Deep compare settings
-      if (
-        prevSettings.productsCount === currentSettings.productsCount &&
-        prevSettings.productSelectionMode === currentSettings.productSelectionMode &&
-        prevSettings.selectedIdsString === currentSettings.selectedIdsString
-      ) {
-        return;
+    // Skip if settingsKey hasn't changed (and we have products)
+    if (settingsKey === prevKey && products.length > 0) {
+      console.log(`🛍️ [FeaturedProducts] Skipping reload - settingsKey unchanged and have products`);
+      return;
+    }
+    
+    // If settingsKey changed, update ref and sessionStorage
+    if (settingsKey !== prevKey) {
+      console.log(`🛍️ [FeaturedProducts] settingsKey changed from ${prevKey} to ${settingsKey}, loading new data`);
+      prevSettingsKeyRef.current = settingsKey;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`${sectionKey}-prevKey`, settingsKey);
       }
     }
+    
+    let cancelled = false;
     
     const loadProducts = async () => {
+      // Prevent duplicate calls
+      if (isLoadingRef.current) {
+        console.log(`🛍️ [FeaturedProducts] Already loading, skipping duplicate call`);
+        return;
+      }
+      
+      isLoadingRef.current = true;
+      console.log(`🛍️ [FeaturedProducts] Starting load...`);
       setLoading(true);
       try {
         let loadedProducts: Product[] = [];
         
-        // If manual mode is selected, load specific products by IDs
         if (productSelectionMode === 'manual' && selectedProductIds.length > 0) {
           const idsParam = selectedProductIds.join(',');
-          const response = await fetch(`/api/products/by-ids?ids=${idsParam}&storeId=${storeId}`);
-          if (response.ok) {
+          console.log(`🛍️ [FeaturedProducts] Loading manual products with IDs: ${idsParam}`);
+          const response = await fetch(`/api/products/by-ids?ids=${idsParam}&storeId=${storeId}`, {
+            credentials: 'include' // Important: include cookies for authentication
+          });
+          if (response.ok && !cancelled) {
             const data = await response.json();
+            console.log(`🛍️ [FeaturedProducts] API response:`, data);
             loadedProducts = (data.products || []).map((p: any) => ({
               id: p.id,
               title: p.title,
               handle: p.handle,
               image: p.image || null,
               price: p.price || 0,
-              compare_at_price: null, // API doesn't return compare_at_price yet
+              compare_at_price: null,
               vendor: p.vendor
             }));
+            console.log(`🛍️ [FeaturedProducts] Mapped ${loadedProducts.length} products from manual selection`);
+          } else if (!cancelled) {
+            console.error(`🛍️ [FeaturedProducts] Failed to load products: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error(`🛍️ [FeaturedProducts] Error details:`, errorText);
           }
         } else {
-          // Otherwise, use the existing logic
           let url = `/api/storefront/products?storeId=${storeId}&limit=${productsCount}`;
           
-          // If collection mode is selected, filter by collections
           if (productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
-            // Get all collection handles
-            const collectionResponse = await fetch(`/api/collections?storeId=${storeId}&limit=100`);
+            const collectionResponse = await fetch(`/api/storefront/collections?storeId=${storeId}&limit=100&includeUnpublished=true`);
             if (collectionResponse.ok) {
               const collectionsData = await collectionResponse.json();
               const selectedCollections = collectionsData.collections?.filter((c: any) => 
                 selectedCollectionIds.includes(c.id)
               ) || [];
               
-              // If we have collections, use the first one's handle (or combine them)
-              // For now, we'll use the first collection
-              if (selectedCollections.length > 0 && selectedCollections[0]?.handle) {
-                url = `/api/storefront/products?storeId=${storeId}&collectionHandle=${selectedCollections[0].handle}&limit=${productsCount}`;
+              // Load products from all selected collections and merge them
+              if (selectedCollections.length > 0) {
+                console.log(`🛍️ [FeaturedProducts] Loading products from ${selectedCollections.length} collections`);
+                const allProducts: Product[] = [];
+                const seenProductIds = new Set<number>();
+                
+                // Fetch products from each collection
+                for (const collection of selectedCollections) {
+                  if (collection.handle && !cancelled) {
+                    const collectionUrl = `/api/storefront/products?storeId=${storeId}&collection=${collection.handle}&limit=${productsCount * 2}`;
+                    const collectionResponse = await fetch(collectionUrl);
+                    if (collectionResponse.ok) {
+                      const collectionData = await collectionResponse.json();
+                      const collectionProducts = collectionData.products || [];
+                      
+                      // Add products that haven't been seen yet (avoid duplicates)
+                      for (const product of collectionProducts) {
+                        if (!seenProductIds.has(product.id)) {
+                          seenProductIds.add(product.id);
+                          allProducts.push(product);
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                // Limit to requested number of products
+                loadedProducts = allProducts.slice(0, productsCount);
+                console.log(`🛍️ [FeaturedProducts] Loaded ${loadedProducts.length} unique products from ${selectedCollections.length} collections`);
               }
             }
           }
           
-          const response = await fetch(url);
-          if (response.ok) {
-            const data = await response.json();
-            loadedProducts = data.products || [];
+          // If no products loaded yet (not collection mode or no collections selected), load all products
+          if (loadedProducts.length === 0) {
+            const response = await fetch(url);
+            if (response.ok && !cancelled) {
+              const data = await response.json();
+              loadedProducts = data.products || [];
+            }
           }
         }
         
-        if (loadedProducts.length > 0) {
+        if (!cancelled) {
+          console.log(`🛍️ [FeaturedProducts] Loaded ${loadedProducts.length} products`);
           setProducts(loadedProducts);
-          
-          // Save to sessionStorage WITH storeId to prevent cross-store contamination
-          sessionStorage.setItem(`${sectionKey}-products`, JSON.stringify(loadedProducts));
-          sessionStorage.setItem(`${sectionKey}-loaded`, loadKey);
-          sessionStorage.setItem(`${sectionKey}-storeId`, String(storeId)); // CRITICAL: Store storeId
-          sessionStorage.setItem(`${sectionKey}-prevSettings`, JSON.stringify({ 
-            productsCount, 
-            productSelectionMode, 
-            selectedIdsString 
-          }));
-          
-          loadedRef.current = loadKey;
-          prevSettingsRef.current = { productsCount, productSelectionMode, selectedIdsString };
-        } else {
-          // Clear products if API returns empty (no products for this store)
-          setProducts([]);
-          // Clear sessionStorage for this section
-          sessionStorage.removeItem(`${sectionKey}-products`);
-          sessionStorage.removeItem(`${sectionKey}-loaded`);
-          sessionStorage.removeItem(`${sectionKey}-storeId`);
+          // Save to sessionStorage
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`${sectionKey}-data`, JSON.stringify(loadedProducts));
+          }
         }
       } catch (error) {
-        // Error loading featured products - ignore
+        if (!cancelled) {
+          console.error('[FeaturedProducts] Error loading products:', error);
+          setProducts([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          console.log(`🛍️ [FeaturedProducts] Loading finished`);
+          setLoading(false);
+          isLoadingRef.current = false;
+        }
       }
     };
     
     loadProducts();
-  }, [storeId, productsCount, productSelectionMode, selectedIdsString, sectionKey, selectedCollectionIds, selectedProductIds]);
-  
-  // ✅ Clear loadedRef when settings change to force reload
-  useEffect(() => {
-    // ✅ בטעינה מחדש - נקה את ה-loadedRef כדי לכפות טעינה מחדש
-    if (storeId && productSelectionMode === 'collection' && selectedCollectionIds.length > 0) {
-      loadedRef.current = '';
-      // Clear sessionStorage to force reload
-      sessionStorage.removeItem(`${sectionKey}-loaded`);
-      sessionStorage.removeItem(`${sectionKey}-products`);
-    }
-  }, [productsCount, productSelectionMode, selectedIdsString, selectedProductIds, selectedCollectionIds, storeId, sectionKey]);
+    
+    return () => {
+      console.log(`🛍️ [FeaturedProducts] Cleanup - cancelling load`);
+      cancelled = true;
+      isLoadingRef.current = false;
+    };
+  }, [settingsKey, storeId, sectionKey]); // Removed products.length to prevent re-runs when products change
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
@@ -419,6 +375,13 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     return sizeMap[size] || 'text-base';
   };
 
+  // Helper function to format price safely
+  const formatPrice = (price: any): string => {
+    if (!price) return '0.00';
+    const numPrice = typeof price === 'number' ? price : parseFloat(String(price));
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
+
   return (
     <div className="w-full" style={{ fontFamily }}>
       <div className="container mx-auto px-4">
@@ -482,7 +445,12 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
             ).map((item: any, index: number) => {
               const isPlaceholder = item.isPlaceholder;
               const product = isPlaceholder ? null : item as Product;
-              const productUrl = product ? `/shops/${storeSlug}/products/${product.handle}` : '#';
+              // In customizer, links should navigate to customizer edit mode
+              const productUrl = product 
+                ? (isInCustomizer 
+                    ? `/customize?pageType=product&pageHandle=${product.handle}`
+                    : `/shops/${storeSlug}/products/${product.handle}`)
+                : '#';
               const hasDiscount = product && product.compare_at_price && product.compare_at_price > product.price;
 
               return (
@@ -540,11 +508,11 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
                     {settings.show_price !== false && (
                       <div className="flex items-center gap-2">
                         <p className={`${getPriceSizeClass()} text-gray-900 font-medium`}>
-                          ₪{product?.price?.toFixed(2) || '199.90'}
+                          ₪{product?.price ? formatPrice(product.price) : '199.90'}
                         </p>
                         {(hasDiscount || isPlaceholder) && (
                           <p className={`${getPriceSizeClass()} text-gray-400 line-through`}>
-                            ₪{product?.compare_at_price?.toFixed(2) || '249.90'}
+                            ₪{product?.compare_at_price ? formatPrice(product.compare_at_price) : '249.90'}
                           </p>
                         )}
                       </div>
@@ -560,21 +528,53 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   );
 }
 
-// Memoize FeaturedProducts to prevent re-renders when parent re-renders
+// Memoize FeaturedProducts - only re-render if relevant settings changed
 export const FeaturedProducts = React.memo(FeaturedProductsComponent, (prevProps, nextProps) => {
-  // Use areSectionsEqual for deep comparison of section
-  if (!areSectionsEqual(prevProps.section, nextProps.section)) {
-    return false; // Will re-render
+  // Compare only relevant settings that affect data loading
+  const prevSettings = prevProps.section?.settings || {};
+  const nextSettings = nextProps.section?.settings || {};
+  
+  const relevantKeys = [
+    'products_count',
+    'product_selection_mode',
+    'selected_collection_ids',
+    'selected_product_ids'
+  ];
+  
+  const changes: string[] = [];
+  
+  for (const key of relevantKeys) {
+    const prev = JSON.stringify(prevSettings[key]);
+    const next = JSON.stringify(nextSettings[key]);
+    if (prev !== next) {
+      changes.push(`${key}: ${prev} -> ${next}`);
+    }
   }
   
   // Compare other props
-  if (
-    prevProps.editorDevice !== nextProps.editorDevice ||
-    prevProps.isPreview !== nextProps.isPreview
-  ) {
-    return false; // Will re-render
+  if (prevProps.editorDevice !== nextProps.editorDevice) {
+    changes.push(`editorDevice: ${prevProps.editorDevice} -> ${nextProps.editorDevice}`);
+  }
+  if (prevProps.isPreview !== nextProps.isPreview) {
+    changes.push(`isPreview: ${prevProps.isPreview} -> ${nextProps.isPreview}`);
+  }
+  if (prevProps.section?.id !== nextProps.section?.id) {
+    changes.push(`section.id: ${prevProps.section?.id} -> ${nextProps.section?.id}`);
   }
   
-  // onUpdate is intentionally ignored - it's a callback function
-  return true; // Skip re-render
+  // Check if section object reference changed (but content is the same)
+  const sectionRefChanged = prevProps.section !== nextProps.section;
+  if (sectionRefChanged && changes.length === 0) {
+    console.log(`🛍️ [FeaturedProducts] React.memo: SKIP RE-RENDER - section ref changed but content same`);
+    return true; // Skip re-render even if ref changed
+  }
+  
+  if (changes.length > 0) {
+    console.log(`🛍️ [FeaturedProducts] React.memo: WILL RE-RENDER`, changes);
+    return false; // Settings changed, re-render
+  }
+  
+  console.log(`🛍️ [FeaturedProducts] React.memo: SKIP RE-RENDER - no changes`);
+  // Everything else is the same, skip re-render
+  return true;
 });

@@ -185,7 +185,7 @@ export function UnifiedHeader({
     );
 
     if (isPreview) return logoContent;
-    return <Link href={`/shops/${storeSlug}`}>{logoContent}</Link>;
+    return <Link href={`/shops/${storeSlug}`} prefetch={true}>{logoContent}</Link>;
   };
 
   // Navigation component
@@ -218,6 +218,7 @@ export function UnifiedHeader({
           <Link
             key={index}
             href={href}
+            prefetch={true}
             className="transition-colors whitespace-nowrap"
             style={linkStyle}
             onMouseEnter={(e) => e.currentTarget.style.color = navHoverColor}

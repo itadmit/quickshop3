@@ -67,6 +67,8 @@ export function CustomizerLayout() {
   const [sampleProduct, setSampleProduct] = useState<any>(DEMO_PRODUCT);
   // Sample collection for collection page preview (start with demo data)
   const [sampleCollection, setSampleCollection] = useState<any>(DEMO_COLLECTION);
+  // Sample products for collection page preview (start with demo data)
+  const [sampleProducts, setSampleProducts] = useState<any[]>(DEMO_COLLECTION_PRODUCTS);
   
   // Store sections for each page type to preserve changes when switching
   const [pageSectionsCache, setPageSectionsCache] = useState<Record<PageType, SectionSettings[]>>({
@@ -159,6 +161,10 @@ export function CustomizerLayout() {
               const collectionData = await collectionResponse.json();
               if (collectionData.collection) {
                 setSampleCollection(collectionData.collection);
+                // ✅ שמור גם את המוצרים!
+                if (collectionData.products && collectionData.products.length > 0) {
+                  setSampleProducts(collectionData.products);
+                }
               } else {
                 setSampleCollection(DEMO_COLLECTION);
               }
@@ -1100,6 +1106,7 @@ export function CustomizerLayout() {
             pageType={currentPageType}
             sampleProduct={sampleProduct}
             sampleCollection={sampleCollection}
+            sampleProducts={sampleProducts}
           />
         </div>
 

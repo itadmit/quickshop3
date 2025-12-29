@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { getSectionName } from '@/lib/customizer/sectionNames';
+import { invalidateCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -315,6 +316,11 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // ✅ Invalidate cache for this page layout
+    await invalidateCache(`layout:${user.store_id}:${pageType}:*`);
+    // Also invalidate the default layout pattern
+    await invalidateCache(`layout:${user.store_id}:${pageType}:default`);
 
     return NextResponse.json({
       success: true,

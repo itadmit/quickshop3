@@ -28,6 +28,7 @@ export const SECTION_NAMES: Record<string, string> = {
   'product_info': 'מידע מוצר',
   'related_products': 'מוצרים קשורים',
   'collection_header': 'כותרת קטגוריה',
+  'collection_description': 'תיאור קטגוריה',
   'collection_filters': 'מסננים',
   'collection_products': 'רשימת מוצרים',
   'element_heading': 'כותרת',
