@@ -200,10 +200,14 @@ export default function StorefrontAccountPage() {
     try {
       const parsed = JSON.parse(customerData)
       setCustomer(parsed)
-      fetchOrders(parsed.id)
-      fetchReturns(parsed.id)
-      fetchAddresses(parsed.id)
-      fetchStoreCredit(parsed.id)
+      
+      // טעינת נתונים במקביל אבל עם try-catch נפרד לכל אחד
+      Promise.all([
+        fetchOrders(parsed.id).catch(err => console.error('Error fetching orders:', err)),
+        fetchReturns(parsed.id).catch(err => console.error('Error fetching returns:', err)),
+        fetchAddresses(parsed.id).catch(err => console.error('Error fetching addresses:', err)),
+        fetchStoreCredit(parsed.id).catch(err => console.error('Error fetching store credit:', err))
+      ])
     } catch (error) {
       console.error("Error parsing customer data:", error)
       router.push(`/shops/${storeSlug}/login`)

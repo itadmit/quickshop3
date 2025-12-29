@@ -18,6 +18,7 @@ import dynamic from 'next/dynamic';
 const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { ssr: false });
 const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { ssr: false });
 const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { ssr: false });
+const WishlistIcon = dynamic(() => import('@/components/storefront/WishlistIcon').then(mod => mod.WishlistIcon), { ssr: false });
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -333,10 +334,8 @@ export function UnifiedHeader({
                 <HiUser className="w-5 h-5" />
               </IconButton>
             )}
-            {settings.wishlist?.enabled === true && (
-              <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
-                <HiHeart className="w-5 h-5" />
-              </IconButton>
+            {settings.wishlist?.enabled === true && storeSlug && (
+              <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
             )}
             {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
           </div>
@@ -353,10 +352,8 @@ export function UnifiedHeader({
             <HiUser className="w-5 h-5" />
           </IconButton>
         )}
-        {settings.wishlist?.enabled === true && (
-          <IconButton title="מועדפים" href={`/shops/${storeSlug}/wishlist`}>
-            <HiHeart className="w-5 h-5" />
-          </IconButton>
+        {settings.wishlist?.enabled === true && storeSlug && (
+          <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
         )}
         {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
       </div>
@@ -557,9 +554,7 @@ export function UnifiedHeader({
         isPreview ? (
           <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
         ) : (
-          <Link href={`/shops/${storeSlug}/wishlist`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
-            <HiHeart className="w-5 h-5" />
-          </Link>
+          storeSlug && <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
         )
       )}
       {settings.cart?.enabled !== false && (

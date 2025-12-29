@@ -72,13 +72,13 @@ export function StorefrontHeader({
 
             {/* Wishlist */}
             <Link 
-              href={`/shops/${storeSlug}/account?tab=wishlist`}
+              href={`/shops/${storeSlug}/wishlist`}
               className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
               aria-label="רשימת משאלות"
             >
               <HiHeart className="w-6 h-6" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
                   {wishlistCount > 99 ? '99+' : wishlistCount}
                 </span>
               )}
