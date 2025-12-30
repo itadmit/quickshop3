@@ -6,33 +6,33 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
 import { SectionSettings } from '@/lib/customizer/types';
-import { Skeleton } from '@/components/ui/Skeleton';
+// Skeleton replaced with inline div to prevent hydration mismatch
 
-// Dynamic imports for real components (only used in storefront)
+// ✅ Dynamic imports עם ssr: false - לא מרנדר בשרת כלל
+// זה מונע hydration mismatch כי השרת והקליינט מתחילים עם null
 import dynamic from 'next/dynamic';
 
-// ✅ Loading fallback למניעת hydration mismatch
-const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { 
-  ssr: false,
-  loading: () => null // לא מציג כלום בזמן טעינה
-});
-const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { 
-  ssr: false,
-  loading: () => null
-});
-const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { 
-  ssr: false,
-  loading: () => null
-});
-const WishlistIcon = dynamic(() => import('@/components/storefront/WishlistIcon').then(mod => mod.WishlistIcon), { 
-  ssr: false,
-  loading: () => null
-});
+const SideCart = dynamic(
+  () => import('@/components/storefront/SideCart').then(mod => mod.SideCart),
+  { ssr: false }
+);
+const SearchBar = dynamic(
+  () => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar),
+  { ssr: false }
+);
+const CountrySelector = dynamic(
+  () => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector),
+  { ssr: false }
+);
+const WishlistIcon = dynamic(
+  () => import('@/components/storefront/WishlistIcon').then(mod => mod.WishlistIcon),
+  { ssr: false }
+);
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -55,11 +55,11 @@ export function UnifiedHeader({
   const [shouldRenderMenu, setShouldRenderMenu] = useState(false);
   const [isMenuAnimating, setIsMenuAnimating] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMounted, setIsMounted] = useState(false); // ✅ למניעת hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
   
-  // ✅ בדיקה שהקומפוננטה נטענה ב-client
+  // ✅ isMounted - מונע hydration mismatch כי dynamic imports עם ssr:false יוצרים Suspense שונה בשרת ובקליינט
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -140,13 +140,20 @@ export function UnifiedHeader({
   // Layout style
   const layoutStyle = settings.layout_style || 'logo_right_menu_center';
   
-  // Styling
+  // Styling - ✅ Convert to CSS variables to prevent hydration mismatch
   const bgColor = style.background?.background_color || '#FFFFFF';
   const textColor = style.typography?.color || '#000000';
   const navColor = style.navigation?.color || '#374151';
   const navHoverColor = style.navigation?.hover_color || '#000000';
   const iconColor = style.icons?.color || '#4B5563';
   const iconHoverColor = style.icons?.hover_color || '#000000';
+  
+  // ✅ CSS variables for consistent server/client rendering
+  const cssVars = useMemo(() => ({
+    '--header-icon-color': iconColor,
+    '--header-text-color': textColor,
+    '--header-nav-color': navColor,
+  }), [iconColor, textColor, navColor]);
   const borderStyle = style.border?.bottom_style || 'solid';
   const borderColor = style.border?.border_color || '#E5E7EB';
   
@@ -196,6 +203,7 @@ export function UnifiedHeader({
           />
         ) : (
           <h1 
+            suppressHydrationWarning
             className={`font-bold ${mobile ? 'text-lg' : 'text-xl'}`}
             style={{ color: textColor }}
           >
@@ -253,7 +261,7 @@ export function UnifiedHeader({
     );
   };
 
-  // Icon Button component
+  // Icon Button component - ✅ No inline styles to prevent hydration mismatch
   const IconButton = ({ 
     children, 
     title, 
@@ -265,12 +273,12 @@ export function UnifiedHeader({
     href?: string;
     onClick?: () => void;
   }) => {
-    const classes = "p-2 rounded-lg transition-colors hover:bg-black/5";
-    const styles = { color: iconColor };
+    // ✅ Use CSS classes instead of inline styles - prevents hydration mismatch
+    const classes = "p-2 rounded-lg transition-colors hover:bg-black/5 text-gray-600";
     
     if (isPreview || (!href && !onClick)) {
       return (
-        <button className={classes} style={styles} title={title}>
+        <button className={classes} title={title}>
           {children}
         </button>
       );
@@ -278,14 +286,14 @@ export function UnifiedHeader({
 
     if (href) {
       return (
-        <Link href={href} className={classes} style={styles} title={title}>
+        <Link href={href} className={classes} title={title}>
           {children}
         </Link>
       );
     }
 
     return (
-      <button onClick={onClick} className={classes} style={styles} title={title}>
+      <button onClick={onClick} className={classes} title={title}>
         {children}
       </button>
     );
@@ -333,7 +341,7 @@ export function UnifiedHeader({
             <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
           )}
           {isMobileView && (
-            <button className="p-2 rounded-lg hover:bg-gray-100" style={{ color: iconColor }}>
+            <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
               <HiMenu className="w-6 h-6" />
             </button>
           )}
@@ -342,90 +350,80 @@ export function UnifiedHeader({
     }
 
     // Storefront mode - real components
-    // ✅ רק אחרי mount כדי למנוע hydration mismatch
-    if (!isMounted) {
-      // מציג skeletons בזמן SSR - עם אותו גודל כמו הקומפוננטות האמיתיות
-      if (split) {
-        if (position === 'right') {
-          return settings.search?.enabled === true ? (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-          ) : null;
-        }
-        if (position === 'left') {
-          return (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {settings.user_account?.enabled === true && (
-                <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-                  <HiUser className="w-5 h-5" />
-                </IconButton>
-              )}
-              {settings.wishlist?.enabled === true && storeSlug && (
-                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-              )}
-              {settings.cart?.enabled === true && storeId && (
-                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-              )}
-            </div>
-          );
-        }
-      }
-      return (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {settings.search?.enabled === true && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-          )}
-          {settings.currency_selector?.enabled === true && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-          )}
-          {settings.user_account?.enabled === true && (
-            <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-              <HiUser className="w-5 h-5" />
-            </IconButton>
-          )}
-          {settings.wishlist?.enabled === true && storeSlug && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-          )}
-          {settings.cart?.enabled === true && storeId && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-          )}
-        </div>
-      );
-    }
+    // ✅ מרנדרים placeholder בהתחלה גם בשרת וגם בקליינט, ורק אחרי mount מחליפים לקומפוננטות האמיתיות
     
     if (split) {
       if (position === 'right') {
-        return settings.search?.enabled === true ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
+        // SearchBar - מציגים placeholder עד ל-mount
+        if (settings.search?.enabled !== true) return null;
+        return isMounted ? (
+          <SearchBar placeholder={settings.search?.placeholder} />
+        ) : (
+          <IconButton title="חיפוש"><HiSearch className="w-5 h-5" /></IconButton>
+        );
       }
-        if (position === 'left') {
-          return (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {settings.user_account?.enabled === true && (
-                <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-                  <HiUser className="w-5 h-5" />
-                </IconButton>
-              )}
-              {settings.wishlist?.enabled === true && storeSlug && (
+      if (position === 'left') {
+        return (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {settings.user_account?.enabled === true && (
+              <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
+                <HiUser className="w-5 h-5" />
+              </IconButton>
+            )}
+            {/* Wishlist - placeholder עד mount */}
+            {settings.wishlist?.enabled === true && (
+              isMounted && storeSlug ? (
                 <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
-              )}
-              {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
-            </div>
-          );
-        }
+              ) : (
+                <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
+              )
+            )}
+            {/* Cart - placeholder עד mount */}
+            {settings.cart?.enabled === true && (
+              isMounted && storeId ? (
+                <SideCart storeId={storeId} />
+              ) : (
+                <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
+              )
+            )}
+          </div>
+        );
+      }
     }
 
     return (
       <div className="flex items-center gap-1 flex-shrink-0">
-        {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
-        {settings.currency_selector?.enabled === true && <CountrySelector />}
+        {/* Search - placeholder עד mount */}
+        {settings.search?.enabled === true && (
+          isMounted ? (
+            <SearchBar placeholder={settings.search?.placeholder} />
+          ) : (
+            <IconButton title="חיפוש"><HiSearch className="w-5 h-5" /></IconButton>
+          )
+        )}
+        {/* Currency selector - מציג רק אחרי mount (אין צורך ב-placeholder) */}
+        {isMounted && settings.currency_selector?.enabled === true && <CountrySelector />}
         {settings.user_account?.enabled === true && (
           <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
             <HiUser className="w-5 h-5" />
           </IconButton>
         )}
-        {settings.wishlist?.enabled === true && storeSlug && (
-          <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+        {/* Wishlist - placeholder עד mount */}
+        {settings.wishlist?.enabled === true && (
+          isMounted && storeSlug ? (
+            <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+          ) : (
+            <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
+          )
         )}
-        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+        {/* Cart - placeholder עד mount */}
+        {settings.cart?.enabled === true && (
+          isMounted && storeId ? (
+            <SideCart storeId={storeId} />
+          ) : (
+            <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
+          )
+        )}
       </div>
     );
   };
@@ -434,9 +432,8 @@ export function UnifiedHeader({
   const MobileMenuButton = () => (
     <button
       onClick={() => !isPreview && setIsMobileMenuOpen(!isMobileMenuOpen)}
-      className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
+      className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
       aria-label="תפריט"
-      style={{ color: iconColor }}
     >
       {isMobileMenuOpen ? <HiX className="w-5 h-5" /> : <HiMenu className="w-5 h-5" />}
     </button>
@@ -491,11 +488,10 @@ export function UnifiedHeader({
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold" style={{ color: textColor }}>תפריט</h2>
+            <h2 suppressHydrationWarning className="text-xl font-bold" style={{ color: textColor }}>תפריט</h2>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              style={{ color: iconColor }}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <HiX className="w-5 h-5" />
             </button>
@@ -508,6 +504,7 @@ export function UnifiedHeader({
                 <Link
                   key={index}
                   href={item.url?.startsWith('/') ? `/shops/${storeSlug}${item.url}` : item.url || '#'}
+                  suppressHydrationWarning
                   className="block font-medium text-base py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors"
                   style={{ color: navColor }}
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -521,6 +518,7 @@ export function UnifiedHeader({
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <Link
                   href={`/shops/${storeSlug}/account`}
+                  suppressHydrationWarning
                   className="flex items-center gap-3 font-medium text-base py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors"
                   style={{ color: navColor }}
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -609,27 +607,30 @@ export function UnifiedHeader({
   }
 
   // Mobile Icons Component - Cart is last (extreme position in RTL)
+  // ✅ מרנדרים placeholder (IconButton) בהתחלה גם בשרת וגם בקליינט, ורק אחרי mount מחליפים לקומפוננטות האמיתיות
   const MobileIcons = () => (
     <div className="flex items-center gap-1 flex-shrink-0">
       {settings.user_account?.enabled === true && (
         isPreview ? (
           <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
         ) : (
-          <Link href={`/shops/${storeSlug}/account`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors" style={{ color: iconColor }}>
+          <Link href={`/shops/${storeSlug}/account`} className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 transition-colors text-gray-600">
             <HiUser className="w-5 h-5" />
           </Link>
         )
       )}
       {settings.wishlist?.enabled === true && (
-        isPreview ? (
+        isPreview || !isMounted ? (
           <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
         ) : (
-          storeSlug && (isMounted ? <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} /> : <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />)
+          // Dynamic import - מרונדר רק אחרי mount
+          storeSlug && <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
         )
       )}
       {settings.cart?.enabled !== false && (
-        !isPreview && storeId ? (
-          isMounted ? <SideCart storeId={storeId} /> : <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+        !isPreview && storeId && isMounted ? (
+          // Dynamic import - מרונדר רק אחרי mount
+          <SideCart storeId={storeId} />
         ) : (
           <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
         )

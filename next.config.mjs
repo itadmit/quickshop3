@@ -36,6 +36,13 @@ const nextConfig = {
   },
   // Faster page transitions
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  // Reduce dev recompilations
+  onDemandEntries: {
+    // Keep pages in memory for longer
+    maxInactiveAge: 60 * 1000, // 60 seconds
+    // Keep more pages in memory
+    pagesBufferLength: 5,
+  },
 };
 
 export default nextConfig;

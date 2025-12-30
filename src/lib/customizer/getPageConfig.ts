@@ -6,7 +6,6 @@
 import { query } from '@/lib/db';
 import { PageTemplate, TemplateWidget } from './types';
 import { getSectionName } from './sectionNames';
-import { getCached } from '@/lib/cache';
 
 export async function getTemplateConfig(
   storeId: number,
@@ -117,109 +116,152 @@ export async function getTemplateConfig(
   }
 }
 
+/**
+ * Get page config for publishing - מחזיר את הקונפיג בפורמט PageConfig
+ */
+export async function getPageConfig(
+  storeId: number,
+  pageType: string,
+  pageHandle?: string,
+  useDraft: boolean = false
+): Promise<any> {
+  try {
+    // טען את ה-layout עם ה-sections_json
+    const layoutQuery = `
+      SELECT 
+        pl.*,
+        COALESCE(pl.sections_json, '[]'::jsonb) as sections_json
+      FROM page_layouts pl
+      WHERE pl.store_id = $1
+        AND pl.page_type = $2
+        AND (pl.page_handle = $3 OR pl.page_handle IS NULL)
+      ORDER BY 
+        CASE WHEN pl.page_handle = $3 THEN 1 ELSE 2 END,
+        pl.is_published DESC,
+        pl.created_at DESC
+      LIMIT 1
+    `;
+
+    const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle || null]);
+
+    if (layoutResult.length === 0) {
+      return null;
+    }
+
+    const layout = layoutResult[0];
+    const sectionsJson = layout.sections_json || [];
+
+    // המר ל-PageConfig format
+    const sections: Record<string, any> = {};
+    const section_order: string[] = [];
+
+    for (const sectionData of sectionsJson as any[]) {
+      const sectionId = sectionData.id || `section-${sectionData.type}`;
+      section_order.push(sectionId);
+
+      sections[sectionId] = {
+        type: sectionData.type,
+        name: getSectionName(sectionData.type),
+        visible: sectionData.visible !== false,
+        position: sectionData.order || 0,
+        is_locked: sectionData.locked || false,
+        blocks: (sectionData.blocks || []).map((block: any) => ({
+          id: block.id,
+          type: block.type,
+          content: block.content || {},
+          style: block.style || {},
+          settings: block.settings || {},
+          is_visible: block.is_visible !== false
+        })),
+        style: sectionData.style || {},
+        settings: sectionData.settings || {},
+        custom_css: sectionData.custom_css || '',
+        custom_classes: sectionData.custom_classes || ''
+      };
+    }
+
+    return {
+      page_type: pageType,
+      page_handle: pageHandle,
+      sections,
+      section_order,
+      theme_settings: {},
+      version: 1
+    };
+  } catch (error) {
+    console.error('Error getting page config:', error);
+    return null;
+  }
+}
+
 export async function getPageLayout(storeId: number, pageType: string, pageHandle?: string): Promise<any> {
-  const cacheKey = `layout:${storeId}:${pageType}:${pageHandle || 'default'}`;
-  
-  return getCached(
-    cacheKey,
-    async () => {
-      // ✅ ONE QUERY - Join everything!
-      const layoutQuery = `
-        SELECT
-          pl.*,
-          tt.name as theme_name,
-          tt.display_name as theme_display_name,
-          CASE 
-            WHEN pl.page_handle = $3 THEN 1
-            WHEN pl.page_handle IS NULL THEN 2
-            ELSE 3
-          END as priority,
-          (
-            SELECT json_agg(
-              json_build_object(
-                'id', ps.section_id,
-                'type', ps.section_type,
-                'name', ps.section_type,
-                'visible', ps.is_visible,
-                'order', ps.position,
-                'locked', ps.is_locked,
-                'settings_json', ps.settings_json,
-                'blocks', (
-                  SELECT COALESCE(json_agg(
-                    json_build_object(
-                      'id', sb.block_id,
-                      'type', sb.block_type,
-                      'is_visible', sb.is_visible,
-                      'settings_json', sb.settings_json
-                    )
-                    ORDER BY sb.position ASC
-                  ), '[]'::json)
-                  FROM section_blocks sb
-                  WHERE sb.section_id = ps.id
-                )
-              )
-              ORDER BY ps.position ASC
-            )
-            FROM page_sections ps
-            WHERE ps.page_layout_id = pl.id
-          ) as sections_data
-        FROM page_layouts pl
-        LEFT JOIN theme_templates tt ON pl.template_id = tt.id
-        WHERE pl.store_id = $1
-          AND pl.page_type = $2
-          AND (pl.page_handle = $3 OR pl.page_handle IS NULL)
-        ORDER BY priority ASC, pl.is_published DESC, pl.created_at DESC
-        LIMIT 1
-      `;
+  // ✅ מהיר כמו Shopify - query אחד בלבד עם JSON!
+  const layoutQuery = `
+    SELECT 
+      pl.*,
+      COALESCE(pl.sections_json, '[]'::jsonb) as sections_json
+    FROM page_layouts pl
+    WHERE pl.store_id = $1
+      AND pl.page_type = $2
+      AND (pl.page_handle = $3 OR pl.page_handle IS NULL)
+    ORDER BY 
+      CASE WHEN pl.page_handle = $3 THEN 1 ELSE 2 END,
+      pl.is_published DESC,
+      pl.created_at DESC
+    LIMIT 1
+  `;
 
-      try {
-        const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle || null]);
+  try {
+    const layoutResult = await query(layoutQuery, [storeId, pageType, pageHandle || null]);
 
-        if (layoutResult.length === 0) {
-          return null;
-        }
+    if (layoutResult.length === 0) {
+      return null;
+    }
 
-        const layout = layoutResult[0];
-        const sectionsData = layout.sections_data || [];
+    const layout = layoutResult[0];
+    const sectionsJson = layout.sections_json || [];
 
-        // Parse sections and blocks
-        const sections = sectionsData.map((sectionData: any) => {
-          const sectionSettings = sectionData.settings_json || {};
-          
-          const parsedBlocks = (sectionData.blocks || []).map((block: any) => {
-            const blockSettings = block.settings_json || {};
-            return {
-              id: block.id,
-              type: block.type,
-              content: blockSettings.content || {},
-              style: blockSettings.style || {},
-              settings: blockSettings.settings || blockSettings,
-              is_visible: block.is_visible !== false
-            };
-          });
+    // Parse sections from JSON (מהיר מאוד - אין queries נוספים!)
+    const sections = (sectionsJson as any[]).map((sectionData: any) => {
+      return {
+        id: sectionData.id || `section-${sectionData.type}`,
+        type: sectionData.type,
+        name: getSectionName(sectionData.type),
+        visible: sectionData.visible !== false,
+        order: sectionData.order || 0,
+        locked: sectionData.locked || false,
+        blocks: (sectionData.blocks || []).map((block: any) => ({
+          id: block.id,
+          type: block.type,
+          content: block.content || {},
+          style: block.style || {},
+          settings: block.settings || {},
+          is_visible: block.is_visible !== false
+        })),
+        style: sectionData.style || {},
+        settings: sectionData.settings || {},
+        custom_css: sectionData.custom_css || '',
+        custom_classes: sectionData.custom_classes || ''
+      };
+    });
 
-          return {
-            id: sectionData.id,
-            type: sectionData.type,
-            name: getSectionName(sectionData.type),
-            visible: sectionData.visible,
-            order: sectionData.order,
-            locked: sectionData.locked,
-            blocks: parsedBlocks,
-            style: sectionSettings.style || {},
-            settings: sectionSettings.settings || sectionSettings
-          };
-        });
-
-        return {
-          layout,
-          sections
-        };
-      } catch (error) {
-        console.error('Error getting page layout:', error);
-        return null;
-      }
-    },
-    120 // 2 minutes cache - layouts don't change often
-  );
+    return {
+      layout: {
+        id: layout.id,
+        store_id: layout.store_id,
+        template_id: layout.template_id,
+        page_type: layout.page_type,
+        page_handle: layout.page_handle,
+        is_published: layout.is_published,
+        published_at: layout.published_at,
+        edge_json_url: layout.edge_json_url,
+        created_at: layout.created_at,
+        updated_at: layout.updated_at
+      },
+      sections
+    };
+  } catch (error) {
+    console.error('Error getting page layout:', error);
+    return null;
+  }
 }

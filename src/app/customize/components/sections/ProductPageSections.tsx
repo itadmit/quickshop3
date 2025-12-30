@@ -21,6 +21,9 @@ interface ProductSectionProps {
   onUpdate: (updates: Partial<SectionSettings>) => void;
   isPreview?: boolean; // true when in customizer
   editorDevice?: 'desktop' | 'tablet' | 'mobile'; // Device type in customizer
+  preloadedReviews?: any[]; // Preloaded reviews data (SSR)
+  preloadedAverageRating?: number; // Preloaded average rating (SSR)
+  preloadedProducts?: any[]; // Preloaded products data (SSR)
 }
 
 // Product Gallery Section
@@ -1147,18 +1150,38 @@ export function ProductCustomFieldsSection({ section, product, onUpdate }: Produ
 }
 
 // Product Reviews Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-function ProductReviewsSectionComponent({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
+function ProductReviewsSectionComponent({ section, product, onUpdate, isPreview = false, preloadedReviews, preloadedAverageRating }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
+  
+  // ✅ בדיקה מפורשת אם יש נתונים מראש (גם מערך ריק נחשב לנתונים!)
+  const hasPreloadedData = preloadedReviews !== undefined;
+  
   // IMPORTANT: Only use demo data when isPreview is explicitly true (in customizer)
-  const [reviews, setReviews] = React.useState<any[]>(isPreview === true ? DEMO_REVIEWS : []);
-  const [loading, setLoading] = React.useState(isPreview !== true);
-  const [averageRating, setAverageRating] = React.useState(isPreview === true ? 4.7 : 0);
-  const loadedRef = React.useRef(isPreview === true); // Already loaded in preview mode
+  // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
+  const [reviews, setReviews] = React.useState<any[]>(
+    isPreview === true ? DEMO_REVIEWS : (preloadedReviews || [])
+  );
+  const [loading, setLoading] = React.useState(
+    isPreview !== true && !hasPreloadedData // רק אם אין נתונים טעונים מראש
+  );
+  const [averageRating, setAverageRating] = React.useState(
+    isPreview === true ? 4.7 : (preloadedAverageRating || 0)
+  );
 
-  // Only fetch from API in storefront mode (isPreview !== true)
+  // Only fetch from API in storefront mode (isPreview !== true) if no preloaded data
   React.useEffect(() => {
-    if (isPreview === true || loadedRef.current) return; // Skip if in preview or already loaded
+    // ✅ בדיקה מפורשת - אם יש נתונים מראש, לא טוענים שוב!
+    if (isPreview === true) {
+      console.log(`⭐ [ProductReviews] Preview mode - using demo data`);
+      return;
+    }
+    
+    if (hasPreloadedData) {
+      console.log(`⭐ [ProductReviews] Using preloaded data (${preloadedReviews?.length || 0} reviews)`);
+      setLoading(false);
+      return;
+    }
     
     async function loadReviews() {
       if (!product?.id || product.id === 0) {
@@ -1166,13 +1189,13 @@ function ProductReviewsSectionComponent({ section, product, onUpdate, isPreview 
         return;
       }
       
+      console.log(`⭐ [ProductReviews] Loading from API for product ${product.id}`);
       try {
         const response = await fetch(`/api/products/${product.id}/reviews`);
         if (response.ok) {
           const data = await response.json();
           setReviews(data.reviews || []);
           setAverageRating(data.average_rating || 0);
-          loadedRef.current = true;
         }
       } catch (error) {
         console.error('Error loading reviews:', error);
@@ -1182,7 +1205,7 @@ function ProductReviewsSectionComponent({ section, product, onUpdate, isPreview 
     }
     
     loadReviews();
-  }, [product?.id, isPreview]);
+  }, [product?.id, isPreview, hasPreloadedData]);
 
   // Loading state (only in storefront)
   if (loading) {
@@ -1271,15 +1294,23 @@ export const ProductReviewsSection = React.memo(ProductReviewsSectionComponent, 
 });
 
 // Related Products Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview = false, editorDevice = 'desktop' }: ProductSectionProps) {
+function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview = false, editorDevice = 'desktop', preloadedProducts }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+  
+  // ✅ בדיקה מפורשת אם יש נתונים מראש (גם מערך ריק נחשב לנתונים!)
+  const hasPreloadedData = preloadedProducts !== undefined;
+  
   // IMPORTANT: Only use demo data when isPreview is explicitly true (in customizer)
-  const [relatedProducts, setRelatedProducts] = React.useState<any[]>(isPreview === true ? DEMO_RELATED_PRODUCTS : []);
-  const [loading, setLoading] = React.useState(isPreview !== true);
-  const loadedRef = React.useRef(false); // Track if already loaded
+  // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
+  const [relatedProducts, setRelatedProducts] = React.useState<any[]>(
+    isPreview === true ? DEMO_RELATED_PRODUCTS : (preloadedProducts || [])
+  );
+  const [loading, setLoading] = React.useState(
+    isPreview !== true && !hasPreloadedData // רק אם אין נתונים טעונים מראש
+  );
   
   const title = settings.title || t('product.related_products') || 'מוצרים שאולי יעניינו אותך';
   
@@ -1292,29 +1323,35 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
   const cardBorderRadius = settings.card_border_radius ? `${settings.card_border_radius}px` : undefined;
   const imageRatio = settings.image_ratio || 'square';
   
-  // Detect mobile view (in customizer use editorDevice, otherwise check window width)
-  const isMobile = editorDevice === 'mobile' || (typeof window !== 'undefined' && window.innerWidth < 768);
+  // ✅ SSR-safe: Use editorDevice prop (default to desktop for storefront)
+  const isMobile = editorDevice === 'mobile';
   const productsCount = isMobile ? productsCountMobile : productsCountDesktop;
 
   // In customizer preview (isPreview === true), use demo data immediately - no API calls
   React.useEffect(() => {
     // ONLY use demo data when explicitly in preview mode (customizer)
     if (isPreview === true) {
-      if (!loadedRef.current) {
-        setRelatedProducts(DEMO_RELATED_PRODUCTS);
-        loadedRef.current = true;
-      }
+      console.log(`🔗 [RelatedProducts] Preview mode - using demo data`);
+      setRelatedProducts(DEMO_RELATED_PRODUCTS);
+      setLoading(false);
+      return;
+    }
+    
+    // ✅ אם יש נתונים טעונים מראש - אל תטען שוב! (גם אם מערך ריק)
+    if (hasPreloadedData) {
+      console.log(`🔗 [RelatedProducts] Using preloaded data (${preloadedProducts?.length || 0} products)`);
       setLoading(false);
       return;
     }
     
     // In storefront (isPreview !== true), load real data only once per product
     async function loadRelatedProducts() {
-      if (!product?.id || product.id === 0 || loadedRef.current) {
+      if (!product?.id || product.id === 0) {
         setLoading(false);
         return;
       }
       
+      console.log(`🔗 [RelatedProducts] Loading from API for product ${product.id}`);
       try {
         // Use storeSlug for storefront access (no auth required)
         const url = storeSlug 
@@ -1324,7 +1361,6 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
         if (response.ok) {
           const data = await response.json();
           setRelatedProducts(data.products || []);
-          loadedRef.current = true;
         }
       } catch (error) {
         console.error('Error loading related products:', error);
@@ -1334,7 +1370,7 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
     }
     
     loadRelatedProducts();
-  }, [product?.id, productsCount, isPreview]);
+  }, [product?.id, productsCount, isPreview, hasPreloadedData]);
 
   // Get grid columns classes based on settings
   const getGridCols = () => {
@@ -1468,15 +1504,23 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
 }
 
 // Recently Viewed Section - Uses demo data ONLY in customizer preview (isPreview must be explicitly true)
-function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview = false }: ProductSectionProps) {
+function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview = false, preloadedProducts }: ProductSectionProps) {
   const settings = section.settings || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+  
+  // ✅ בדיקה מפורשת אם יש נתונים מראש (גם מערך ריק נחשב לנתונים!)
+  const hasPreloadedData = preloadedProducts !== undefined;
+  
   // IMPORTANT: Only use demo data when isPreview is explicitly true (in customizer)
-  const [recentProducts, setRecentProducts] = React.useState<any[]>(isPreview === true ? DEMO_RECENTLY_VIEWED : []);
-  const [loading, setLoading] = React.useState(isPreview !== true);
-  const loadedRef = React.useRef(isPreview === true); // Already loaded in preview mode
+  // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
+  const [recentProducts, setRecentProducts] = React.useState<any[]>(
+    isPreview === true ? DEMO_RECENTLY_VIEWED : (preloadedProducts || [])
+  );
+  const [loading, setLoading] = React.useState(
+    isPreview !== true && !hasPreloadedData // רק אם אין נתונים טעונים מראש
+  );
   const savedRef = React.useRef(false); // Track if product was saved to localStorage
   
   const title = settings.title || t('product.recently_viewed') || 'צפית לאחרונה';
@@ -1499,9 +1543,21 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
 
   const aspectClass = imageRatioClasses[imageRatio] || 'aspect-square';
 
-  // Only fetch from API in storefront mode (isPreview !== true)
+  // Only fetch from API in storefront mode (isPreview !== true) if no preloaded data
   React.useEffect(() => {
-    if (isPreview === true || loadedRef.current) return; // Skip if in preview or already loaded
+    // ONLY use demo data when explicitly in preview mode (customizer)
+    if (isPreview === true) {
+      console.log(`👁️ [RecentlyViewed] Preview mode - using demo data`);
+      setLoading(false);
+      return;
+    }
+    
+    // ✅ אם יש נתונים טעונים מראש - אל תטען שוב! (גם אם מערך ריק)
+    if (hasPreloadedData) {
+      console.log(`👁️ [RecentlyViewed] Using preloaded data (${preloadedProducts?.length || 0} products)`);
+      setLoading(false);
+      return;
+    }
     
     async function loadRecentlyViewed() {
       if (typeof window === 'undefined') {
@@ -1509,6 +1565,7 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
         return;
       }
       
+      console.log(`👁️ [RecentlyViewed] Loading from localStorage/API`);
       try {
         const recentlyViewedKey = 'quickshop_recently_viewed';
         const stored = localStorage.getItem(recentlyViewedKey);
@@ -1518,7 +1575,6 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
         
         if (filteredIds.length === 0) {
           setLoading(false);
-          loadedRef.current = true;
           return;
         }
         
@@ -1530,7 +1586,6 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
         if (response.ok) {
           const data = await response.json();
           setRecentProducts(data.products || []);
-          loadedRef.current = true;
         }
       } catch (error) {
         console.error('Error loading recently viewed products:', error);
@@ -1540,7 +1595,7 @@ function RecentlyViewedSectionComponent({ section, product, onUpdate, isPreview 
     }
     
     loadRecentlyViewed();
-  }, [product?.id, productsCount, isPreview]);
+  }, [product?.id, productsCount, isPreview, hasPreloadedData]);
 
   // Save current product to recently viewed (only in storefront, once - never in preview)
   React.useEffect(() => {

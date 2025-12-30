@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
 import { AdminEditBar } from '@/components/storefront/AdminEditBar';
+import { PageContent } from '@/components/storefront/PageContent';
 import { getStoreIdBySlug, getStoreBySlug } from '@/lib/utils/store';
 
 // ============================================
-// Categories Page - Content from Customizer
+// Categories Page - Content from Customizer (SSR)
+// ✅ הדר/פוטר ב-layout - לא נטענים מחדש בניווט
 // ============================================
 
 export const revalidate = 300; // ISR - revalidate כל 5 דקות
@@ -25,13 +27,19 @@ export default async function CategoriesPage({
     notFound();
   }
 
-  // דף קטגוריות - התוכן מגיע מהקסטומייזר דרך CustomizerLayout
-  // AdminEditBar מוצג למנהלים בלבד
+  // ✅ דף קטגוריות - רק התוכן נטען כאן
+  // הדר/פוטר נטענים פעם אחת ב-layout
   return (
-    <AdminEditBar
+    <PageContent
       storeSlug={storeSlug}
       storeId={storeId}
       pageType="categories"
-    />
+    >
+      <AdminEditBar
+        storeSlug={storeSlug}
+        storeId={storeId}
+        pageType="categories"
+      />
+    </PageContent>
   );
 }
