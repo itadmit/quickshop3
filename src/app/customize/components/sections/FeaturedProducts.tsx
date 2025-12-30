@@ -14,6 +14,8 @@ interface FeaturedProductsProps {
   onUpdate: (updates: Partial<SectionSettings>) => void;
   editorDevice?: 'desktop' | 'tablet' | 'mobile';
   isPreview?: boolean; // true when in customizer preview
+  preloadedProducts?: Product[]; // ✅ נתונים טעונים מראש בשרת (מהיר!)
+  storeId?: number; // ✅ Store ID from server (מהיר!)
 }
 
 interface Product {
@@ -26,8 +28,8 @@ interface Product {
   vendor?: string;
 }
 
-function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedProductsProps) {
-  console.log(`🛍️ [FeaturedProducts] Component render - section.id: ${section.id}`);
+function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview, preloadedProducts, storeId: propStoreId }: FeaturedProductsProps) {
+  console.log(`🛍️ [FeaturedProducts] Component render - section.id: ${section.id}`, preloadedProducts ? '✅ עם נתונים טעונים מראש' : '❌ ללא נתונים טעונים מראש');
   
   const settings = section.settings || {};
   const style = section.style || {};
@@ -36,8 +38,9 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const isInCustomizer = pathname.startsWith('/customize');
   
-  // Get storeId from user session (for customizer) or from URL (for storefront)
-  const storeId = useStoreId();
+  // ✅ Priority: Use propStoreId from server (fast!) or fallback to hook
+  const hookStoreId = useStoreId();
+  const storeId = propStoreId || hookStoreId;
   
   // Get storeSlug - try from URL params first, then from API if in customizer
   const [storeSlug, setStoreSlug] = useState<string>('');
@@ -61,22 +64,32 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
         .catch(() => {});
     }
   }, [params?.storeSlug, isInCustomizer, storeId]);
-  // Initialize products from sessionStorage if available
+  // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
+  // Initialize products from preloaded data (SSR) or sessionStorage
   const sectionKey = `featured-products-${section.id}`;
   const [products, setProducts] = useState<Product[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const stored = sessionStorage.getItem(`${sectionKey}-data`);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        return [];
+    // Priority 1: Preloaded data from server (fastest!)
+    if (preloadedProducts && preloadedProducts.length > 0) {
+      return preloadedProducts;
+    }
+    // Priority 2: SessionStorage cache
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(`${sectionKey}-data`);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          return [];
+        }
       }
     }
     return [];
   });
   const [loading, setLoading] = useState(() => {
-    // Don't show loading if we have cached data
+    // Don't show loading if we have preloaded data or cached data
+    if (preloadedProducts && preloadedProducts.length > 0) {
+      return false; // ✅ יש נתונים טעונים מראש - אין צורך בטעינה
+    }
     if (typeof window === 'undefined') return true;
     const stored = sessionStorage.getItem(`${sectionKey}-data`);
     return !stored;
@@ -124,6 +137,13 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
   
   // Load products - simple: only when settingsKey changes
   useEffect(() => {
+    // ✅ אם יש נתונים טעונים מראש (SSR) - אל תטען שוב!
+    if (preloadedProducts && preloadedProducts.length > 0) {
+      console.log(`🛍️ [FeaturedProducts] Skipping load - using preloaded data from server`);
+      setLoading(false);
+      return;
+    }
+    
     const prevKey = prevSettingsKeyRef.current;
     console.log(`🛍️ [FeaturedProducts] useEffect triggered`, {
       storeId,
@@ -282,7 +302,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
       cancelled = true;
       isLoadingRef.current = false;
     };
-  }, [settingsKey, storeId, sectionKey]); // Removed products.length to prevent re-runs when products change
+  }, [settingsKey, storeId, sectionKey, preloadedProducts]); // Added preloadedProducts to dependencies
 
   // Responsive items per row logic
   const getItemsPerRow = () => {

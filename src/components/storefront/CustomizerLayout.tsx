@@ -12,6 +12,7 @@ import { query } from '@/lib/db';
 import { getProductByHandle, getProductsList } from '@/lib/storefront/queries';
 import { getCollectionByHandle } from '@/lib/storefront/queries';
 import { ProductPageProvider } from '@/contexts/ProductPageContext';
+import { loadFeaturedProductsData, loadFeaturedCollectionsData } from '@/lib/storefront/loadSectionData';
 
 interface CustomizerLayoutProps {
   storeSlug: string;
@@ -190,6 +191,55 @@ export async function CustomizerLayout({
       s.type !== 'header' && s.type !== 'footer' && s.visible !== false
     );
   }
+
+  // ✅ טעינת נתונים בשרת עבור סקשנים נפוצים (מהיר!)
+  // Load data for FeaturedProducts and FeaturedCollections sections in parallel
+  const featuredProductsSections = contentSections.filter((s: any) => s.type === 'featured_products');
+  const featuredCollectionsSections = contentSections.filter((s: any) => s.type === 'featured_collections');
+  
+  const sectionDataPromises: Promise<any>[] = [];
+  
+  // Load products data for FeaturedProducts sections
+  for (const section of featuredProductsSections) {
+    sectionDataPromises.push(
+      loadFeaturedProductsData(storeId, section.settings || {}).then(data => ({
+        sectionId: section.id,
+        type: 'featured_products',
+        data,
+      }))
+    );
+  }
+  
+  // Load collections data for FeaturedCollections sections
+  for (const section of featuredCollectionsSections) {
+    sectionDataPromises.push(
+      loadFeaturedCollectionsData(storeId, section.settings || {}).then(data => ({
+        sectionId: section.id,
+        type: 'featured_collections',
+        data,
+      }))
+    );
+  }
+  
+  // Wait for all data to load in parallel
+  const sectionDataResults = await Promise.all(sectionDataPromises);
+  
+  // Create a map of section data by section ID
+  const sectionDataMap = new Map(
+    sectionDataResults.map(result => [result.sectionId, result.data])
+  );
+  
+  // Attach pre-loaded data to sections
+  contentSections = contentSections.map((section: any) => {
+    const preloadedData = sectionDataMap.get(section.id);
+    if (preloadedData) {
+      return {
+        ...section,
+        _preloadedData: preloadedData, // Attach pre-loaded data
+      };
+    }
+    return section;
+  });
 
   // Determine if we should show customizer sections or children
   // For product pages: show customizer sections ONLY if product data is loaded

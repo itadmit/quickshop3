@@ -96,6 +96,12 @@ export function CustomizerLayoutWrapper({
     return <>{children}</>;
   }
   
+  // ✅ דף הבית כבר משתמש ב-CustomizerLayout (Server Component) ישירות
+  // אז נחזיר את ה-children כמו שהם (ללא עטיפה נוספת)
+  if (pageType === 'home') {
+    return <>{children}</>;
+  }
+  
   return (
     <CustomizerLayoutClient 
       storeSlug={storeSlug}

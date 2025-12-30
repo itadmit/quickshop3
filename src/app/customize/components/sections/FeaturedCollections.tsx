@@ -14,6 +14,8 @@ interface FeaturedCollectionsProps {
   onUpdate: (updates: Partial<SectionSettings>) => void;
   editorDevice?: 'desktop' | 'tablet' | 'mobile';
   isPreview?: boolean;
+  preloadedCollections?: Collection[]; // ✅ נתונים טעונים מראש בשרת (מהיר!)
+  storeId?: number; // ✅ Store ID from server (מהיר!)
 }
 
 interface Collection {
@@ -25,8 +27,8 @@ interface Collection {
   parent_id?: number | null;
 }
 
-function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview }: FeaturedCollectionsProps) {
-  console.log(`📁 [FeaturedCollections] Component render - section.id: ${section.id}`);
+function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview, preloadedCollections, storeId: propStoreId }: FeaturedCollectionsProps) {
+  console.log(`📁 [FeaturedCollections] Component render - section.id: ${section.id}`, preloadedCollections ? '✅ עם נתונים טעונים מראש' : '❌ ללא נתונים טעונים מראש');
   
   const settings = section.settings || {};
   const style = section.style || {};
@@ -35,8 +37,9 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const isInCustomizer = pathname.startsWith('/customize');
   
-  // Get storeId from user session (for customizer) or from URL (for storefront)
-  const storeId = useStoreId();
+  // ✅ Priority: Use propStoreId from server (fast!) or fallback to hook
+  const hookStoreId = useStoreId();
+  const storeId = propStoreId || hookStoreId;
   
   // Get storeSlug - try from URL params first, then from API if in customizer
   const [storeSlug, setStoreSlug] = useState<string>('');
@@ -61,22 +64,32 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
     }
   }, [params?.storeSlug, isInCustomizer, storeId]);
   
-  // Initialize collections from sessionStorage if available
+  // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
+  // Initialize collections from preloaded data (SSR) or sessionStorage
   const sectionKey = `featured-collections-${section.id}`;
   const [collections, setCollections] = useState<Collection[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const stored = sessionStorage.getItem(`${sectionKey}-data`);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        return [];
+    // Priority 1: Preloaded data from server (fastest!)
+    if (preloadedCollections && preloadedCollections.length > 0) {
+      return preloadedCollections;
+    }
+    // Priority 2: SessionStorage cache
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(`${sectionKey}-data`);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          return [];
+        }
       }
     }
     return [];
   });
   const [loading, setLoading] = useState(() => {
-    // Don't show loading if we have cached data
+    // Don't show loading if we have preloaded data or cached data
+    if (preloadedCollections && preloadedCollections.length > 0) {
+      return false; // ✅ יש נתונים טעונים מראש - אין צורך בטעינה
+    }
     if (typeof window === 'undefined') return true;
     const stored = sessionStorage.getItem(`${sectionKey}-data`);
     return !stored;
@@ -106,6 +119,13 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   
   // Load collections - simple: only when settingsKey changes
   useEffect(() => {
+    // ✅ אם יש נתונים טעונים מראש (SSR) - אל תטען שוב!
+    if (preloadedCollections && preloadedCollections.length > 0) {
+      console.log(`📁 [FeaturedCollections] Skipping load - using preloaded data from server`);
+      setLoading(false);
+      return;
+    }
+    
     const prevKey = prevSettingsKeyRef.current;
     console.log(`📁 [FeaturedCollections] useEffect triggered`, {
       storeId,
@@ -203,7 +223,7 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
       cancelled = true;
       isLoadingRef.current = false;
     };
-  }, [settingsKey, storeId, sectionKey]); // Removed collections.length to prevent re-runs when collections change
+  }, [settingsKey, storeId, sectionKey, preloadedCollections]); // Added preloadedCollections to dependencies
   
   const displayType = settings.display_type || 'grid';
   const itemsPerRow = settings.items_per_row || 3;

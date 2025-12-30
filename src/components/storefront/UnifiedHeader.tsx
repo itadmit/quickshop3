@@ -11,14 +11,28 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
 import { SectionSettings } from '@/lib/customizer/types';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 // Dynamic imports for real components (only used in storefront)
 import dynamic from 'next/dynamic';
 
-const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { ssr: false });
-const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { ssr: false });
-const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { ssr: false });
-const WishlistIcon = dynamic(() => import('@/components/storefront/WishlistIcon').then(mod => mod.WishlistIcon), { ssr: false });
+// ✅ Loading fallback למניעת hydration mismatch
+const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { 
+  ssr: false,
+  loading: () => null // לא מציג כלום בזמן טעינה
+});
+const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { 
+  ssr: false,
+  loading: () => null
+});
+const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { 
+  ssr: false,
+  loading: () => null
+});
+const WishlistIcon = dynamic(() => import('@/components/storefront/WishlistIcon').then(mod => mod.WishlistIcon), { 
+  ssr: false,
+  loading: () => null
+});
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -41,8 +55,14 @@ export function UnifiedHeader({
   const [shouldRenderMenu, setShouldRenderMenu] = useState(false);
   const [isMenuAnimating, setIsMenuAnimating] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMounted, setIsMounted] = useState(false); // ✅ למניעת hydration mismatch
   const params = useParams();
   const storeSlug = params?.storeSlug as string || '';
+  
+  // ✅ בדיקה שהקומפוננטה נטענה ב-client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Mobile menu animation handling (exactly like SideCart)
   useEffect(() => {
@@ -322,29 +342,79 @@ export function UnifiedHeader({
     }
 
     // Storefront mode - real components
+    // ✅ רק אחרי mount כדי למנוע hydration mismatch
+    if (!isMounted) {
+      // מציג skeletons בזמן SSR - עם אותו גודל כמו הקומפוננטות האמיתיות
+      if (split) {
+        if (position === 'right') {
+          return settings.search?.enabled === true ? (
+            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          ) : null;
+        }
+        if (position === 'left') {
+          return (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {settings.user_account?.enabled === true && (
+                <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
+                  <HiUser className="w-5 h-5" />
+                </IconButton>
+              )}
+              {settings.wishlist?.enabled === true && storeSlug && (
+                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+              )}
+              {settings.cart?.enabled === true && storeId && (
+                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+              )}
+            </div>
+          );
+        }
+      }
+      return (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {settings.search?.enabled === true && (
+            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          )}
+          {settings.currency_selector?.enabled === true && (
+            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          )}
+          {settings.user_account?.enabled === true && (
+            <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
+              <HiUser className="w-5 h-5" />
+            </IconButton>
+          )}
+          {settings.wishlist?.enabled === true && storeSlug && (
+            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          )}
+          {settings.cart?.enabled === true && storeId && (
+            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          )}
+        </div>
+      );
+    }
+    
     if (split) {
       if (position === 'right') {
         return settings.search?.enabled === true ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
       }
-      if (position === 'left') {
-        return (
-          <div className="flex items-center gap-1">
-            {settings.user_account?.enabled === true && (
-              <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-                <HiUser className="w-5 h-5" />
-              </IconButton>
-            )}
-            {settings.wishlist?.enabled === true && storeSlug && (
-              <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
-            )}
-            {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
-          </div>
-        );
-      }
+        if (position === 'left') {
+          return (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {settings.user_account?.enabled === true && (
+                <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
+                  <HiUser className="w-5 h-5" />
+                </IconButton>
+              )}
+              {settings.wishlist?.enabled === true && storeSlug && (
+                <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+              )}
+              {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+            </div>
+          );
+        }
     }
 
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-shrink-0">
         {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
         {settings.currency_selector?.enabled === true && <CountrySelector />}
         {settings.user_account?.enabled === true && (
@@ -540,7 +610,7 @@ export function UnifiedHeader({
 
   // Mobile Icons Component - Cart is last (extreme position in RTL)
   const MobileIcons = () => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 flex-shrink-0">
       {settings.user_account?.enabled === true && (
         isPreview ? (
           <IconButton title="חשבון"><HiUser className="w-5 h-5" /></IconButton>
@@ -554,12 +624,12 @@ export function UnifiedHeader({
         isPreview ? (
           <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
         ) : (
-          storeSlug && <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+          storeSlug && (isMounted ? <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} /> : <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />)
         )
       )}
       {settings.cart?.enabled !== false && (
         !isPreview && storeId ? (
-          <SideCart storeId={storeId} />
+          isMounted ? <SideCart storeId={storeId} /> : <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
         ) : (
           <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
         )
@@ -580,11 +650,11 @@ export function UnifiedHeader({
             <div className="hidden md:flex items-center gap-2"><Icons /></div>
             {/* Mobile: hamburger right, logo center, icons left */}
             <div className="md:hidden flex items-center justify-between w-full">
-              <MobileMenuButton />
-              <div className="absolute left-1/2 transform -translate-x-1/2">
+              <div className="flex-shrink-0"><MobileMenuButton /></div>
+              <div className="absolute left-1/2 transform -translate-x-1/2 flex-shrink-0">
                 <Logo mobile />
               </div>
-              <MobileIcons />
+              <div className="flex-shrink-0"><MobileIcons /></div>
             </div>
           </>
         );
@@ -594,20 +664,20 @@ export function UnifiedHeader({
           <div className="w-full">
             {/* Desktop */}
             <div className="hidden md:flex items-center justify-between" style={{ minHeight: heightDesktop }}>
-              <Icons split position="right" />
-              <Logo />
-              <Icons split position="left" />
+              <div className="flex-shrink-0"><Icons split position="right" /></div>
+              <div className="flex-shrink-0"><Logo /></div>
+              <div className="flex-shrink-0"><Icons split position="left" /></div>
             </div>
             <div className="hidden md:flex justify-center pb-3 -mt-1">
               <Navigation />
             </div>
             {/* Mobile: hamburger right, logo center, icons left */}
             <div className="md:hidden flex items-center justify-between w-full" style={{ minHeight: heightMobile }}>
-              <MobileMenuButton />
-              <div className="absolute left-1/2 transform -translate-x-1/2">
+              <div className="flex-shrink-0"><MobileMenuButton /></div>
+              <div className="absolute left-1/2 transform -translate-x-1/2 flex-shrink-0">
                 <Logo mobile />
               </div>
-              <MobileIcons />
+              <div className="flex-shrink-0"><MobileIcons /></div>
             </div>
           </div>
         );
@@ -637,16 +707,16 @@ export function UnifiedHeader({
         return (
           <>
             {/* Desktop */}
-            <div className="hidden md:block"><Logo /></div>
-            <div className="hidden md:contents"><Navigation /></div>
-            <div className="hidden md:flex items-center gap-2"><Icons /></div>
+            <div className="hidden md:block flex-shrink-0"><Logo /></div>
+            <div className="hidden md:contents flex-1"><Navigation /></div>
+            <div className="hidden md:flex items-center gap-2 flex-shrink-0"><Icons /></div>
             {/* Mobile: logo right, hamburger+icons left */}
             <div className="md:hidden flex items-center justify-between w-full">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <MobileMenuButton />
                 <MobileIcons />
               </div>
-              <Logo mobile />
+              <div className="flex-shrink-0"><Logo mobile /></div>
             </div>
           </>
         );
@@ -664,8 +734,10 @@ export function UnifiedHeader({
         style={{ 
           backgroundColor: bgColor, 
           ...getBorderStyles(),
+          minHeight: heightDesktop, // ✅ גובה מינימלי קבוע למניעת קפיצה
           ...(isScrolled && settings.sticky?.shrink === 'shrink' && {
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            minHeight: (parseInt(heightDesktop) * 0.8) + 'px' // ✅ גובה מינימלי גם כשמתכווץ
           })
         }}
       >

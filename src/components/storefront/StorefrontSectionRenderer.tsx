@@ -182,14 +182,26 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
     case 'featured_products':
       return (
         <SectionWrapper>
-          <FeaturedProducts section={responsiveSection} onUpdate={noopUpdate} isPreview={false} />
+          <FeaturedProducts 
+            section={responsiveSection} 
+            onUpdate={noopUpdate} 
+            isPreview={false}
+            preloadedProducts={(section as any)._preloadedData?.products}
+            storeId={storeId || undefined}
+          />
         </SectionWrapper>
       );
 
     case 'featured_collections':
       return (
         <SectionWrapper>
-          <FeaturedCollections section={responsiveSection} onUpdate={noopUpdate} isPreview={false} />
+          <FeaturedCollections 
+            section={responsiveSection} 
+            onUpdate={noopUpdate} 
+            isPreview={false}
+            preloadedCollections={(section as any)._preloadedData?.collections}
+            storeId={storeId || undefined}
+          />
         </SectionWrapper>
       );
 

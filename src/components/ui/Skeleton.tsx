@@ -7,10 +7,7 @@ interface SkeletonProps {
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
     <div
-      className={`
-        animate-pulse bg-gray-200 rounded
-        ${className}
-      `}
+      className={`animate-pulse bg-gray-200 rounded ${className}`}
     />
   );
 }
@@ -33,12 +30,7 @@ export function TextSkeleton({
 }: TextSkeletonProps) {
   return (
     <span
-      className={`
-        inline-block
-        animate-pulse bg-gray-200 rounded
-        ${width} ${height}
-        ${className}
-      `}
+      className={`inline-block animate-pulse bg-gray-200 rounded ${width} ${height} ${className}`}
     />
   );
 }

@@ -1,11 +1,13 @@
 /**
  * Home Page - Content comes from Customizer
  * דף הבית - התוכן מגיע מהקסטומייזר
+ * ✅ SSR - כל התוכן נטען בשרת (מהיר כמו PHP)
  */
 
 import { notFound } from 'next/navigation';
 import { getStoreIdBySlug, getStoreBySlug } from '@/lib/utils/store';
 import { AdminEditBar } from '@/components/storefront/AdminEditBar';
+import { CustomizerLayout } from '@/components/storefront/CustomizerLayout';
 
 export const revalidate = 300; // ISR - revalidate כל 5 דקות
 
@@ -26,14 +28,19 @@ export default async function StorefrontHomePage({
     notFound();
   }
 
-  // דף הבית - התוכן מגיע מהקסטומייזר דרך CustomizerLayout
-  // הסקשנים כמו Hero, Featured Products, Collections מוצגים דרך הקסטומייזר
-  // AdminEditBar מוצג למנהלים בלבד
+  // ✅ דף הבית עם SSR - כל התוכן נטען בשרת
+  // CustomizerLayout טוען את כל הסקשנים בשרת (מהיר!)
+  // AdminEditBar מוצג למנהלים בלבד (client component קטן)
   return (
-    <AdminEditBar
+    <CustomizerLayout
       storeSlug={storeSlug}
-      storeId={storeId}
       pageType="home"
-    />
+    >
+      <AdminEditBar
+        storeSlug={storeSlug}
+        storeId={storeId}
+        pageType="home"
+      />
+    </CustomizerLayout>
   );
 }
