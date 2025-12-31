@@ -843,23 +843,32 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
 
   const shippingCost = useMemo(() => {
     // ✅ SINGLE SOURCE OF TRUTH: תמיד משתמש ב-calculation או ב-getShipping מהמנוע המרכזי
-    // אם אין calculation, נשתמש ב-selectedShippingRate ישירות
-    if (calculation) {
-      // תמיד משתמש ב-calculation.shippingAfterDiscount - זה המקור האמין
-      return calculation.shippingAfterDiscount || 0;
-    }
-    // אם אין calculation עדיין, נשתמש ב-selectedShippingRate (fallback)
+    // ✅ FIX: בודק שה-calculation מעודכן עם ה-shipping rate הנוכחי
+    
     if (selectedShippingRate) {
-      // בדוק אם יש משלוח חינם מעל סכום מסוים - בודק אחרי הנחות
-      const subtotal = getSubtotalAfterDiscount(); // ✅ משתמש בסכום אחרי הנחות
+      // ✅ בדוק שה-calculation מעודכן עם ה-shipping rate הנוכחי
+      // אם calculation.shipping לא תואם ל-selectedShippingRate.price, ה-calculation עדיין לא עודכן
+      const isCalculationUpToDate = calculation && calculation.shipping === selectedShippingRate.price;
+      
+      if (isCalculationUpToDate) {
+        // calculation מעודכן - משתמש ב-shippingAfterDiscount (כולל הנחות משלוח חינם)
+        return calculation.shippingAfterDiscount || 0;
+      }
+      
+      // calculation לא מעודכן עדיין - מחשב ידנית לפי selectedShippingRate
+      const subtotal = getSubtotalAfterDiscount();
       if (selectedShippingRate.free_shipping_threshold && subtotal >= selectedShippingRate.free_shipping_threshold) {
         return 0;
       }
       return selectedShippingRate.price;
     }
-    // אם אין selectedShippingRate, נשתמש ב-getShipping מהמנוע המרכזי
+    
+    // אם אין selectedShippingRate, משתמש ב-calculation או getShipping
+    if (calculation) {
+      return calculation.shippingAfterDiscount || 0;
+    }
     return getShipping();
-  }, [getShipping, getSubtotal, getSubtotalAfterDiscount, calculation, selectedShippingRate]);
+  }, [getShipping, getSubtotalAfterDiscount, calculation, selectedShippingRate]);
 
   // Redirect אם אין פריטים - רק ב-client אחרי mount
   // לא מפנים אם ההזמנה הושלמה (כדי לאפשר redirect לעמוד התודה)
