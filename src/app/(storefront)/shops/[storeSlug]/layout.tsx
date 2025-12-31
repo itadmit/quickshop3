@@ -4,7 +4,7 @@ import Script from 'next/script';
 import React from 'react';
 import { headers } from 'next/headers';
 import { PageViewTracker } from '@/components/storefront/PageViewTracker';
-import { SharedStoreLayout } from '@/components/storefront/SharedStoreLayout';
+import { CustomizerLayoutWrapper } from '@/components/storefront/CustomizerLayoutWrapper';
 import { LocaleSetter } from '@/components/storefront/LocaleSetter';
 import { PopupManager } from '@/components/storefront/PopupManager';
 import { CookieBanner } from '@/components/storefront/CookieBanner';
@@ -210,15 +210,15 @@ export default async function StoreSlugLayout({
       <PageViewTracker />
       <PopupManager storeId={store.id} />
       
-      {/* אם זה צ'ק אאוט - לא נציג הדר ופוטר */}
+      {/* אם זה צ'ק אאוט - לא נשתמש ב-CustomizerLayoutWrapper */}
       {isCheckout ? (
         <div className="min-h-screen" dir="rtl">
           {children}
         </div>
       ) : (
-        <SharedStoreLayout storeSlug={storeSlug} storeId={store.id}>
+        <CustomizerLayoutWrapper storeSlug={storeSlug}>
           {children}
-        </SharedStoreLayout>
+        </CustomizerLayoutWrapper>
       )}
 
       {/* Body Tracking Codes */}

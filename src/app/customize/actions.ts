@@ -50,41 +50,6 @@ async function getAuthInfo() {
 }
 
 /**
- * Helper: טען sections מ-JSON
- */
-async function getLayoutSections(layoutId: number): Promise<any[]> {
-  const result = await query<{ sections_json: any }>(
-    `SELECT COALESCE(sections_json, '[]'::jsonb) as sections_json FROM page_layouts WHERE id = $1`,
-    [layoutId]
-  );
-  return result[0]?.sections_json || [];
-}
-
-/**
- * Helper: שמור sections כ-JSON
- */
-async function saveLayoutSections(layoutId: number, sections: any[]): Promise<void> {
-  await query(
-    `UPDATE page_layouts SET sections_json = $1::jsonb, updated_at = now() WHERE id = $2`,
-    [JSON.stringify(sections), layoutId]
-  );
-}
-
-/**
- * Helper: מצא layout ID לפי pageType ו-pageHandle
- */
-async function findLayoutId(storeId: number, pageType: PageType, pageHandle?: string): Promise<number | null> {
-  const result = await query<{ id: number }>(
-    `SELECT id FROM page_layouts 
-     WHERE store_id = $1 AND page_type = $2 
-     AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))
-     LIMIT 1`,
-    [storeId, pageType, pageHandle || null]
-  );
-  return result[0]?.id || null;
-}
-
-/**
  * שמירת שינויים כ-Draft
  */
 export async function savePageDraft(data: SavePageDraftRequest) {
@@ -94,8 +59,8 @@ export async function savePageDraft(data: SavePageDraftRequest) {
     // 1. מצא או צור page_layout
     const layoutResult = await query(
       `
-      INSERT INTO page_layouts (store_id, page_type, page_handle, is_published, sections_json)
-      VALUES ($1, $2, $3, false, '[]'::jsonb)
+      INSERT INTO page_layouts (store_id, page_type, page_handle, is_published)
+      VALUES ($1, $2, $3, false)
       ON CONFLICT (store_id, page_type, page_handle) 
       DO UPDATE SET updated_at = now()
       RETURNING id
@@ -108,30 +73,66 @@ export async function savePageDraft(data: SavePageDraftRequest) {
       return { success: false, error: 'Failed to create layout' };
     }
 
-    // 2. שמור סקשנים כ-JSON אחד (מהיר כמו Shopify!)
-    const sectionsJson = data.sections.map((section: any, index: number) => ({
-      id: section.section_id,
-      type: section.section_type,
-      name: section.section_type,
-      visible: section.is_visible !== false,
-      order: section.position !== undefined ? section.position : index,
-      locked: section.is_locked || false,
-      style: (section.settings_json?.style) || {},
-      settings: (section.settings_json?.settings) || section.settings_json || {},
-      custom_css: section.custom_css || '',
-      custom_classes: section.custom_classes || '',
-      blocks: (section.blocks || []).map((block: any, blockIndex: number) => ({
-        id: block.block_id,
-        type: block.block_type,
-        is_visible: block.is_visible !== false,
-        content: (block.settings_json?.content) || {},
-        style: (block.settings_json?.style) || {},
-        settings: (block.settings_json?.settings) || block.settings_json || {}
-      }))
-    }));
+    // 2. מחק סקשנים קיימים (נשמור מחדש)
+    await query(
+      `DELETE FROM page_sections WHERE page_layout_id = $1`,
+      [layoutId]
+    );
 
-    // עדכן את ה-layout עם ה-JSON
-    await saveLayoutSections(layoutId, sectionsJson);
+    // 3. שמור סקשנים חדשים
+    for (let i = 0; i < data.sections.length; i++) {
+      const section = data.sections[i] as any; // Temporary type assertion
+      const sectionResult = await query(
+        `
+        INSERT INTO page_sections (
+          page_layout_id, section_type, section_id, position,
+          is_visible, is_locked, settings_json, custom_css, custom_classes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+        `,
+        [
+          layoutId,
+          section.section_type,
+          section.section_id,
+          section.position,
+          section.is_visible,
+          section.is_locked,
+          JSON.stringify(section.settings_json),
+          section.custom_css || '',
+          section.custom_classes || '',
+        ]
+      );
+
+      const sectionId = sectionResult[0]?.id;
+      if (!sectionId) {
+        continue;
+      }
+
+      // שמור בלוקים
+      if (section.blocks && Array.isArray(section.blocks)) {
+        for (let j = 0; j < section.blocks.length; j++) {
+          const block = section.blocks[j];
+          await query(
+            `
+            INSERT INTO section_blocks (
+              section_id, block_type, block_id, position,
+              is_visible, settings_json
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            `,
+            [
+              sectionId,
+              block.block_type,
+              block.block_id,
+              block.position,
+              block.is_visible,
+              JSON.stringify(block.settings_json),
+            ]
+          );
+        }
+      }
+    }
 
     // 4. עדכן custom_css אם קיים
     if (data.custom_css) {
@@ -288,7 +289,32 @@ export async function resetPage(pageType: PageType, pageHandle?: string) {
   try {
     const { storeId } = await getAuthInfo();
 
-    // ✅ פשוט - מחק את ה-layout (ה-JSON נמחק אוטומטית)
+    // מחיקת בלוקים קודם
+    await query(
+      `DELETE FROM section_blocks
+       WHERE section_id IN (
+         SELECT id FROM page_sections
+         WHERE page_layout_id IN (
+           SELECT id FROM page_layouts
+           WHERE store_id = $1 AND page_type = $2
+           AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))
+         )
+       )`,
+      [storeId, pageType, pageHandle || null]
+    );
+
+    // מחיקת סקשנים
+    await query(
+      `DELETE FROM page_sections
+       WHERE page_layout_id IN (
+         SELECT id FROM page_layouts
+         WHERE store_id = $1 AND page_type = $2
+         AND (page_handle = $3 OR ($3 IS NULL AND page_handle IS NULL))
+       )`,
+      [storeId, pageType, pageHandle || null]
+    );
+
+    // מחיקת layout
     await query(
       `DELETE FROM page_layouts
        WHERE store_id = $1 AND page_type = $2
@@ -339,9 +365,6 @@ export async function addSection(data: AddSectionRequest) {
       layoutId = layoutResult[0].id;
     }
 
-    // ✅ טען sections קיימים מ-JSON
-    const sections = await getLayoutSections(layoutId);
-    
     const sectionId = `section_${Date.now()}`;
 
     // הגדרות ברירת מחדל לפי סוג הסקשן
@@ -409,104 +432,149 @@ export async function addSection(data: AddSectionRequest) {
       };
     }
 
+    // הוסף סקשן
+    const sectionResult = await query(
+      `
+      INSERT INTO page_sections (
+        page_layout_id, section_type, section_id, position,
+        is_visible, settings_json
+      )
+      VALUES ($1, $2, $3, $4, true, $5)
+      RETURNING id
+      `,
+      [
+        layoutId,
+        data.section_type,
+        sectionId,
+        data.position,
+        JSON.stringify(defaultSettings),
+      ]
+    );
+
+    const dbSectionId = sectionResult[0]?.id;
+
     // הוסף בלוקים ברירת מחדל לפי סוג הסקשן
-    let defaultBlocks: any[] = [];
-    
     if (data.section_type === 'slideshow') {
-      defaultBlocks = [{
-        id: 'slide_1',
-        type: 'image_slide',
-        is_visible: true,
-        content: {},
-        style: {},
-        settings: {
-          image: '',
-          heading: 'ברוכים הבאים',
-          description: 'גלה את הקולקציה החדשה שלנו',
-          button_text: 'קנה עכשיו',
-          button_link: '/categories/all'
-        }
-      }];
+      await query(
+        `
+        INSERT INTO section_blocks (
+          section_id, block_type, block_id, position,
+          is_visible, settings_json
+        )
+        VALUES ($1, $2, $3, $4, true, $5)
+        `,
+        [
+          dbSectionId,
+          'image_slide',
+          'slide_1',
+          0,
+          JSON.stringify({
+            image: '',
+            heading: 'ברוכים הבאים',
+            description: 'גלה את הקולקציה החדשה שלנו',
+            button_text: 'קנה עכשיו',
+            button_link: '/categories/all'
+          })
+        ]
+      );
     }
 
     // 4 לוגואים ברירת מחדל לסקשן לוגואים
     if (data.section_type === 'logo_list') {
-      defaultBlocks = Array.from({ length: 4 }, (_, i) => ({
-        id: `logo_${i + 1}`,
-        type: 'image',
-        is_visible: true,
-        content: {},
-        style: {},
-        settings: {
-          image_url: '',
-          title: '',
-          description: '',
-          link_url: ''
-        }
-      }));
+      for (let i = 1; i <= 4; i++) {
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, true, $5)
+          `,
+          [
+            dbSectionId,
+            'image',
+            `logo_${i}`,
+            i - 1,
+            JSON.stringify({
+              image_url: '',
+              title: '',
+              description: '',
+              link_url: ''
+            })
+          ]
+        );
+      }
     }
 
     // 3 עמודות ברירת מחדל לסקשן עמודות מרובות
     if (data.section_type === 'multicolumn') {
       const defaultColumns = [
-        { title: 'משלוח מהיר', text: 'משלוח עד הבית תוך 3 ימי עסקים לכל חלקי הארץ.' },
-        { title: 'החזרות חינם', text: 'לא מרוצים? ניתן להחזיר את המוצר תוך 30 יום ולקבל זיכוי מלא.' },
-        { title: 'שירות לקוחות', text: 'צוות התמיכה שלנו זמין עבורכם לכל שאלה או התייעצות.' }
-      ];
-      
-      defaultBlocks = defaultColumns.map((col, i) => ({
-        id: `col_${i + 1}`,
-        type: 'column',
-        is_visible: true,
-        content: {},
-        style: {},
-        settings: {
-          title: col.title,
-          text: col.text,
-          image_url: '',
-          link_label: '',
-          link: ''
+        {
+          title: 'משלוח מהיר',
+          text: 'משלוח עד הבית תוך 3 ימי עסקים לכל חלקי הארץ.'
+        },
+        {
+          title: 'החזרות חינם',
+          text: 'לא מרוצים? ניתן להחזיר את המוצר תוך 30 יום ולקבל זיכוי מלא.'
+        },
+        {
+          title: 'שירות לקוחות',
+          text: 'צוות התמיכה שלנו זמין עבורכם לכל שאלה או התייעצות.'
         }
-      }));
+      ];
+
+      for (let i = 0; i < 3; i++) {
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, true, $5)
+          `,
+          [
+            dbSectionId,
+            'column',
+            `col_${i+1}`,
+            i,
+            JSON.stringify({
+              title: defaultColumns[i].title,
+              text: defaultColumns[i].text,
+              image_url: '',
+              link_label: '',
+              link: ''
+            })
+          ]
+        );
+      }
     }
 
     // 3 תמונות ברירת מחדל לקולאז'
     if (data.section_type === 'collage') {
-      defaultBlocks = Array.from({ length: 3 }, (_, i) => ({
-        id: `collage_item_${i + 1}`,
-        type: 'image',
-        is_visible: true,
-        content: {},
-        style: {},
-        settings: {
-          type: 'image',
-          image_url: '',
-          heading: '',
-          link: ''
-        }
-      }));
+      for (let i = 0; i < 3; i++) {
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, true, $5)
+          `,
+          [
+            dbSectionId,
+            'image', // או 'product' / 'collection' / 'video' בהתאם לבחירת המשתמש בעתיד
+            `collage_item_${i+1}`,
+            i,
+            JSON.stringify({
+              type: 'image',
+              image_url: '',
+              heading: '',
+              link: ''
+            })
+          ]
+        );
+      }
     }
-
-    // צור section חדש
-    const newSection = {
-      id: sectionId,
-      type: data.section_type,
-      name: data.section_type,
-      visible: true,
-      order: data.position !== undefined ? data.position : sections.length,
-      locked: false,
-      style: {},
-      settings: defaultSettings,
-      custom_css: '',
-      custom_classes: '',
-      blocks: defaultBlocks
-    };
-
-    // הוסף ל-sections
-    sections.push(newSection);
-    
-    // שמור בחזרה
-    await saveLayoutSections(layoutId, sections);
 
     // ✅ פליטת אירוע
     await eventBus.emit(
@@ -524,7 +592,7 @@ export async function addSection(data: AddSectionRequest) {
       }
     );
 
-    return { success: true, sectionId };
+    return { success: true, sectionId: dbSectionId };
   } catch (error) {
     console.error('Error adding section:', error);
     return { success: false, error: 'Failed to add section' };
@@ -532,50 +600,64 @@ export async function addSection(data: AddSectionRequest) {
 }
 
 /**
- * עדכון סקשן - עובד עם JSON
+ * עדכון סקשן - אופטימיזציה לעדכון מהיר
  */
 export async function updateSection(data: UpdateSectionRequest) {
   try {
     const { storeId, userId } = await getAuthInfo();
 
-    // מצא את ה-layout
-    const layoutId = await findLayoutId(storeId, data.page_type, data.page_handle);
-    if (!layoutId) {
-      return { success: false, error: 'Layout not found' };
-    }
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
 
-    // טען sections
-    const sections = await getLayoutSections(layoutId);
-    
-    // מצא את ה-section לעדכון
-    const sectionIndex = sections.findIndex((s: any) => s.id === data.section_id);
-    if (sectionIndex === -1) {
-      return { success: false, error: 'Section not found' };
-    }
-
-    // עדכן את ה-section
     if (data.settings !== undefined) {
-      sections[sectionIndex].settings = data.settings;
+      updates.push(`settings_json = $${paramIndex}`);
+      values.push(JSON.stringify(data.settings));
+      paramIndex++;
     }
+
     if (data.custom_css !== undefined) {
-      sections[sectionIndex].custom_css = data.custom_css;
+      updates.push(`custom_css = $${paramIndex}`);
+      values.push(data.custom_css);
+      paramIndex++;
     }
+
     if (data.custom_classes !== undefined) {
-      sections[sectionIndex].custom_classes = data.custom_classes;
+      updates.push(`custom_classes = $${paramIndex}`);
+      values.push(data.custom_classes);
+      paramIndex++;
     }
+
     if (data.position !== undefined) {
-      sections[sectionIndex].order = data.position;
-      // מיין מחדש לפי order
-      sections.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      updates.push(`position = $${paramIndex}`);
+      values.push(data.position);
+      paramIndex++;
     }
+
     if (data.is_visible !== undefined) {
-      sections[sectionIndex].visible = data.is_visible;
+      updates.push(`is_visible = $${paramIndex}`);
+      values.push(data.is_visible);
+      paramIndex++;
     }
 
-    // שמור בחזרה
-    await saveLayoutSections(layoutId, sections);
+    if (updates.length === 0) {
+      return { success: false, error: 'No updates provided' };
+    }
 
-    // ✅ פליטת אירוע
+    updates.push(`updated_at = now()`);
+    values.push(data.section_id);
+
+    // עדכון מהיר - רק את הסקשן הספציפי
+    await query(
+      `
+      UPDATE page_sections
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      `,
+      values
+    );
+
+    // ✅ פליטת אירוע (לא חוסם את התגובה)
     eventBus.emit(
       'customizer.section.updated',
       {
@@ -598,33 +680,20 @@ export async function updateSection(data: UpdateSectionRequest) {
 }
 
 /**
- * מחיקת סקשן - עובד עם JSON
+ * מחיקת סקשן
  */
-export async function deleteSection(data: { section_id: string; page_type: PageType; page_handle?: string }) {
+export async function deleteSection(sectionId: number) {
   try {
     const { storeId, userId } = await getAuthInfo();
 
-    // מצא את ה-layout
-    const layoutId = await findLayoutId(storeId, data.page_type, data.page_handle);
-    if (!layoutId) {
-      return { success: false, error: 'Layout not found' };
-    }
-
-    // טען sections
-    const sections = await getLayoutSections(layoutId);
-    
-    // מחק את ה-section
-    const filteredSections = sections.filter((s: any) => s.id !== data.section_id);
-    
-    // שמור בחזרה
-    await saveLayoutSections(layoutId, filteredSections);
+    await query(`DELETE FROM page_sections WHERE id = $1`, [sectionId]);
 
     // ✅ פליטת אירוע
     await eventBus.emit(
       'customizer.section.deleted',
       {
         store_id: storeId,
-        section_id: data.section_id,
+        section_id: sectionId,
       },
       {
         store_id: storeId,
@@ -694,47 +763,37 @@ async function createVersionSnapshot(
 }
 
 /**
- * הוספת בלוק לסקשן - עובד עם JSON
+ * הוספת בלוק לסקשן
  */
-export async function addBlock(data: AddBlockRequest & { page_type: PageType; page_handle?: string }) {
+export async function addBlock(data: AddBlockRequest) {
   try {
     const { storeId, userId } = await getAuthInfo();
 
-    // מצא את ה-layout
-    const layoutId = await findLayoutId(storeId, data.page_type, data.page_handle);
-    if (!layoutId) {
-      return { success: false, error: 'Layout not found' };
-    }
-
-    // טען sections
-    const sections = await getLayoutSections(layoutId);
-    
-    // מצא את ה-section
-    const sectionIndex = sections.findIndex((s: any) => s.id === data.section_id);
-    if (sectionIndex === -1) {
-      return { success: false, error: 'Section not found' };
-    }
-
     const blockId = `block_${Date.now()}`;
-    const newBlock = {
-      id: blockId,
-      type: data.block_type,
-      is_visible: true,
-      content: {},
-      style: {},
-      settings: data.settings || {}
-    };
 
-    // הוסף את ה-block ל-section
-    if (!sections[sectionIndex].blocks) {
-      sections[sectionIndex].blocks = [];
-    }
-    sections[sectionIndex].blocks.push(newBlock);
-    
-    // שמור בחזרה
-    await saveLayoutSections(layoutId, sections);
+    // הוסף בלוק
+    const blockResult = await query(
+      `
+      INSERT INTO section_blocks (
+        section_id, block_type, block_id, position,
+        is_visible, settings_json
+      )
+      VALUES ($1, $2, $3, $4, true, $5)
+      RETURNING id
+      `,
+      [
+        data.section_id,
+        data.block_type,
+        blockId,
+        data.position,
+        JSON.stringify(data.settings || {}),
+      ]
+    );
 
-    return { success: true, blockId };
+    // ✅ פליטת אירוע (אם יש)
+    // TODO: Add block.added event if needed
+
+    return { success: true, blockId: blockResult[0]?.id };
   } catch (error) {
     console.error('Error adding block:', error);
     return { success: false, error: 'Failed to add block' };
@@ -742,51 +801,52 @@ export async function addBlock(data: AddBlockRequest & { page_type: PageType; pa
 }
 
 /**
- * עדכון בלוק - עובד עם JSON
+ * עדכון בלוק
  */
-export async function updateBlock(data: UpdateBlockRequest & { page_type: PageType; page_handle?: string; section_id: string }) {
+export async function updateBlock(data: UpdateBlockRequest) {
   try {
     const { storeId, userId } = await getAuthInfo();
 
-    // מצא את ה-layout
-    const layoutId = await findLayoutId(storeId, data.page_type, data.page_handle);
-    if (!layoutId) {
-      return { success: false, error: 'Layout not found' };
-    }
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
 
-    // טען sections
-    const sections = await getLayoutSections(layoutId);
-    
-    // מצא את ה-section וה-block
-    const sectionIndex = sections.findIndex((s: any) => s.id === data.section_id);
-    if (sectionIndex === -1) {
-      return { success: false, error: 'Section not found' };
-    }
-
-    const section = sections[sectionIndex];
-    const blockIndex = section.blocks?.findIndex((b: any) => b.id === data.block_id);
-    if (blockIndex === undefined || blockIndex === -1) {
-      return { success: false, error: 'Block not found' };
-    }
-
-    // עדכן את ה-block
     if (data.settings !== undefined) {
-      sections[sectionIndex].blocks[blockIndex].settings = data.settings;
-    }
-    if (data.position !== undefined) {
-      // מיין מחדש את ה-blocks לפי position
-      sections[sectionIndex].blocks.sort((a: any, b: any) => {
-        if (a.id === data.block_id) return data.position;
-        if (b.id === data.block_id) return -data.position;
-        return 0;
-      });
-    }
-    if (data.is_visible !== undefined) {
-      sections[sectionIndex].blocks[blockIndex].is_visible = data.is_visible;
+      updates.push(`settings_json = $${paramIndex}`);
+      values.push(JSON.stringify(data.settings));
+      paramIndex++;
     }
 
-    // שמור בחזרה
-    await saveLayoutSections(layoutId, sections);
+    if (data.position !== undefined) {
+      updates.push(`position = $${paramIndex}`);
+      values.push(data.position);
+      paramIndex++;
+    }
+
+    if (data.is_visible !== undefined) {
+      updates.push(`is_visible = $${paramIndex}`);
+      values.push(data.is_visible);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      return { success: false, error: 'No updates provided' };
+    }
+
+    updates.push(`updated_at = now()`);
+    values.push(data.block_id);
+
+    await query(
+      `
+      UPDATE section_blocks
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      `,
+      values
+    );
+
+    // ✅ פליטת אירוע (אם יש)
+    // TODO: Add block.updated event if needed
 
     return { success: true };
   } catch (error) {
@@ -796,34 +856,16 @@ export async function updateBlock(data: UpdateBlockRequest & { page_type: PageTy
 }
 
 /**
- * מחיקת בלוק - עובד עם JSON
+ * מחיקת בלוק
  */
-export async function deleteBlock(data: { block_id: string; section_id: string; page_type: PageType; page_handle?: string }) {
+export async function deleteBlock(blockId: number) {
   try {
     const { storeId, userId } = await getAuthInfo();
 
-    // מצא את ה-layout
-    const layoutId = await findLayoutId(storeId, data.page_type, data.page_handle);
-    if (!layoutId) {
-      return { success: false, error: 'Layout not found' };
-    }
+    await query(`DELETE FROM section_blocks WHERE id = $1`, [blockId]);
 
-    // טען sections
-    const sections = await getLayoutSections(layoutId);
-    
-    // מצא את ה-section
-    const sectionIndex = sections.findIndex((s: any) => s.id === data.section_id);
-    if (sectionIndex === -1) {
-      return { success: false, error: 'Section not found' };
-    }
-
-    // מחק את ה-block
-    if (sections[sectionIndex].blocks) {
-      sections[sectionIndex].blocks = sections[sectionIndex].blocks.filter((b: any) => b.id !== data.block_id);
-    }
-
-    // שמור בחזרה
-    await saveLayoutSections(layoutId, sections);
+    // ✅ פליטת אירוע (אם יש)
+    // TODO: Add block.deleted event if needed
 
     return { success: true };
   } catch (error) {
@@ -866,42 +908,69 @@ export async function restoreVersion(
 
     const { page_layout_id, snapshot_json } = versionResult[0];
 
-    // 2. שחזר את הסקשנים מה-snapshot - עובד עם JSON!
+    // 2. שחזר את הסקשנים מה-snapshot
     const config = snapshot_json as PageConfig;
 
-    // 3. המר את ה-config ל-sections JSON format
-    const sectionsJson: any[] = [];
-    
+    // 3. מחק סקשנים קיימים
+    await query(
+      `DELETE FROM page_sections WHERE page_layout_id = $1`,
+      [page_layout_id]
+    );
+
+    // 4. שחזר סקשנים חדשים מה-snapshot
     for (let i = 0; i < config.section_order.length; i++) {
       const sectionId = config.section_order[i];
       const sectionData = config.sections[sectionId];
 
       if (!sectionData) continue;
 
-      sectionsJson.push({
-        id: sectionId,
-        type: sectionData.type,
-        name: sectionData.type,
-        visible: sectionData.visible !== false,
-        order: sectionData.position !== undefined ? sectionData.position : i,
-        locked: sectionData.is_locked || false,
-        style: sectionData.style || {},
-        settings: sectionData.settings || {},
-        custom_css: sectionData.custom_css || '',
-        custom_classes: sectionData.custom_classes || '',
-        blocks: (sectionData.blocks || []).map((block: any, blockIndex: number) => ({
-          id: block.id,
-          type: block.type,
-          is_visible: block.is_visible !== false,
-          content: block.content || {},
-          style: block.style || {},
-          settings: block.settings || {}
-        }))
-      });
-    }
+      const sectionResult = await query(
+        `
+        INSERT INTO page_sections (
+          page_layout_id, section_type, section_id, position,
+          is_visible, is_locked, settings_json, custom_css, custom_classes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+        `,
+        [
+          page_layout_id,
+          sectionData.type,
+          sectionId,
+          sectionData.position || i,
+          true,
+          sectionData.is_locked || false,
+          JSON.stringify(sectionData.settings || {}),
+          sectionData.custom_css || '',
+          sectionData.custom_classes || '',
+        ]
+      );
 
-    // 4. שמור כ-JSON אחד (מהיר!)
-    await saveLayoutSections(page_layout_id, sectionsJson);
+      const newSectionId = sectionResult[0]?.id;
+      if (!newSectionId || !sectionData.blocks) continue;
+
+      // שחזר בלוקים
+      for (let j = 0; j < sectionData.blocks.length; j++) {
+        const block = sectionData.blocks[j];
+        await query(
+          `
+          INSERT INTO section_blocks (
+            section_id, block_type, block_id, position,
+            is_visible, settings_json
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [
+            newSectionId,
+            block.type,
+            block.id,
+            block.position || j,
+            true,
+            JSON.stringify(block.settings || {}),
+          ]
+        );
+      }
+    }
 
     // ✅ פליטת אירוע
     await eventBus.emit(

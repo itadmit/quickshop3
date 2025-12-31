@@ -64,19 +64,22 @@ export async function GET(
 
     const layout = layoutResult[0];
 
-    // ✅ קרא sections מ-JSON (מהיר!)
-    const layoutWithSections = await query<{
-      sections_json: any;
+    // טען את כל הסקשנים
+    const sectionsResult = await query<{
+      section_id: string;
+      section_type: string;
+      position: number;
+      is_visible: boolean;
+      settings_json: any;
     }>(
       `
-      SELECT COALESCE(sections_json, '[]'::jsonb) as sections_json
-      FROM page_layouts
-      WHERE id = $1
+      SELECT section_id, section_type, position, is_visible, settings_json
+      FROM page_sections
+      WHERE page_layout_id = $1
+      ORDER BY position ASC
       `,
       [layout.id]
     );
-
-    const sectionsJson = layoutWithSections[0]?.sections_json || [];
 
     // טען הגדרות תבנית גלובליות
     const themeSettingsResult = await query<{
@@ -103,14 +106,14 @@ export async function GET(
     const sections: Record<string, any> = {};
     const sectionOrder: string[] = [];
 
-    for (const s of sectionsJson) {
-      sections[s.id] = {
-        type: s.type,
-        position: s.order || 0,
-        visible: s.visible !== false,
-        settings: s.settings || {},
+    for (const s of sectionsResult) {
+      sections[s.section_id] = {
+        type: s.section_type,
+        position: s.position,
+        visible: s.is_visible,
+        settings: s.settings_json,
       };
-      sectionOrder.push(s.id);
+      sectionOrder.push(s.section_id);
     }
 
     const config = {

@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3099",
-    "dev:turbopack": "next dev -p 3099 --turbopack",
     "build": "next build",
     "postbuild": "node scripts/postbuild-fix.js",
     "start": "next start -p 3099",

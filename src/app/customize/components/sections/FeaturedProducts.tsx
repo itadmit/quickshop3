@@ -16,7 +16,6 @@ interface FeaturedProductsProps {
   isPreview?: boolean; // true when in customizer preview
   preloadedProducts?: Product[]; // ✅ נתונים טעונים מראש בשרת (מהיר!)
   storeId?: number; // ✅ Store ID from server (מהיר!)
-  storeSlug?: string; // ✅ Store slug from server (prevents hydration mismatch!)
 }
 
 interface Product {
@@ -29,36 +28,71 @@ interface Product {
   vendor?: string;
 }
 
-function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview = false, preloadedProducts, storeId: propStoreId, storeSlug: propStoreSlug }: FeaturedProductsProps) {
+function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview, preloadedProducts, storeId: propStoreId }: FeaturedProductsProps) {
   console.log(`🛍️ [FeaturedProducts] Component render - section.id: ${section.id}`, preloadedProducts ? '✅ עם נתונים טעונים מראש' : '❌ ללא נתונים טעונים מראש');
   
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isInCustomizer = pathname.startsWith('/customize');
   
   // ✅ Priority: Use propStoreId from server (fast!) or fallback to hook
   const hookStoreId = useStoreId();
   const storeId = propStoreId || hookStoreId;
   
-  // ✅ SSR-safe: Use propStoreSlug from server OR from URL params (no hydration mismatch!)
-  const urlSlug = params?.storeSlug as string;
-  const storeSlug = propStoreSlug || urlSlug || '';
+  // Get storeSlug - try from URL params first, then from API if in customizer
+  const [storeSlug, setStoreSlug] = useState<string>('');
+  
+  useEffect(() => {
+    const urlSlug = params?.storeSlug as string;
+    if (urlSlug) {
+      setStoreSlug(urlSlug);
+      return;
+    }
+    
+    // If in customizer and no slug in URL, fetch from API
+    if (isInCustomizer && storeId) {
+      fetch(`/api/customizer/pages?pageType=home`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.store?.slug) {
+            setStoreSlug(data.store.slug);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [params?.storeSlug, isInCustomizer, storeId]);
   // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
-  // Initialize products from preloaded data (SSR only - no cache)
+  // Initialize products from preloaded data (SSR) or sessionStorage
+  const sectionKey = `featured-products-${section.id}`;
   const [products, setProducts] = useState<Product[]>(() => {
-    // Use preloaded data from server (fastest!)
+    // Priority 1: Preloaded data from server (fastest!)
     if (preloadedProducts && preloadedProducts.length > 0) {
       return preloadedProducts;
+    }
+    // Priority 2: SessionStorage cache
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(`${sectionKey}-data`);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          return [];
+        }
+      }
     }
     return [];
   });
   const [loading, setLoading] = useState(() => {
-    // Don't show loading if we have preloaded data
+    // Don't show loading if we have preloaded data or cached data
     if (preloadedProducts && preloadedProducts.length > 0) {
       return false; // ✅ יש נתונים טעונים מראש - אין צורך בטעינה
     }
-    return true; // Show loading if no preloaded data
+    if (typeof window === 'undefined') return true;
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    return !stored;
   });
   
   // Get settings - simple and direct
@@ -96,8 +130,9 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
     return key;
   }, [storeId, productsCount, productSelectionMode, collectionIdsStr, productIdsStr]);
   
-  // Track previous settingsKey - use ref to persist across remounts (no cache)
-  const prevSettingsKeyRef = useRef<string>('');
+  // Track previous settingsKey - use ref + sessionStorage to persist across remounts
+  const storedPrevKey = typeof window !== 'undefined' ? sessionStorage.getItem(`${sectionKey}-prevKey`) : null;
+  const prevSettingsKeyRef = useRef<string>(storedPrevKey || '');
   const isLoadingRef = useRef<boolean>(false);
   
   // Load products - simple: only when settingsKey changes
@@ -136,10 +171,13 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
       return;
     }
     
-    // If settingsKey changed, update ref (no cache)
+    // If settingsKey changed, update ref and sessionStorage
     if (settingsKey !== prevKey) {
       console.log(`🛍️ [FeaturedProducts] settingsKey changed from ${prevKey} to ${settingsKey}, loading new data`);
       prevSettingsKeyRef.current = settingsKey;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`${sectionKey}-prevKey`, settingsKey);
+      }
     }
     
     let cancelled = false;
@@ -238,7 +276,10 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
         if (!cancelled) {
           console.log(`🛍️ [FeaturedProducts] Loaded ${loadedProducts.length} products`);
           setProducts(loadedProducts);
-          // No cache - data is fast enough from server
+          // Save to sessionStorage
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`${sectionKey}-data`, JSON.stringify(loadedProducts));
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -261,7 +302,7 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
       cancelled = true;
       isLoadingRef.current = false;
     };
-  }, [settingsKey, storeId, preloadedProducts]); // No sectionKey - no cache needed
+  }, [settingsKey, storeId, sectionKey, preloadedProducts]); // Added preloadedProducts to dependencies
 
   // Responsive items per row logic
   const getItemsPerRow = () => {
@@ -424,13 +465,11 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview 
             ).map((item: any, index: number) => {
               const isPlaceholder = item.isPlaceholder;
               const product = isPlaceholder ? null : item as Product;
-              // ✅ SSR-safe: Use isPreview prop instead of window.location
+              // In customizer, links should navigate to customizer edit mode
               const productUrl = product 
-                ? (isPreview 
+                ? (isInCustomizer 
                     ? `/customize?pageType=product&pageHandle=${product.handle}`
-                    : storeSlug 
-                      ? `/shops/${storeSlug}/products/${product.handle}`
-                      : `#product-${product.id}`)
+                    : `/shops/${storeSlug}/products/${product.handle}`)
                 : '#';
               const hasDiscount = product && product.compare_at_price && product.compare_at_price > product.price;
 

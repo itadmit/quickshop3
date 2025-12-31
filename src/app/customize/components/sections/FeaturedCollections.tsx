@@ -16,7 +16,6 @@ interface FeaturedCollectionsProps {
   isPreview?: boolean;
   preloadedCollections?: Collection[]; // ✅ נתונים טעונים מראש בשרת (מהיר!)
   storeId?: number; // ✅ Store ID from server (מהיר!)
-  storeSlug?: string; // ✅ Store slug from server (prevents hydration mismatch!)
 }
 
 interface Collection {
@@ -28,37 +27,72 @@ interface Collection {
   parent_id?: number | null;
 }
 
-function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview = false, preloadedCollections, storeId: propStoreId, storeSlug: propStoreSlug }: FeaturedCollectionsProps) {
+function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview, preloadedCollections, storeId: propStoreId }: FeaturedCollectionsProps) {
   console.log(`📁 [FeaturedCollections] Component render - section.id: ${section.id}`, preloadedCollections ? '✅ עם נתונים טעונים מראש' : '❌ ללא נתונים טעונים מראש');
   
   const settings = section.settings || {};
   const style = section.style || {};
   const { t } = useTranslation('storefront');
   const params = useParams();
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isInCustomizer = pathname.startsWith('/customize');
   
   // ✅ Priority: Use propStoreId from server (fast!) or fallback to hook
   const hookStoreId = useStoreId();
   const storeId = propStoreId || hookStoreId;
   
-  // ✅ SSR-safe: Use propStoreSlug from server OR from URL params (no hydration mismatch!)
-  const urlSlug = params?.storeSlug as string;
-  const storeSlug = propStoreSlug || urlSlug || '';
+  // Get storeSlug - try from URL params first, then from API if in customizer
+  const [storeSlug, setStoreSlug] = useState<string>('');
+  
+  useEffect(() => {
+    const urlSlug = params?.storeSlug as string;
+    if (urlSlug) {
+      setStoreSlug(urlSlug);
+      return;
+    }
+    
+    // If in customizer and no slug in URL, fetch from API
+    if (isInCustomizer && storeId) {
+      fetch(`/api/customizer/pages?pageType=home`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.store?.slug) {
+            setStoreSlug(data.store.slug);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [params?.storeSlug, isInCustomizer, storeId]);
   
   // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
-  // Initialize collections from preloaded data (SSR only - no cache)
+  // Initialize collections from preloaded data (SSR) or sessionStorage
+  const sectionKey = `featured-collections-${section.id}`;
   const [collections, setCollections] = useState<Collection[]>(() => {
-    // Use preloaded data from server (fastest!)
+    // Priority 1: Preloaded data from server (fastest!)
     if (preloadedCollections && preloadedCollections.length > 0) {
       return preloadedCollections;
+    }
+    // Priority 2: SessionStorage cache
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(`${sectionKey}-data`);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          return [];
+        }
+      }
     }
     return [];
   });
   const [loading, setLoading] = useState(() => {
-    // Don't show loading if we have preloaded data
+    // Don't show loading if we have preloaded data or cached data
     if (preloadedCollections && preloadedCollections.length > 0) {
       return false; // ✅ יש נתונים טעונים מראש - אין צורך בטעינה
     }
-    return true; // Show loading if no preloaded data
+    if (typeof window === 'undefined') return true;
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    return !stored;
   });
   
   // Get settings - simple and direct
@@ -78,8 +112,9 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
     return key;
   }, [storeId, collectionSelectionMode, JSON.stringify(selectedCollectionIds)]);
   
-  // Track previous settingsKey - use ref to persist across remounts (no cache)
-  const prevSettingsKeyRef = useRef<string>('');
+  // Track previous settingsKey - use ref + sessionStorage to persist across remounts
+  const storedPrevKey = typeof window !== 'undefined' ? sessionStorage.getItem(`${sectionKey}-prevKey`) : null;
+  const prevSettingsKeyRef = useRef<string>(storedPrevKey || '');
   const isLoadingRef = useRef<boolean>(false);
   
   // Load collections - simple: only when settingsKey changes
@@ -118,10 +153,13 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
       return;
     }
     
-    // If settingsKey changed, update ref (no cache)
+    // If settingsKey changed, update ref and sessionStorage
     if (settingsKey !== prevKey) {
       console.log(`📁 [FeaturedCollections] settingsKey changed from ${prevKey} to ${settingsKey}, loading new data`);
       prevSettingsKeyRef.current = settingsKey;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`${sectionKey}-prevKey`, settingsKey);
+      }
     }
     
     let cancelled = false;
@@ -159,7 +197,10 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
         if (!cancelled) {
           console.log(`📁 [FeaturedCollections] Loaded ${collectionsData.length} collections`);
           setCollections(collectionsData);
-          // No cache - data is fast enough from server
+          // Save to sessionStorage
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`${sectionKey}-data`, JSON.stringify(collectionsData));
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -182,7 +223,7 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
       cancelled = true;
       isLoadingRef.current = false;
     };
-  }, [settingsKey, storeId, preloadedCollections]); // No sectionKey - no cache needed
+  }, [settingsKey, storeId, sectionKey, preloadedCollections]); // Added preloadedCollections to dependencies
   
   const displayType = settings.display_type || 'grid';
   const itemsPerRow = settings.items_per_row || 3;
@@ -290,7 +331,7 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
             </h2>
             {settings.show_view_all !== false && (
               <a 
-                href={settings.view_all_url || (storeSlug ? `/shops/${storeSlug}/categories` : '/categories')}
+                href={settings.view_all_url || `/shops/${storeSlug}/categories`}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
               >
                 {settings.view_all_text || t('sections.featured_collections.view_all') || 'לכל הקטגוריות'}
@@ -352,13 +393,10 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
                     const cardWidth = getSliderItemWidth(visibleItems);
                     
                     // In customizer, links should navigate to customizer edit mode
-                    // Ensure storeSlug is always available to prevent hydration mismatch
                     const collectionUrl = collection 
                       ? (isInCustomizer 
                           ? `/customize?pageType=collection&pageHandle=${collection.handle}`
-                          : storeSlug 
-                            ? `/shops/${storeSlug}/categories/${collection.handle}`
-                            : `#collection-${collection.id}`) // Fallback if storeSlug not available
+                          : `/shops/${storeSlug}/categories/${collection.handle}`)
                       : '#';
 
                     return (
@@ -481,13 +519,11 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
               ).map((item: any, index: number) => {
               const isPlaceholder = item.isPlaceholder;
               const collection = isPlaceholder ? null : item as Collection;
-              // ✅ SSR-safe: Use isPreview prop instead of window.location
+              // In customizer, links should navigate to customizer edit mode
               const collectionUrl = collection 
-                ? (isPreview 
+                ? (isInCustomizer 
                     ? `/customize?pageType=collection&pageHandle=${collection.handle}`
-                    : storeSlug 
-                      ? `/shops/${storeSlug}/categories/${collection.handle}`
-                      : `#collection-${collection.id}`)
+                    : `/shops/${storeSlug}/categories/${collection.handle}`)
                 : '#';
 
               return (

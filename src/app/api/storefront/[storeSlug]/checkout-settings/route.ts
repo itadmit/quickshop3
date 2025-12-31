@@ -77,21 +77,21 @@ export async function GET(
 
     const layoutId = layoutResult[0].id;
 
-    // ✅ קרא sections מ-JSON
-    const layoutWithSections = await query<{
-      sections_json: any;
-    }>(
-      `SELECT COALESCE(sections_json, '[]'::jsonb) as sections_json
-       FROM page_layouts 
-       WHERE id = $1`,
+    // Get checkout_form section from page_sections
+    const sectionResult = await query(
+      `SELECT settings_json FROM page_sections 
+       WHERE page_layout_id = $1 AND section_type = 'checkout_form'
+       LIMIT 1`,
       [layoutId]
     );
 
-    const sectionsJson = layoutWithSections[0]?.sections_json || [];
-    const checkoutFormSection = sectionsJson.find((s: any) => s.type === 'checkout_form');
-
-    if (checkoutFormSection && checkoutFormSection.settings) {
-      const checkoutSettings = checkoutFormSection.settings;
+    if (sectionResult.length > 0 && sectionResult[0].settings_json) {
+      const sectionData = typeof sectionResult[0].settings_json === 'string'
+        ? JSON.parse(sectionResult[0].settings_json)
+        : sectionResult[0].settings_json;
+      
+      // settings_json contains { style, settings } - we need the settings part
+      const checkoutSettings = sectionData.settings || sectionData;
       
       return NextResponse.json({
         success: true,

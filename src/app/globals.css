@@ -1,9 +1,9 @@
-/* Import Noto Sans Hebrew, Pacifico, Assistant, Rubik, and Heebo from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@100..900&family=Pacifico&family=Assistant:wght@200..800&family=Rubik:wght@300..900&family=Heebo:wght@100..900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Import Noto Sans Hebrew, Pacifico, Assistant, Rubik, and Heebo from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@100..900&family=Pacifico&family=Assistant:wght@200..800&family=Rubik:wght@300..900&family=Heebo:wght@100..900&display=swap');
 
 :root {
   /* Everlane-inspired Clean & Minimal Design System */

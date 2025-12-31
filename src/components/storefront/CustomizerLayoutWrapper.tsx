@@ -96,13 +96,9 @@ export function CustomizerLayoutWrapper({
     return <>{children}</>;
   }
   
-  // ✅ דפים שמשתמשים ב-CustomizerLayout (Server Component) ישירות
-  // נחזיר את ה-children כמו שהם (ללא עטיפה נוספת של CustomizerLayoutClient)
-  // - דף הבית: משתמש ב-CustomizerLayout
-  // - דף קטגוריה: משתמש ב-CustomizerLayout  
-  // - דף מוצר: משתמש ב-CustomizerLayout
-  const pagesWithSSRLayout = ['home', 'category', 'product'];
-  if (pagesWithSSRLayout.includes(pageType)) {
+  // ✅ דף הבית כבר משתמש ב-CustomizerLayout (Server Component) ישירות
+  // אז נחזיר את ה-children כמו שהם (ללא עטיפה נוספת)
+  if (pageType === 'home') {
     return <>{children}</>;
   }
   

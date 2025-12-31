@@ -61,10 +61,9 @@ interface StorefrontSectionRendererProps {
   collection?: any; // Collection data for collection page sections
   products?: any[]; // Products list for collection page
   storeId?: number; // Store ID for collection sections
-  storeSlug?: string; // Store slug for generating URLs
 }
 
-export function StorefrontSectionRenderer({ section, product, collection, products, storeId: propStoreId, storeSlug }: StorefrontSectionRendererProps) {
+export function StorefrontSectionRenderer({ section, product, collection, products, storeId: propStoreId }: StorefrontSectionRendererProps) {
   const contextStoreId = useStoreId();
   const storeId = propStoreId || contextStoreId;
   
@@ -189,7 +188,6 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
             isPreview={false}
             preloadedProducts={(section as any)._preloadedData?.products}
             storeId={storeId || undefined}
-            storeSlug={storeSlug}
           />
         </SectionWrapper>
       );
@@ -203,7 +201,6 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
             isPreview={false}
             preloadedCollections={(section as any)._preloadedData?.collections}
             storeId={storeId || undefined}
-            storeSlug={storeSlug}
           />
         </SectionWrapper>
       );
@@ -344,27 +341,14 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
     case 'product_reviews':
       return (
         <SectionWrapper className="py-4">
-          <ProductReviewsSection 
-            section={responsiveSection} 
-            product={product} 
-            onUpdate={noopUpdate} 
-            isPreview={false}
-            preloadedReviews={(section as any)._preloadedData?.reviews}
-            preloadedAverageRating={(section as any)._preloadedData?.average_rating}
-          />
+          <ProductReviewsSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
         </SectionWrapper>
       );
 
     case 'related_products':
       return (
         <SectionWrapper className="py-8">
-          <RelatedProductsSection 
-            section={responsiveSection} 
-            product={product} 
-            onUpdate={noopUpdate} 
-            isPreview={false}
-            preloadedProducts={(section as any)._preloadedData?.products}
-          />
+          <RelatedProductsSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
         </SectionWrapper>
       );
 
@@ -372,13 +356,7 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
     case 'product_recently_viewed':
       return (
         <SectionWrapper className="py-8">
-          <RecentlyViewedSection 
-            section={responsiveSection} 
-            product={product} 
-            onUpdate={noopUpdate} 
-            isPreview={false}
-            preloadedProducts={(section as any)._preloadedData?.products}
-          />
+          <RecentlyViewedSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
         </SectionWrapper>
       );
 

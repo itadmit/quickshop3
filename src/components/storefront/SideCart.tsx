@@ -49,9 +49,6 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const { t } = useTranslation('storefront');
   
-  // ✅ עכשיו עם dynamic import עם ssr:false, אין בעיית hydration
-  const cartCount = getCartCount();
-  
   // State לניהול מלאי לכל variant
   const [inventoryMap, setInventoryMap] = useState<Map<number, number>>(new Map());
   const [loadingInventory, setLoadingInventory] = useState<Set<number>>(new Set());
@@ -80,9 +77,15 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
     autoCalculate: true,
   });
 
-  // ✅ משתמשים ב-clientCartCount במקום cartCount כדי למנוע hydration mismatch
+  const cartCount = getCartCount();
+  const [isMounted, setIsMounted] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
   const [isNavigatingToCheckout, setIsNavigatingToCheckout] = useState(false);
+
+  // פתרון לבעיית Hydration - מתעדכן רק אחרי mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Force update cart count when cartItems change (even before mount)
   // This ensures the badge shows immediately when cart is loaded
@@ -307,13 +310,12 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
 
   return (
     <>
-      {/* Cart Button - עם dynamic import עם ssr:false, אין בעיית hydration */}
+      {/* Cart Button */}
       <button
         onClick={openCart}
         className="relative flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
       >
         <HiShoppingCart className="w-5 h-5 text-gray-600" />
-        {/* ✅ עם dynamic import עם ssr:false, אין בעיית hydration */}
         {cartCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
             {cartCount}

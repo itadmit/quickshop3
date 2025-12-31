@@ -5,8 +5,7 @@ import { getCollections } from '@/lib/storefront/queries';
 import { getTranslations } from '@/lib/i18n/server';
 
 // ============================================
-// Collections Page - Optimized with Cache & Translations (SSR)
-// ✅ הדר/פוטר ב-layout - לא נטענים מחדש בניווט
+// Collections Page - Optimized with Cache & Translations
 // ============================================
 
 export const revalidate = 300; // ISR - revalidate כל 5 דקות
@@ -34,9 +33,8 @@ export default async function CollectionsPage({
   // טעינת קטגוריות עם Cache
   const collections = await getCollections(storeId, 50);
 
-  // ✅ SSR - התוכן נטען בשרת, הדר/פוטר מה-layout
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" dir="rtl">
       <h1 className="text-4xl font-bold text-gray-900 mb-8">{t('home.collections')}</h1>
 
       {collections.length > 0 ? (

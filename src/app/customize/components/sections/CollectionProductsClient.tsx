@@ -111,26 +111,10 @@ function CollectionProductsClientComponent({
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = 20;
   const offset = (page - 1) * limit;
-  
-  // Track if we need to load data (filters changed from default)
-  const hasFilters = sort !== 'newest' || priceRange !== 'all' || availability !== 'all' || page > 1;
-  
-  // ✅ Track if we already have initial products from SSR
-  const hasInitialProducts = initialProducts && initialProducts.length > 0;
 
   // Load products when filters change
   useEffect(() => {
-    // ✅ Skip loading if we have preloaded data and no filters applied
-    // This prevents duplicate API calls when SSR data is available
-    if (hasInitialProducts && !hasFilters) {
-      console.log(`📦 [CollectionProducts] Using preloaded data (${initialProducts.length} products)`);
-      setProducts(initialProducts);
-      setLoading(false);
-      return;
-    }
-    
     const loadProducts = async () => {
-      console.log(`📦 [CollectionProducts] Loading from API (filters changed or no preloaded data)`);
       setLoading(true);
       try {
         // Build query params for storefront API
@@ -156,8 +140,10 @@ function CollectionProductsClientComponent({
       }
     };
 
+    // Always load products to ensure we have the latest data
+    // The initialProducts are just for initial render, but we should fetch fresh data
     loadProducts();
-  }, [collectionHandle, storeId, sort, priceRange, availability, page, offset, hasFilters, hasInitialProducts]);
+  }, [collectionHandle, storeId, sort, priceRange, availability, page, offset, initialProducts.length]);
 
   if (loading) {
     return (

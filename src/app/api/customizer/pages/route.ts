@@ -118,29 +118,57 @@ export async function GET(request: NextRequest) {
 
     const layout = layoutResult[0];
 
-    // ✅ קרא sections מ-JSON (מהיר כמו Shopify!)
-    const sectionsJson = layout.sections_json || [];
-    
-    const sections = sectionsJson.map((sectionData: any) => {
-      return {
-        id: sectionData.id || `section-${sectionData.type}`,
-        type: sectionData.type,
-        name: getSectionName(sectionData.type),
-        visible: sectionData.visible !== false,
-        order: sectionData.order || 0,
-        locked: sectionData.locked || false,
-        blocks: (sectionData.blocks || []).map((block: any) => ({
+    // Get sections for this layout
+    const sectionsQuery = `
+      SELECT
+        ps.*,
+        json_agg(
+          json_build_object(
+            'id', sb.block_id,
+            'type', sb.block_type,
+            'position', sb.position,
+            'is_visible', sb.is_visible,
+            'settings', sb.settings_json
+          ) ORDER BY sb.position
+        ) FILTER (WHERE sb.id IS NOT NULL) as blocks
+      FROM page_sections ps
+      LEFT JOIN section_blocks sb ON ps.id = sb.section_id
+      WHERE ps.page_layout_id = $1
+      GROUP BY ps.id
+      ORDER BY ps.position ASC
+    `;
+
+    const sectionsResult = await query(sectionsQuery, [layout.id]);
+
+    const sections = sectionsResult.map(section => {
+      // Parse settings_json for section - it contains style and settings
+      const sectionSettings = section.settings_json || {};
+      
+      // Parse blocks - settings_json contains content, style, and settings
+      const parsedBlocks = (section.blocks || []).map((block: any) => {
+        const blockSettings = block.settings || {};
+        return {
           id: block.id,
           type: block.type,
-          content: block.content || {},
-          style: block.style || {},
-          settings: block.settings || {},
+          content: blockSettings.content || {},
+          style: blockSettings.style || {},
+          settings: blockSettings.settings || blockSettings,
           is_visible: block.is_visible !== false
-        })),
-        style: sectionData.style || {},
-        settings: sectionData.settings || {},
-        custom_css: sectionData.custom_css || '',
-        custom_classes: sectionData.custom_classes || ''
+        };
+      });
+      
+      return {
+        id: section.section_id,
+        type: section.section_type,
+        name: getSectionName(section.section_type),
+        visible: section.is_visible,
+        order: section.position,
+        locked: section.is_locked,
+        blocks: parsedBlocks,
+        style: sectionSettings.style || {},
+        settings: sectionSettings.settings || sectionSettings,
+        custom_css: section.custom_css || '',
+        custom_classes: section.custom_classes || ''
       };
     });
 
@@ -210,55 +238,84 @@ export async function POST(request: NextRequest) {
 
     let layoutId;
 
-    // ✅ מהיר כמו Shopify - שמור הכל כ-JSON אחד!
-    // Prepare sections JSON (כל ה-sections עם ה-blocks שלהם)
-    const sectionsJson = sections.map((section: any, index: number) => ({
-      id: section.id,
-      type: section.type,
-      name: section.type, // Will be resolved by getSectionName on read
-      visible: section.visible !== false,
-      order: index,
-      locked: section.locked || false,
-      style: section.style || {},
-      settings: section.settings || {},
-      custom_css: section.custom_css || '',
-      custom_classes: section.custom_classes || '',
-      blocks: (section.blocks || []).map((block: any, blockIndex: number) => ({
-        id: block.id,
-        type: block.type,
-        is_visible: block.is_visible !== false,
-        content: block.content || {},
-        style: block.style || {},
-        settings: block.settings || {}
-      }))
-    }));
-
     if (existingLayout.length > 0) {
-      // Update existing layout - UPDATE אחד בלבד!
+      // Update existing layout
       layoutId = existingLayout[0].id;
       await query(`
         UPDATE page_layouts
-        SET 
-          sections_json = $1::jsonb,
-          is_published = $2, 
-          published_at = CASE WHEN $2 THEN now() ELSE published_at END, 
-          updated_at = now()
-        WHERE id = $3
-      `, [JSON.stringify(sectionsJson), isPublished, layoutId]);
+        SET is_published = $1, published_at = CASE WHEN $1 THEN now() ELSE published_at END, updated_at = now()
+        WHERE id = $2
+      `, [isPublished, layoutId]);
     } else {
-      // Create new layout - INSERT אחד בלבד!
+      // Create new layout
       const newLayout = await query(`
-        INSERT INTO page_layouts (
-          store_id, template_id, page_type, page_handle, is_published, sections_json
-        )
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO page_layouts (store_id, template_id, page_type, page_handle, is_published)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
-      `, [user.store_id, templateId, pageType, pageHandle, isPublished, JSON.stringify(sectionsJson)]);
+      `, [user.store_id, templateId, pageType, pageHandle, isPublished]);
 
       layoutId = newLayout[0].id;
     }
 
-    // ✅ לא צריך יותר למחוק sections ו-blocks - הכל ב-JSON!
+    // Delete existing sections and blocks
+    await query(`DELETE FROM section_blocks WHERE section_id IN (SELECT id FROM page_sections WHERE page_layout_id = $1)`, [layoutId]);
+    await query(`DELETE FROM page_sections WHERE page_layout_id = $1`, [layoutId]);
+
+    // Insert new sections and blocks
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i];
+
+      // Save the entire section structure (style and settings) in settings_json
+      const sectionData = {
+        style: section.style || {},
+        settings: section.settings || {}
+      };
+      
+      const newSection = await query(`
+        INSERT INTO page_sections (
+          page_layout_id, section_type, section_id, position, is_visible, is_locked,
+          settings_json, custom_css, custom_classes
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+      `, [
+        layoutId,
+        section.type,
+        section.id,
+        i,
+        section.visible !== false,
+        section.locked || false,
+        JSON.stringify(sectionData),
+        section.custom_css || '',
+        section.custom_classes || ''
+      ]);
+
+      const sectionDbId = newSection[0].id;
+
+      // Insert blocks for this section
+      if (section.blocks && Array.isArray(section.blocks)) {
+        for (let j = 0; j < section.blocks.length; j++) {
+          const block = section.blocks[j];
+          // Save the entire block structure (content, style, settings) in settings_json
+          const blockData = {
+            content: block.content || {},
+            style: block.style || {},
+            settings: block.settings || {}
+          };
+          await query(`
+            INSERT INTO section_blocks (
+              section_id, block_type, block_id, position, is_visible, settings_json
+            ) VALUES ($1, $2, $3, $4, $5, $6)
+          `, [
+            sectionDbId,
+            block.type,
+            block.id,
+            j,
+            block.is_visible !== false,
+            JSON.stringify(blockData)
+          ]);
+        }
+      }
+    }
 
     // ✅ Invalidate cache for this page layout
     await invalidateCache(`layout:${user.store_id}:${pageType}:*`);

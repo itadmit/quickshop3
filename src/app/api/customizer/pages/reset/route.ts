@@ -56,7 +56,18 @@ export async function DELETE(request: NextRequest) {
 
     const layoutId = layoutResult[0].id;
 
-    // ✅ פשוט - מחק את ה-layout (ה-JSON נמחק אוטומטית)
+    // Delete section blocks first (foreign key constraint)
+    await query(`
+      DELETE FROM section_blocks 
+      WHERE section_id IN (SELECT id FROM page_sections WHERE page_layout_id = $1)
+    `, [layoutId]);
+
+    // Delete sections
+    await query(`
+      DELETE FROM page_sections WHERE page_layout_id = $1
+    `, [layoutId]);
+
+    // Delete the page layout itself
     await query(`
       DELETE FROM page_layouts WHERE id = $1
     `, [layoutId]);

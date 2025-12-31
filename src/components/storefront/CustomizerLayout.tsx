@@ -12,7 +12,7 @@ import { query } from '@/lib/db';
 import { getProductByHandle, getProductsList } from '@/lib/storefront/queries';
 import { getCollectionByHandle } from '@/lib/storefront/queries';
 import { ProductPageProvider } from '@/contexts/ProductPageContext';
-import { loadFeaturedProductsData, loadFeaturedCollectionsData, loadProductReviewsData, loadRelatedProductsData, loadRecentlyViewedData } from '@/lib/storefront/loadSectionData';
+import { loadFeaturedProductsData, loadFeaturedCollectionsData } from '@/lib/storefront/loadSectionData';
 
 interface CustomizerLayoutProps {
   storeSlug: string;
@@ -27,31 +27,18 @@ export async function CustomizerLayout({
   pageHandle,
   children 
 }: CustomizerLayoutProps) {
-  const startTime = Date.now();
-  console.log(`🚀 [CustomizerLayout] Loading ${pageType} page${pageHandle ? ` (${pageHandle})` : ''} for store: ${storeSlug}`);
+  const storeId = await getStoreIdBySlug(storeSlug);
   
-  // ✅ טען store בבת אחת (ללא כפילות)
-  const store = await getStoreBySlug(storeSlug);
-  
-  if (!store) {
-    console.warn(`⚠️ [CustomizerLayout] Store not found: ${storeSlug}`);
+  if (!storeId) {
+    // Fallback to old layout if store not found
     return <>{children}</>;
   }
 
-  const storeId = store.id;
-  console.log(`📦 [CustomizerLayout] Store loaded (${Date.now() - startTime}ms)`);
+  // Load store information (name and logo)
+  const store = await getStoreBySlug(storeSlug);
 
   // Load page layout from customizer
-  // ✅ לדפים שאינם home - טען גם את layout של דף הבית לצורך הדר/פוטר משותפים
-  const layoutPromises: Promise<any>[] = [
-    getPageLayout(storeId, pageType, pageHandle)
-  ];
-  if (pageType !== 'home') {
-    layoutPromises.push(getPageLayout(storeId, 'home', undefined));
-  }
-  
-  const [pageLayout, homeLayout] = await Promise.all(layoutPromises);
-  console.log(`📄 [CustomizerLayout] Page layout loaded (${Date.now() - startTime}ms)`);
+  const pageLayout = await getPageLayout(storeId, pageType, pageHandle);
   
   let sections = [];
   if (pageLayout && pageLayout.sections && pageLayout.sections.length > 0) {
@@ -60,32 +47,6 @@ export async function CustomizerLayout({
     // Use default template for specific page type if no custom layout exists
     // This ensures product pages get product sections, collection pages get collection sections, etc.
     sections = getDefaultSectionsForPage(pageType);
-  }
-  
-  // ✅ תמיד להשתמש בהדר והפוטר מדף הבית (אם קיים) - לאחידות באתר
-  if (homeLayout && homeLayout.sections && homeLayout.sections.length > 0) {
-    const homeHeaderSection = homeLayout.sections.find((s: any) => s.type === 'header' && s.visible !== false);
-    const homeFooterSection = homeLayout.sections.find((s: any) => s.type === 'footer' && s.visible !== false);
-    
-    // החלפת ההדר בהדר מדף הבית
-    if (homeHeaderSection) {
-      const currentHeaderIndex = sections.findIndex((s: any) => s.type === 'header');
-      if (currentHeaderIndex !== -1) {
-        sections[currentHeaderIndex] = homeHeaderSection;
-      } else {
-        sections.unshift(homeHeaderSection);
-      }
-    }
-    
-    // החלפת הפוטר בפוטר מדף הבית
-    if (homeFooterSection) {
-      const currentFooterIndex = sections.findIndex((s: any) => s.type === 'footer');
-      if (currentFooterIndex !== -1) {
-        sections[currentFooterIndex] = homeFooterSection;
-      } else {
-        sections.push(homeFooterSection);
-      }
-    }
   }
   
 
@@ -179,18 +140,15 @@ export async function CustomizerLayout({
 
   if (pageType === 'product' && pageHandle) {
     try {
-      const productLoadStart = Date.now();
       // pageHandle is already decoded by CustomizerLayoutWrapper
       product = await getProductByHandle(pageHandle, storeId);
-      console.log(`🛍️ [CustomizerLayout] Product loaded (${Date.now() - productLoadStart}ms): ${product?.title || 'N/A'}`);
     } catch (error) {
-      console.error('❌ [CustomizerLayout] Error loading product:', error);
+      console.error('Error loading product for customizer:', error);
     }
   }
 
   if (pageType === 'collection' && pageHandle) {
     try {
-      const collectionLoadStart = Date.now();
       // Special handling for "all" collection - show all products
       if (pageHandle === 'all') {
         products = await getProductsList(storeId, { limit: 20, offset: 0 });
@@ -202,15 +160,13 @@ export async function CustomizerLayout({
           image_url: null,
           product_count: products.length
         };
-        console.log(`📂 [CustomizerLayout] Collection "all" loaded (${Date.now() - collectionLoadStart}ms): ${products.length} products`);
       } else {
         const collectionData = await getCollectionByHandle(pageHandle, storeId, { limit: 20, offset: 0 });
         collection = collectionData.collection;
         products = collectionData.products || [];
-        console.log(`📂 [CustomizerLayout] Collection loaded (${Date.now() - collectionLoadStart}ms): ${collection?.title || 'N/A'} - ${products.length} products`);
       }
     } catch (error) {
-      console.error('❌ [CustomizerLayout] Error loading collection:', error);
+      console.error('Error loading collection for customizer:', error);
     }
   }
 
@@ -241,11 +197,6 @@ export async function CustomizerLayout({
   const featuredProductsSections = contentSections.filter((s: any) => s.type === 'featured_products');
   const featuredCollectionsSections = contentSections.filter((s: any) => s.type === 'featured_collections');
   
-  // Product page specific sections
-  const productReviewsSections = contentSections.filter((s: any) => s.type === 'product_reviews');
-  const relatedProductsSections = contentSections.filter((s: any) => s.type === 'related_products');
-  const recentlyViewedSections = contentSections.filter((s: any) => s.type === 'recently_viewed' || s.type === 'product_recently_viewed');
-  
   const sectionDataPromises: Promise<any>[] = [];
   
   // Load products data for FeaturedProducts sections
@@ -270,51 +221,8 @@ export async function CustomizerLayout({
     );
   }
   
-  // Load product reviews data for ProductReviews sections (product pages only)
-  if (pageType === 'product' && product && productReviewsSections.length > 0) {
-    for (const section of productReviewsSections) {
-      sectionDataPromises.push(
-        loadProductReviewsData(product.id).then(data => ({
-          sectionId: section.id,
-          type: 'product_reviews',
-          data,
-        }))
-      );
-    }
-  }
-  
-  // Load related products data for RelatedProducts sections (product pages only)
-  if (pageType === 'product' && product && relatedProductsSections.length > 0) {
-    for (const section of relatedProductsSections) {
-      const limit = section.settings?.products_count || 4;
-      sectionDataPromises.push(
-        loadRelatedProductsData(product.id, storeId, limit).then(data => ({
-          sectionId: section.id,
-          type: 'related_products',
-          data,
-        }))
-      );
-    }
-  }
-  
-  // Load recently viewed data for RecentlyViewed sections (product pages only)
-  if (pageType === 'product' && product && recentlyViewedSections.length > 0) {
-    for (const section of recentlyViewedSections) {
-      const limit = section.settings?.products_count || 4;
-      sectionDataPromises.push(
-        loadRecentlyViewedData(storeId, product.id, limit).then(data => ({
-          sectionId: section.id,
-          type: 'recently_viewed',
-          data,
-        }))
-      );
-    }
-  }
-  
   // Wait for all data to load in parallel
-  const dataLoadStartTime = Date.now();
   const sectionDataResults = await Promise.all(sectionDataPromises);
-  console.log(`✅ [CustomizerLayout] Section data loaded (${Date.now() - dataLoadStartTime}ms) - ${sectionDataResults.length} sections`);
   
   // Create a map of section data by section ID
   const sectionDataMap = new Map(
@@ -332,8 +240,6 @@ export async function CustomizerLayout({
     }
     return section;
   });
-  
-  console.log(`✨ [CustomizerLayout] Page ready in ${Date.now() - startTime}ms - ${contentSections.length} content sections`);
 
   // Determine if we should show customizer sections or children
   // For product pages: show customizer sections ONLY if product data is loaded
@@ -350,7 +256,7 @@ export async function CustomizerLayout({
     <div className="min-h-screen flex flex-col" dir="rtl">
       {/* Header from Customizer */}
       {headerSection && (
-        <StorefrontSectionRenderer section={headerSection} storeSlug={storeSlug} />
+        <StorefrontSectionRenderer section={headerSection} />
       )}
       
       {/* Main Content */}
@@ -371,7 +277,6 @@ export async function CustomizerLayout({
                         section={section}
                         product={product}
                         storeId={storeId}
-                        storeSlug={storeSlug}
                       />
                     ))}
                 </div>
@@ -386,7 +291,6 @@ export async function CustomizerLayout({
                         section={section}
                         product={product}
                         storeId={storeId}
-                        storeSlug={storeSlug}
                       />
                     ))}
                 </div>
@@ -402,15 +306,14 @@ export async function CustomizerLayout({
                       section={section}
                       product={product}
                       storeId={storeId}
-                      storeSlug={storeSlug}
                     />
                   ))}
               </div>
             </div>
           </ProductPageProvider>
         ) : pageType === 'collection' && collection ? (
-          <>
-            {/* Collection page with customizer sections - ללא קונטיינר כמו דף הבית */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Collection page with customizer sections */}
             {contentSections.map((section: any) => (
               <StorefrontSectionRenderer 
                 key={section.id} 
@@ -419,10 +322,9 @@ export async function CustomizerLayout({
                 collection={collection}
                 products={products}
                 storeId={storeId}
-                storeSlug={storeSlug}
               />
             ))}
-          </>
+          </div>
         ) : shouldShowCustomizerContent ? (
           <>
             {/* Render content sections from customizer */}
@@ -434,7 +336,6 @@ export async function CustomizerLayout({
                 collection={collection}
                 products={products}
                 storeId={storeId}
-                storeSlug={storeSlug}
               />
             ))}
           </>
@@ -446,7 +347,7 @@ export async function CustomizerLayout({
 
       {/* Footer from Customizer */}
       {footerSection && (
-        <StorefrontSectionRenderer section={footerSection} storeSlug={storeSlug} />
+        <StorefrontSectionRenderer section={footerSection} />
       )}
       
       {/* For non-'other' pages - show children after footer (for fixed elements like AdminEditBar) */}
