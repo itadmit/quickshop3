@@ -2472,30 +2472,30 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     )}
                     
                     {/* Shipping - Single unified row to prevent jumps */}
-                    {formData.deliveryMethod === 'shipping' && (
-                      <div className={`flex justify-between items-center ${!calcLoading && calculation && shippingCost === 0 ? 'text-green-600 font-medium' : ''}`}>
-                        <span style={{ opacity: (!calcLoading && calculation && shippingCost === 0) ? 1 : 0.7 }}>
-                          {translationsLoading ? (
-                            <TextSkeleton width="w-16" height="h-4" />
-                          ) : (
-                            'משלוח'
-                          )}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          {calcLoading ? (
-                            // ✅ בזמן טעינה - מציג skeleton
-                            <TextSkeleton width="w-12" height="h-4" />
-                          ) : !calculation ? (
-                            // ✅ כש-calculation עדיין לא מוכן - מציג מחיר נבחר או skeleton
-                            selectedShippingRate ? (
-                              // ✅ תמיד משתמש ב-shippingCost שמחושב נכון
-                              `₪${(selectedShippingRate.price || 0).toFixed(2)}`
+                    {formData.deliveryMethod === 'shipping' && (() => {
+                      // ✅ בדוק אם ה-calculation מסונכרן עם ה-shipping rate הנבחר
+                      const isCalculationSynced = calculation && selectedShippingRate && 
+                        calculation.shipping === selectedShippingRate.price;
+                      // ✅ בדוק אם המשלוח באמת חינם (רק אם הכל מסונכרן)
+                      const isReallyFreeShipping = isCalculationSynced && shippingCost === 0;
+                      // ✅ מציג skeleton אם: טוען, או אין calculation, או לא מסונכרן
+                      const showSkeleton = calcLoading || !calculation || !selectedShippingRate || !isCalculationSynced;
+                      
+                      return (
+                        <div className={`flex justify-between items-center ${isReallyFreeShipping ? 'text-green-600 font-medium' : ''}`}>
+                          <span style={{ opacity: isReallyFreeShipping ? 1 : 0.7 }}>
+                            {translationsLoading ? (
+                              <TextSkeleton width="w-16" height="h-4" />
                             ) : (
+                              'משלוח'
+                            )}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            {showSkeleton ? (
+                              // ✅ מציג skeleton עד שהחישוב מסונכרן לחלוטין
                               <TextSkeleton width="w-12" height="h-4" />
-                            )
-                          ) : (
-                            // ✅ אחרי ש-calculation מוכן - מציג לפי calculation
-                            shippingCost === 0 ? (
+                            ) : isReallyFreeShipping ? (
+                              // ✅ משלוח חינם אמיתי - רק כשהכל מסונכרן
                               <>
                                 <span className="text-green-600 font-medium">חינם</span>
                                 {selectedShippingRate?.price && selectedShippingRate.price > 0 && (
@@ -2503,12 +2503,13 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                                 )}
                               </>
                             ) : (
+                              // ✅ מציג את המחיר האמיתי
                               `₪${shippingCost.toFixed(2)}`
-                            )
-                          )}
-                        </span>
-                      </div>
-                    )}
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     
                     {/* Pickup */}
                     {formData.deliveryMethod === 'pickup' && (

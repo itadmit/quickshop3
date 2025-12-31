@@ -56,6 +56,9 @@ interface DashboardStats {
     fulfillment_status_color: string | null;
     created_at: string;
     customer_id: number | null;
+    customer_first_name: string | null;
+    customer_last_name: string | null;
+    customer_email: string | null;
   }>;
   notifications: Array<{
     id: number;
@@ -430,7 +433,11 @@ export function DashboardContent() {
                       {order.order_name || `#${order.id}`}
                     </td>
                     <td className="px-6 py-4 text-gray-600">
-                      {order.customer_id ? `לקוח רשום` : 'לקוח מזדמן'}
+                      {order.customer_first_name || order.customer_last_name 
+                        ? `${order.customer_first_name || ''} ${order.customer_last_name || ''}`.trim()
+                        : order.customer_email 
+                          ? order.customer_email.split('@')[0]
+                          : 'לקוח אורח'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border

@@ -37,7 +37,12 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
   const imageRatio = settings.image_ratio || 'square';
   const showArrows = settings.show_arrows !== false;
   const showDots = settings.show_dots === true;
-  const imageBorderRadius = settings.image_border_radius || '8px';
+  // ✅ FIX: Use correct setting name (border_radius from SettingsPanel) and handle '0' value correctly
+  const imageBorderRadius = settings.border_radius !== undefined && settings.border_radius !== null 
+    ? (settings.border_radius === '0' || settings.border_radius === 0 ? '0px' : settings.border_radius)
+    : (settings.image_border_radius !== undefined && settings.image_border_radius !== null 
+        ? settings.image_border_radius 
+        : '8px');
 
   // Thumbnail size classes
   const thumbnailSizeClasses = {
@@ -119,7 +124,8 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
         {images.slice(0, 4).map((img: any, index: number) => (
           <div 
             key={index}
-            className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden ${index === 0 && images.length > 2 ? 'col-span-2' : ''}`}
+            className={`${imageRatioClasses} bg-gray-100 overflow-hidden ${index === 0 && images.length > 2 ? 'col-span-2' : ''}`}
+            style={{ borderRadius: imageBorderRadius }}
           >
             <img 
               src={img.src || img.url || img} 
@@ -139,7 +145,8 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
         {images.map((img: any, index: number) => (
           <div 
             key={index}
-            className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden`}
+            className={`${imageRatioClasses} bg-gray-100 overflow-hidden`}
+            style={{ borderRadius: imageBorderRadius }}
           >
             <img 
               src={img.src || img.url || img} 
@@ -190,7 +197,7 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
   return (
     <div className="relative">
       {/* Main Image */}
-      <div className={`${imageRatioClasses} bg-gray-100 rounded-lg overflow-hidden`}>
+      <div className={`${imageRatioClasses} bg-gray-100 overflow-hidden`} style={{ borderRadius: imageBorderRadius }}>
         {selectedImage ? (
           <img 
             src={selectedImage.src || selectedImage.url || selectedImage} 
@@ -1285,16 +1292,34 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
   
   // Get responsive settings
   const layoutStyle = settings.layout_style || 'grid';
-  const columnsDesktop = settings.columns_desktop || 4;
-  const columnsMobile = settings.columns_mobile || 2;
-  const productsCountDesktop = settings.products_count || 4;
-  const productsCountMobile = settings.products_count_mobile || productsCountDesktop;
-  const cardBorderRadius = settings.card_border_radius ? `${settings.card_border_radius}px` : undefined;
+  // ✅ Normalize layout_style value (handle case variations)
+  const normalizedLayoutStyle = typeof layoutStyle === 'string' ? layoutStyle.toLowerCase().trim() : 'grid';
+  
+  // ✅ Parse numeric settings (they might come as strings from DB)
+  const columnsDesktop = parseInt(String(settings.columns_desktop)) || 4;
+  const columnsMobile = parseInt(String(settings.columns_mobile)) || 2;
+  const productsCountDesktop = parseInt(String(settings.products_count)) || 4;
+  const productsCountMobile = parseInt(String(settings.products_count_mobile)) || productsCountDesktop;
+  
+  // ✅ אם card_border_radius הוא 0 או "0", לא נציג עיגול פינות
+  const cardBorderRadius = (settings.card_border_radius !== undefined && 
+                            settings.card_border_radius !== null && 
+                            settings.card_border_radius !== 0 && 
+                            settings.card_border_radius !== "0") 
+                            ? `${settings.card_border_radius}px` 
+                            : undefined;
   const imageRatio = settings.image_ratio || 'square';
   
   // Detect mobile view (in customizer use editorDevice, otherwise check window width)
   const isMobile = editorDevice === 'mobile' || (typeof window !== 'undefined' && window.innerWidth < 768);
   const productsCount = isMobile ? productsCountMobile : productsCountDesktop;
+  
+  // ✅ Debug: Log settings in customizer preview only
+  if (isPreview) {
+    console.log('🎨 [RelatedProducts] editorDevice:', editorDevice, 'isMobile:', isMobile, 'layoutStyle:', normalizedLayoutStyle, 
+      'columns:', { desktop: columnsDesktop, mobile: columnsMobile }, 
+      'productsCount:', { desktop: productsCountDesktop, mobile: productsCountMobile, current: productsCount });
+  }
 
   // In customizer preview (isPreview === true), use demo data immediately - no API calls
   React.useEffect(() => {
@@ -1338,6 +1363,29 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
 
   // Get grid columns classes based on settings
   const getGridCols = () => {
+    // ✅ In customizer preview, use the device-specific columns directly
+    if (isPreview && isMobile) {
+      // Force mobile columns in customizer mobile preview
+      switch (columnsMobile) {
+        case 1: return 'grid-cols-1';
+        case 2: return 'grid-cols-2';
+        default: return 'grid-cols-2';
+      }
+    }
+    
+    if (isPreview && !isMobile) {
+      // Force desktop columns in customizer desktop preview
+      switch (columnsDesktop) {
+        case 2: return 'grid-cols-2';
+        case 3: return 'grid-cols-3';
+        case 4: return 'grid-cols-4';
+        case 5: return 'grid-cols-5';
+        case 6: return 'grid-cols-6';
+        default: return 'grid-cols-4';
+      }
+    }
+    
+    // ✅ In storefront, use responsive CSS classes
     const mobileCols = columnsMobile === 1 ? 'grid-cols-1' : 'grid-cols-2';
     let desktopCols = 'md:grid-cols-4';
     switch (columnsDesktop) {
@@ -1358,7 +1406,7 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
         <div className={`grid ${getGridCols()} gap-4`}>
           {Array.from({ length: productsCount }).map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="aspect-square bg-gray-200 rounded-lg mb-2" style={{ borderRadius: cardBorderRadius }} />
+              <div className={`aspect-square bg-gray-200 mb-2 ${cardBorderRadius ? '' : 'rounded-lg'}`} style={cardBorderRadius ? { borderRadius: cardBorderRadius } : undefined} />
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
               <div className="h-4 bg-gray-200 rounded w-1/2" />
             </div>
@@ -1381,7 +1429,8 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
   ).slice(0, productsCount);
 
   // Carousel layout
-  if (layoutStyle === 'carousel') {
+  // ✅ Check normalized layout style (handles 'carousel', 'Carousel', 'CAROUSEL', etc.)
+  if (normalizedLayoutStyle === 'carousel') {
     const itemsToShow = isMobile ? columnsMobile : columnsDesktop;
     return (
       <div className="py-8">
@@ -1389,9 +1438,9 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
         {availableProducts.length === 0 ? (
           <p className="text-gray-500 text-sm">אין מוצרים זמינים להצגה</p>
         ) : (
-          <div className="relative">
+          <div className="relative overflow-hidden">
             <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
+              <div className="flex gap-4 pb-4" style={{ width: 'fit-content', minWidth: '100%' }}>
                 {availableProducts.map((relProduct: any) => {
                   const cardWidth = isMobile 
                     ? `calc((100vw - 2rem) / ${columnsMobile})`

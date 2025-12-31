@@ -89,8 +89,9 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
         {/* Desktop - Grid or Slider */}
         {settings.display_type === 'slider' ? (
           // Desktop Slider
-          <div className="hidden md:block overflow-x-auto scrollbar-hide -mx-4">
-            <div className="flex px-4 py-2" style={{ width: 'max-content', gap: settings.logo_gap === 'small' ? '0.5rem' : settings.logo_gap === 'large' ? '2rem' : '1rem' }}>
+          <div className="hidden md:block overflow-hidden -mx-4">
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="flex px-4 py-2" style={{ width: 'fit-content', minWidth: '100%', gap: settings.logo_gap === 'small' ? '0.5rem' : settings.logo_gap === 'large' ? '2rem' : '1rem' }}>
               {logos.map((logo) => (
                 <div
                   key={logo.id}
@@ -133,6 +134,7 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
                   )}
                 </div>
               ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -187,8 +189,9 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
         )}
 
         {/* Mobile Horizontal Scroll (always slider) */}
-        <div className="md:hidden overflow-x-auto scrollbar-hide -mx-4 max-w-full">
-          <div className="flex px-4 py-2" style={{ width: 'max-content', gap: settings.logo_gap === 'small' ? '0.5rem' : settings.logo_gap === 'large' ? '2rem' : '1rem' }}>
+        <div className="md:hidden overflow-hidden -mx-4 max-w-full">
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex px-4 py-2" style={{ width: 'fit-content', minWidth: '100%', gap: settings.logo_gap === 'small' ? '0.5rem' : settings.logo_gap === 'large' ? '2rem' : '1rem' }}>
             {logos.map((logo) => (
               <div
                 key={logo.id}
@@ -228,9 +231,10 @@ function LogoListComponent({ section, onUpdate }: LogoListProps) {
                       </p>
                     )}
                   </div>
-                )}
+                  )}
               </div>
             ))}
+            </div>
           </div>
         </div>
 

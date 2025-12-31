@@ -494,7 +494,17 @@ export default function CategoryDetailsPage() {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => setIsMediaPickerOpen(true)}
+                            onClick={() => {
+                              if (!storeId) {
+                                toast({
+                                  title: 'שגיאה',
+                                  description: 'לא נמצא חנות. אנא רענן את הדף',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
+                              setIsMediaPickerOpen(true);
+                            }}
                             className="bg-white/90 hover:bg-white text-gray-900"
                           >
                             <HiPhotograph className="w-4 h-4 ml-2" />
@@ -514,7 +524,17 @@ export default function CategoryDetailsPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setIsMediaPickerOpen(true)}
+                        onClick={() => {
+                          if (!storeId) {
+                            toast({
+                              title: 'שגיאה',
+                              description: 'לא נמצא חנות. אנא רענן את הדף',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+                          setIsMediaPickerOpen(true);
+                        }}
                         className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
                       >
                         <HiPhotograph className="w-12 h-12 mb-2" />

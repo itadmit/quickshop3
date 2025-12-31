@@ -35,8 +35,30 @@ export function useStoreId(): number | null {
   });
 
   useEffect(() => {
-    // ✅ בקסטומייזר: תמיד טוען מה-session של המשתמש
-    if (isCustomizer) {
+    // ✅ בקסטומייזר או בדשבורד: תמיד טוען מה-session של המשתמש
+    const isDashboard = pathname && (
+      pathname.startsWith('/categories') || 
+      pathname.startsWith('/products') || 
+      pathname.startsWith('/orders') ||
+      pathname.startsWith('/analytics') ||
+      pathname.startsWith('/settings') ||
+      pathname.startsWith('/customize') ||
+      pathname.startsWith('/collections')
+    );
+    
+    if (isCustomizer || isDashboard) {
+      // בדוק אם כבר יש storeId ב-localStorage (טעינה מיידית)
+      if (typeof window !== 'undefined') {
+        const storedId = localStorage.getItem(CART_STORE_ID_KEY);
+        if (storedId) {
+          const parsedId = parseInt(storedId);
+          if (!isNaN(parsedId)) {
+            setStoreId(parsedId);
+          }
+        }
+      }
+      
+      // טעינה מה-session (עדכון אם שונה)
       fetch('/api/auth/me', {
         credentials: 'include',
       })
@@ -54,7 +76,10 @@ export function useStoreId(): number | null {
         })
         .catch((error) => {
           console.error('Error loading storeId from session:', error);
-          setStoreId(null);
+          // Don't set to null if we already have a storedId
+          if (typeof window === 'undefined' || !localStorage.getItem(CART_STORE_ID_KEY)) {
+            setStoreId(null);
+          }
         });
       return;
     }
@@ -92,7 +117,7 @@ export function useStoreId(): number | null {
         console.error('Error loading storeId from slug:', error);
         setStoreId(null);
       });
-  }, [storeSlug, isCustomizer]);
+  }, [storeSlug, isCustomizer, pathname]);
 
   return storeId;
 }

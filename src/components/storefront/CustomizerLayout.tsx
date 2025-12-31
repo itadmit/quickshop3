@@ -264,6 +264,19 @@ export async function CustomizerLayout({
         {/* Wrap product page sections with ProductPageProvider for shared state */}
         {pageType === 'product' && product ? (
           <ProductPageProvider product={product}>
+            {/* ✅ Top Sections (Breadcrumbs) - Full width, before 2-column layout */}
+            {contentSections
+              .filter((s: any) => s.type === 'product_breadcrumbs')
+              .map((section: any) => (
+                <div key={section.id} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                  <StorefrontSectionRenderer 
+                    section={section}
+                    product={product}
+                    storeId={storeId}
+                  />
+                </div>
+              ))}
+            
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {/* 2-Column Layout for Product Page (Desktop/Tablet) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 lg:gap-12">

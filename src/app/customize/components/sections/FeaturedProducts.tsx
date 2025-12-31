@@ -485,7 +485,13 @@ function FeaturedProductsComponent({ section, onUpdate, editorDevice, isPreview,
                       border: settings.card_border_width && settings.card_border_width > 0 
                         ? `${settings.card_border_width}px solid ${settings.card_border_color || '#e5e7eb'}` 
                         : 'none',
-                      borderRadius: settings.card_border_radius ? `${settings.card_border_radius}px` : '8px'
+                      // ✅ אם card_border_radius הוא 0 או "0", לא נציג עיגול פינות
+                      borderRadius: (settings.card_border_radius !== undefined && 
+                                    settings.card_border_radius !== null && 
+                                    settings.card_border_radius !== 0 && 
+                                    settings.card_border_radius !== "0") 
+                                    ? `${settings.card_border_radius}px` 
+                                    : (settings.card_border_radius === 0 || settings.card_border_radius === "0" ? '0' : '8px')
                     }}
                   >
                     {product?.image ? (

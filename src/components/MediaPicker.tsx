@@ -99,6 +99,20 @@ export function MediaPicker({
   useEffect(() => {
     if (!open) return;
     
+    // ✅ אם אין shopId, סגור את ה-modal והצג הודעת שגיאה (רק פעם אחת)
+    if (!shopId) {
+      toast({
+        title: 'שגיאה',
+        description: 'לא נמצא חנות. אנא רענן את הדף',
+        variant: 'destructive',
+      });
+      // Use setTimeout to avoid calling onOpenChange during render
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 0);
+      return;
+    }
+    
     // Create a stable string representation for comparison
     const currentSelectedStr = JSON.stringify([...selectedFiles].sort());
     
@@ -112,7 +126,7 @@ export function MediaPicker({
     setPage(1);
     fetchFiles(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, shopId]); // Only depend on open and shopId
+  }, [open, shopId, onOpenChange]); // Include onOpenChange in dependencies
 
   // Separate effect to sync selectedFiles when they actually change
   useEffect(() => {

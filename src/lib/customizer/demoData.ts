@@ -143,6 +143,38 @@ export const DEMO_RELATED_PRODUCTS = [
     price: 249.90,
     compare_at_price: 299.90,
   },
+  {
+    id: 105,
+    title: 'מוצר קשור 5',
+    handle: 'related-product-5',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
+    price: 199.90,
+    compare_at_price: null,
+  },
+  {
+    id: 106,
+    title: 'מוצר קשור 6',
+    handle: 'related-product-6',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop',
+    price: 349.90,
+    compare_at_price: 399.90,
+  },
+  {
+    id: 107,
+    title: 'מוצר קשור 7',
+    handle: 'related-product-7',
+    image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=400&fit=crop',
+    price: 79.90,
+    compare_at_price: null,
+  },
+  {
+    id: 108,
+    title: 'מוצר קשור 8',
+    handle: 'related-product-8',
+    image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop',
+    price: 129.90,
+    compare_at_price: 169.90,
+  },
 ];
 
 // מוצרים שנצפו לאחרונה לדוגמה

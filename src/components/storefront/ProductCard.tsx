@@ -128,7 +128,12 @@ export function ProductCard({
 
   // Build container classes based on settings
   const getContainerClasses = () => {
-    const classes = ['group', 'overflow-hidden', 'rounded-lg'];
+    const classes = ['group', 'overflow-hidden'];
+    
+    // ✅ אם style.borderRadius מוגדר, לא נוסיף rounded-lg (ה-style יקבע את העיגול)
+    if (!style || !style.borderRadius) {
+      classes.push('rounded-lg');
+    }
     
     if (showShadow) {
       classes.push('shadow-md', 'hover:shadow-xl', 'transition-shadow');
@@ -183,7 +188,7 @@ export function ProductCard({
       }}
     >
       {/* Product Image */}
-      <div className={`${aspectClass} bg-gray-50 relative overflow-hidden rounded-lg`}>
+      <div className={`${aspectClass} bg-gray-50 relative overflow-hidden ${style?.borderRadius ? '' : 'rounded-lg'}`} style={style?.borderRadius ? { borderRadius: style.borderRadius } : undefined}>
         {product.image ? (
           <img
             src={product.image}

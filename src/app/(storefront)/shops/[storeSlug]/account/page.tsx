@@ -224,6 +224,13 @@ export default function StorefrontAccountPage() {
     }
   }, [activeTab, customer])
 
+  // ✅ טעינת החזרות כשעוברים לטאב החזרות
+  useEffect(() => {
+    if (activeTab === "returns" && customer) {
+      fetchReturns(customer.id)
+    }
+  }, [activeTab, customer])
+
   useEffect(() => {
     console.log('[Account Page] useEffect triggered', { 
       hasCustomer: !!customer?.id, 
@@ -573,13 +580,34 @@ export default function StorefrontAccountPage() {
       if (response.ok) {
         const data = await response.json()
         console.log("Store credit data:", data)
-        setStoreCredit(data)
+        // ✅ Ensure data has balance property
+        setStoreCredit({
+          balance: data.balance || 0,
+          expiresAt: data.expiresAt || null,
+          reason: data.reason || null,
+          transactions: data.transactions || [],
+          ...data
+        })
       } else {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         console.error("Error fetching store credit:", errorData)
+        // ✅ Set default empty store credit on error
+        setStoreCredit({
+          balance: 0,
+          expiresAt: null,
+          reason: null,
+          transactions: []
+        })
       }
     } catch (error) {
       console.error("Error fetching store credit:", error)
+      // ✅ Set default empty store credit on error
+      setStoreCredit({
+        balance: 0,
+        expiresAt: null,
+        reason: null,
+        transactions: []
+      })
     }
   }
 
@@ -1506,7 +1534,7 @@ export default function StorefrontAccountPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {returns.length === 0 ? (
+                  {!returns || returns.length === 0 ? (
                     <div className="text-center py-12">
                       <HiRefresh className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                       <p className="text-gray-600 mb-4">אין החזרות או החלפות</p>
@@ -1531,7 +1559,7 @@ export default function StorefrontAccountPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {returns.map((returnItem) => (
+                      {(returns || []).map((returnItem) => (
                         <div
                           key={returnItem.id}
                           className="border rounded-lg p-4 hover:shadow-md transition-shadow"
@@ -1606,7 +1634,7 @@ export default function StorefrontAccountPage() {
                     <div className="space-y-6">
                       {/* יתרה נוכחית */}
                       <div className={`rounded-lg p-6 ${
-                        storeCredit.balance > 0 
+                        (storeCredit.balance || 0) > 0 
                           ? "bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200" 
                           : "bg-gray-50 border-2 border-gray-200"
                       }`}>
@@ -1614,15 +1642,15 @@ export default function StorefrontAccountPage() {
                           <div>
                             <Label className="text-sm text-gray-600 mb-2 block">יתרה נוכחית</Label>
                             <p className={`text-4xl font-bold ${
-                              storeCredit.balance > 0 
+                              (storeCredit.balance || 0) > 0 
                                 ? "text-blue-700" 
                                 : "text-gray-500"
                             }`}>
-                              ₪{storeCredit.balance.toFixed(2)}
+                              ₪{(storeCredit.balance || 0).toFixed(2)}
                             </p>
                           </div>
                           <HiCurrencyDollar className={`w-16 h-16 ${
-                            storeCredit.balance > 0 
+                            (storeCredit.balance || 0) > 0 
                               ? "text-blue-500" 
                               : "text-gray-400"
                           }`} />
@@ -1645,7 +1673,7 @@ export default function StorefrontAccountPage() {
                         <h3 className="text-lg font-semibold mb-4">היסטוריית קרדיט</h3>
                         <div className="space-y-3">
                           {/* נציג החזרות שהקרדיט נוצר מהן */}
-                          {returns
+                          {(returns || [])
                             .filter((r: any) => r.refundMethod === "STORE_CREDIT" && (r.status === "APPROVED" || r.status === "COMPLETED"))
                             .map((returnItem: any) => (
                               <div

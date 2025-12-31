@@ -52,41 +52,43 @@ function GalleryComponent({ section, onUpdate }: GalleryProps) {
         )}
 
         {settings.display_type === 'carousel' ? (
-          <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
-              {imageBlocks.length > 0 ? imageBlocks.map((block, idx) => {
-                const cardWidth = `calc((100vw - 2rem) / ${Math.min(itemsPerRow, 4)})`;
-                return (
-                  <div
-                    key={block.id || idx}
-                    className="flex-shrink-0 group cursor-pointer"
-                    style={{ 
-                      width: cardWidth,
-                      scrollSnapAlign: 'start'
-                    }}
-                  >
-                    <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-all">
-                      {block.content?.image_url ? (
-                        <img 
-                          src={block.content.image_url} 
-                          alt={block.content.alt_text || 'Gallery image'} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                          <HiPhotograph className="w-12 h-12 opacity-20" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative overflow-hidden">
+            <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex gap-4 pb-4" style={{ width: 'fit-content', minWidth: '100%' }}>
+                {imageBlocks.length > 0 ? imageBlocks.map((block, idx) => {
+                  const cardWidth = `calc((100vw - 2rem) / ${Math.min(itemsPerRow, 4)})`;
+                  return (
+                    <div
+                      key={block.id || idx}
+                      className="flex-shrink-0 group cursor-pointer"
+                      style={{ 
+                        width: cardWidth,
+                        scrollSnapAlign: 'start'
+                      }}
+                    >
+                      <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-all">
+                        {block.content?.image_url ? (
+                          <img 
+                            src={block.content.image_url} 
+                            alt={block.content.alt_text || 'Gallery image'} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                            <HiPhotograph className="w-12 h-12 opacity-20" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
+                  );
+                }) : (
+                  <div className="text-center text-gray-400 py-12">
+                    <HiPhotograph className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                    <p>{t('gallery.no_images') || 'אין תמונות בגלריה. הוסף תמונות דרך ההגדרות.'}</p>
                   </div>
-                );
-              }) : (
-                <div className="text-center text-gray-400 py-12">
-                  <HiPhotograph className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p>{t('gallery.no_images') || 'אין תמונות בגלריה. הוסף תמונות דרך ההגדרות.'}</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         ) : (

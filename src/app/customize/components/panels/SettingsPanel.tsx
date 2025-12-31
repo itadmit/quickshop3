@@ -4279,9 +4279,12 @@ export function SettingsPanel({ section, onUpdate, device }: SettingsPanelProps)
                 
                 {renderSelect('כמה מוצרים להציג (מובייל)', 'products_count_mobile', [
                   { label: '2 מוצרים', value: 2 },
+                  { label: '3 מוצרים', value: 3 },
                   { label: '4 מוצרים', value: 4 },
+                  { label: '5 מוצרים', value: 5 },
                   { label: '6 מוצרים', value: 6 },
                   { label: '8 מוצרים', value: 8 },
+                  { label: '10 מוצרים', value: 10 },
                 ])}
                 
                 {renderSelect('מוצרים בשורה (דסקטופ)', 'columns_desktop', [

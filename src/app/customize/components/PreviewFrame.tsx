@@ -21,23 +21,27 @@ interface PreviewFrameProps {
   sampleProducts?: any[];
 }
 
+// Sections that appear at the top of the product page (before the 2-column layout)
+const PRODUCT_TOP_SECTIONS = ['product_breadcrumbs'];
+
 // Sections that belong in the product gallery column (left side on desktop)
 const PRODUCT_GALLERY_SECTIONS = ['product_gallery'];
 
 // Sections that belong in the product info column (right side on desktop)
+// ✅ product_description can now be placed in the info column if user wants
 const PRODUCT_INFO_SECTIONS = [
   'product_name', 
   'product_title',
   'product_price', 
+  'product_description', // ✅ Added - can be placed with title/price
   'product_variations',
   'product_variants',
-  'product_add_to_cart'
+  'product_add_to_cart',
+  'product_custom_fields' // ✅ Added - can be placed with other info
 ];
 
 // Full-width sections below the main product area
 const PRODUCT_FULL_WIDTH_SECTIONS = [
-  'product_description',
-  'product_custom_fields',
   'product_reviews',
   'related_products',
   'product_recently_viewed',
@@ -93,10 +97,11 @@ function PreviewFrameComponent({
   };
 
   // Categorize sections for product page layout
-  const { headerSections, gallerySections, infoSections, fullWidthSections, footerSections } = useMemo(() => {
+  const { headerSections, topSections, gallerySections, infoSections, fullWidthSections, footerSections } = useMemo(() => {
     if (pageType !== 'product') {
       return {
         headerSections: sections,
+        topSections: [],
         gallerySections: [],
         infoSections: [],
         fullWidthSections: [],
@@ -105,6 +110,7 @@ function PreviewFrameComponent({
     }
 
     const header: SectionSettings[] = [];
+    const top: SectionSettings[] = []; // ✅ New: breadcrumbs and other top sections
     const gallery: SectionSettings[] = [];
     const info: SectionSettings[] = [];
     const fullWidth: SectionSettings[] = [];
@@ -115,6 +121,8 @@ function PreviewFrameComponent({
         header.push(section);
       } else if (section.type === 'footer') {
         footer.push(section);
+      } else if (PRODUCT_TOP_SECTIONS.includes(section.type)) {
+        top.push(section); // ✅ Breadcrumbs go to top (before 2-column layout)
       } else if (PRODUCT_GALLERY_SECTIONS.includes(section.type)) {
         gallery.push(section);
       } else if (PRODUCT_INFO_SECTIONS.includes(section.type)) {
@@ -129,6 +137,7 @@ function PreviewFrameComponent({
 
     return {
       headerSections: header,
+      topSections: top,
       gallerySections: gallery,
       infoSections: info,
       fullWidthSections: fullWidth,
@@ -238,6 +247,13 @@ function PreviewFrameComponent({
               <>
                 {/* Header */}
                 {headerSections.map(renderSection)}
+
+                {/* Top Sections (Breadcrumbs, etc.) - Full width, before 2-column layout */}
+                {topSections.length > 0 && (
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                    {topSections.map(renderSection)}
+                  </div>
+                )}
 
                 {/* Main Product Area - 2 columns on desktop */}
                 <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${

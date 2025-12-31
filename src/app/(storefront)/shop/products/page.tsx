@@ -2,6 +2,9 @@ import { query } from '@/lib/db';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import Link from 'next/link';
 
+// Force dynamic rendering - this page queries the database
+export const dynamic = 'force-dynamic';
+
 async function getAllProducts(storeId: number) {
   const products = await query<{
     id: number;

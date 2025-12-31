@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
       ? parseFloat(currentAOVStats?.revenue || '0') / Number(currentAOVStats?.count)
       : 0;
 
-    // Get recent orders
+    // Get recent orders with customer name
     const recentOrders = await query(
       `SELECT 
         o.id,
@@ -167,9 +167,13 @@ export async function GET(request: NextRequest) {
         o.fulfillment_status,
         o.created_at,
         o.customer_id,
+        c.first_name as customer_first_name,
+        c.last_name as customer_last_name,
+        c.email as customer_email,
         cos.display_name as fulfillment_status_display,
         cos.color as fulfillment_status_color
        FROM orders o
+       LEFT JOIN customers c ON o.customer_id = c.id
        LEFT JOIN custom_order_statuses cos ON o.fulfillment_status = cos.name AND cos.store_id = $1
        WHERE o.store_id = $1 
        ORDER BY o.created_at DESC 
