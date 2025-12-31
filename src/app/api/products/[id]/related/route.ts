@@ -94,7 +94,7 @@ export async function GET(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
                 pv.price, pv.compare_at_price,
                 p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
-                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
+                (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -118,7 +118,7 @@ export async function GET(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
                 pv.price, pv.compare_at_price,
                 p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
-                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
+                (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -142,7 +142,7 @@ export async function GET(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
                 pv.price, pv.compare_at_price,
                 p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
-                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
+                (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p
@@ -166,7 +166,7 @@ export async function GET(
         `SELECT p.id, p.title, p.handle, p.vendor, p.product_type,
                 pv.price, pv.compare_at_price,
                 p.availability, COALESCE(pv.inventory_quantity, 0) as inventory_qty,
-                COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true), 0) as rating,
+                (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND is_published = true) as rating,
                 s.slug as store_slug,
                 (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as image
          FROM products p

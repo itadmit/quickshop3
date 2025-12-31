@@ -1373,9 +1373,11 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
     return null;
   }
 
-  // Filter out products that are out of stock
+  // ✅ Filter out products that are out of stock - don't show them at all
   const availableProducts = relatedProducts.filter((p: any) => 
-    p.availability !== 'out_of_stock'
+    p.availability !== 'out_of_stock' && 
+    p.availability !== 'OUT_OF_STOCK' &&
+    (p.inventory_qty === null || p.inventory_qty > 0 || p.availability === 'preorder' || p.availability === 'backorder')
   ).slice(0, productsCount);
 
   // Carousel layout
@@ -1413,7 +1415,8 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
                           compare_at_price: relProduct.compare_price ? parseFloat(relProduct.compare_price) : undefined,
                           availability: relProduct.availability,
                           inventory_qty: relProduct.inventory_qty,
-                          rating: relProduct.rating ? parseFloat(relProduct.rating) : undefined,
+                          // ✅ Only show rating if it's greater than 0 (has real reviews)
+                          rating: relProduct.rating && parseFloat(relProduct.rating) > 0 ? parseFloat(relProduct.rating) : undefined,
                         }}
                         storeSlug={storeSlug}
                         showRating={settings.show_rating !== false}
@@ -1452,7 +1455,8 @@ function RelatedProductsSectionComponent({ section, product, onUpdate, isPreview
                 compare_at_price: relProduct.compare_price ? parseFloat(relProduct.compare_price) : undefined,
                 availability: relProduct.availability,
                 inventory_qty: relProduct.inventory_qty,
-                rating: relProduct.rating ? parseFloat(relProduct.rating) : undefined,
+                // ✅ Only show rating if it's greater than 0 (has real reviews)
+                rating: relProduct.rating && parseFloat(relProduct.rating) > 0 ? parseFloat(relProduct.rating) : undefined,
               }}
               storeSlug={storeSlug}
               showRating={settings.show_rating !== false}
