@@ -41,7 +41,7 @@ interface SideCartProps {
  * כל החישובים עוברים דרך המנוע המרכזי - Single Source of Truth.
  */
 export function SideCart({ storeId, shippingRate }: SideCartProps) {
-  const { cartItems, getCartCount, removeFromCart, updateQuantity, isAddingToCart, isLoading: cartLoading, refreshCart, isLoadingFromServer } = useCart();
+  const { cartItems, getCartCount, removeFromCart, updateQuantity, isAddingToCart, isLoading: cartLoading, refreshCart, isLoadingFromServer, isUpdatingQuantity } = useCart();
   const { isOpen, openCart, closeCart } = useCartOpen();
   const router = useRouter();
   const params = useParams();
@@ -290,6 +290,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
       }
     }
 
+    // ✅ עדכון מיידי - ה-UI ישתנה מיד!
     updateQuantity(variantId, newQuantity);
   };
 
@@ -480,7 +481,7 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                                     {item.quantity}
                                   </span>
                                 ) : (
-                                  <div className="flex items-center border border-gray-300 rounded">
+                                  <div className="flex items-center border border-gray-300 rounded relative">
                                     <button
                                       onClick={async () => {
                                         const newQuantity = item.quantity - 1;
@@ -491,8 +492,16 @@ export function SideCart({ storeId, shippingRate }: SideCartProps) {
                                     >
                                       <HiMinus className="w-3 h-3" />
                                     </button>
-                                    <span className="px-2 py-0.5 text-xs font-medium text-gray-900 min-w-[24px] text-center">
-                                      {item.quantity}
+                                    <span className="px-2 py-0.5 text-xs font-medium text-gray-900 min-w-[24px] text-center relative">
+                                      <span className="inline-flex items-center gap-1">
+                                        {item.quantity}
+                                        {isUpdatingQuantity(item.variant_id) && (
+                                          <svg className="animate-spin h-2.5 w-2.5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                          </svg>
+                                        )}
+                                      </span>
                                     </span>
                                     <button
                                       onClick={async () => {

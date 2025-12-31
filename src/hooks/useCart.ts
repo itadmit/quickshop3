@@ -40,6 +40,7 @@ const globalCartLoading: { [storeId: number]: boolean } = {};
 const globalCartLoaded: { [storeId: number]: boolean } = {};
 const globalIsAddingToCart: { [storeId: number]: boolean } = {};
 const globalIsSyncing: { [storeId: number]: boolean } = {}; // ✅ למנוע sync כפול
+const globalUpdatingQuantity: { [storeId: number]: Set<number> } = {}; // ✅ מעקב אחרי variant_id שמתעדכנים
 
 // Listeners for real-time updates
 let cartListeners: Array<() => void> = [];
@@ -108,6 +109,7 @@ export function useCart() {
   const cartItems = storeId ? (globalCartItems[storeId] || []) : [];
   const isAddingToCart = storeId ? (globalIsAddingToCart[storeId] || false) : false;
   const isLoading = storeId ? (globalCartLoading[storeId] || false) : false;
+  const updatingQuantity = storeId ? (globalUpdatingQuantity[storeId] || new Set<number>()) : new Set<number>();
   
   const loadingRef = useRef(false);
 
@@ -457,12 +459,24 @@ export function useCart() {
       return;
     }
     
+    // ✅ סמן את הפריט כמתעדכן
+    if (!globalUpdatingQuantity[storeId]) {
+      globalUpdatingQuantity[storeId] = new Set();
+    }
+    globalUpdatingQuantity[storeId].add(variantId);
+    notifyCartListeners();
+    
     const currentItems = globalCartItems[storeId] || [];
     const itemToUpdate = currentItems.find((i) => i.variant_id === variantId);
     
     const newItems = currentItems.map((i) => 
       i.variant_id === variantId ? { ...i, quantity } : i
     );
+    
+    // ✅ עדכון מיידי של ה-UI - לפני השרת!
+    globalCartItems[storeId] = newItems;
+    setCartToStorage(newItems, storeId);
+    notifyCartListeners();
     
     // Track UpdateCart event
     if (itemToUpdate) {
@@ -481,11 +495,12 @@ export function useCart() {
       });
     }
     
-    globalCartItems[storeId] = newItems;
-    setCartToStorage(newItems, storeId);
-    notifyCartListeners();
-    
+    // ✅ שמירה לשרת ברקע (אם נכשל, לא נוגעים ב-UI)
     await saveCartToServer(newItems);
+    
+    // ✅ הסר את הסימון לאחר השלמת העדכון
+    globalUpdatingQuantity[storeId]?.delete(variantId);
+    notifyCartListeners();
   }, [storeId, saveCartToServer, removeFromCart]);
 
   // CLEAR CART
@@ -523,5 +538,7 @@ export function useCart() {
     isAddingToCart,
     isLoadingFromServer: isLoading,
     refreshCart: loadCartFromServer,
+    updatingQuantity, // ✅ חושף את ה-Set של variant_id שמתעדכנים
+    isUpdatingQuantity: (variantId: number) => updatingQuantity.has(variantId), // ✅ פונקציה נוחה לבדיקה
   };
 }
