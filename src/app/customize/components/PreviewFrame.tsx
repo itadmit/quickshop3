@@ -96,9 +96,23 @@ function PreviewFrameComponent({
     }
   };
 
+  // Auto-detect if this looks like a product page based on sections present
+  const hasProductSections = useMemo(() => {
+    const productSectionTypes = [
+      ...PRODUCT_TOP_SECTIONS,
+      ...PRODUCT_GALLERY_SECTIONS,
+      ...PRODUCT_INFO_SECTIONS,
+      ...PRODUCT_FULL_WIDTH_SECTIONS
+    ];
+    return sections.some(s => productSectionTypes.includes(s.type));
+  }, [sections]);
+
+  // Use product layout if pageType is 'product' OR if we detect product sections
+  const shouldUseProductLayout = pageType === 'product' || hasProductSections;
+
   // Categorize sections for product page layout
   const { headerSections, topSections, gallerySections, infoSections, fullWidthSections, footerSections } = useMemo(() => {
-    if (pageType !== 'product') {
+    if (!shouldUseProductLayout) {
       return {
         headerSections: sections,
         topSections: [],
@@ -143,7 +157,7 @@ function PreviewFrameComponent({
       fullWidthSections: fullWidth,
       footerSections: footer
     };
-  }, [sections, pageType]);
+  }, [sections, shouldUseProductLayout]);
 
   // Memoize onUpdate callback to prevent re-renders
   const handleSectionUpdate = useCallback((sectionId: string, updates: Partial<SectionSettings>) => {
@@ -223,9 +237,8 @@ function PreviewFrameComponent({
   ), [selectedSectionId, hoveredSectionId, showOutlines, device, sampleProduct, sampleCollection, handleSectionClick, handleSectionUpdate, onSectionDelete, onSectionSelect]);
 
   // Check if we should use product page layout
-  const isProductPage = pageType === 'product';
   const isDesktopView = device === 'desktop';
-  const useProductLayout = isProductPage && (gallerySections.length > 0 || infoSections.length > 0);
+  const useProductLayout = shouldUseProductLayout && (gallerySections.length > 0 || infoSections.length > 0);
 
   return (
     <div className="h-full bg-gray-100 overflow-auto overflow-x-hidden">
