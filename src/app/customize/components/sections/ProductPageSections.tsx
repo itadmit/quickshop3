@@ -37,12 +37,22 @@ export function ProductGallerySection({ section, product, onUpdate }: ProductSec
   const imageRatio = settings.image_ratio || 'square';
   const showArrows = settings.show_arrows !== false;
   const showDots = settings.show_dots === true;
-  // ✅ FIX: Use correct setting name (border_radius from SettingsPanel) and handle '0' value correctly
-  const imageBorderRadius = settings.border_radius !== undefined && settings.border_radius !== null 
-    ? (settings.border_radius === '0' || settings.border_radius === 0 ? '0px' : settings.border_radius)
-    : (settings.image_border_radius !== undefined && settings.image_border_radius !== null 
-        ? settings.image_border_radius 
-        : '8px');
+  // ✅ FIX: Handle border radius - check settings.border_radius first, then fallback
+  const rawBorderRadius = settings.border_radius !== undefined ? settings.border_radius : settings.image_border_radius;
+  
+  // Convert to proper CSS value
+  const imageBorderRadius = (() => {
+    // No border radius cases
+    if (rawBorderRadius === '0' || rawBorderRadius === 0 || rawBorderRadius === 'ללא' || rawBorderRadius === 'none' || rawBorderRadius === '') {
+      return '0';
+    }
+    // Valid value - use as is (e.g., '8px', '16px')
+    if (rawBorderRadius) {
+      return String(rawBorderRadius);
+    }
+    // Default fallback
+    return '8px';
+  })();
 
   // Thumbnail size classes
   const thumbnailSizeClasses = {
