@@ -346,9 +346,9 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
         {/* Loading state */}
         {loading && (
           displayType === 'slider' || displayType === 'carousel' ? (
-            <div className="relative overflow-hidden">
-              <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-                <div className="flex gap-4 pb-4" style={{ width: 'fit-content', minWidth: '100%' }}>
+            <div className="relative" style={{ overflow: 'hidden', maxWidth: '100%' }}>
+              <div className="overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', overflowY: 'hidden' }}>
+                <div className="inline-flex gap-4 pb-4" style={{ minWidth: '100%' }}>
                   {Array.from({ length: Math.max(4, Math.ceil((editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop) * 2)) }).map((_, i) => (
                     <div key={i} className="flex-shrink-0 animate-pulse" style={{ width: getSliderItemWidth(editorDevice === 'mobile' ? sliderItemsMobile : sliderItemsDesktop), scrollSnapAlign: 'start' }}>
                       <div className="aspect-[4/3] bg-gray-200 rounded-lg mb-4" />
@@ -375,14 +375,14 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
         {/* Real collections or placeholder */}
         {!loading && (
           displayType === 'slider' || displayType === 'carousel' ? (
-            <div className="relative group overflow-hidden">
+            <div className="relative group" style={{ overflow: 'hidden', maxWidth: '100%' }}>
               {/* Carousel/Slider Layout */}
               <div 
                 id={`carousel-${section.id}`}
                 className="overflow-x-auto scrollbar-hide" 
-                style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+                style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', overflowY: 'hidden' }}
               >
-                <div className="flex gap-4 pb-4" style={{ width: 'fit-content', minWidth: '100%' }}>
+                <div className="inline-flex gap-4 pb-4" style={{ minWidth: '100%' }}>
                   {(collections.length === 0 ? 
                     Array.from({ length: 4 }, (_, i) => ({ id: i + 1, isPlaceholder: true })) : 
                     collectionsToShow
