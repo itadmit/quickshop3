@@ -100,7 +100,7 @@ function SortableStoryItem({ story, onRemove }: { story: Story; onRemove: (id: n
         </div>
       </div>
 
-      <span className="text-sm font-medium text-gray-900">₪{story.product_price?.toFixed(2)}</span>
+      <span className="text-sm font-medium text-gray-900">₪{Number(story.product_price || 0).toFixed(2)}</span>
 
       <button
         onClick={() => onRemove(story.id)}
