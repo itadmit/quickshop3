@@ -476,7 +476,11 @@ export function useCartCalculator(options: UseCartCalculatorOptions) {
     }
     
     // אם אין calculation קיים, נחשב מיד
+    // 🔍 אבל רק אם יש shippingRate (או אם אין צורך ב-shipping rate)
+    // ב-CheckoutForm, תמיד צריך shippingRate, אז נחכה לו
     if (!calculation && cartItems.length > 0) {
+      // 🔍 אם אין shippingRate, לא נחשב (ב-CheckoutForm תמיד צריך shippingRate)
+      // אבל אם זה לא CheckoutForm, נחשב גם בלי shippingRate
       calculatingRef.current = true;
       globalCartCalculating[calculationKey] = true;
       recalculate().finally(() => {

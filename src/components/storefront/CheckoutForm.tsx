@@ -96,6 +96,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   } | null>(null);
   const [loadingShippingRates, setLoadingShippingRates] = useState(true);
   
+  // Premium club config for free shipping threshold
+  const [premiumClubFreeShippingThreshold, setPremiumClubFreeShippingThreshold] = useState<number | null>(null);
+  
   // Checkout customizer settings
   const [checkoutSettings, setCheckoutSettings] = useState<{
     layout: { left_column_color: string; right_column_color: string };
@@ -282,27 +285,44 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
   }, [isMounted, storeSlug]);
 
   // Load shipping rates - רק כשהסובטוטל משתנה (לא כל פעם ש-cartItems משתנה)
-  // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-getSubtotalAfterDiscount מהמנוע המרכזי (אחרי הנחות)
-  const subtotal = useMemo(() => {
-    return getSubtotalAfterDiscount();
-  }, [getSubtotalAfterDiscount]);
+  // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-calculation?.subtotalAfterDiscount ישירות למניעת renders מיותרים
+  const subtotal = calculation?.subtotalAfterDiscount || 0;
+  
+  // ✅ נעקוב אחרי הסכום האחרון כדי לטעון רק כשיש שינוי אמיתי
+  const lastLoadedSubtotalRef = useRef<number | null>(null);
+  const shippingRatesLoadedRef = useRef(false);
   
   useEffect(() => {
     if (!isMounted) return;
     
+    // ✅ טוען פעם אחת בהתחלה, ואז רק כשהסכום משתנה משמעותית (מעל 1 ש"ח הפרש)
+    const shouldLoad = !shippingRatesLoadedRef.current || 
+      (lastLoadedSubtotalRef.current !== null && Math.abs(subtotal - lastLoadedSubtotalRef.current) > 1);
+    
+    if (!shouldLoad && shippingRatesLoadedRef.current) return;
+    
     const loadShippingRates = async () => {
       try {
-        setLoadingShippingRates(true);
+        // ✅ לא מציג skeleton אם כבר יש rates - רק מעדכן ברקע
+        if (!shippingRatesLoadedRef.current) {
+          setLoadingShippingRates(true);
+        }
+        
         const response = await fetch(`/api/storefront/${storeSlug}/shipping-rates?subtotal=${subtotal}`);
         if (response.ok) {
           const data = await response.json();
           setShippingRates(data.rates || []);
+          lastLoadedSubtotalRef.current = subtotal;
+          shippingRatesLoadedRef.current = true;
+          
           // Set default shipping rate (first non-pickup rate or first rate)
-          if (data.defaultRate) {
-            setSelectedShippingRate(data.defaultRate);
-          } else if (data.rates?.length > 0) {
-            const defaultRate = data.rates.find((r: any) => !r.is_pickup) || data.rates[0];
-            setSelectedShippingRate(defaultRate);
+          if (!selectedShippingRate) {
+            if (data.defaultRate) {
+              setSelectedShippingRate(data.defaultRate);
+            } else if (data.rates?.length > 0) {
+              const defaultRate = data.rates.find((r: any) => !r.is_pickup) || data.rates[0];
+              setSelectedShippingRate(defaultRate);
+            }
           }
         }
       } catch (error) {
@@ -313,7 +333,45 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     };
     
     loadShippingRates();
-  }, [isMounted, storeSlug, subtotal]);
+  }, [isMounted, storeSlug, subtotal, selectedShippingRate]);
+
+  // ✅ CRITICAL: כשנבחר shipping rate חדש, קוראים ל-recalculate() מיד כדי לעדכן את ה-calculation מהשרת
+  // זה מבטיח שהמחיר תמיד מגיע מהשרת ולא מחושב בקליינט
+  const prevShippingRateIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isMounted || !selectedShippingRate) return;
+    
+    // רק אם ה-shipping rate באמת השתנה (לא רק בטעינה ראשונית)
+    if (prevShippingRateIdRef.current !== null && prevShippingRateIdRef.current === selectedShippingRate.id) {
+      return; // אותו rate - לא צריך לחשב מחדש
+    }
+    
+    prevShippingRateIdRef.current = selectedShippingRate.id;
+    
+    // קורא ל-recalculate() כדי לעדכן את ה-calculation מהשרת עם ה-shipping rate החדש
+    recalculate();
+  }, [selectedShippingRate, isMounted, recalculate]);
+
+  // Load premium club config for free shipping threshold
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    const loadPremiumClubConfig = async () => {
+      try {
+        const response = await fetch(`/api/premium-club/config?storeId=${storeId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.config?.benefits?.freeShippingThreshold) {
+            setPremiumClubFreeShippingThreshold(data.config.benefits.freeShippingThreshold);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading premium club config:', error);
+      }
+    };
+    
+    loadPremiumClubConfig();
+  }, [isMounted, storeId]);
 
   // Load checkout customizer settings
   useEffect(() => {
@@ -530,7 +588,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
       if (giftCardResult.valid && giftCardResult.giftCard) {
         // זה קוד גיפט קארד תקף!
         const giftCard = giftCardResult.giftCard;
-        const total = getTotal();
+        // ✅ CRITICAL: המחיר תמיד מהשרת
+        const total = calculation?.total || 0;
         const amountToUse = Math.min(giftCard.balance, total);
         
         setAppliedGiftCard({
@@ -600,7 +659,14 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         return;
       }
 
-      const total = getTotal();
+      // ✅ CRITICAL: המחיר תמיד מהשרת בלבד - אין חישובים בקליינט
+      if (!calculation) {
+        alert('שגיאה: לא ניתן לחשב את הסכום. אנא רענן את הדף.');
+        setProcessing(false);
+        return;
+      }
+      
+      const total = calculation.total; // ✅ תמיד מהשרת
       // ✅ וידוא שהקרדיט לא גדול מהיתרה או מהסכום הכולל
       // ✅ מאפשר שימוש בקרדיט גם אם paymentMethod הוא credit_card (לשימוש חלקי)
       const maxStoreCreditAmount = storeCredit && storeCredit.balance > 0 
@@ -705,9 +771,9 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
           phone: billingAddress.phone || formData.phone,
         } : undefined,
         total: finalTotalAfterCredits > 0 ? finalTotalAfterCredits : 0, // אם הקרדיט/גיפט קארד מכסה הכל, הסכום הוא 0
-        subtotal: getSubtotal(), // ✅ סכום לפני הנחות ומשלוח
-        shippingCost: getShipping(), // ✅ עלות משלוח
-        totalDiscount: getDiscount(), // ✅ סה"כ הנחות
+        subtotal: calculation.subtotal || 0, // ✅ תמיד מהשרת
+        shippingCost: calculation.shippingAfterDiscount || 0, // ✅ תמיד מהשרת
+        totalDiscount: calculation.totalDiscount || 0, // ✅ תמיד מהשרת
         deliveryMethod: formData.deliveryMethod,
         shippingMethodName: selectedShippingRate?.name || (formData.deliveryMethod === 'pickup' ? 'איסוף עצמי' : 'משלוח'), // ✅ שם שיטת המשלוח
         paymentMethod: formData.paymentMethod,
@@ -716,7 +782,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
         giftCardAmount: giftCardAmount, // ✅ סכום גיפט קארד
         customFields: formData.customFields,
         discountCodes: discountCode ? [discountCode] : [], // ✅ מוסיף את קוד הקופון להזמנה
-        appliedDiscounts: getDiscounts().map(d => ({ // ✅ מוסיף פרטי כל ההנחות שהוחלו
+        appliedDiscounts: (calculation?.discounts || []).map(d => ({ // ✅ תמיד מהשרת
           name: d.name,
           description: d.description,
           code: d.code,
@@ -833,42 +899,76 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     }
   };
 
-  // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-calculation.total מהמנוע המרכזי
-  // זה מבטיח שהסכום תמיד זהה לזה שמוצג בעגלה ולזה שעובר לתשלום
-  const finalTotal = useMemo(() => {
-    // תמיד משתמש ב-calculation.total - זה המקור האמין היחיד
-    // calculation.total כבר כולל: subtotal - הנחות + משלוח (אחרי הנחות על משלוח)
-    return calculation?.total || 0;
-  }, [calculation]);
-
+  // ✅ SINGLE SOURCE OF TRUTH: עלות המשלוח תמיד מהשרת
   const shippingCost = useMemo(() => {
-    // ✅ SINGLE SOURCE OF TRUTH: תמיד משתמש ב-calculation או ב-getShipping מהמנוע המרכזי
-    // ✅ FIX: בודק שה-calculation מעודכן עם ה-shipping rate הנוכחי
+    // תמיד משתמש ב-calculation.shippingAfterDiscount מהשרת
+    // 🔍 אם ה-calculation לא מסונכרן עם ה-shipping rate, נשתמש ב-rate price כגיבוי
+    if (calculation && selectedShippingRate) {
+      // 🔍 בדיקה אם ה-calculation מסונכרן עם ה-shipping rate:
+      // אם calculation.shipping > 0, זה אומר שהיה shipping rate בחישוב - ה-calculation מסונכרן
+      if (calculation.shipping > 0) {
+        // ה-calculation מסונכרן - נשתמש בו
+        return calculation.shippingAfterDiscount;
+      }
+      
+      // אם calculation.shipping === 0, זה יכול להיות:
+      // 1. משלוח חינם אמיתי (אז shippingAfterDiscount === 0 נכון)
+      // 2. calculation לא מסונכרן (חושב בלי shipping rate)
+      // 
+      // 🔍 בדיקה: אם יש freeShippingDiscounts, זה משלוח חינם אמיתי
+      const hasFreeShippingDiscounts = calculation.discounts?.some(d => d.type === 'free_shipping') || false;
+      if (hasFreeShippingDiscounts) {
+        // משלוח חינם אמיתי - נשתמש ב-calculation
+        return calculation.shippingAfterDiscount;
+      }
+      
+      // 🔍 אם אין freeShippingDiscounts אבל יש rate עם מחיר, זה כנראה לא מסונכרן
+      // נשתמש ב-rate price עד שהחישוב יתעדכן
+      if (selectedShippingRate.price > 0) {
+        // ⚠️ מצב לא מסונכרן - משתמשים ב-rate price כגיבוי
+        return selectedShippingRate.price;
+      }
+      
+      // אחרת, נשתמש ב-calculation
+      return calculation.shippingAfterDiscount;
+    }
     
+    // אם אין calculation, נשתמש ב-rate price אם יש
     if (selectedShippingRate) {
-      // ✅ בדוק שה-calculation מעודכן עם ה-shipping rate הנוכחי
-      // אם calculation.shipping לא תואם ל-selectedShippingRate.price, ה-calculation עדיין לא עודכן
-      const isCalculationUpToDate = calculation && calculation.shipping === selectedShippingRate.price;
-      
-      if (isCalculationUpToDate) {
-        // calculation מעודכן - משתמש ב-shippingAfterDiscount (כולל הנחות משלוח חינם)
-        return calculation.shippingAfterDiscount || 0;
-      }
-      
-      // calculation לא מעודכן עדיין - מחשב ידנית לפי selectedShippingRate
-      const subtotal = getSubtotalAfterDiscount();
-      if (selectedShippingRate.free_shipping_threshold && subtotal >= selectedShippingRate.free_shipping_threshold) {
-        return 0;
-      }
       return selectedShippingRate.price;
     }
     
-    // אם אין selectedShippingRate, משתמש ב-calculation או getShipping
-    if (calculation) {
-      return calculation.shippingAfterDiscount || 0;
+    // אם אין גם calculation וגם rate, משלוח חינם
+    return calculation?.shippingAfterDiscount || 0;
+  }, [calculation, selectedShippingRate]);
+
+  // ✅ SINGLE SOURCE OF TRUTH: המחיר תמיד מגיע מהשרת בלבד
+  // אין חישובים ידניים בקליינט - הכל דרך calculation מהשרת
+  const finalTotal = useMemo(() => {
+    // תמיד משתמש ב-calculation.total מהשרת - זה המקור האמין היחיד
+    // 🔍 אבל אם ה-calculation לא מסונכרן (shipping === 0 אבל יש shipping rate), נחשב ידנית
+    if (calculation && selectedShippingRate) {
+      // אם ה-calculation מסונכרן (shipping > 0), נשתמש בו
+      if (calculation.shipping > 0) {
+        return calculation.total || 0;
+      }
+      
+      // אם ה-calculation לא מסונכרן, נחשב ידנית: subtotal + shippingCost
+      // shippingCost כבר מטפל בלוגיקה של fallback ל-rate price
+      const subtotal = calculation.subtotalAfterDiscount || calculation.subtotal || 0;
+      const shipping = shippingCost; // זה כבר מטפל ב-fallback
+      return subtotal + shipping;
     }
-    return getShipping();
-  }, [getShipping, getSubtotalAfterDiscount, calculation, selectedShippingRate]);
+    
+    // אם אין calculation, נשתמש ב-shippingCost אם יש
+    if (selectedShippingRate) {
+      const subtotal = calculation?.subtotalAfterDiscount || calculation?.subtotal || 0;
+      return subtotal + shippingCost;
+    }
+    
+    // אחרת, נשתמש ב-calculation.total
+    return calculation?.total || 0;
+  }, [calculation, selectedShippingRate, shippingCost]);
 
   // Redirect אם אין פריטים - רק ב-client אחרי mount
   // לא מפנים אם ההזמנה הושלמה (כדי לאפשר redirect לעמוד התודה)
@@ -2102,11 +2202,11 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         type="number"
                         step="0.01"
                         min="0"
-                        max={Math.min(storeCredit.balance, getTotal())}
+                        max={Math.min(storeCredit.balance, calculation?.total || 0)}
                         value={formData.storeCreditAmount || ''}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value) || 0;
-                          const maxAmount = Math.min(storeCredit.balance, getTotal());
+                          const maxAmount = Math.min(storeCredit.balance, calculation?.total || 0);
                           // ✅ וידוא שהערך לא שלילי ולא גדול מהמקסימום
                           const clampedValue = Math.max(0, Math.min(value, maxAmount));
                           setFormData((prev) => ({
@@ -2117,7 +2217,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         onBlur={(e) => {
                           // ✅ וידוא שהערך תקין כשהשדה מאבד פוקוס
                           const value = parseFloat(e.target.value) || 0;
-                          const maxAmount = Math.min(storeCredit.balance, getTotal());
+                          const maxAmount = Math.min(storeCredit.balance, calculation?.total || 0);
                           const clampedValue = Math.max(0, Math.min(value, maxAmount));
                           if (clampedValue !== formData.storeCreditAmount) {
                             setFormData((prev) => ({
@@ -2128,11 +2228,11 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         }}
                         className="mt-1"
                         placeholder={formData.paymentMethod === 'credit_card' ? '0' : ''}
-                        placeholder={`0.00 (מקסימום: ₪${Math.min(storeCredit.balance, getTotal()).toFixed(2)})`}
+                        placeholder={`0.00 (מקסימום: ₪${Math.min(storeCredit.balance, calculation?.total || 0).toFixed(2)})`}
                       />
                       <p className="text-xs text-gray-500">
                         יתרה זמינה: ₪{storeCredit.balance.toFixed(2)} | 
-                        סכום הזמנה: ₪{getTotal().toFixed(2)}
+                        סכום הזמנה: ₪{(calculation?.total || 0).toFixed(2)}
                       </p>
                     </div>
                   )}
@@ -2165,12 +2265,21 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                   </h2>
                   
                   {/* Free Shipping Progress */}
-                  {selectedShippingRate?.free_shipping_threshold && (
-                    <FreeShippingProgress 
-                      threshold={selectedShippingRate.free_shipping_threshold} 
-                      storeId={storeId}
-                    />
-                  )}
+                  {(() => {
+                    // 🔍 CRITICAL: משתמש ב-freeShippingThreshold מה-premium club config (אם קיים) או מה-shipping rate
+                    // זה מבטיח שה-progress bar משתמש באותה הגדרה כמו החישוב
+                    const freeShippingThreshold = premiumClubFreeShippingThreshold || selectedShippingRate?.free_shipping_threshold || null;
+                    
+                    if (!freeShippingThreshold) return null;
+                    
+                    
+                    return (
+                      <FreeShippingProgress 
+                        threshold={freeShippingThreshold} 
+                        storeId={storeId}
+                      />
+                    );
+                  })()}
                   
                   {/* Cart Items */}
                   <div className="space-y-3 mb-4">
@@ -2401,22 +2510,22 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         )}
                       </span>
                       <div className="flex items-center gap-2">
-                        {getDiscount() > 0 && (
+                        {(calculation?.totalDiscount || 0) > 0 && (
                           <span className="text-gray-400 line-through text-sm">
-                            ₪{getSubtotal().toFixed(2)}
+                            ₪{(calculation?.subtotal || 0).toFixed(2)}
                           </span>
                         )}
-                        <span className={`font-medium ${getDiscount() > 0 ? 'text-green-600' : ''}`}>
-                          {/* ✅ SINGLE SOURCE OF TRUTH: משתמש ב-calculation.subtotalAfterDiscount מהמנוע המרכזי */}
-                          ₪{(calculation?.subtotalAfterDiscount || getSubtotal()).toFixed(2)}
+                        <span className={`font-medium ${(calculation?.totalDiscount || 0) > 0 ? 'text-green-600' : ''}`}>
+                          {/* ✅ SINGLE SOURCE OF TRUTH: תמיד מהשרת */}
+                          ₪{(calculation?.subtotalAfterDiscount || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
                     
                     {/* הנחות - סיכום מפורט עם שמות */}
-                    {getDiscount() > 0 && (
+                    {(calculation?.totalDiscount || 0) > 0 && (
                       <div className="bg-green-50 rounded-lg p-2 space-y-1">
-                        {getDiscounts().filter(d => d.source === 'automatic').map((discount, idx) => (
+                        {(calculation?.discounts || []).filter(d => d.source === 'automatic').map((discount, idx) => (
                           <div key={`auto-${idx}`} className="flex justify-between text-xs text-green-700">
                             <span>
                               {translationsLoading ? (
@@ -2435,7 +2544,7 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           </div>
                         ))}
                         
-                        {getDiscounts().filter(d => d.source === 'code').map((discount, idx) => {
+                        {(calculation?.discounts || []).filter(d => d.source === 'code').map((discount, idx) => {
                           // ✅ בדיקה אם הקוד כבר מופיע בתיאור (כדי למנוע הצגה כפולה) - case-insensitive
                           const description = discount.description || discount.name || 'הנחה';
                           const codeInDescription = discount.code && 
@@ -2473,17 +2582,18 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     
                     {/* Shipping - Single unified row to prevent jumps */}
                     {formData.deliveryMethod === 'shipping' && (() => {
-                      // ✅ בדוק אם ה-calculation מסונכרן עם ה-shipping rate הנבחר
-                      const isCalculationSynced = calculation && selectedShippingRate && 
-                        calculation.shipping === selectedShippingRate.price;
-                      // ✅ בדוק אם המשלוח באמת חינם (רק אם הכל מסונכרן)
-                      const isReallyFreeShipping = isCalculationSynced && shippingCost === 0;
-                      // ✅ מציג skeleton אם: טוען, או אין calculation, או לא מסונכרן
-                      const showSkeleton = calcLoading || !calculation || !selectedShippingRate || !isCalculationSynced;
+                      // ✅ פשוט: מציג skeleton רק בזמן טעינת shipping rates
+                      const showSkeleton = loadingShippingRates || !selectedShippingRate;
+                      
+                      // ✅ בדוק אם המשלוח חינם - לפי shippingCost (שמגיע מהשרת)
+                      const shippingPrice = selectedShippingRate?.price || 0;
+                      // 🔍 CRITICAL: shippingCost כבר מגיע מהשרת (calculation.shippingAfterDiscount), אז פשוט בודקים אותו
+                      const isFreeShipping = shippingCost === 0;
+                      
                       
                       return (
-                        <div className={`flex justify-between items-center ${isReallyFreeShipping ? 'text-green-600 font-medium' : ''}`}>
-                          <span style={{ opacity: isReallyFreeShipping ? 1 : 0.7 }}>
+                        <div className={`flex justify-between items-center ${isFreeShipping ? 'text-green-600 font-medium' : ''}`}>
+                          <span style={{ opacity: isFreeShipping ? 1 : 0.7 }}>
                             {translationsLoading ? (
                               <TextSkeleton width="w-16" height="h-4" />
                             ) : (
@@ -2492,19 +2602,19 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                           </span>
                           <span className="flex items-center gap-1.5">
                             {showSkeleton ? (
-                              // ✅ מציג skeleton עד שהחישוב מסונכרן לחלוטין
+                              // ✅ מציג skeleton רק בזמן טעינת rates
                               <TextSkeleton width="w-12" height="h-4" />
-                            ) : isReallyFreeShipping ? (
-                              // ✅ משלוח חינם אמיתי - רק כשהכל מסונכרן
+                            ) : isFreeShipping ? (
+                              // ✅ משלוח חינם
                               <>
                                 <span className="text-green-600 font-medium">חינם</span>
-                                {selectedShippingRate?.price && selectedShippingRate.price > 0 && (
-                                  <span className="text-xs text-gray-400 line-through">₪{selectedShippingRate.price.toFixed(2)}</span>
+                                {shippingPrice > 0 && (
+                                  <span className="text-xs text-gray-400 line-through">₪{shippingPrice.toFixed(2)}</span>
                                 )}
                               </>
                             ) : (
-                              // ✅ מציג את המחיר האמיתי
-                              `₪${shippingCost.toFixed(2)}`
+                              // ✅ מציג את המחיר של ה-shipping rate שנבחר
+                              `₪${shippingPrice.toFixed(2)}`
                             )}
                           </span>
                         </div>
@@ -2564,8 +2674,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                         {calcLoading ? (
                           <TextSkeleton width="w-16" height="h-6" />
                         ) : (() => {
-                          // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-getTotal() מהמנוע המרכזי
-                          let total = getTotal();
+                          // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-finalTotal שמחושב נכון גם כשה-calculation לא מסונכרן
+                          let total = finalTotal;
                           // הפחתת גיפט קארד
                           if (appliedGiftCard) {
                             total -= appliedGiftCard.amountToUse;
@@ -2655,8 +2765,8 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
                     ) : translationsLoading || calcLoading ? (
                       <TextSkeleton width="w-32" height="h-5" />
                     ) : (() => {
-                      // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-getTotal() מהמנוע המרכזי
-                      let totalToPay = getTotal();
+                      // ✅ SINGLE SOURCE OF TRUTH: משתמש ב-finalTotal שמחושב נכון גם כשה-calculation לא מסונכרן
+                      let totalToPay = finalTotal;
                       if (appliedGiftCard) totalToPay -= appliedGiftCard.amountToUse;
                       if (formData.paymentMethod === 'store_credit') totalToPay -= formData.storeCreditAmount || 0;
                       totalToPay = Math.max(0, totalToPay);

@@ -12,26 +12,41 @@ import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
 import { SectionSettings } from '@/lib/customizer/types';
 
-// Dynamic imports for real components (only used in storefront)
-import dynamic from 'next/dynamic';
+// ✅ Static imports - לא dynamic imports כדי למנוע hydration mismatch
+// הקומפוננטות יוצגו רק אחרי mount באמצעות isMounted state
+import { SideCart } from '@/components/storefront/SideCart';
+import { SearchBar } from '@/components/storefront/SearchBar';
+import { CountrySelector } from '@/components/storefront/CountrySelector';
+import { WishlistIcon } from '@/components/storefront/WishlistIcon';
 
-// ✅ Loading fallback למניעת hydration mismatch
-const SideCart = dynamic(() => import('@/components/storefront/SideCart').then(mod => mod.SideCart), { 
-  ssr: false,
-  loading: () => null // לא מציג כלום בזמן טעינה
-});
-const SearchBar = dynamic(() => import('@/components/storefront/SearchBar').then(mod => mod.SearchBar), { 
-  ssr: false,
-  loading: () => null
-});
-const CountrySelector = dynamic(() => import('@/components/storefront/CountrySelector').then(mod => mod.CountrySelector), { 
-  ssr: false,
-  loading: () => null
-});
-const WishlistIcon = dynamic(() => import('@/components/storefront/WishlistIcon').then(mod => mod.WishlistIcon), { 
-  ssr: false,
-  loading: () => null
-});
+// ✅ קונטיינר קבוע לאייקונים - מונע layout shift
+// כל האייקונים באותו גודל: w-10 h-10 (40px)
+const ICON_SIZE = 'w-10 h-10';
+
+// ✅ Placeholder components - מוצגים בשרת ובקליינט עד mount
+// חשוב: הגודל חייב להיות זהה לקומפוננטות האמיתיות למניעת layout shift
+const CartPlaceholder = () => (
+  <button className={`relative flex items-center justify-center ${ICON_SIZE} rounded-lg hover:bg-gray-100 transition-colors`}>
+    <HiShoppingCart className="w-5 h-5 text-gray-600" />
+  </button>
+);
+
+const WishlistPlaceholder = ({ iconColor }: { iconColor?: string }) => (
+  <div 
+    className={`relative flex items-center justify-center ${ICON_SIZE} rounded-lg hover:bg-gray-100/50 transition-colors`}
+    style={{ color: iconColor }}
+  >
+    <HiHeart className="w-5 h-5" />
+  </div>
+);
+
+const SearchPlaceholder = () => (
+  <div className="w-[200px] h-10" />
+);
+
+const CountrySelectorPlaceholder = () => (
+  <div className={`${ICON_SIZE} flex items-center justify-center`} />
+);
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -341,93 +356,76 @@ export function UnifiedHeader({
     }
 
     // Storefront mode - real components
-    // ✅ רק אחרי mount כדי למנוע hydration mismatch
-    // משתמשים ב-div רגיל inline למניעת hydration errors
-    const skeletonClass = "animate-pulse bg-gray-200 w-10 h-10 rounded-lg flex-shrink-0";
-    
-    if (!isMounted) {
-      // מציג skeletons בזמן SSR - עם אותו גודל כמו הקומפוננטות האמיתיות
-      if (split) {
-        if (position === 'right') {
-          return settings.search?.enabled === true ? (
-            <div className={skeletonClass} />
-          ) : null;
-        }
-        if (position === 'left') {
-          return (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {settings.user_account?.enabled === true && (
-                <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-                  <HiUser className="w-5 h-5" />
-                </IconButton>
-              )}
-              {settings.wishlist?.enabled === true && storeSlug && (
-                <div className={skeletonClass} />
-              )}
-              {settings.cart?.enabled === true && storeId && (
-                <div className={skeletonClass} />
-              )}
-            </div>
-          );
-        }
-      }
-      return (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {settings.search?.enabled === true && (
-            <div className={skeletonClass} />
-          )}
-          {settings.currency_selector?.enabled === true && (
-            <div className={skeletonClass} />
-          )}
-          {settings.user_account?.enabled === true && (
-            <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-              <HiUser className="w-5 h-5" />
-            </IconButton>
-          )}
-          {settings.wishlist?.enabled === true && storeSlug && (
-            <div className={skeletonClass} />
-          )}
-          {settings.cart?.enabled === true && storeId && (
-            <div className={skeletonClass} />
-          )}
-        </div>
-      );
-    }
-    
+    // ✅ משתמשים בקומפוננטות דינמיות עם loading states זהים בגודל למניעת layout shift
+    // ✅ אייקונים עם לוגיקת isMounted - placeholders בשרת, קומפוננטות אמיתיות אחרי mount
+    // זה מונע hydration mismatch כי אותו HTML מוצג בשרת ובקליינט לפני mount
     if (split) {
       if (position === 'right') {
-        return settings.search?.enabled === true ? <SearchBar placeholder={settings.search?.placeholder} /> : null;
+        if (settings.search?.enabled !== true) return null;
+        return isMounted ? (
+          <SearchBar placeholder={settings.search?.placeholder} />
+        ) : (
+          <SearchPlaceholder />
+        );
       }
-        if (position === 'left') {
-          return (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {settings.user_account?.enabled === true && (
-                <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
-                  <HiUser className="w-5 h-5" />
-                </IconButton>
-              )}
-              {settings.wishlist?.enabled === true && storeSlug && (
+      if (position === 'left') {
+        return (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {settings.user_account?.enabled === true && (
+              <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
+                <HiUser className="w-5 h-5" />
+              </IconButton>
+            )}
+            {settings.wishlist?.enabled === true && storeSlug && (
+              isMounted ? (
                 <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
-              )}
-              {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
-            </div>
-          );
-        }
+              ) : (
+                <WishlistPlaceholder iconColor={iconColor} />
+              )
+            )}
+            {settings.cart?.enabled === true && storeId && (
+              isMounted ? (
+                <SideCart storeId={Number(storeId)} />
+              ) : (
+                <CartPlaceholder />
+              )
+            )}
+          </div>
+        );
+      }
     }
 
     return (
       <div className="flex items-center gap-1 flex-shrink-0">
-        {settings.search?.enabled === true && <SearchBar placeholder={settings.search?.placeholder} />}
-        {settings.currency_selector?.enabled === true && <CountrySelector />}
+        {settings.search?.enabled === true && (
+          isMounted ? (
+            <SearchBar placeholder={settings.search?.placeholder} />
+          ) : (
+            <SearchPlaceholder />
+          )
+        )}
+        {settings.currency_selector?.enabled === true && (
+          isMounted ? <CountrySelector /> : <CountrySelectorPlaceholder />
+        )}
         {settings.user_account?.enabled === true && (
           <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
             <HiUser className="w-5 h-5" />
           </IconButton>
         )}
         {settings.wishlist?.enabled === true && storeSlug && (
-          <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+          isMounted ? (
+            <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+          ) : (
+            <WishlistPlaceholder iconColor={iconColor} />
+          )
         )}
-        {settings.cart?.enabled === true && storeId && <SideCart storeId={storeId} />}
+        {settings.cart?.enabled === true && storeId && (
+          isMounted ? (
+            <SideCart storeId={Number(storeId)} />
+          ) : (
+            <CartPlaceholder />
+          )
+        )}
       </div>
     );
   };
@@ -611,6 +609,7 @@ export function UnifiedHeader({
   }
 
   // Mobile Icons Component - Cart is last (extreme position in RTL)
+  // ✅ משתמש ב-placeholders לפני mount למניעת hydration mismatch
   const MobileIcons = () => (
     <div className="flex items-center gap-1 flex-shrink-0">
       {settings.user_account?.enabled === true && (
@@ -626,12 +625,22 @@ export function UnifiedHeader({
         isPreview ? (
           <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
         ) : (
-          storeSlug && (isMounted ? <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} /> : <div className="animate-pulse bg-gray-200 w-10 h-10 rounded-lg flex-shrink-0" />)
+          storeSlug && (
+            isMounted ? (
+              <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} />
+            ) : (
+              <WishlistPlaceholder iconColor={iconColor} />
+            )
+          )
         )
       )}
       {settings.cart?.enabled !== false && (
         !isPreview && storeId ? (
-          isMounted ? <SideCart storeId={storeId} /> : <div className="animate-pulse bg-gray-200 w-10 h-10 rounded-lg flex-shrink-0" />
+          isMounted ? (
+            <SideCart storeId={Number(storeId)} />
+          ) : (
+            <CartPlaceholder />
+          )
         ) : (
           <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
         )

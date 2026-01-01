@@ -1001,9 +1001,30 @@ export class CartCalculator {
       );
 
       // ✅ בדיקת משלוח חינם לפי סף - בודק אחרי הנחות על מוצרים
-      const hasFreeShippingThreshold = 
-        this.shippingRate.free_shipping_threshold && 
-        subtotalAfterDiscount >= this.shippingRate.free_shipping_threshold;
+      // 🔍 CRITICAL: משתמש ב-freeShippingThreshold מה-premium club config (אם קיים) או מה-shipping rate
+      // זה מבטיח שהחישוב משתמש באותה הגדרה כמו ה-progress bar
+      let freeShippingThreshold: number | null = null;
+      let thresholdSource: 'premium_club_config' | 'shipping_rate' | null = null;
+      
+      // נסה לטעון את ה-premium club config כדי לקבל את ה-freeShippingThreshold הגלובלי
+      try {
+        const { getPremiumClubConfig } = await import('./premiumClub');
+        const premiumConfig = await getPremiumClubConfig(this.storeId);
+        if (premiumConfig?.benefits?.freeShippingThreshold) {
+          freeShippingThreshold = premiumConfig.benefits.freeShippingThreshold;
+          thresholdSource = 'premium_club_config';
+        }
+      } catch (error) {
+        // Silent error - fallback to shipping rate threshold
+      }
+      
+      // אם אין הגדרה ב-premium club config, משתמש ב-free_shipping_threshold מה-shipping rate
+      if (!freeShippingThreshold && this.shippingRate.free_shipping_threshold) {
+        freeShippingThreshold = this.shippingRate.free_shipping_threshold;
+        thresholdSource = 'shipping_rate';
+      }
+      
+      const hasFreeShippingThreshold = freeShippingThreshold && subtotalAfterDiscount >= freeShippingThreshold;
 
       // בדיקת משלוח חינם לפי premium club tier
       let hasFreeShippingFromTier = false;
@@ -1026,6 +1047,17 @@ export class CartCalculator {
             freeShippingDiscount.description = 'משלוח חינם';
             freeShippingDiscount.amount = this.shippingRate.price; // ✅ עדכון הסכום לפי התעריף הנוכחי
           }
+        } else if (hasFreeShippingThreshold && freeShippingThreshold) {
+          // הוספת הנחת משלוח חינם לרשימת ההנחות
+          allAppliedDiscounts.push({
+            id: 0,
+            name: 'משלוח חינם',
+            type: 'free_shipping',
+            amount: this.shippingRate.price,
+            description: `משלוח חינם מעל ₪${freeShippingThreshold}`,
+            source: 'automatic',
+            priority: 1000,
+          });
         } else if (hasFreeShippingFromTier) {
           // הוספת הנחת משלוח חינם לרשימת ההנחות
           allAppliedDiscounts.push({
