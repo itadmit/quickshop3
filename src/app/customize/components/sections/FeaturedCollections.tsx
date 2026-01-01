@@ -28,7 +28,6 @@ interface Collection {
 }
 
 function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPreview, preloadedCollections, storeId: propStoreId }: FeaturedCollectionsProps) {
-  console.log(`📁 [FeaturedCollections] Component render - section.id: ${section.id}`, preloadedCollections ? '✅ עם נתונים טעונים מראש' : '❌ ללא נתונים טעונים מראש');
   
   const settings = section.settings || {};
   const style = section.style || {};
@@ -65,35 +64,49 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   }, [params?.storeSlug, isInCustomizer, storeId]);
   
   // ✅ אם יש נתונים טעונים מראש (SSR) - השתמש בהם!
-  // Initialize collections from preloaded data (SSR) or sessionStorage
+  // Initialize collections from preloaded data (SSR) - avoid sessionStorage in initializer to prevent hydration mismatch
   const sectionKey = `featured-collections-${section.id}`;
   const [collections, setCollections] = useState<Collection[]>(() => {
-    // Priority 1: Preloaded data from server (fastest!)
+    // Priority 1: Preloaded data from server (fastest!) - always use this on server
     if (preloadedCollections && preloadedCollections.length > 0) {
       return preloadedCollections;
     }
-    // Priority 2: SessionStorage cache
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem(`${sectionKey}-data`);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {
-          return [];
-        }
-      }
-    }
+    // On server, return empty array (will be loaded on client)
     return [];
   });
   const [loading, setLoading] = useState(() => {
-    // Don't show loading if we have preloaded data or cached data
+    // Don't show loading if we have preloaded data
     if (preloadedCollections && preloadedCollections.length > 0) {
       return false; // ✅ יש נתונים טעונים מראש - אין צורך בטעינה
     }
-    if (typeof window === 'undefined') return true;
-    const stored = sessionStorage.getItem(`${sectionKey}-data`);
-    return !stored;
+    // On server, always return true (will be updated on client)
+    return true;
   });
+  
+  // Load from sessionStorage on client mount (after hydration)
+  useEffect(() => {
+    // Only on client, after mount
+    if (typeof window === 'undefined') return;
+    
+    // If we already have preloaded data, skip
+    if (preloadedCollections && preloadedCollections.length > 0) {
+      return;
+    }
+    
+    // Try to load from sessionStorage
+    const stored = sessionStorage.getItem(`${sectionKey}-data`);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.length > 0) {
+          setCollections(parsed);
+          setLoading(false);
+        }
+      } catch (e) {
+        // Invalid data, ignore
+      }
+    }
+  }, []); // Only run once on mount
   
   // Get settings - simple and direct
   const collectionSelectionMode = settings.collection_selection_mode || 'all';
@@ -102,38 +115,32 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
   // Create stable key for settings - only reload when this changes
   const settingsKey = useMemo(() => {
     const idsStr = [...selectedCollectionIds].sort((a, b) => a - b).join(',');
-    const key = `${storeId}-${collectionSelectionMode}-${idsStr}`;
-    console.log(`📁 [FeaturedCollections] settingsKey calculated:`, key, {
-      storeId,
-      collectionSelectionMode,
-      selectedCollectionIds,
-      idsStr
-    });
-    return key;
+    return `${storeId}-${collectionSelectionMode}-${idsStr}`;
   }, [storeId, collectionSelectionMode, JSON.stringify(selectedCollectionIds)]);
   
-  // Track previous settingsKey - use ref + sessionStorage to persist across remounts
-  const storedPrevKey = typeof window !== 'undefined' ? sessionStorage.getItem(`${sectionKey}-prevKey`) : null;
-  const prevSettingsKeyRef = useRef<string>(storedPrevKey || '');
+  // Track previous settingsKey - use ref (sessionStorage loaded in useEffect to prevent hydration mismatch)
+  const prevSettingsKeyRef = useRef<string>('');
   const isLoadingRef = useRef<boolean>(false);
+  
+  // Load previous key from sessionStorage on client mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(`${sectionKey}-prevKey`);
+      if (stored) {
+        prevSettingsKeyRef.current = stored;
+      }
+    }
+  }, [sectionKey]);
   
   // Load collections - simple: only when settingsKey changes
   useEffect(() => {
     // ✅ אם יש נתונים טעונים מראש (SSR) - אל תטען שוב!
     if (preloadedCollections && preloadedCollections.length > 0) {
-      console.log(`📁 [FeaturedCollections] Skipping load - using preloaded data from server`);
       setLoading(false);
       return;
     }
     
     const prevKey = prevSettingsKeyRef.current;
-    console.log(`📁 [FeaturedCollections] useEffect triggered`, {
-      storeId,
-      settingsKey,
-      prevSettingsKey: prevKey,
-      isLoading: isLoadingRef.current,
-      willReload: settingsKey !== prevKey && storeId !== null && !isLoadingRef.current
-    });
     
     // Don't load if storeId is null - wait for it to load
     if (!storeId) {
@@ -143,19 +150,16 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
     
     // Skip if already loading
     if (isLoadingRef.current) {
-      console.log(`📁 [FeaturedCollections] Skipping reload - already loading`);
       return;
     }
     
     // Skip if settingsKey hasn't changed (and we have collections)
     if (settingsKey === prevKey && collections.length > 0) {
-      console.log(`📁 [FeaturedCollections] Skipping reload - settingsKey unchanged and have collections`);
       return;
     }
     
     // If settingsKey changed, update ref and sessionStorage
     if (settingsKey !== prevKey) {
-      console.log(`📁 [FeaturedCollections] settingsKey changed from ${prevKey} to ${settingsKey}, loading new data`);
       prevSettingsKeyRef.current = settingsKey;
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(`${sectionKey}-prevKey`, settingsKey);
@@ -167,12 +171,10 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
     const loadCollections = async () => {
       // Prevent duplicate calls
       if (isLoadingRef.current) {
-        console.log(`📁 [FeaturedCollections] Already loading, skipping duplicate call`);
         return;
       }
       
       isLoadingRef.current = true;
-      console.log(`📁 [FeaturedCollections] Starting load...`);
       setLoading(true);
       try {
         let collectionsData: Collection[] = [];
@@ -195,7 +197,6 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
         }
         
         if (!cancelled) {
-          console.log(`📁 [FeaturedCollections] Loaded ${collectionsData.length} collections`);
           setCollections(collectionsData);
           // Save to sessionStorage
           if (typeof window !== 'undefined') {
@@ -204,12 +205,10 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
         }
       } catch (error) {
         if (!cancelled) {
-          console.error('[FeaturedCollections] Error loading collections:', error);
           setCollections([]);
         }
       } finally {
         if (!cancelled) {
-          console.log(`📁 [FeaturedCollections] Loading finished`);
           setLoading(false);
           isLoadingRef.current = false;
         }
@@ -219,7 +218,6 @@ function FeaturedCollectionsComponent({ section, onUpdate, editorDevice, isPrevi
     loadCollections();
     
     return () => {
-      console.log(`📁 [FeaturedCollections] Cleanup - cancelling load`);
       cancelled = true;
       isLoadingRef.current = false;
     };
@@ -623,16 +621,13 @@ export const FeaturedCollections = React.memo(FeaturedCollectionsComponent, (pre
   // Check if section object reference changed (but content is the same)
   const sectionRefChanged = prevProps.section !== nextProps.section;
   if (sectionRefChanged && changes.length === 0) {
-    console.log(`📁 [FeaturedCollections] React.memo: SKIP RE-RENDER - section ref changed but content same`);
     return true; // Skip re-render even if ref changed
   }
   
   if (changes.length > 0) {
-    console.log(`📁 [FeaturedCollections] React.memo: WILL RE-RENDER`, changes);
     return false; // Settings changed, re-render
   }
   
-  console.log(`📁 [FeaturedCollections] React.memo: SKIP RE-RENDER - no changes`);
   // Everything else is the same, skip re-render
   return true;
 });
