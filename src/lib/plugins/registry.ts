@@ -373,6 +373,81 @@ export const builtInPlugins: PluginDefinition[] = [
       position: 'bottom-right',
     },
   },
+
+  // ============================================
+  // ENGAGEMENT PLUGINS
+  // ============================================
+  {
+    slug: 'product-stories',
+    name: 'סטוריז מוצרים',
+    description: 'הצגת מוצרים בפורמט סטוריז אינטראקטיבי כמו באינסטגרם - עם לייקים, תגובות והוספה מהירה לעגלה',
+    type: 'CORE',
+    category: 'MARKETING',
+    version: '1.0.0',
+    is_built_in: true,
+    is_free: false,
+    price: 39.90,
+    currency: 'ILS',
+    icon: '/icons/stories.svg',
+    author: 'QuickShop',
+    defaultConfig: {
+      enabled: false,
+      displayMode: 'home_only', // 'home_only' | 'category' | 'everywhere'
+      autoAdvanceSeconds: 5,
+      showProductInfo: true,
+      allowLikes: true,
+      allowComments: true,
+      allowQuickAdd: true,
+      circleBorderColor: '#e91e63',
+      viewedBorderColor: '#9e9e9e',
+      selectedProducts: [], // array of product IDs
+    },
+    metadata: {
+      menuItem: {
+        icon: 'PlayCircle',
+        labelKey: 'sidebar.stories',
+        href: '/settings/stories',
+        permission: 'products',
+        section: 'marketing',
+      },
+      screenshots: [
+        '/images/plugins/stories-1.png',
+        '/images/plugins/stories-2.png',
+      ],
+      documentation: `
+## סטוריז מוצרים - מדריך שימוש
+
+### מה זה עושה?
+תוסף סטוריז מוצרים מאפשר להציג מוצרים בפורמט אינטראקטיבי 
+כמו סטוריז באינסטגרם, בראש האתר מתחת לתפריט.
+
+### איך זה עובד?
+1. **בחר מוצרים** - בחר אילו מוצרים יוצגו בסטוריז
+2. **הפעל** - הפעל את התוסף ובחר היכן להציג
+3. **אינטראקציה** - לקוחות יכולים:
+   - 🔄 לגלול בין מוצרים
+   - ❤️ לעשות לייק
+   - 💬 להוסיף תגובה
+   - 🛒 להוסיף לעגלה במהירות
+
+### הגדרות תצוגה
+- **הצג רק בדף בית** - ברירת מחדל
+- **הצג בקטגוריות** - יופיע גם בעמודי קטגוריה
+- **הצג בכל האתר** - יופיע בכל העמודים
+
+### מעקב אחר צפיות
+מוצרים שנצפו יקבלו מסגרת אפורה ויועברו לסוף הרשימה,
+כך שלקוחות תמיד יראו תוכן חדש.
+
+### סקשן בעמוד מוצר
+ניתן להוסיף סקשן "סטוריז" בקסטומייזר לעמוד מוצר,
+שיציג את מספר הלייקים והתגובות למוצר.
+      `,
+    },
+    requirements: {
+      minVersion: '1.0.0',
+    },
+  },
 ];
 
 /**

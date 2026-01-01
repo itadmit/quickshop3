@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       [user.id]
     );
 
-    // Get stores where user is staff member
-    const staffStores = await query<{
+    // Get stores where user is an admin user (invited staff)
+    const adminStores = await query<{
       id: number;
       name: string;
       myshopify_domain: string;
@@ -41,17 +41,16 @@ export async function GET(request: NextRequest) {
         s.name, 
         s.myshopify_domain,
         'staff' as access_type,
-        ssa.role
+        au.role
        FROM stores s
-       INNER JOIN staff_store_access ssa ON s.id = ssa.store_id
-       INNER JOIN staff_users su ON ssa.staff_user_id = su.id
-       WHERE su.email = $1 AND ssa.is_active = true AND su.is_active = true
-       ORDER BY ssa.created_at ASC`,
+       INNER JOIN admin_users au ON s.id = au.store_id
+       WHERE au.email = $1 AND au.is_active = true
+       ORDER BY au.created_at ASC`,
       [user.email]
     );
 
-    // Combine and deduplicate stores
-    const allStores = [...ownedStores, ...staffStores];
+    // Combine and deduplicate stores (owned stores take precedence)
+    const allStores = [...ownedStores, ...adminStores];
     const uniqueStores = allStores.filter(
       (store, index, self) => index === self.findIndex((s) => s.id === store.id)
     );
@@ -84,4 +83,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

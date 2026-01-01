@@ -44,6 +44,7 @@ export type SectionType =
   | 'product_gallery'
   | 'product_custom_fields'
   | 'product_reviews'
+  | 'product_stories'
   | 'related_products'
   | 'recently_viewed'
   | 'product_recently_viewed'

@@ -8,17 +8,30 @@ const { readFileSync } = require('fs');
 const { join } = require('path');
 const { Pool } = require('pg');
 
-// Load environment variables from .env.local
-try {
-  const envFile = readFileSync(join(process.cwd(), '.env.local'), 'utf-8');
-  envFile.split('\n').forEach(line => {
-    const match = line.match(/^([^=]+)=(.*)$/);
-    if (match && !process.env[match[1]]) {
-      process.env[match[1]] = match[2].trim();
-    }
-  });
-} catch (error) {
-  // .env.local might not exist, that's okay
+// Load environment variables from .env.local or .env
+const envFiles = ['.env.local', '.env'];
+for (const envFileName of envFiles) {
+  try {
+    const envFile = readFileSync(join(process.cwd(), envFileName), 'utf-8');
+    envFile.split('\n').forEach(line => {
+      // Skip comments and empty lines
+      if (line.startsWith('#') || !line.trim()) return;
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match && !process.env[match[1]]) {
+        // Remove quotes if present
+        let value = match[2].trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        process.env[match[1]] = value;
+      }
+    });
+    console.log(`📋 Loaded environment from ${envFileName}`);
+    break; // Use first found file
+  } catch (error) {
+    // File might not exist, try next
+  }
 }
 
 const connectionString = process.env.DATABASE_URL;

@@ -20,18 +20,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'חסר טוקן הזמנה' }, { status: 400 });
     }
 
-    // Get invitation details
+    // Get invitation details from admin_user_invitations
     const invitation = await queryOne<{
       id: number;
       email: string;
+      first_name: string | null;
+      last_name: string | null;
       store_id: number;
       role: string;
       status: string;
       expires_at: Date;
       invited_by: number | null;
     }>(
-      `SELECT id, email, store_id, role, status, expires_at, invited_by
-       FROM staff_invitations
+      `SELECT id, email, first_name, last_name, store_id, role, status, expires_at, invited_by
+       FROM admin_user_invitations
        WHERE token = $1`,
       [token]
     );
@@ -80,6 +82,8 @@ export async function GET(request: NextRequest) {
       invitation: {
         id: invitation.id,
         email: invitation.email,
+        firstName: invitation.first_name || '',
+        lastName: invitation.last_name || '',
         storeName: store?.name || 'החנות',
         role: invitation.role,
         roleLabel: roleLabels[invitation.role] || invitation.role,
@@ -96,26 +100,24 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/staff/accept-invitation - Accept invitation and create staff user
+// POST /api/staff/accept-invitation - Accept invitation and create admin user
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = acceptInvitationSchema.parse(body);
 
-    // Get invitation details and lock the row to prevent race conditions
+    // Get invitation details
     const invitation = await queryOne<{
       id: number;
       email: string;
       store_id: number;
       role: string;
-      permissions: any;
       status: string;
       expires_at: Date;
     }>(
-      `SELECT id, email, store_id, role, permissions, status, expires_at
-       FROM staff_invitations
-       WHERE token = $1 AND status = 'pending'
-       FOR UPDATE`,
+      `SELECT id, email, store_id, role, status, expires_at
+       FROM admin_user_invitations
+       WHERE token = $1 AND status = 'pending'`,
       [data.token]
     );
 
@@ -131,51 +133,45 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // Check if staff user already exists
-    let staffUser = await queryOne<{ id: number }>(
-      'SELECT id FROM staff_users WHERE email = $1',
+    // Check if admin user already exists for this store
+    const existingUser = await queryOne<{ id: number }>(
+      'SELECT id FROM admin_users WHERE store_id = $1 AND email = $2',
+      [invitation.store_id, invitation.email]
+    );
+
+    if (existingUser) {
+      return NextResponse.json({ error: 'משתמש כבר קיים לחנות זו' }, { status: 400 });
+    }
+
+    // Check if this user has a store_owner account (can link to existing QuickShop account)
+    const existingOwner = await queryOne<{ id: number; name: string }>(
+      'SELECT id, name FROM store_owners WHERE email = $1',
       [invitation.email]
     );
 
-    if (!staffUser) {
-      // Create staff user
-      staffUser = await queryOne<{ id: number }>(
-        `INSERT INTO staff_users (email, first_name, last_name, password_hash)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [invitation.email, data.firstName, data.lastName, passwordHash]
-      );
-    } else {
-      // Update existing user with password if they don't have one
-      await query(
-        `UPDATE staff_users
-         SET first_name = $1, last_name = $2, password_hash = $3, updated_at = NOW()
-         WHERE id = $4 AND password_hash IS NULL`,
-        [data.firstName, data.lastName, passwordHash, staffUser.id]
-      );
-    }
-
-    if (!staffUser) {
-      throw new Error('Failed to create staff user');
-    }
-
-    // Create staff store access
-    await query(
-      `INSERT INTO staff_store_access (staff_user_id, store_id, role, permissions)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (staff_user_id, store_id) DO UPDATE
-       SET role = $3, permissions = $4, is_active = true, updated_at = NOW()`,
+    // Create admin user in admin_users table
+    const newUser = await queryOne<{ id: number }>(
+      `INSERT INTO admin_users (store_id, email, first_name, last_name, password_hash, role, is_active, store_owner_id)
+       VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+       RETURNING id`,
       [
-        staffUser.id,
         invitation.store_id,
+        invitation.email,
+        data.firstName,
+        data.lastName,
+        passwordHash,
         invitation.role,
-        JSON.stringify(invitation.permissions || {}),
+        existingOwner?.id || null,
       ]
     );
 
+    if (!newUser) {
+      throw new Error('Failed to create admin user');
+    }
+
     // Mark invitation as accepted
     await query(
-      `UPDATE staff_invitations
+      `UPDATE admin_user_invitations
        SET status = 'accepted', accepted_at = NOW()
        WHERE id = $1`,
       [invitation.id]
@@ -183,10 +179,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'ההזמנה אושרה בהצלחה',
-      staffUser: {
-        id: staffUser.id,
+      adminUser: {
+        id: newUser.id,
         email: invitation.email,
       },
+      // If they have an existing QuickShop account, let them know
+      hasExistingAccount: !!existingOwner,
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -203,4 +201,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -902,6 +902,7 @@ export function getPageSpecificSections(pageType: string): Array<{ type: string;
         { type: 'product_description', name: 'תיאור המוצר', description: 'תיאור מפורט של המוצר' },
         { type: 'product_custom_fields', name: 'שדות מותאמים', description: 'מידע נוסף על המוצר' },
         { type: 'product_reviews', name: 'ביקורות', description: 'ביקורות לקוחות' },
+        { type: 'product_stories', name: 'סטוריז מוצר', description: 'לייקים, תגובות וצפיות מהסטוריז' },
         { type: 'related_products', name: 'מוצרים קשורים', description: 'מוצרים דומים' },
         { type: 'recently_viewed', name: 'נצפו לאחרונה', description: 'מוצרים שהלקוח צפה בהם' }
       ];

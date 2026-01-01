@@ -11,6 +11,7 @@ import { useParams, usePathname } from 'next/navigation';
 import { StorefrontSectionRenderer } from './StorefrontSectionRenderer';
 import { ProductPageProvider } from '@/contexts/ProductPageContext';
 import { FloatingAdvisorButton } from './FloatingAdvisorButton';
+import { StoriesBar } from './StoriesBar';
 
 interface CustomizerLayoutClientProps {
   storeSlug: string;
@@ -366,12 +367,21 @@ export function CustomizerLayoutClient({
     (pageType === 'categories') ||
     (pageType !== 'product' && pageType !== 'collection' && pageType !== 'category' && pageType !== 'products' && pageType !== 'categories' && contentSections.length > 0);
 
+  // Map pageType to StoriesBar pageType
+  const storiesPageType = pageType === 'product' ? 'product' 
+    : (pageType === 'collection' || pageType === 'category' || pageType === 'categories') ? 'category'
+    : pageType === 'home' || !pageType ? 'home'
+    : 'other';
+
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
       {/* Header from Customizer */}
       {headerSection && (
         <StorefrontSectionRenderer section={headerSection} storeId={storeId} />
       )}
+      
+      {/* Stories Bar - displays below header */}
+      <StoriesBar storeSlug={storeSlug} pageType={storiesPageType} />
       
       {/* Main Content */}
       <main className="flex-1">

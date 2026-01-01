@@ -50,6 +50,7 @@ const menuItems: MenuItem[] = [
     icon: MenuIcons.discounts,
     children: [
       { label: 'יועץ חכם', href: '/smart-advisor', icon: MenuIcons.sparkles },
+      { label: 'סטוריז מוצרים', href: '/settings/stories', icon: MenuIcons.media },
       { label: 'הנחות אוטומטיות', href: '/automatic-discounts', icon: MenuIcons.discounts },
       { label: 'קופונים', href: '/discounts', icon: MenuIcons.coupons },
       { label: 'משפיענים', href: '/marketing/influencers', icon: MenuIcons.customers },

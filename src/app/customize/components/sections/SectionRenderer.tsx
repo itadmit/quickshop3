@@ -50,6 +50,7 @@ import {
   RelatedProductsSection,
   RecentlyViewedSection
 } from './ProductPageSections';
+import { ProductStoriesSection } from './ProductStoriesSection';
 import { ProductBreadcrumbs } from './ProductBreadcrumbs';
 import { CheckoutFormSection } from './CheckoutFormSection';
 
@@ -424,6 +425,13 @@ function SectionRendererComponent({ section, isSelected, onUpdate, device = 'des
       return (
         <SectionWrapper className="py-4">
           <ProductReviewsSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} />
+        </SectionWrapper>
+      );
+
+    case 'product_stories':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductStoriesSection section={responsiveSection} product={sampleProduct} onUpdate={onUpdate} isPreview={true} />
         </SectionWrapper>
       );
 

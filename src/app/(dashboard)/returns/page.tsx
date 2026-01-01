@@ -277,6 +277,37 @@ export default function ReturnsPage() {
     }
   };
 
+  // ✅ Search customers for manual return
+  useEffect(() => {
+    if (returnType === 'manual' && debouncedCustomerSearch && debouncedCustomerSearch.length >= 2) {
+      searchCustomers(debouncedCustomerSearch);
+    } else {
+      setCustomerSearchResults([]);
+    }
+  }, [debouncedCustomerSearch, returnType]);
+
+  const searchCustomers = async (searchQuery: string) => {
+    try {
+      const response = await fetch(`/api/customers?search=${encodeURIComponent(searchQuery)}&limit=10`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to search customers');
+      const data = await response.json();
+      
+      // Transform customers to our format
+      const customers = (data.customers || []).map((c: any) => ({
+        id: c.id,
+        name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'לקוח ללא שם',
+        email: c.email || '',
+      }));
+      
+      setCustomerSearchResults(customers);
+    } catch (error: any) {
+      console.error('Error searching customers:', error);
+    }
+  };
+
   const handleSelectOrder = (order: OrderOption) => {
     setSelectedOrder(order);
     setOrderSearchResults([]);
@@ -701,7 +732,7 @@ export default function ReturnsPage() {
         selectedItems={selectedReturns}
         onSelectionChange={(selected) => setSelectedReturns(selected as Set<number>)}
         loading={loading}
-        actions={
+        headerActions={
           <Button onClick={() => setIsAddDialogOpen(true)}>
             <HiPlus className="w-4 h-4 ml-2" />
             הוסף החזרה
@@ -1084,6 +1115,250 @@ export default function ReturnsPage() {
                   </div>
                 )}
               </div>
+            ) : returnType === 'manual' && !selectedCustomer ? (
+              // ✅ Manual Return - Customer Search
+              <div className="space-y-4">
+                <div>
+                  <Label>חיפוש לקוח</Label>
+                  <div className="relative mt-2">
+                    <HiSearch className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Input
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      placeholder="חפש לפי שם או אימייל..."
+                      className="pr-10"
+                    />
+                  </div>
+                </div>
+
+                {customerSearchResults.length > 0 && (
+                  <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                    {customerSearchResults.map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        onClick={() => setSelectedCustomer(customer)}
+                        className="w-full px-4 py-3 text-right hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="font-medium">{customer.name}</div>
+                        <div className="text-sm text-gray-500">{customer.email}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {customerSearch.length >= 2 && customerSearchResults.length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    לא נמצאו לקוחות
+                  </div>
+                )}
+              </div>
+            ) : returnType === 'manual' && selectedCustomer ? (
+              // ✅ Manual Return - Add Items
+              <>
+                {/* Selected Customer Info */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg">לקוח: {selectedCustomer.name}</CardTitle>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setSelectedCustomer(null);
+                        setManualItems([]);
+                      }}>
+                        שנה לקוח
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm text-gray-600">{selectedCustomer.email}</div>
+                  </CardContent>
+                </Card>
+
+                {/* Manual Items List */}
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <Label className="text-base font-medium">פריטים להחזרה</Label>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      onClick={() => setShowAddManualItem(true)}
+                      disabled={showAddManualItem}
+                    >
+                      <HiPlus className="w-4 h-4 ml-1" />
+                      הוסף פריט
+                    </Button>
+                  </div>
+
+                  {/* Add Manual Item Form */}
+                  {showAddManualItem && (
+                    <Card className="mb-4 border-green-200 bg-green-50">
+                      <CardContent className="pt-4">
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-sm">שם המוצר *</Label>
+                            <Input
+                              value={newManualItem.title}
+                              onChange={(e) => setNewManualItem({ ...newManualItem, title: e.target.value })}
+                              placeholder="לדוגמה: חולצה XL כחולה"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-sm">כמות</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={newManualItem.quantity}
+                                onChange={(e) => setNewManualItem({ ...newManualItem, quantity: parseInt(e.target.value) || 1 })}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-sm">מחיר ליחידה (₪)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={newManualItem.price}
+                                onChange={(e) => setNewManualItem({ ...newManualItem, price: e.target.value })}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setShowAddManualItem(false);
+                                setNewManualItem({ title: '', quantity: 1, price: '0' });
+                              }}
+                            >
+                              ביטול
+                            </Button>
+                            <Button 
+                              type="button" 
+                              size="sm"
+                              onClick={handleAddManualItem}
+                            >
+                              הוסף
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* List of Manual Items */}
+                  {manualItems.length > 0 ? (
+                    <div className="border rounded-lg divide-y">
+                      {manualItems.map((item, index) => (
+                        <div key={index} className="p-4 flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="font-medium">{item.title}</div>
+                            <div className="text-sm text-gray-600">
+                              כמות: {item.quantity} × ₪{parseFloat(item.price).toFixed(2)} = ₪{(item.quantity * parseFloat(item.price)).toFixed(2)}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveManualItem(index)}
+                          >
+                            <HiTrash className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                      <div className="p-4 bg-gray-50 font-medium">
+                        סה"כ: ₪{manualItems.reduce((sum, item) => sum + (item.quantity * parseFloat(item.price)), 0).toFixed(2)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
+                      לחץ על "הוסף פריט" כדי להתחיל
+                    </div>
+                  )}
+                </div>
+
+                {/* Return Reason */}
+                <div>
+                  <Label>סיבת ההחזרה *</Label>
+                  <Select value={addReason} onValueChange={setAddReason}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="בחר סיבה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="לא מתאים">לא מתאים</SelectItem>
+                      <SelectItem value="פגם במוצר">פגם במוצר</SelectItem>
+                      <SelectItem value="מוצר לא מתאים">מוצר לא מתאים</SelectItem>
+                      <SelectItem value="הזמנה שגויה">הזמנה שגויה</SelectItem>
+                      <SelectItem value="מוצר לא כמתואר">מוצר לא כמתואר</SelectItem>
+                      <SelectItem value="איחור באספקה">איחור באספקה</SelectItem>
+                      <SelectItem value="שינוי דעה">שינוי דעה</SelectItem>
+                      <SelectItem value="אחר">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <Label>סטטוס התחלתי</Label>
+                  <Select value={addStatus} onValueChange={setAddStatus}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">ממתין</SelectItem>
+                      <SelectItem value="APPROVED">אושר</SelectItem>
+                      <SelectItem value="PROCESSING">בטיפול</SelectItem>
+                      <SelectItem value="COMPLETED">הושלם</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Refund Details (optional) */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>סכום החזר (אופציונלי)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={addRefundAmount}
+                      onChange={(e) => setAddRefundAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>אמצעי החזר</Label>
+                    <Select value={addRefundMethod} onValueChange={setAddRefundMethod}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="בחר..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STORE_CREDIT">קרדיט בחנות</SelectItem>
+                        <SelectItem value="ORIGINAL_PAYMENT_METHOD">החזר לתשלום המקורי</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <Label>הערות</Label>
+                  <Textarea
+                    value={addNotes}
+                    onChange={(e) => setAddNotes(e.target.value)}
+                    placeholder="הוסף הערות (אופציונלי)..."
+                    rows={3}
+                    className="mt-2"
+                  />
+                </div>
+              </>
             ) : returnType === 'order' && selectedOrder ? (
               <>
                 {/* Selected Order Info */}

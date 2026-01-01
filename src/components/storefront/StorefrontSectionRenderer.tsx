@@ -42,6 +42,7 @@ import {
   RelatedProductsSection,
   RecentlyViewedSection
 } from '@/app/customize/components/sections/ProductPageSections';
+import { ProductStoriesSection } from '@/app/customize/components/sections/ProductStoriesSection';
 // Collection page section components
 import {
   CollectionHeaderSection,
@@ -342,6 +343,13 @@ export function StorefrontSectionRenderer({ section, product, collection, produc
       return (
         <SectionWrapper className="py-4">
           <ProductReviewsSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
+        </SectionWrapper>
+      );
+
+    case 'product_stories':
+      return (
+        <SectionWrapper className="py-2">
+          <ProductStoriesSection section={responsiveSection} product={product} onUpdate={noopUpdate} isPreview={false} />
         </SectionWrapper>
       );
 

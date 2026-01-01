@@ -46,6 +46,7 @@ export const SECTION_NAMES: Record<string, string> = {
   'product_custom_fields': 'שדות מותאמים אישית',
   'product_info': 'מידע מוצר',
   'product_reviews': 'ביקורות מוצר',
+  'product_stories': 'סטוריז מוצר',
   'related_products': 'מוצרים קשורים',
   'product_recently_viewed': 'צפית לאחרונה',
   'recently_viewed': 'צפית לאחרונה',

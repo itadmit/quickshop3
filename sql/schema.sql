@@ -1029,6 +1029,27 @@ CREATE TABLE admin_users (
 CREATE INDEX idx_admin_users_store_id ON admin_users(store_id);
 CREATE INDEX idx_admin_users_email ON admin_users(email);
 
+-- Admin User Invitations (הזמנות לעובדים)
+CREATE TABLE admin_user_invitations (
+  id SERIAL PRIMARY KEY,
+  store_id INT REFERENCES stores(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  role VARCHAR(50) DEFAULT 'staff', -- admin, staff, limited_staff
+  token VARCHAR(255) UNIQUE NOT NULL,
+  invited_by INT REFERENCES store_owners(id),
+  status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, expired, cancelled
+  expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  accepted_at TIMESTAMP WITHOUT TIME ZONE,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  UNIQUE(store_id, email)
+);
+
+CREATE INDEX idx_admin_user_invitations_token ON admin_user_invitations(token);
+CREATE INDEX idx_admin_user_invitations_store_id ON admin_user_invitations(store_id);
+CREATE INDEX idx_admin_user_invitations_email ON admin_user_invitations(email);
+
 -- ============================================
 -- 13. GIFT CARDS (גיפט קארד)
 -- ============================================

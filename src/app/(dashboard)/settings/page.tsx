@@ -13,7 +13,7 @@ import { MediaPicker } from '@/components/MediaPicker';
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
 import { useOptimisticToast } from '@/hooks/useOptimisticToast';
-import { HiUpload, HiX, HiPlus, HiTrash, HiKey, HiUser, HiShieldCheck } from 'react-icons/hi';
+import { HiUpload, HiX, HiPlus, HiTrash, HiKey, HiUser, HiShieldCheck, HiMail, HiClock } from 'react-icons/hi';
 
 interface Store {
   id: number;
@@ -57,12 +57,22 @@ export default function SettingsPage() {
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [showCreateApiKey, setShowCreateApiKey] = useState(false);
   const [newApiKeyName, setNewApiKeyName] = useState('');
   const [activePlugins, setActivePlugins] = useState<any[]>([]);
   const [totalPluginsPrice, setTotalPluginsPrice] = useState(0);
   const [loadingPlugins, setLoadingPlugins] = useState(false);
+  // Invite user state
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    role: 'staff',
+  });
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -222,10 +232,121 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setAdminUsers(data.users || []);
+        setPendingInvitations(data.invitations || []);
       }
     } catch (error) {
       console.error('Error loading admin users:', error);
     }
+  };
+
+  const sendInvitation = async () => {
+    if (!inviteForm.email.trim()) {
+      toast({
+        title: 'שגיאה',
+        description: 'נא להזין כתובת אימייל',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingInvite(true);
+    try {
+      const response = await fetch('/api/settings/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(inviteForm),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'שגיאה בשליחת ההזמנה');
+      }
+
+      toast({
+        title: 'הצלחה',
+        description: 'ההזמנה נשלחה בהצלחה!',
+      });
+
+      setShowInviteForm(false);
+      setInviteForm({ email: '', firstName: '', lastName: '', role: 'staff' });
+      loadAdminUsers();
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בשליחת ההזמנה',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  const cancelInvitation = async (invitationId: number) => {
+    try {
+      const response = await fetch(`/api/settings/users/invite?id=${invitationId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('שגיאה בביטול ההזמנה');
+      }
+
+      toast({
+        title: 'הצלחה',
+        description: 'ההזמנה בוטלה',
+      });
+
+      loadAdminUsers();
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const removeUser = async (userId: number) => {
+    if (!confirm('האם אתה בטוח שברצונך להסיר משתמש זה?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/settings/users?id=${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('שגיאה בהסרת המשתמש');
+      }
+
+      toast({
+        title: 'הצלחה',
+        description: 'המשתמש הוסר בהצלחה',
+      });
+
+      loadAdminUsers();
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    const roles: Record<string, string> = {
+      owner: 'בעלים',
+      admin: 'מנהל',
+      staff: 'צוות',
+      limited_staff: 'צוות מוגבל',
+    };
+    return roles[role] || role;
   };
 
   const loadApiKeys = async () => {
@@ -866,57 +987,198 @@ export default function SettingsPage() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-gray-900">משתמשים והרשאות</h2>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={loadAdminUsers}
-                    >
-                      רענן
-                    </Button>
-                  </div>
-                  
-                  {adminUsers.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <HiUser className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p>אין משתמשי אדמין נוספים</p>
-                      <p className="text-sm mt-2">כרגע רק הבעלים יכול לגשת לחנות</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={loadAdminUsers}
+                      >
+                        רענן
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowInviteForm(true)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <HiPlus className="w-4 h-4 ml-1" />
+                        הזמן משתמש
+                      </Button>
                     </div>
-                  ) : (
+                  </div>
+
+                  {/* Invite Form */}
+                  {showInviteForm && (
+                    <Card className="p-4 bg-green-50 border-green-200">
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-green-900 flex items-center gap-2">
+                          <HiMail className="w-5 h-5" />
+                          הזמנת משתמש חדש
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>שם פרטי</Label>
+                            <Input
+                              value={inviteForm.firstName}
+                              onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })}
+                              placeholder="שם פרטי"
+                            />
+                          </div>
+                          <div>
+                            <Label>שם משפחה</Label>
+                            <Input
+                              value={inviteForm.lastName}
+                              onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })}
+                              placeholder="שם משפחה"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>אימייל *</Label>
+                          <Input
+                            type="email"
+                            value={inviteForm.email}
+                            onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                            placeholder="email@example.com"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>תפקיד</Label>
+                          <select
+                            value={inviteForm.role}
+                            onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          >
+                            <option value="admin">מנהל - גישה מלאה</option>
+                            <option value="staff">צוות - גישה סטנדרטית</option>
+                            <option value="limited_staff">צוות מוגבל - גישה מוגבלת</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={sendInvitation}
+                            disabled={sendingInvite}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {sendingInvite ? 'שולח...' : 'שלח הזמנה'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setShowInviteForm(false);
+                              setInviteForm({ email: '', firstName: '', lastName: '', role: 'staff' });
+                            }}
+                          >
+                            ביטול
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Pending Invitations */}
+                  {pendingInvitations.length > 0 && (
                     <div className="space-y-3">
-                      {adminUsers.map((user) => (
+                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <HiClock className="w-4 h-4" />
+                        הזמנות ממתינות ({pendingInvitations.length})
+                      </h3>
+                      {pendingInvitations.map((invitation) => (
                         <div
-                          key={user.id}
-                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                          key={invitation.id}
+                          className={`flex items-center justify-between p-4 border rounded-lg ${
+                            invitation.isExpired 
+                              ? 'border-red-200 bg-red-50' 
+                              : 'border-yellow-200 bg-yellow-50'
+                          }`}
                         >
                           <div>
-                            <div className="font-medium text-gray-900">{user.name || user.email}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                            {user.role && (
-                              <div className="text-xs text-gray-400 mt-1">תפקיד: {user.role}</div>
-                            )}
+                            <div className="font-medium text-gray-900">
+                              {invitation.firstName && invitation.lastName 
+                                ? `${invitation.firstName} ${invitation.lastName}` 
+                                : invitation.email}
+                            </div>
+                            <div className="text-sm text-gray-500">{invitation.email}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              תפקיד: {getRoleLabel(invitation.role)} • 
+                              {invitation.isExpired ? (
+                                <span className="text-red-600"> פג תוקף</span>
+                              ) : (
+                                <span> תוקף עד: {new Date(invitation.expiresAt).toLocaleDateString('he-IL')}</span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => cancelInvitation(invitation.id)}
                               className="text-red-600 hover:text-red-700"
                             >
-                              <HiTrash className="w-4 h-4" />
+                              <HiX className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
+
+                  {/* Active Users */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700">משתמשים פעילים</h3>
+                    {adminUsers.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <HiUser className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                        <p>אין משתמשי אדמין נוספים</p>
+                        <p className="text-sm mt-2">לחץ על "הזמן משתמש" כדי להוסיף צוות</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {adminUsers.map((user) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                          >
+                            <div>
+                              <div className="font-medium text-gray-900 flex items-center gap-2">
+                                {user.name || user.email}
+                                {user.isOwner && (
+                                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                    בעלים
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                              <div className="text-xs text-gray-400 mt-1">
+                                תפקיד: {getRoleLabel(user.role)}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!user.isOwner && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeUser(user.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <HiTrash className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-blue-900 mb-2">הוספת משתמש אדמין</h3>
-                    <p className="text-sm text-blue-800 mb-3">
-                      תכונה זו תזמין משתמש חדש לגשת לחנות שלך. המשתמש יקבל אימייל עם הוראות התחברות.
-                    </p>
-                    <p className="text-xs text-blue-700">
-                      תכונה זו תזמין משתמש חדש לגשת לחנות שלך. המשתמש יקבל אימייל עם הוראות התחברות.
-                    </p>
+                    <h3 className="text-sm font-semibold text-blue-900 mb-2">איך זה עובד?</h3>
+                    <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                      <li>הזמן משתמש על ידי הזנת האימייל שלו</li>
+                      <li>המשתמש יקבל אימייל עם לינק להצטרפות</li>
+                      <li>אם יש לו כבר חשבון בקוויק שופ - הוא יקבל גישה לחנות שלך</li>
+                      <li>אם אין לו חשבון - הוא יצור חשבון חדש</li>
+                    </ul>
                   </div>
                 </div>
               )}
