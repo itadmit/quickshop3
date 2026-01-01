@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -334,6 +334,32 @@ export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customF
     
     loadShippingRates();
   }, [isMounted, storeSlug, subtotal, selectedShippingRate]);
+
+  // ✅ CRITICAL: כשחוזרים לעמוד הצ'ק אאוט, מעדכן את ה-calculation מהשרת
+  // זה מבטיח שהמחיר תמיד מעודכן גם אחרי חזרה מהתשלום
+  const hasRecalculatedOnMountRef = useRef(false);
+  useEffect(() => {
+    // כשחוזרים לעמוד הצ'ק אאוט (isMounted משתנה ל-true), מעדכן את ה-calculation
+    if (isMounted && selectedShippingRate && !hasRecalculatedOnMountRef.current) {
+      // מעדכן את ה-calculation מהשרת כשחוזרים לעמוד
+      recalculate();
+      hasRecalculatedOnMountRef.current = true;
+    }
+  }, [isMounted, selectedShippingRate, recalculate]);
+  
+  // ✅ CRITICAL: כשחוזרים לעמוד הצ'ק אאוט דרך pathname, מעדכן את ה-calculation
+  // זה מבטיח שהמחיר תמיד מעודכן גם אחרי חזרה מהתשלום
+  const prevPathnameRef = useRef<string>('');
+  useEffect(() => {
+    // כשחוזרים לעמוד הצ'ק אאוט (pathname משתנה), מעדכן את ה-calculation
+    if (isMounted && selectedShippingRate && pathname && pathname.includes('/checkout')) {
+      // אם pathname השתנה (חזרנו לעמוד), מעדכן את ה-calculation מהשרת
+      if (prevPathnameRef.current !== '' && pathname !== prevPathnameRef.current) {
+        recalculate();
+      }
+      prevPathnameRef.current = pathname;
+    }
+  }, [isMounted, selectedShippingRate, pathname, recalculate]);
 
   // ✅ CRITICAL: כשנבחר shipping rate חדש, קוראים ל-recalculate() מיד כדי לעדכן את ה-calculation מהשרת
   // זה מבטיח שהמחיר תמיד מגיע מהשרת ולא מחושב בקליינט
