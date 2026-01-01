@@ -64,6 +64,7 @@ interface PaymentMethodOption {
 
 export function CheckoutForm({ storeId, storeName, storeLogo, storeSlug, customFields = [] }: CheckoutFormProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { cartItems, clearCart, isLoading: cartLoading } = useCart();
   const { t, loading: translationsLoading } = useTranslation('storefront');
   const [processing, setProcessing] = useState(false);
