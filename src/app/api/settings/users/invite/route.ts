@@ -52,11 +52,20 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // Create invitation
+    // Create or update invitation (handles cancelled/expired invitations)
     const invitation = await queryOne<any>(
       `INSERT INTO admin_user_invitations 
-       (store_id, email, first_name, last_name, role, token, invited_by, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (store_id, email, first_name, last_name, role, token, invited_by, expires_at, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+       ON CONFLICT (store_id, email) DO UPDATE SET
+         first_name = EXCLUDED.first_name,
+         last_name = EXCLUDED.last_name,
+         role = EXCLUDED.role,
+         token = EXCLUDED.token,
+         invited_by = EXCLUDED.invited_by,
+         expires_at = EXCLUDED.expires_at,
+         status = 'pending',
+         created_at = now()
        RETURNING id, email, first_name, last_name, role, token, expires_at, created_at`,
       [
         user.store_id,
