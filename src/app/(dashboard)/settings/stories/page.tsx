@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { HiTrash, HiPlus, HiSearch, HiRefresh, HiChat, HiCheck, HiX, HiArrowUp, HiArrowDown, HiEye, HiHeart } from 'react-icons/hi';
+import { HiTrash, HiPlus, HiSearch, HiRefresh, HiChat, HiCheck, HiX, HiArrowUp, HiArrowDown, HiEye, HiHeart, HiPhotograph } from 'react-icons/hi';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -37,8 +37,8 @@ interface Product {
   id: number;
   title: string;
   handle: string;
-  price: number;
-  image: string | null;
+  images?: { src: string }[];
+  variants?: { price: number }[];
 }
 
 interface Comment {
@@ -76,7 +76,9 @@ function SortableStoryItem({ story, onRemove }: { story: Story; onRemove: (id: n
         {story.product_image ? (
           <img src={story.product_image} alt="" className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">📷</div>
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300">
+            <HiPhotograph className="w-6 h-6" />
+          </div>
         )}
       </div>
 
@@ -533,7 +535,7 @@ export default function StoriesSettingsPage() {
 
           {stories.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <div className="text-4xl mb-4">📱</div>
+              <HiPhotograph className="w-12 h-12 mx-auto text-gray-300 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">אין מוצרים בסטוריז</h3>
               <p className="text-gray-500">הוסף מוצרים כדי להציג אותם בפורמט סטוריז</p>
             </div>
@@ -657,26 +659,34 @@ export default function StoriesSettingsPage() {
                 <div className="text-center py-8 text-gray-500">לא נמצאו מוצרים</div>
               ) : (
                 <div className="space-y-2">
-                  {products.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => addProductToStories(product.id)}
-                      className="w-full flex items-center gap-4 p-3 border rounded-lg hover:border-pink-500 hover:bg-pink-50 transition-colors text-right"
-                    >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                        {product.image ? (
-                          <img src={product.image} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">📷</div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate">{product.title}</h4>
-                        <span className="text-sm text-gray-500">₪{product.price?.toFixed(2)}</span>
-                      </div>
-                      <HiPlus className="w-5 h-5 text-pink-500" />
-                    </button>
-                  ))}
+                  {products.map((product) => {
+                    const productImage = product.images?.[0]?.src;
+                    const productPrice = product.variants?.[0]?.price;
+                    return (
+                      <button
+                        key={product.id}
+                        onClick={() => addProductToStories(product.id)}
+                        className="w-full flex items-center gap-4 p-3 border rounded-lg hover:border-pink-500 hover:bg-pink-50 transition-colors text-right"
+                      >
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                          {productImage ? (
+                            <img src={productImage} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                              <HiPhotograph className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 truncate">{product.title}</h4>
+                          {productPrice && (
+                            <span className="text-sm text-gray-500">₪{Number(productPrice).toFixed(2)}</span>
+                          )}
+                        </div>
+                        <HiPlus className="w-5 h-5 text-pink-500" />
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
