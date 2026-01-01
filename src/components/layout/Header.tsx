@@ -155,9 +155,6 @@ export function Header() {
     e?.preventDefault();
     e?.stopPropagation();
     
-    // Close menu immediately
-    setShowUserMenu(false);
-    
     try {
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
@@ -183,8 +180,7 @@ export function Header() {
   };
 
   const handleSettings = () => {
-    // TODO: Navigate to settings page
-    setShowUserMenu(false);
+    // ✅ נווט קודם, התפריט ייסגר אוטומטית כשהדף משתנה
     router.push('/settings');
   };
 
