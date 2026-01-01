@@ -664,54 +664,54 @@ export const STAFF_INVITATION_TEMPLATE = {
   <title>הוזמנת להצטרף לצוות {{shop_name}}</title>
   ${EMAIL_STYLES}
 </head>
-<body>
-  <div class="wrapper">
-    <div class="email-container">
+<body style="direction: rtl; text-align: right;">
+  <div class="wrapper" style="direction: rtl; text-align: right;">
+    <div class="email-container" style="direction: rtl; text-align: right;">
       <div class="header">
         {{shop_logo_or_name}}
       </div>
       
-      <div class="content">
-        <div class="greeting">שלום 👋</div>
-        <p><strong>{{inviter_name}}</strong> מזמין/ה אותך להצטרף לצוות <strong>{{shop_name}}</strong> במערכת ניהול החנות!</p>
+      <div class="content" style="direction: rtl; text-align: right;">
+        <div class="greeting" style="text-align: right;">שלום 👋</div>
+        <p style="text-align: right;"><strong>{{inviter_name}}</strong> מזמין/ה אותך להצטרף לצוות <strong>{{shop_name}}</strong> במערכת ניהול החנות!</p>
         
-        <div class="order-info" style="background-color: #f0fdf4; border-color: #bbf7d0;">
-          <div class="info-title" style="color: #166534;">פרטי ההזמנה</div>
-          <div style="margin-top: 12px;">
-            <div style="margin-bottom: 8px;">
+        <div class="order-info" style="background-color: #f0fdf4; border-color: #bbf7d0; direction: rtl; text-align: right;">
+          <div class="info-title" style="color: #166534; text-align: right;">פרטי ההזמנה</div>
+          <div style="margin-top: 12px; text-align: right;">
+            <div style="margin-bottom: 8px; text-align: right;">
               <span style="color: #6b7280; font-size: 14px;">אימייל:</span>
               <span style="font-weight: 600; font-size: 15px; margin-right: 8px;">{{email}}</span>
             </div>
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 8px; text-align: right;">
               <span style="color: #6b7280; font-size: 14px;">תפקיד:</span>
               <span style="font-weight: 600; font-size: 15px; margin-right: 8px;">{{role_label}}</span>
             </div>
-            <div>
+            <div style="text-align: right;">
               <span style="color: #6b7280; font-size: 14px;">חנות:</span>
               <span style="font-weight: 600; font-size: 15px; margin-right: 8px;">{{shop_name}}</span>
             </div>
           </div>
         </div>
 
-        <p>כדי להתחיל, לחץ/י על הכפתור למטה ליצירת הסיסמה שלך:</p>
+        <p style="text-align: right;">כדי להתחיל, לחץ/י על הכפתור למטה ליצירת הסיסמה שלך:</p>
 
         <div class="button-container">
           <a href="{{invitation_url}}" class="button">אשר הזמנה וצור חשבון</a>
         </div>
 
-        <div class="order-info" style="background-color: #fef3c7; border-color: #fde047;">
-          <div style="color: #92400e; font-size: 14px;">
+        <div class="order-info" style="background-color: #fef3c7; border-color: #fde047; direction: rtl; text-align: right;">
+          <div style="color: #92400e; font-size: 14px; text-align: right;">
             <strong>שים/י לב:</strong> קישור זה תקף ל-7 ימים בלבד. אם פג תוקף הקישור, אנא צור/י קשר עם {{inviter_name}} לקבלת הזמנה חדשה.
           </div>
         </div>
 
-        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px; text-align: right;">
           אם לא ביקשת הזמנה זו, אנא התעלם ממייל זה.
         </p>
       </div>
 
-      <div class="footer">
-        <p>© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
+      <div class="footer" style="text-align: center;">
+        <p style="text-align: center;">© {{year}} {{shop_name}}. כל הזכויות שמורות.</p>
       </div>
     </div>
   </div>
