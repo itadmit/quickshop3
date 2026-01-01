@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { cookies } from 'next/headers';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 interface RouteParams {
   params: Promise<{ storyId: string }>;
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const cookieStore = await cookies();
     let sessionId = cookieStore.get('story_session')?.value;
     if (!sessionId) {
-      sessionId = uuidv4();
+      sessionId = randomUUID();
     }
 
     // Get customer ID if logged in
