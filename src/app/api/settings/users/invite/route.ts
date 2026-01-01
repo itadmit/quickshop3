@@ -94,10 +94,10 @@ export async function POST(request: NextRequest) {
       const { EmailEngine } = await import('@/lib/services/email-engine');
       const emailEngine = new EmailEngine(user.store_id);
       
-      // Get base URL from request or environment variable
+      // Get base URL from environment variable or request headers
       const host = request.headers.get('host') || 'localhost:3000';
       const protocol = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+      const baseUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
       const inviteUrl = `${baseUrl}/staff/accept-invitation?token=${token}`;
 
       await emailEngine.send('ADMIN_INVITE', email, {
