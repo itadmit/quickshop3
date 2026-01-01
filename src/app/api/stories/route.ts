@@ -43,12 +43,13 @@ export async function GET(request: NextRequest) {
         ps.comments_count,
         p.title as product_title,
         p.handle as product_handle,
-        p.price as product_price,
-        p.compare_at_price as product_compare_at_price,
+        pv.price as product_price,
+        pv.compare_at_price as product_compare_at_price,
         (SELECT pi.src FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.position LIMIT 1) as product_image,
         p.body_html as product_description
       FROM product_stories ps
       JOIN products p ON p.id = ps.product_id
+      LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.position = 1
       WHERE ps.store_id = $1
       ORDER BY ps.position ASC`,
       [storeId]
