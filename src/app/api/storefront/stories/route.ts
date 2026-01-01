@@ -72,6 +72,16 @@ export async function GET(request: NextRequest) {
     // Get customer ID if logged in
     const customerId = cookieStore.get('customer_id')?.value;
 
+    // Build inventory filter based on show_out_of_stock setting
+    const showOutOfStock = settings.show_out_of_stock;
+    const inventoryFilter = showOutOfStock 
+      ? '' 
+      : `AND EXISTS (
+          SELECT 1 FROM product_variants pv2
+          LEFT JOIN variant_inventory vi ON vi.variant_id = pv2.id
+          WHERE pv2.product_id = p.id AND (vi.available > 0 OR vi.available IS NULL)
+        )`;
+
     // Get stories with product info
     const stories = await query<PublicStory>(
       `SELECT 
@@ -100,7 +110,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.position = 1
       LEFT JOIN story_views sv ON sv.story_id = ps.id AND (sv.session_id = $2 OR sv.customer_id = $3)
       LEFT JOIN story_likes sl ON sl.story_id = ps.id AND (sl.session_id = $2 OR sl.customer_id = $3)
-      WHERE ps.store_id = $1 AND ps.is_active = true AND p.status = 'active'
+      WHERE ps.store_id = $1 AND ps.is_active = true AND p.status = 'active' ${inventoryFilter}
       ORDER BY 
         CASE WHEN sv.id IS NOT NULL THEN 1 ELSE 0 END ASC,
         ps.position ASC`,

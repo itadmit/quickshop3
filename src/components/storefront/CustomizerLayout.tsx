@@ -13,6 +13,7 @@ import { getProductByHandle, getProductsList } from '@/lib/storefront/queries';
 import { getCollectionByHandle } from '@/lib/storefront/queries';
 import { ProductPageProvider } from '@/contexts/ProductPageContext';
 import { loadFeaturedProductsData, loadFeaturedCollectionsData } from '@/lib/storefront/loadSectionData';
+import { StoriesBar } from './StoriesBar';
 
 interface CustomizerLayoutProps {
   storeSlug: string;
@@ -252,12 +253,21 @@ export async function CustomizerLayout({
   
   const shouldShowChildren = !shouldShowCustomizerContent || contentSections.length === 0;
 
+  // Map pageType to StoriesBar pageType
+  const storiesPageType = pageType === 'product' ? 'product' 
+    : (pageType === 'collection' || pageType === 'category' || pageType === 'categories') ? 'category'
+    : pageType === 'home' || !pageType ? 'home'
+    : 'other';
+
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
       {/* Header from Customizer */}
       {headerSection && (
         <StorefrontSectionRenderer section={headerSection} />
       )}
+      
+      {/* Stories Bar - displays below header */}
+      <StoriesBar storeSlug={storeSlug} pageType={storiesPageType} />
       
       {/* Main Content */}
       <main className="flex-1">

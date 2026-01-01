@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         allow_likes: true,
         allow_comments: true,
         allow_quick_add: true,
+        show_out_of_stock: false,
         circle_border_color: '#e91e63',
         viewed_border_color: '#9e9e9e',
       },
@@ -166,6 +167,7 @@ export async function PUT(request: NextRequest) {
         allow_likes,
         allow_comments,
         allow_quick_add,
+        show_out_of_stock,
         circle_border_color,
         viewed_border_color,
       } = body.settings;
@@ -174,8 +176,8 @@ export async function PUT(request: NextRequest) {
         `INSERT INTO story_settings (
           store_id, is_enabled, display_mode, auto_advance_seconds,
           show_product_info, allow_likes, allow_comments, allow_quick_add,
-          circle_border_color, viewed_border_color
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          show_out_of_stock, circle_border_color, viewed_border_color
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (store_id) DO UPDATE SET
           is_enabled = EXCLUDED.is_enabled,
           display_mode = EXCLUDED.display_mode,
@@ -184,6 +186,7 @@ export async function PUT(request: NextRequest) {
           allow_likes = EXCLUDED.allow_likes,
           allow_comments = EXCLUDED.allow_comments,
           allow_quick_add = EXCLUDED.allow_quick_add,
+          show_out_of_stock = EXCLUDED.show_out_of_stock,
           circle_border_color = EXCLUDED.circle_border_color,
           viewed_border_color = EXCLUDED.viewed_border_color,
           updated_at = now()`,
@@ -196,6 +199,7 @@ export async function PUT(request: NextRequest) {
           allow_likes ?? true,
           allow_comments ?? true,
           allow_quick_add ?? true,
+          show_out_of_stock ?? false,
           circle_border_color ?? '#e91e63',
           viewed_border_color ?? '#9e9e9e',
         ]

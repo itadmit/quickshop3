@@ -35,7 +35,7 @@ interface PageProps {
 export default function SmartAdvisorEditorPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const { toast, toasts } = useOptimisticToast();
+  const { toast } = useOptimisticToast();
   
   const [quiz, setQuiz] = useState<AdvisorQuiz | null>(null);
   const [questions, setQuestions] = useState<AdvisorQuestionWithAnswers[]>([]);
@@ -760,24 +760,6 @@ export default function SmartAdvisorEditorPage({ params }: PageProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Toast Notifications */}
-      <div className="fixed bottom-4 left-4 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-left-5 ${
-              t.variant === 'destructive'
-                ? 'bg-red-500 text-white'
-                : 'bg-green-600 text-white'
-            }`}
-          >
-            <div className="font-medium">{t.title}</div>
-            {t.description && (
-              <div className="text-sm opacity-90">{t.description}</div>
-            )}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

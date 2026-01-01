@@ -11,7 +11,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HiSearch, HiUser, HiMenu, HiX, HiHeart, HiShoppingCart } from 'react-icons/hi';
 import { SectionSettings } from '@/lib/customizer/types';
-import { Skeleton } from '@/components/ui/Skeleton';
 
 // Dynamic imports for real components (only used in storefront)
 import dynamic from 'next/dynamic';
@@ -343,12 +342,15 @@ export function UnifiedHeader({
 
     // Storefront mode - real components
     // ✅ רק אחרי mount כדי למנוע hydration mismatch
+    // משתמשים ב-div רגיל inline למניעת hydration errors
+    const skeletonClass = "animate-pulse bg-gray-200 w-10 h-10 rounded-lg flex-shrink-0";
+    
     if (!isMounted) {
       // מציג skeletons בזמן SSR - עם אותו גודל כמו הקומפוננטות האמיתיות
       if (split) {
         if (position === 'right') {
           return settings.search?.enabled === true ? (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+            <div className={skeletonClass} />
           ) : null;
         }
         if (position === 'left') {
@@ -360,10 +362,10 @@ export function UnifiedHeader({
                 </IconButton>
               )}
               {settings.wishlist?.enabled === true && storeSlug && (
-                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+                <div className={skeletonClass} />
               )}
               {settings.cart?.enabled === true && storeId && (
-                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+                <div className={skeletonClass} />
               )}
             </div>
           );
@@ -372,10 +374,10 @@ export function UnifiedHeader({
       return (
         <div className="flex items-center gap-1 flex-shrink-0">
           {settings.search?.enabled === true && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+            <div className={skeletonClass} />
           )}
           {settings.currency_selector?.enabled === true && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+            <div className={skeletonClass} />
           )}
           {settings.user_account?.enabled === true && (
             <IconButton title="חשבון" href={`/shops/${storeSlug}/account`}>
@@ -383,10 +385,10 @@ export function UnifiedHeader({
             </IconButton>
           )}
           {settings.wishlist?.enabled === true && storeSlug && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+            <div className={skeletonClass} />
           )}
           {settings.cart?.enabled === true && storeId && (
-            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+            <div className={skeletonClass} />
           )}
         </div>
       );
@@ -624,12 +626,12 @@ export function UnifiedHeader({
         isPreview ? (
           <IconButton title="מועדפים"><HiHeart className="w-5 h-5" /></IconButton>
         ) : (
-          storeSlug && (isMounted ? <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} /> : <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />)
+          storeSlug && (isMounted ? <WishlistIcon storeSlug={storeSlug} iconColor={iconColor} /> : <div className="animate-pulse bg-gray-200 w-10 h-10 rounded-lg flex-shrink-0" />)
         )
       )}
       {settings.cart?.enabled !== false && (
         !isPreview && storeId ? (
-          isMounted ? <SideCart storeId={storeId} /> : <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          isMounted ? <SideCart storeId={storeId} /> : <div className="animate-pulse bg-gray-200 w-10 h-10 rounded-lg flex-shrink-0" />
         ) : (
           <IconButton title="עגלה"><HiShoppingCart className="w-5 h-5" /></IconButton>
         )

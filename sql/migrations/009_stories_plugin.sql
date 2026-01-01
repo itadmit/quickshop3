@@ -13,6 +13,7 @@ CREATE TABLE story_settings (
   allow_likes BOOLEAN DEFAULT true,
   allow_comments BOOLEAN DEFAULT true,
   allow_quick_add BOOLEAN DEFAULT true,
+  show_out_of_stock BOOLEAN DEFAULT false,
   circle_border_color VARCHAR(20) DEFAULT '#e91e63',
   viewed_border_color VARCHAR(20) DEFAULT '#9e9e9e',
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),

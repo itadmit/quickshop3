@@ -43,6 +43,7 @@ export function StoriesBar({ storeSlug, pageType = 'home' }: StoriesBarProps) {
   const [stories, setStories] = useState<Story[]>([]);
   const [settings, setSettings] = useState<StorySettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -56,6 +57,8 @@ export function StoriesBar({ storeSlug, pageType = 'home' }: StoriesBarProps) {
           const data = await res.json();
           setStories(data.stories || []);
           setSettings(data.settings);
+          // Trigger animation after data loads
+          setTimeout(() => setIsVisible(true), 50);
         }
       } catch (error) {
         console.error('Failed to fetch stories:', error);
@@ -127,24 +130,22 @@ export function StoriesBar({ storeSlug, pageType = 'home' }: StoriesBarProps) {
     return a.is_viewed ? 1 : -1;
   });
 
+  // Don't show loading skeleton - use smooth animation instead
   if (loading) {
-    return (
-      <div className="w-full py-4 px-4 border-b border-gray-100">
-        <div className="flex gap-4 overflow-hidden">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-200 animate-pulse" />
-              <div className="w-14 h-3 bg-gray-200 rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
     <>
-      <div className="w-full py-4 border-b border-gray-100 relative">
+      <div 
+        className="w-full border-b border-gray-100 relative overflow-hidden transition-all duration-500 ease-out"
+        style={{
+          maxHeight: isVisible ? '150px' : '0px',
+          paddingTop: isVisible ? '1rem' : '0',
+          paddingBottom: isVisible ? '1rem' : '0',
+          opacity: isVisible ? 1 : 0,
+        }}
+      >
         {/* Scroll Left Button */}
         {canScrollLeft && (
           <button
@@ -170,7 +171,7 @@ export function StoriesBar({ storeSlug, pageType = 'home' }: StoriesBarProps) {
         {/* Stories Container */}
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide px-4 md:px-6"
+          className="flex gap-4 overflow-x-auto scrollbar-hide px-4 md:px-6 justify-center"
           onScroll={updateScrollButtons}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
@@ -182,7 +183,7 @@ export function StoriesBar({ storeSlug, pageType = 'home' }: StoriesBarProps) {
             >
               {/* Story Circle */}
               <div
-                className="w-16 h-16 md:w-20 md:h-20 rounded-full p-[3px] transition-all duration-200 group-hover:scale-105"
+                className="w-16 h-16 md:w-20 md:h-20 rounded-full p-[3px] transition-all duration-300"
                 style={{
                   background: story.is_viewed
                     ? settings.viewed_border_color
@@ -194,7 +195,7 @@ export function StoriesBar({ storeSlug, pageType = 'home' }: StoriesBarProps) {
                     <img
                       src={story.product_image}
                       alt={story.product_title}
-                      className="w-full h-full object-cover rounded-full"
+                      className="w-full h-full object-cover rounded-full group-hover:grayscale transition-all duration-300"
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-100 rounded-full flex items-center justify-center text-gray-400 text-xl">

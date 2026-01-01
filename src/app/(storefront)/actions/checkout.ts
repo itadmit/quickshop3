@@ -587,11 +587,12 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // Emit order.created event
-  await eventBus.emit(
+  await eventBus.emitEvent(
     'order.created',
     {
       order: {
         id: order.id,
+        customer_id: customer.id, // ✅ חשוב! נדרש לעדכון רמת מועדון נאמנות
         order_number: orderName,
         total_price: input.total,
         email: input.customer.email,

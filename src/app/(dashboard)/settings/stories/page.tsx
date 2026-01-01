@@ -29,6 +29,7 @@ interface Settings {
   allow_likes: boolean;
   allow_comments: boolean;
   allow_quick_add: boolean;
+  show_out_of_stock: boolean;
   circle_border_color: string;
   viewed_border_color: string;
 }
@@ -122,6 +123,7 @@ export default function StoriesSettingsPage() {
     allow_likes: true,
     allow_comments: true,
     allow_quick_add: true,
+    show_out_of_stock: false,
     circle_border_color: '#e91e63',
     viewed_border_color: '#9e9e9e',
   });
@@ -443,6 +445,7 @@ export default function StoriesSettingsPage() {
                 { key: 'allow_likes', label: 'אפשר לייקים', desc: 'משתמשים יכולים לעשות לייק' },
                 { key: 'allow_comments', label: 'אפשר תגובות', desc: 'משתמשים יכולים להגיב' },
                 { key: 'allow_quick_add', label: 'הוספה מהירה לעגלה', desc: 'כפתור הוסף לעגלה מהסטורי' },
+                { key: 'show_out_of_stock', label: 'הצג מוצרים לא במלאי', desc: 'הצג גם מוצרים שאין במלאי' },
               ].map((feature) => (
                 <label key={feature.key} className="flex items-center justify-between">
                   <div>

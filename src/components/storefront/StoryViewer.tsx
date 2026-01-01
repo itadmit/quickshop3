@@ -237,6 +237,11 @@ export function StoryViewer({
         // Close on background click
         if (e.target === e.currentTarget) onClose();
       }}
+      onMouseDown={() => setIsPaused(true)}
+      onMouseUp={() => setIsPaused(false)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
     >
       {/* Progress bars */}
       <div className="absolute top-0 left-0 right-0 z-50 flex gap-1 p-2">
@@ -322,13 +327,15 @@ export function StoryViewer({
       )}
 
       {/* Main Image */}
-      <div className="w-full h-full max-w-lg mx-auto relative">
+      <div className="w-full h-full max-w-lg mx-auto relative flex items-center justify-center p-4">
         {currentStory.product_image ? (
-          <img
-            src={currentStory.product_image}
-            alt={currentStory.product_title}
-            className="w-full h-full object-contain"
-          />
+          <div className="bg-white rounded-2xl p-6 shadow-2xl max-h-[70vh]">
+            <img
+              src={currentStory.product_image}
+              alt={currentStory.product_title}
+              className="max-w-full max-h-[60vh] object-contain"
+            />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
             <span className="text-6xl">📷</span>
@@ -394,11 +401,11 @@ export function StoryViewer({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-white text-xl font-bold">
-                  ₪{currentStory.product_price?.toFixed(2)}
+                  ₪{Number(currentStory.product_price || 0).toFixed(2)}
                 </span>
                 {currentStory.product_compare_at_price && (
                   <span className="text-gray-400 line-through text-sm">
-                    ₪{currentStory.product_compare_at_price.toFixed(2)}
+                    ₪{Number(currentStory.product_compare_at_price).toFixed(2)}
                   </span>
                 )}
               </div>

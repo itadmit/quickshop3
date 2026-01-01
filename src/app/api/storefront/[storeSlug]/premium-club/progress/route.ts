@@ -41,6 +41,7 @@ export async function GET(
     } | null = null;
 
     if (auth.success && auth.customerId) {
+      // ✅ סופר את כל ההזמנות (לא רק paid) - עקבי עם הלוגיקה של הקצאת רמות
       customer = await queryOne<{
         id: number;
         premium_club_tier: string | null;
@@ -53,7 +54,7 @@ export async function GET(
           COALESCE(SUM(o.total_price::numeric), 0) as total_spent,
           COUNT(DISTINCT o.id) as orders_count
         FROM customers c
-        LEFT JOIN orders o ON o.customer_id = c.id AND o.financial_status = 'paid'
+        LEFT JOIN orders o ON o.customer_id = c.id AND o.financial_status NOT IN ('cancelled', 'voided')
         WHERE c.id = $1 AND c.store_id = $2
         GROUP BY c.id`,
         [auth.customerId, storeId]
